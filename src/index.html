@@ -289,36 +289,7 @@
         <main id="pageContent" class="p-3 sm:p-4">
             <!-- Populated by app.js -->
         </main>
-        <!-- BOTTOM THUMB ACTION DOCK (MOBİL BAŞPARMAK HIZLI BARI) -->
-        <div id="bottomActionDock" class="no-print hidden shrink-0 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 text-white px-3 py-1.5 flex items-center justify-around shadow-2xl z-40">
-            <button onclick="triggerQuickCameraCapture()" class="flex flex-col items-center gap-0.5 text-slate-300 hover:text-white active:scale-95 transition touch-action-btn">
-                <div class="w-8 h-8 rounded-full bg-sky-500/20 text-sky-400 flex items-center justify-center text-sm border border-sky-500/30">
-                    <i class="fa-solid fa-camera"></i>
-                </div>
-                <span class="text-[10px] font-bold">Fotoğraf</span>
-            </button>
 
-            <button onclick="openTabNavSheet()" class="flex flex-col items-center gap-0.5 text-slate-300 hover:text-white active:scale-95 transition touch-action-btn">
-                <div class="w-8 h-8 rounded-full bg-slate-800 text-amber-400 flex items-center justify-center text-sm border border-slate-700">
-                    <i class="fa-solid fa-layer-group"></i>
-                </div>
-                <span class="text-[10px] font-bold">Sekmeler</span>
-            </button>
-
-            <button onclick="printOfficialReport()" class="flex flex-col items-center gap-0.5 text-slate-300 hover:text-white active:scale-95 transition touch-action-btn">
-                <div class="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm border border-emerald-500/30">
-                    <i class="fa-solid fa-file-pdf"></i>
-                </div>
-                <span class="text-[10px] font-bold">PDF Rapor</span>
-            </button>
-
-            <button onclick="saveCurrentInspection(true)" class="flex flex-col items-center gap-0.5 text-slate-300 hover:text-white active:scale-95 transition touch-action-btn">
-                <div class="w-8 h-8 rounded-full bg-slate-800 text-sky-400 flex items-center justify-center text-sm border border-slate-700">
-                    <i class="fa-solid fa-floppy-disk"></i>
-                </div>
-                <span class="text-[10px] font-bold">Kaydet</span>
-            </button>
-        </div>
         <input type="file" id="quickCameraInput" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this)">
     </div>
 

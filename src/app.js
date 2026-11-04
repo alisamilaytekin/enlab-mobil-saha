@@ -606,64 +606,61 @@ async function renderHome() {
 
     container.innerHTML = `
         <div class="max-w-2xl mx-auto space-y-3 pb-8">
-            <!-- 1. AKTİF MUAYENE PERSONELİ & HESAP DEĞİŞTİRME PANELİ -->
-            <div class="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-800 text-white rounded-2xl p-3.5 shadow-sm border border-slate-700/80">
-                <div class="flex items-center justify-between gap-3">
-                    <div class="flex items-center gap-2.5 min-w-0">
-                        <div class="w-10 h-10 rounded-xl bg-amber-400 text-slate-950 font-black text-sm flex items-center justify-center shrink-0 shadow-sm">
-                            <i class="fa-solid fa-user-tie"></i>
+            <!-- 1. AKTİF MUAYENE PERSONELİ & HESAP DEĞİŞTİRME PANELİ (GENİŞ, FERAH MOBİL DÜZEN) -->
+            <div class="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-800 text-white rounded-2xl p-4 shadow-sm border border-slate-700/80 space-y-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-2xl bg-amber-400 text-slate-950 font-black text-lg flex items-center justify-center shrink-0 shadow-sm">
+                        <i class="fa-solid fa-user-tie"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-bold text-base text-white leading-tight">${curUser ? escapeHtml(curUser.fullName) : 'Muayene Personeli Girişi Yapılmadı'}</span>
+                            <span class="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">Aktif Personel</span>
                         </div>
-                        <div class="min-w-0">
-                            <div class="flex items-center gap-1.5">
-                                <span class="font-bold text-sm text-white truncate">${curUser ? escapeHtml(curUser.fullName) : 'Muayene Personeli Girişi Yapılmadı'}</span>
-                                <span class="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.2 rounded font-semibold shrink-0">Aktif</span>
-                            </div>
-                            <div class="text-[11px] text-slate-300 truncate mt-0.5">
-                                ${curUser ? `${escapeHtml(curUser.title || 'Mühendis')} · Sicil: ${escapeHtml(curUser.ministryRegNo || curUser.username)}` : 'Raporlara imza atacak personeli seçin'}
-                            </div>
+                        <div class="text-xs text-slate-300 mt-1">
+                            ${curUser ? `${escapeHtml(curUser.title || 'Elektrik Mühendisi')} · Sicil: <span class="font-mono font-bold text-amber-300">${escapeHtml(curUser.ministryRegNo || curUser.username)}</span>` : 'Raporlara imza atacak personeli seçin'}
                         </div>
                     </div>
-                    
-                    <div class="flex items-center gap-1.5 shrink-0">
-                        <button onclick="openUserProfileModal()" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-sky-300 border border-slate-600 rounded-xl text-xs font-bold flex items-center gap-1 transition" title="Profil Bilgilerini Düzenle">
-                            <i class="fa-solid fa-user-pen"></i>
-                            <span class="hidden sm:inline">Profil</span>
-                        </button>
-                        <button onclick="AuthManager.logout()" class="px-3 py-1.5 bg-rose-600/90 hover:bg-rose-600 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-sm" title="Hesap Değiştir / Çıkış Yap">
-                            <i class="fa-solid fa-arrow-right-from-bracket"></i>
-                            <span>Kullanıcı Değiştir</span>
-                        </button>
-                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-2 pt-1 border-t border-slate-700/60">
+                    <button onclick="openUserProfileModal()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-sky-300 border border-slate-600 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-xs">
+                        <i class="fa-solid fa-user-pen text-amber-400"></i>
+                        <span>Profilimi Düzenle</span>
+                    </button>
+                    <button onclick="AuthManager.logout()" class="w-full py-2 bg-rose-600/90 hover:bg-rose-600 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-sm">
+                        <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                        <span>Kullanıcı Değiştir</span>
+                    </button>
                 </div>
             </div>
 
-            <!-- 2. ŞİRKET, LOGO & RAPOR KODLARI AYARLARI (WHITE-LABEL ENGINE) -->
-            <div class="bg-white rounded-2xl p-3.5 shadow-2xs border border-slate-200">
-                <div class="flex items-center justify-between gap-3">
-                    <div class="flex items-center gap-3 min-w-0">
-                        <div class="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 p-1 flex items-center justify-center shrink-0">
-                            <img src="${logoSrc}" alt="Logo" class="max-w-full max-h-full object-contain">
+            <!-- 2. ŞİRKET, LOGO & RAPOR KODLARI AYARLARI (GENİŞ, TAM YAZILI DÜZEN) -->
+            <div class="bg-white rounded-2xl p-4 shadow-2xs border border-slate-200 space-y-3">
+                <div class="flex items-start gap-3.5">
+                    <div class="w-13 h-13 rounded-xl bg-slate-50 border border-slate-200 p-1 flex items-center justify-center shrink-0 shadow-2xs">
+                        <img src="${logoSrc}" alt="Logo" class="max-w-full max-h-full object-contain">
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-bold text-xs sm:text-sm text-slate-900 leading-snug">
+                            ${escapeHtml(branding.companyFullName)}
                         </div>
-                        <div class="min-w-0">
-                            <div class="font-bold text-xs sm:text-sm text-slate-900 truncate">
-                                ${escapeHtml(branding.companyFullName)}
-                            </div>
-                            <div class="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
-                                <span>Logo, TÜRKAK & Rapor Formatı</span>
-                                ${branding.showTurkakLogo ? '<span class="text-emerald-600 font-bold flex items-center gap-0.5"><i class="fa-solid fa-certificate text-[10px]"></i> Akredite</span>' : '<span class="text-slate-400 font-medium">Özel Şablon</span>'}
-                            </div>
+                        <div class="text-xs text-slate-500 flex items-center gap-2 mt-1 flex-wrap">
+                            <span>Kurumsal Logo & Rapor Kodları</span>
+                            ${branding.showTurkakLogo ? '<span class="text-emerald-700 font-bold flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 text-[10px]"><i class="fa-solid fa-certificate text-[10px]"></i> Akredite TÜRKAK</span>' : '<span class="text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full text-[10px]">Özel Şablon</span>'}
                         </div>
                     </div>
-                    
-                    <div class="flex items-center gap-1.5 shrink-0">
-                        <button onclick="openCompanySettingsModal()" class="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition">
-                            <i class="fa-solid fa-sliders"></i>
-                            <span>Şirket & Logo Ayarları</span>
-                        </button>
-                        <button onclick="openBackupManagerModal()" class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs active:scale-95 border border-slate-200 transition" title="Yedekleme ve Geri Yükleme">
-                            <i class="fa-solid fa-database"></i>
-                        </button>
-                    </div>
+                </div>
+                
+                <div class="grid grid-cols-5 gap-2 pt-1 border-t border-slate-100">
+                    <button onclick="openCompanySettingsModal()" class="col-span-4 py-2 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition">
+                        <i class="fa-solid fa-sliders"></i>
+                        <span>Şirket, Logo & Rapor Ayarları</span>
+                    </button>
+                    <button onclick="openBackupManagerModal()" class="col-span-1 py-2 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 transition flex items-center justify-center gap-1" title="Veri Yedekleme ve Kurtarma">
+                        <i class="fa-solid fa-database text-slate-600"></i>
+                        <span class="hidden sm:inline">Yedek</span>
+                    </button>
                 </div>
             </div>
 
@@ -1319,35 +1316,46 @@ function renderWoInspectionRows(list, workOrderId) {
         return `<div class="p-6 text-center text-slate-400 text-xs border border-dashed border-slate-200 rounded-lg">Henüz rapor eklenmedi. <strong>"+ Rapor Ekle"</strong> butonuna dokunun.</div>`;
     }
     return list.map(item => `
-        <div class="p-3 rounded-xl border border-slate-200 bg-slate-50/60 flex items-center justify-between gap-2 hover:border-slate-300 transition">
-            <div onclick="navigateTo('inspection-complete', {id: '${item.id}', templateId: '${item.template_id}'})" class="min-w-0 flex-1 cursor-pointer">
-                <div class="flex items-center gap-1.5">
-                    <span class="font-bold text-slate-900 text-xs sm:text-sm truncate">${escapeHtml(item.equipment_name || 'İsimsiz Rapor')}</span>
-                    <button onclick="event.stopPropagation(); openRenameInspectionModal('${item.id}', '${escapeForJs(item.equipment_name || '')}', '${workOrderId}')"
-                        class="p-1 text-slate-400 hover:text-sky-600 rounded shrink-0 transition" title="Rapor İsmini Değiştir">
-                        <i class="fa-solid fa-pen-to-square text-[11px]"></i>
-                    </button>
+        <div class="p-3.5 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition space-y-2.5 shadow-2xs">
+            <!-- TIER 1: REPORT TITLE & SUBTITLE - 100% FULL WIDTH (NO TRUNCATION) -->
+            <div onclick="navigateTo('inspection-complete', {id: '${item.id}', templateId: '${item.template_id}'})" class="cursor-pointer">
+                <div class="flex items-start justify-between gap-2">
+                    <div class="font-bold text-slate-900 text-sm leading-snug flex-1">
+                        ${escapeHtml(item.equipment_name || 'İsimsiz Rapor')}
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <button onclick="event.stopPropagation(); openRenameInspectionModal('${item.id}', '${escapeForJs(item.equipment_name || '')}', '${workOrderId}')"
+                            class="p-1.5 text-slate-400 hover:text-sky-600 rounded-lg hover:bg-slate-100 transition" title="Rapor İsmini Değiştir">
+                            <i class="fa-solid fa-pen-to-square text-xs text-sky-600"></i>
+                        </button>
+                        <button onclick="event.stopPropagation(); deleteInspectionItem('${item.id}', '${workOrderId}')"
+                            class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition" title="Raporu Sil">
+                            <i class="fa-solid fa-trash-can text-xs text-rose-500"></i>
+                        </button>
+                    </div>
                 </div>
-                <div class="text-[11px] text-slate-500 font-mono truncate mt-0.5">${item.template_code || 'TKM-FR.318'} · ${item.serial_no || 'Saha'}</div>
+                <div class="flex items-center gap-2 text-xs text-slate-500 font-medium mt-1 flex-wrap">
+                    <span class="font-mono bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-bold text-[11px] border border-slate-200">${item.template_code || 'TKM-FR.318'}</span>
+                    <span>${escapeHtml(item.serial_no || 'Saha Kontrolü')}</span>
+                    ${item.result_status ? `<span class="ml-auto font-bold text-[10px] px-2 py-0.5 rounded ${item.result_status === 'UYGUN' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}">${item.result_status}</span>` : ''}
+                </div>
             </div>
-            <div class="flex items-center gap-1.5 shrink-0">
+
+            <!-- TIER 2: ACTION BUTTONS - WIDE, EASY TO TAP -->
+            <div class="grid grid-cols-6 gap-2 pt-2 border-t border-slate-100">
                 <button onclick="navigateTo('inspection-complete', {id: '${item.id}', templateId: '${item.template_id}'})"
-                    class="px-3 py-2 bg-sky-600 active:bg-sky-700 text-white font-bold rounded-lg text-xs">
-                    Doldur
-                </button>
-                <button onclick="cloneInspectionReport('${item.id}', '${workOrderId}')"
-                    class="px-2.5 py-2 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold rounded-lg text-xs flex items-center gap-1" title="Bu Raporu Klonla (Tüm Satırlarıyla Kopyala)">
-                    <i class="fa-solid fa-clone text-sky-600"></i>
-                    <span class="hidden sm:inline">Klonla</span>
+                    class="col-span-3 py-2 bg-sky-600 hover:bg-sky-500 active:bg-sky-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-xs transition">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                    <span>Formu Doldur</span>
                 </button>
                 <button onclick="quickPreviewReportFromList('${item.id}')"
-                    class="px-3 py-2 bg-slate-900 active:bg-slate-800 text-amber-400 font-bold rounded-lg text-xs flex items-center gap-1">
+                    class="col-span-2 py-2 bg-slate-900 active:bg-slate-800 text-amber-400 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-xs transition">
                     <i class="fa-solid fa-file-pdf"></i>
-                    <span>PDF</span>
+                    <span>PDF Rapor</span>
                 </button>
-                <button onclick="deleteInspectionItem('${item.id}', '${workOrderId}')"
-                    class="p-2 text-slate-400 hover:text-rose-600 text-xs" title="Sil">
-                    <i class="fa-solid fa-trash-can"></i>
+                <button onclick="cloneInspectionReport('${item.id}', '${workOrderId}')"
+                    class="col-span-1 py-2 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold rounded-xl text-xs flex items-center justify-center transition border border-slate-200" title="Raporu Klonla">
+                    <i class="fa-solid fa-clone text-sky-600"></i>
                 </button>
             </div>
         </div>
@@ -2408,10 +2416,7 @@ function paintInspectionEditorUI() {
     const container = document.getElementById('pageContent');
     const insp = AppState.currentInspection;
     
-    // Activate bottom thumb action dock & add padding
-    const dock = document.getElementById('bottomActionDock');
-    if (dock) dock.classList.remove('hidden');
-    if (container) container.classList.add('pb-24');
+    if (container) container.classList.add('pb-8');
     const isElectrical2201 = String(insp.template_id) === '2201' && AppState.electricalTemplate && AppState.electricalTemplate.areas;
     const isGrounding2202 = String(insp.template_id) === '2202';
     const isGenerator2205 = String(insp.template_id) === '2205';
@@ -3001,19 +3006,19 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
 function getShortTopicQuestionLabel(areaIdx, topicIdx, questionText) {
     const q = questionText || '';
     if (areaIdx === 3 && topicIdx === 3) {
-        if (q.includes('Pano/Tablo')) return 'Pano / Linye';
-        if (q.includes('Açma eğrisi')) return 'Eğri';
-        if (q.includes('Kutup sayısı')) return 'Kutup';
-        if (q.includes('Nominal akımı In')) return 'In (A)';
-        if (q.includes('Icu')) return 'Icu (kA)';
-        if (q.includes('Faz kesiti')) return 'Faz (mm²)';
-        if (q.includes('N/PEN')) return 'N/PEN (mm²)';
-        if (q.includes('PE Koruma')) return 'PE (mm²)';
-        if (q.includes('Ib')) return 'Ib (A)';
-        if (q.includes('Iz')) return 'Iz (A)';
-        if (q.includes('IΔ')) return 'IΔ (mA)';
-        if (q.includes('TΔ')) return 'TΔ (ms)';
-        if (q.includes('Değerlendirme')) return 'Sonuç';
+        if (q.includes('Pano/Tablo')) return 'Pano / Linye Tanımı';
+        if (q.includes('Açma eğrisi')) return 'Açma Eğrisi (B / C / D)';
+        if (q.includes('Kutup sayısı')) return 'Kutup Sayısı';
+        if (q.includes('Nominal akımı In')) return 'Nominal Akım In (A)';
+        if (q.includes('Icu')) return 'Kesme Kapasitesi Icu (kA)';
+        if (q.includes('Faz kesiti')) return 'Faz Kesiti (mm²)';
+        if (q.includes('N/PEN')) return 'N / PEN Kesiti (mm²)';
+        if (q.includes('PE Koruma')) return 'PE Koruma Kesiti (mm²)';
+        if (q.includes('Ib')) return 'İşletme Akımı Ib (A)';
+        if (q.includes('Iz')) return 'İletken Akımı Iz (A)';
+        if (q.includes('IΔ')) return 'RCD Açma Akımı IΔ (mA)';
+        if (q.includes('TΔ')) return 'RCD Açma Süresi TΔ (ms)';
+        if (q.includes('Değerlendirme')) return 'Sonuç / Değerlendirme';
     }
     return q;
 }
@@ -3025,19 +3030,29 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
     }
     const rows = fd.tableRows[tKey];
     const isSection64 = area.index === 3 && topic.index === 3;
-    const gridClass = isSection64 ? 'grid-cols-3 sm:grid-cols-4 gap-1.5' : 'grid-cols-2 gap-2';
+    const isSection65 = area.index === 3 && topic.index === 4;
+
+    // Geniş ve ferah grid düzeni:
+    // 6.4: Mobilde 2 sütun, tablette 4 sütun
+    // 6.5: Mobilde tek sütun (tam genişlik), tablette 2 sütun
+    let gridClass = 'grid-cols-1 sm:grid-cols-2 gap-3';
+    if (isSection64) {
+        gridClass = 'grid-cols-2 sm:grid-cols-4 gap-2.5';
+    } else if (!isSection65) {
+        gridClass = 'grid-cols-1 sm:grid-cols-2 gap-2.5';
+    }
 
     const cardsHtml = rows.map((rowObj, rIdx) => {
         const fieldsHtml = topic.questions.map((q, qIdx) => {
             const cellVal = rowObj[q.guid] ?? '';
-            const shortLabel = getShortTopicQuestionLabel(area.index, topic.index, q.question);
+            const labelText = getShortTopicQuestionLabel(area.index, topic.index, q.question);
             if (q.type === 'YesNo') {
                 return `
-                    <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5 truncate" title="${q.question}">${shortLabel}</label>
+                    <div class="${isSection65 ? 'col-span-full sm:col-span-1' : ''}">
+                        <label class="block text-[11px] font-bold text-slate-700 mb-1 leading-snug break-words">${labelText}</label>
                         <select onchange="handleTopicTableCell('${tKey}', ${rIdx}, '${q.guid}', this.value)"
-                            class="w-full border border-slate-300 rounded-lg px-1.5 py-1.5 text-xs bg-white font-bold text-slate-900">
-                            <option value="" ${cellVal === '' ? 'selected' : ''}>Seç</option>
+                            class="w-full border border-slate-300 rounded-lg px-2.5 py-2 text-xs bg-white font-bold text-slate-900 shadow-2xs">
+                            <option value="" ${cellVal === '' ? 'selected' : ''}>Seçiniz...</option>
                             <option value="Uygun" ${cellVal === 'Uygun' || cellVal === '✓' ? 'selected' : ''}>✓ Uygun</option>
                             <option value="Uygun Değil" ${cellVal === 'Uygun Değil' || cellVal === 'X' ? 'selected' : ''}>X Uygun Değil</option>
                             <option value="Uygulaması Yok" ${cellVal === 'Uygulaması Yok' || cellVal === 'N' ? 'selected' : ''}>N Uyg. Yok</option>
@@ -3046,20 +3061,21 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
                     </div>
                 `;
             }
-            const spanClass = isSection64 ? (qIdx === 0 ? 'col-span-2' : '') : (qIdx === 0 ? 'col-span-2' : '');
+            // Section 6.4 Pano Adı or Section 6.5 long questions take full width
+            const spanClass = (qIdx === 0 || isSection65) ? 'col-span-full' : '';
             return `
                 <div class="${spanClass}">
-                    <label class="block text-[10px] font-bold text-slate-600 mb-0.5 truncate" title="${q.question}">${shortLabel}</label>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-1 leading-snug break-words">${labelText}</label>
                     <input type="text" value="${String(cellVal).replace(/"/g, '&quot;')}"
                         oninput="handleTopicTableCell('${tKey}', ${rIdx}, '${q.guid}', this.value)"
-                        class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs bg-white focus:border-sky-500 focus:outline-none">
+                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white focus:border-sky-500 focus:outline-none shadow-2xs font-medium">
                 </div>
             `;
         }).join('');
 
         return `
-            <div class="p-2.5 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
-                <div class="flex items-center justify-between border-b border-slate-200 pb-1.5 gap-2">
+            <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50 space-y-2.5">
+                <div class="flex items-center justify-between border-b border-slate-200 pb-2 gap-2">
                     <span class="font-bold text-xs text-slate-800">Satır #${rIdx + 1}</span>
                     <div class="flex items-center gap-1.5">
                         <button onclick="duplicateSpecificTopicRow('${tKey}', ${rIdx})" class="px-2.5 py-1 bg-sky-100 active:bg-sky-200 text-sky-800 rounded-lg text-xs font-bold flex items-center gap-1">
@@ -3079,14 +3095,14 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
     }).join('');
 
     return `
-        <div class="border border-slate-200 rounded-xl overflow-hidden bg-white">
-            <div class="px-3 py-2 bg-slate-100 border-b border-slate-200 flex items-center justify-between gap-2">
-                <span class="font-bold text-xs text-slate-800 truncate">${subNum}. ${topic.name}</span>
-                <button onclick="addTopicTableRow('${tKey}', ${area.index}, ${topic.index})" class="px-2.5 py-1 bg-emerald-500 text-slate-950 font-bold rounded-lg text-xs shrink-0">
+        <div class="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
+            <div class="px-3.5 py-2.5 bg-slate-100 border-b border-slate-200 flex items-center justify-between gap-2">
+                <div class="font-bold text-xs text-slate-900 leading-snug flex-1">${subNum}. ${topic.name}</div>
+                <button onclick="addTopicTableRow('${tKey}', ${area.index}, ${topic.index})" class="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-xs shrink-0 shadow-2xs">
                     + Satır Ekle
                 </button>
             </div>
-            <div class="p-2.5 space-y-2.5">
+            <div class="p-3 space-y-3">
                 ${cardsHtml}
             </div>
         </div>
