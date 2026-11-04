@@ -255,6 +255,9 @@ window.addEventListener('DOMContentLoaded', async () => {
         if (!e.target.closest('.row-action-menu') && !e.target.closest('.row-action-btn')) {
             document.querySelectorAll('.row-action-menu').forEach(el => el.classList.add('hidden'));
         }
+        if (!e.target.closest('[id^="linyeDropdown_"]') && !e.target.closest('[id^="pt_name_"]')) {
+            document.querySelectorAll('[id^="linyeDropdown_"]').forEach(el => el.classList.add('hidden'));
+        }
     });
 });
 
@@ -4346,44 +4349,191 @@ const COMMON_LINYE_SUGGESTIONS = [
     { title: 'Yangın Algılama Paneli Beslemesi', tag: 'Yangın' }
 ];
 
+const LinyeMemoryManager = {
+    STORAGE_KEY: 'enlab_linye_frequencies_v2',
+
+    getFrequencies() {
+        try {
+            const raw = localStorage.getItem(this.STORAGE_KEY);
+            if (raw) return JSON.parse(raw);
+        } catch (e) {}
+        return {};
+    },
+
+    recordUsage(title) {
+        const trimmed = (title || '').trim();
+        if (!trimmed || trimmed.length < 2) return;
+        const freqs = this.getFrequencies();
+        freqs[trimmed] = (freqs[trimmed] || 0) + 1;
+        try {
+            localStorage.setItem(this.STORAGE_KEY, JSON.stringify(freqs));
+        } catch (e) {}
+    },
+
+    seedFromExistingData() {
+        try {
+            const freqs = this.getFrequencies();
+            let changed = false;
+
+            // 1. Mevcut açık rapordaki linyeleri tara
+            if (AppState.currentFormData?.grounding?.points) {
+                AppState.currentFormData.grounding.points.forEach(p => {
+                    const name = (p.point || '').trim();
+                    if (name && name.length >= 2) {
+                        freqs[name] = (freqs[name] || 0) + 1;
+                        changed = true;
+                    }
+                });
+            }
+
+            // 2. Hafızadaki tüm kayıtlı raporlardaki linyeleri tara
+            for (let i = 0; i < localStorage.length; i++) {
+                const k = localStorage.key(i);
+                if (k && k.startsWith('enlab_insp_')) {
+                    try {
+                        const data = JSON.parse(localStorage.getItem(k));
+                        const pts = data?.grounding?.points || [];
+                        pts.forEach(p => {
+                            const name = (p.point || '').trim();
+                            if (name && name.length >= 2) {
+                                freqs[name] = (freqs[name] || 0) + 1;
+                                changed = true;
+                            }
+                        });
+                    } catch (e) {}
+                }
+            }
+
+            if (changed) {
+                localStorage.setItem(this.STORAGE_KEY, JSON.stringify(freqs));
+            }
+        } catch (e) {}
+    },
+
+    getSuggestions(query = '') {
+        const freqs = this.getFrequencies();
+        const q = (query || '').toLowerCase().trim();
+        const map = new Map();
+
+        // 1. Standart tanımlı öneriler
+        COMMON_LINYE_SUGGESTIONS.forEach(item => {
+            map.set(item.title, {
+                title: item.title,
+                tag: item.tag || 'Standart',
+                count: freqs[item.title] || 0,
+                isCustom: false
+            });
+        });
+
+        // 2. Kullanıcının yazdığı ve kaydettiği özel linye hafızası
+        Object.keys(freqs).forEach(customTitle => {
+            if (map.has(customTitle)) {
+                map.get(customTitle).count = freqs[customTitle];
+            } else {
+                map.set(customTitle, {
+                    title: customTitle,
+                    tag: 'Kişisel',
+                    count: freqs[customTitle],
+                    isCustom: true
+                });
+            }
+        });
+
+        let list = Array.from(map.values());
+
+        if (q) {
+            list = list.filter(item =>
+                item.title.toLowerCase().includes(q) || item.tag.toLowerCase().includes(q)
+            );
+        }
+
+        // EN ÇOK KULLANILAN EN ÜSTTE! (Frekans Sıralaması)
+        list.sort((a, b) => {
+            if (b.count !== a.count) {
+                return b.count - a.count; // En yüksek frekans önce
+            }
+            return a.title.localeCompare(b.title, 'tr');
+        });
+
+        return list;
+    },
+
+    getQuickChips() {
+        const freqs = this.getFrequencies();
+        const topUsed = Object.entries(freqs)
+            .sort((a, b) => b[1] - a[1])
+            .map(entry => entry[0])
+            .slice(0, 5);
+
+        const defaults = ['ADP', 'TDP', 'Aydınlatma', 'Priz Linyeleri', 'UPS Panosu', 'Klima Santrali', 'Kompresör', 'Yangın Pompası'];
+        const combined = Array.from(new Set([...topUsed, ...defaults]));
+        return combined.slice(0, 9);
+    }
+};
+
 function renderLinyeDropdownItems(pIdx, query) {
-    const q = (query || '').toLowerCase().trim();
+    const q = (query || '').trim();
     const dropdown = document.getElementById(`linyeDropdown_${pIdx}`);
     if (!dropdown) return;
 
-    let filtered = COMMON_LINYE_SUGGESTIONS;
-    if (q) {
-        filtered = COMMON_LINYE_SUGGESTIONS.filter(item => 
-            item.title.toLowerCase().includes(q) || item.tag.toLowerCase().includes(q)
-        );
+    if (!window.__linyeMemorySeeded) {
+        LinyeMemoryManager.seedFromExistingData();
+        window.__linyeMemorySeeded = true;
     }
 
-    if (filtered.length === 0) {
-        dropdown.innerHTML = `
-            <div class="p-2.5 text-center text-slate-500 font-medium text-[11px] bg-white">
-                "${escapeHtml(query)}" için standart öneri bulunamadı. Yazdığınız metin kaydedilecektir.
-            </div>
-        `;
-        dropdown.classList.remove('hidden');
-        return;
-    }
+    const suggestions = LinyeMemoryManager.getSuggestions(q);
+    const hasExactMatch = suggestions.some(s => s.title.toLowerCase() === q.toLowerCase());
 
-    dropdown.innerHTML = `
-        <div class="px-3 py-1.5 bg-slate-900 text-white font-bold text-[10px] flex items-center justify-between border-b border-slate-800">
-            <span>Önerilen Pano & Linye İsimleri</span>
-            <span class="text-[9px] text-sky-300 font-semibold">Dokunup seçin</span>
-        </div>
-        <div class="bg-white divide-y divide-slate-100">
-            ${filtered.slice(0, 8).map(item => `
-                <div onmousedown="selectLinyeSuggestion(${pIdx}, '${item.title.replace(/'/g, "\'")}')"
-                     ontouchstart="selectLinyeSuggestion(${pIdx}, '${item.title.replace(/'/g, "\'")}')"
-                    class="p-2.5 hover:bg-sky-50 active:bg-sky-100 cursor-pointer flex items-center justify-between transition bg-white text-slate-900 select-none">
-                    <span class="font-bold text-xs text-slate-900">${item.title}</span>
-                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">${item.tag}</span>
-                </div>
-            `).join('')}
+    let headerHtml = `
+        <div class="px-3 py-1.5 bg-slate-900 text-white font-bold text-[10px] flex items-center justify-between border-b border-slate-800 sticky top-0 z-10 select-none">
+            <span class="flex items-center gap-1.5">
+                <i class="fa-solid fa-bolt text-amber-400"></i>
+                <span>Akıllı Pano & Linye Listesi</span>
+            </span>
+            <span class="text-[9px] text-sky-300 font-medium">Sık kullanılanlar üstte</span>
         </div>
     `;
+
+    let customAddHtml = '';
+    if (q && !hasExactMatch) {
+        customAddHtml = `
+            <div onclick="selectLinyeSuggestion(${pIdx}, '${escapeForJs(q)}')"
+                class="p-2.5 bg-emerald-50 hover:bg-emerald-100 active:bg-emerald-200 cursor-pointer flex items-center justify-between border-b border-emerald-200 text-emerald-950 select-none transition">
+                <div class="flex items-center gap-2 min-w-0">
+                    <i class="fa-solid fa-circle-plus text-emerald-600 shrink-0"></i>
+                    <span class="font-bold text-xs truncate">"${escapeHtml(q)}" olarak kaydet ve kullan</span>
+                </div>
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-600 text-white shrink-0 shadow-2xs">Yeni Pano</span>
+            </div>
+        `;
+    }
+
+    let itemsHtml = '';
+    if (suggestions.length === 0 && !q) {
+        itemsHtml = `
+            <div class="p-3 text-center text-slate-400 text-xs bg-white">
+                Öneri bulunamadı. Pano adını doğrudan yazabilirsiniz.
+            </div>
+        `;
+    } else {
+        itemsHtml = suggestions.map(item => {
+            const countBadge = item.count > 0 
+                ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1 shrink-0"><i class="fa-solid fa-fire text-[9px] text-amber-500"></i>${item.count} kez</span>` 
+                : (item.isCustom 
+                    ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-sky-50 text-sky-800 border border-sky-200 shrink-0">Kişisel</span>` 
+                    : `<span class="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200 shrink-0">${escapeHtml(item.tag)}</span>`);
+
+            return `
+                <div onclick="selectLinyeSuggestion(${pIdx}, '${escapeForJs(item.title)}')"
+                    class="p-2.5 hover:bg-sky-50 active:bg-sky-100 cursor-pointer flex items-center justify-between gap-2 transition bg-white text-slate-900 select-none">
+                    <span class="font-bold text-xs text-slate-900 truncate">${escapeHtml(item.title)}</span>
+                    ${countBadge}
+                </div>
+            `;
+        }).join('');
+    }
+
+    dropdown.innerHTML = headerHtml + customAddHtml + `<div class="divide-y divide-slate-100 bg-white">${itemsHtml}</div>`;
     dropdown.classList.remove('hidden');
 }
 
@@ -4401,19 +4551,27 @@ function handleLinyeInputType(pIdx, inputEl) {
 }
 
 function handleLinyeInputBlur(pIdx) {
-    // Tıklamaların algılanması için hafif gecikmeyle kapat
+    const inputEl = document.getElementById(`pt_name_${pIdx}`);
+    if (inputEl && inputEl.value) {
+        LinyeMemoryManager.recordUsage(inputEl.value);
+    }
     setTimeout(() => {
+        if (window.__linyeDropdownInteracting) return;
         const dropdown = document.getElementById(`linyeDropdown_${pIdx}`);
         if (dropdown) dropdown.classList.add('hidden');
-    }, 250);
+    }, 350);
 }
 
 function selectLinyeSuggestion(pIdx, chosenTitle) {
+    window.__linyeDropdownInteracting = false;
     if (AppState.currentFormData?.grounding?.points?.[pIdx]) {
         AppState.currentFormData.grounding.points[pIdx].point = chosenTitle;
     }
     const inputEl = document.getElementById(`pt_name_${pIdx}`);
     if (inputEl) inputEl.value = chosenTitle;
+    
+    // Sıklık hafızasını güncelle (en çok kullanılan en üstte çıksın)
+    LinyeMemoryManager.recordUsage(chosenTitle);
     
     const dropdown = document.getElementById(`linyeDropdown_${pIdx}`);
     if (dropdown) dropdown.classList.add('hidden');
@@ -4690,15 +4848,20 @@ function renderGrounding2202Editor() {
                                 onblur="handleLinyeInputBlur(${pIdx})"
                                 class="w-full border border-slate-300 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-900 bg-white shadow-2xs">
 
-                            <!-- 100% OPAK ÖNERİLER DROPDOWN (SAYDAMLIK BUGI TAMAMEN GİDERİLDİ) -->
-                            <div id="linyeDropdown_${pIdx}" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border-2 border-sky-600 rounded-xl shadow-2xl z-50 max-h-56 overflow-y-auto divide-y divide-slate-100 font-medium text-xs"></div>
+                            <!-- 100% OPAK ÖNERİLER DROPDOWN (DOKUNMATİK KAYDIRMA & GELİŞMİŞ SIKLIK HAFIZASI) -->
+                            <div id="linyeDropdown_${pIdx}"
+                                onpointerdown="window.__linyeDropdownInteracting = true;"
+                                ontouchstart="window.__linyeDropdownInteracting = true;"
+                                onpointerup="setTimeout(() => { window.__linyeDropdownInteracting = false; }, 400);"
+                                ontouchend="setTimeout(() => { window.__linyeDropdownInteracting = false; }, 400);"
+                                class="hidden absolute left-0 right-0 top-full mt-1 bg-white border-2 border-sky-600 rounded-xl shadow-2xl z-50 max-h-64 overflow-y-auto overscroll-contain touch-pan-y divide-y divide-slate-100 font-medium text-xs"></div>
 
-                            <!-- HIZLI SEÇİM ÇİPLERİ -->
+                            <!-- HIZLI SEÇİM ÇİPLERİ (EN ÇOK KULLANILANLAR DİNAMİK OLARAK ÖNDE) -->
                             <div class="flex items-center gap-1 mt-1.5 overflow-x-auto py-0.5 no-scrollbar">
-                                ${['ADP', 'TDP', 'Aydınlatma', 'Priz Linyeleri', 'UPS Panosu', 'Klima Santrali', 'Kazan Dairesi', 'Kompresör', 'Yangın Pompası', 'GES İnvertör'].map(preset => `
-                                    <button type="button" onclick="selectLinyeSuggestion(${pIdx}, '${preset}')"
+                                ${LinyeMemoryManager.getQuickChips().map(preset => `
+                                    <button type="button" onclick="selectLinyeSuggestion(${pIdx}, '${escapeForJs(preset)}')"
                                         class="px-2 py-0.5 bg-slate-100 hover:bg-sky-100 active:scale-95 text-slate-700 hover:text-sky-800 font-semibold text-[10px] rounded-lg border border-slate-200 shrink-0 transition shadow-2xs">
-                                        + ${preset}
+                                        + ${escapeHtml(preset)}
                                     </button>
                                 `).join('')}
                             </div>
@@ -5924,6 +6087,11 @@ async function saveCurrentInspection(manualToast = false) {
 
     try {
         localStorage.setItem(`enlab_insp_${insp.id}`, JSON.stringify(fd));
+        if (fd?.grounding?.points && typeof LinyeMemoryManager !== 'undefined') {
+            fd.grounding.points.forEach(p => {
+                if (p.point) LinyeMemoryManager.recordUsage(p.point);
+            });
+        }
     } catch (e) {
         console.warn('LocalStorage kotası uyarısı:', e);
     }
@@ -9009,6 +9177,7 @@ window.handleBrandLogoSelected = handleBrandLogoSelected;
 window.revertBrandLogo = revertBrandLogo;
 window.saveCompanySettingsSubmit = saveCompanySettingsSubmit;
 window.resetCompanySettingsSubmit = resetCompanySettingsSubmit;
+window.LinyeMemoryManager = LinyeMemoryManager;
 window.COMMON_LINYE_SUGGESTIONS = COMMON_LINYE_SUGGESTIONS;
 window.renderLinyeDropdownItems = renderLinyeDropdownItems;
 window.handleLinyeInputFocus = handleLinyeInputFocus;
