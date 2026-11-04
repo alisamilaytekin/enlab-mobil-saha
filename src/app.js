@@ -45,6 +45,133 @@ function calculateInspectionProgress(insp, fd) {
 // ENLAB v2.7.90 FULL APPLICATION ENGINE (Part A: Core, Normalizers, Navigation, Lists & Work Orders)
 // ============================================================================
 
+// ============================================================================
+// COMPANY BRANDING & WHITE-LABEL CUSTOMIZATION ENGINE
+// ============================================================================
+const DEFAULT_COMPANY_BRANDING = {
+    companyFullName: 'TEKNİK KONTROL MERKEZİ BELGELENDİRME A.Ş.',
+    companyShortName: 'TEKKOMER',
+    companyAddress: 'İstanbul / Türkiye',
+    companyPhone: 'T: +90 (216) 526 61 41  F: +90 (216) 526 61 40',
+    companyEmail: 'info@tkmkontrol.com',
+    companyWeb: 'www.tkmkontrol.com',
+    customCompanyLogo: null,
+    customTurkakLogo: null,
+    showTurkakLogo: true,
+    accreditationNo: 'AB-0227-M',
+    accreditationStandard: 'TS EN ISO/IEC 17020',
+    reportNoPrefix: 'TKM-',
+    defaultRevisionInfo: 'REV.00 / YT: 01.09.2025',
+    footerDisclaimer: 'Muayene sonuçları sadece talep edilen hizmet veya muayene edilen ürün/parti veya proses ile ilgili olup, başka hizmet veya muayene edilmeyen ürün/ parti veya proses için geçerli değildir. Muayene raporları {COMPANY_NAME} ve müşterinin onayı olmaksızın kısmi olarak veya tamamen kopya edilip çoğaltılamaz. İmzasız raporlar geçersizdir. Bu rapor elektronik ortamda bir nüsha olarak hazırlanmıştır.'
+};
+
+const CompanySettingsManager = {
+    STORAGE_KEY: 'enlab_company_branding_v2',
+
+    getSettings() {
+        try {
+            const raw = localStorage.getItem(this.STORAGE_KEY);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                return { ...DEFAULT_COMPANY_BRANDING, ...parsed };
+            }
+        } catch (e) {
+            console.error('CompanySettingsManager load error:', e);
+        }
+        return { ...DEFAULT_COMPANY_BRANDING };
+    },
+
+    saveSettings(newSettings) {
+        try {
+            const current = this.getSettings();
+            const merged = { ...current, ...newSettings };
+            localStorage.setItem(this.STORAGE_KEY, JSON.stringify(merged));
+            this.syncHeaderTitle();
+            return { success: true, message: 'Şirket ve rapor ayarları başarıyla kaydedildi.' };
+        } catch (e) {
+            console.error('CompanySettingsManager save error:', e);
+            return { success: false, message: 'Ayarlar kaydedilemedi: ' + e.message };
+        }
+    },
+
+    resetToDefault() {
+        try {
+            localStorage.removeItem(this.STORAGE_KEY);
+            this.syncHeaderTitle();
+            return { success: true, message: 'Varsayılan TEKKOMER ayarlarına sıfırlandı.' };
+        } catch (e) {
+            return { success: false, message: e.message };
+        }
+    },
+
+    getLogoSrc() {
+        const s = this.getSettings();
+        if (s.customCompanyLogo) return s.customCompanyLogo;
+        return (window.TKM_EMBEDDED_ASSETS && window.TKM_EMBEDDED_ASSETS.tekkomerLogo) || 'assets/tekkomer_logo.png';
+    },
+
+    getTurkakLogoSrc() {
+        const s = this.getSettings();
+        if (s.customTurkakLogo) return s.customTurkakLogo;
+        return (window.TKM_EMBEDDED_ASSETS && window.TKM_EMBEDDED_ASSETS.turkakLogo) || 'assets/turkak_logo.jpg';
+    },
+
+    getCompanyFullName() {
+        return this.getSettings().companyFullName || DEFAULT_COMPANY_BRANDING.companyFullName;
+    },
+
+    getCompanyShortName() {
+        return this.getSettings().companyShortName || DEFAULT_COMPANY_BRANDING.companyShortName;
+    },
+
+    getFooterDisclaimer() {
+        const s = this.getSettings();
+        const base = s.footerDisclaimer || DEFAULT_COMPANY_BRANDING.footerDisclaimer;
+        return base.replace(/\{COMPANY_NAME\}/g, s.companyFullName || 'ŞİRKET');
+    },
+
+    syncHeaderTitle() {
+        const s = this.getSettings();
+        const el = document.getElementById('appHeaderBrandTitle');
+        if (el) {
+            el.innerText = `${s.companyShortName || 'Saha'} Rapor Kayıt`;
+        }
+        document.title = `${s.companyShortName || 'Saha'} Mobil Rapor`;
+    }
+};
+
+function compressLogoImage(file, maxDim = 320, callback) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+            let w = img.width;
+            let h = img.height;
+            if (w > maxDim || h > maxDim) {
+                if (w > h) {
+                    h = Math.round((h * maxDim) / w);
+                    w = maxDim;
+                } else {
+                    w = Math.round((w * maxDim) / h);
+                    h = maxDim;
+                }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            const dataUrl = canvas.toDataURL('image/png', 0.92);
+            canvas.width = 0;
+            canvas.height = 0;
+            callback(dataUrl);
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
 const AppState = {
     currentRoute: 'home',
     currentParams: {},
@@ -109,6 +236,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     // Auth Check
     const curUser = AuthManager.getCurrentUser();
     updateHeaderUserWidget();
+    if (typeof CompanySettingsManager !== 'undefined') {
+        CompanySettingsManager.syncHeaderTitle();
+    }
     if (!curUser) {
         renderAuthScreen();
     } else {
@@ -470,22 +600,93 @@ async function renderHome() {
     const allJobs = (Array.isArray(rawWOs) ? rawWOs : []).map(normalizeWorkOrder);
     AppState.workOrdersCache = allJobs;
 
+    const curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || null;
+    const branding = (typeof CompanySettingsManager !== 'undefined') ? CompanySettingsManager.getSettings() : DEFAULT_COMPANY_BRANDING;
+    const logoSrc = (typeof CompanySettingsManager !== 'undefined') ? CompanySettingsManager.getLogoSrc() : 'assets/tekkomer_logo.png';
+
     container.innerHTML = `
         <div class="max-w-2xl mx-auto space-y-3 pb-8">
-            <div class="flex items-center gap-2">
-                <input type="text" id="homeSearchInput" oninput="filterHomeJobs(this.value)" placeholder="Başlık veya not ara..."
-                    class="flex-1 bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-sky-500">
-                <button onclick="openQuickFieldJobModal()" class="px-4 py-2.5 bg-slate-900 active:bg-slate-800 text-white font-bold text-xs sm:text-sm rounded-xl shrink-0 flex items-center gap-1.5">
+            <!-- 1. AKTİF MUAYENE PERSONELİ & HESAP DEĞİŞTİRME PANELİ -->
+            <div class="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-800 text-white rounded-2xl p-3.5 shadow-sm border border-slate-700/80">
+                <div class="flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <div class="w-10 h-10 rounded-xl bg-amber-400 text-slate-950 font-black text-sm flex items-center justify-center shrink-0 shadow-sm">
+                            <i class="fa-solid fa-user-tie"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-1.5">
+                                <span class="font-bold text-sm text-white truncate">${curUser ? escapeHtml(curUser.fullName) : 'Muayene Personeli Girişi Yapılmadı'}</span>
+                                <span class="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.2 rounded font-semibold shrink-0">Aktif</span>
+                            </div>
+                            <div class="text-[11px] text-slate-300 truncate mt-0.5">
+                                ${curUser ? `${escapeHtml(curUser.title || 'Mühendis')} · Sicil: ${escapeHtml(curUser.ministryRegNo || curUser.username)}` : 'Raporlara imza atacak personeli seçin'}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <button onclick="openUserProfileModal()" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-sky-300 border border-slate-600 rounded-xl text-xs font-bold flex items-center gap-1 transition" title="Profil Bilgilerini Düzenle">
+                            <i class="fa-solid fa-user-pen"></i>
+                            <span class="hidden sm:inline">Profil</span>
+                        </button>
+                        <button onclick="AuthManager.logout()" class="px-3 py-1.5 bg-rose-600/90 hover:bg-rose-600 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-sm" title="Hesap Değiştir / Çıkış Yap">
+                            <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                            <span>Kullanıcı Değiştir</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. ŞİRKET, LOGO & RAPOR KODLARI AYARLARI (WHITE-LABEL ENGINE) -->
+            <div class="bg-white rounded-2xl p-3.5 shadow-2xs border border-slate-200">
+                <div class="flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 p-1 flex items-center justify-center shrink-0">
+                            <img src="${logoSrc}" alt="Logo" class="max-w-full max-h-full object-contain">
+                        </div>
+                        <div class="min-w-0">
+                            <div class="font-bold text-xs sm:text-sm text-slate-900 truncate">
+                                ${escapeHtml(branding.companyFullName)}
+                            </div>
+                            <div class="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
+                                <span>Logo, TÜRKAK & Rapor Formatı</span>
+                                ${branding.showTurkakLogo ? '<span class="text-emerald-600 font-bold flex items-center gap-0.5"><i class="fa-solid fa-certificate text-[10px]"></i> Akredite</span>' : '<span class="text-slate-400 font-medium">Özel Şablon</span>'}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <button onclick="openCompanySettingsModal()" class="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition">
+                            <i class="fa-solid fa-sliders"></i>
+                            <span>Şirket & Logo Ayarları</span>
+                        </button>
+                        <button onclick="openBackupManagerModal()" class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs active:scale-95 border border-slate-200 transition" title="Yedekleme ve Geri Yükleme">
+                            <i class="fa-solid fa-database"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. İŞYERİ ARAMA VE YENİ BAŞLIK AÇMA -->
+            <div class="flex items-center gap-2 pt-1">
+                <input type="text" id="homeSearchInput" oninput="filterHomeJobs(this.value)" placeholder="Firma adı, şube veya not ara..."
+                    class="flex-1 bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-sky-500 shadow-2xs">
+                <button onclick="openQuickFieldJobModal()" class="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-bold text-xs sm:text-sm rounded-xl shrink-0 flex items-center gap-1.5 shadow-sm transition">
                     <i class="fa-solid fa-plus text-emerald-400"></i>
-                    <span>Yeni Başlık</span>
+                    <span>Yeni Başlık / Klasör</span>
                 </button>
             </div>
 
-            <div id="homeJobsList" class="space-y-2.5">
+            <!-- 4. LİSTE -->
+            <div id="homeJobsList" class="space-y-2.5 pt-0.5">
                 ${renderMinimalJobCards(allJobs)}
             </div>
         </div>
     `;
+
+    if (typeof CompanySettingsManager !== 'undefined') {
+        CompanySettingsManager.syncHeaderTitle();
+    }
 }
 
 function renderMinimalJobCards(jobs) {
@@ -1385,27 +1586,32 @@ async function signAndApproveInspection(inspectionId, workOrderId) {
 
 function openLabelModal(inspectionId, mode = 'label') {
     const item = AppState.inspectionsCache.find(x => String(x.id) === String(inspectionId)) || {};
+    const branding = (typeof CompanySettingsManager !== 'undefined') ? CompanySettingsManager.getSettings() : DEFAULT_COMPANY_BRANDING;
+    const logoSrc = (typeof CompanySettingsManager !== 'undefined') ? CompanySettingsManager.getLogoSrc() : 'assets/tekkomer_logo.png';
+    const turkakLogoSrc = (typeof CompanySettingsManager !== 'undefined') ? CompanySettingsManager.getTurkakLogoSrc() : 'assets/turkak_logo.jpg';
+    const showTurkak = branding.showTurkakLogo !== false;
+
     openModal(
         mode === 'qr' ? '<i class="fa-solid fa-qrcode mr-2 text-sky-400"></i>Ekipman Karekod (QR) Etiketi' : '<i class="fa-solid fa-tag mr-2 text-emerald-400"></i>Periyodik Kontrol Ekipman Etiketi',
         `<div class="p-5 border-2 border-slate-800 rounded-xl bg-white max-w-md mx-auto text-center space-y-2.5">
             <div class="flex items-center justify-between border-b-2 border-slate-900 pb-2">
-                <img src="/assets/tekkomer_logo.png" class="w-12 h-12 object-contain" alt="TEKKOMER">
+                <img src="${logoSrc}" class="w-12 h-12 object-contain" alt="Logo">
                 <div class="text-center flex-1 px-2">
-                    <div class="text-[11px] font-black tracking-tight text-slate-900">TEKNİK KONTROL MERKEZİ BELGELENDİRME A.Ş.</div>
+                    <div class="text-[11px] font-black tracking-tight text-slate-900">${escapeHtml(branding.companyFullName)}</div>
                     <div class="text-[10px] font-bold text-red-700">PERİYODİK KONTROL ETİKETİ</div>
                 </div>
-                <img src="/assets/turkak_logo.jpg" class="w-10 h-14 object-contain" alt="TÜRKAK">
+                ${showTurkak ? `<img src="${turkakLogoSrc}" class="w-10 h-14 object-contain" alt="Akreditasyon">` : `<div class="w-10"></div>`}
             </div>
-            <div class="text-sm font-black text-slate-900 pt-1">${item.equipment_name || 'Ekipman'}</div>
-            <div class="text-xs font-semibold text-slate-600">${item.customer_name || ''}</div>
+            <div class="text-sm font-black text-slate-900 pt-1">${escapeHtml(item.equipment_name || 'Ekipman')}</div>
+            <div class="text-xs font-semibold text-slate-600">${escapeHtml(item.customer_name || '')}</div>
             <div class="py-2 flex justify-center">
                 <img src="/assets/qr_default.jpg" class="w-28 h-28 border border-slate-300 p-1 bg-white object-contain" alt="QR Code">
             </div>
             <div class="grid grid-cols-2 text-left text-[11px] bg-slate-100 p-2.5 rounded border border-slate-200 gap-1.5">
-                <div><strong>Rapor No:</strong> <span class="font-mono">${item.report_no || '-'}</span></div>
-                <div><strong>Tarih:</strong> <span class="font-mono">${item.inspection_date || '-'}</span></div>
-                <div><strong>Seri No:</strong> <span class="font-mono">${item.serial_no || '-'}</span></div>
-                <div><strong>Sonuç:</strong> <span class="text-emerald-700 font-black">${item.result_status || 'UYGUN'}</span></div>
+                <div><strong>Rapor No:</strong> <span class="font-mono">${escapeHtml(item.report_no || '-')}</span></div>
+                <div><strong>Tarih:</strong> <span class="font-mono">${escapeHtml(item.inspection_date || '-')}</span></div>
+                <div><strong>Seri No:</strong> <span class="font-mono">${escapeHtml(item.serial_no || '-')}</span></div>
+                <div><strong>Sonuç:</strong> <span class="text-emerald-700 font-black">${escapeHtml(item.result_status || 'UYGUN')}</span></div>
             </div>
         </div>`,
         `<button onclick="closeModal()" class="px-4 py-2 rounded-lg bg-slate-200 text-slate-700 font-semibold text-xs">Kapat</button>
@@ -3299,7 +3505,8 @@ function compressImage(file, maxDimension = 1280, quality = 0.78) {
                     // Line 2: Company & Equipment
                     ctx.font = `600 ${Math.round(fontSize * 0.88)}px sans-serif`;
                     ctx.fillStyle = '#ffffff';
-                    ctx.fillText(`🏢 ${compName}  |  ⚡ ${equipName}`, padPx, height - barH + padPx + fontSize * 1.3);
+                    const compBrand = (typeof CompanySettingsManager !== 'undefined' && CompanySettingsManager.getCompanyShortName()) || 'TEKKOMER';
+                    ctx.fillText(`🏢 [${compBrand}] ${compName}  |  ⚡ ${equipName}`, padPx, height - barH + padPx + fontSize * 1.3);
                 } catch (wmErr) {
                     console.warn('Watermark hatası (yoksayıldı):', wmErr);
                 }
@@ -5602,22 +5809,26 @@ function formatSymbolForPrint(val) {
 }
 
 function buildTkmPageHeader(reportMainTitle) {
-    const tekkomerLogoSrc = (window.TKM_EMBEDDED_ASSETS && window.TKM_EMBEDDED_ASSETS.tekkomerLogo) || 'assets/tekkomer_logo.png';
-    const turkakLogoSrc = (window.TKM_EMBEDDED_ASSETS && window.TKM_EMBEDDED_ASSETS.turkakLogo) || 'assets/turkak_logo.jpg';
+    const branding = (typeof CompanySettingsManager !== 'undefined') ? CompanySettingsManager.getSettings() : DEFAULT_COMPANY_BRANDING;
+    const logoSrc = (typeof CompanySettingsManager !== 'undefined') ? CompanySettingsManager.getLogoSrc() : 'assets/tekkomer_logo.png';
+    const showTurkak = branding.showTurkakLogo !== false;
+    const turkakLogoSrc = (typeof CompanySettingsManager !== 'undefined') ? CompanySettingsManager.getTurkakLogoSrc() : 'assets/turkak_logo.jpg';
+    const accNo = branding.accreditationNo || 'AB-0227-M';
+
     return `
         <div class="tkm-header">
             <div style="display:flex;justify-content:center;align-items:center;">
-                <img src="${tekkomerLogoSrc}" alt="TEKKOMER" style="width:82px;height:82px;object-fit:contain;display:block;">
+                <img src="${logoSrc}" alt="${escapeHtml(branding.companyShortName || 'Logo')}" style="width:82px;height:82px;object-fit:contain;display:block;">
             </div>
             <div style="text-align:center;padding:0 6px;">
-                <div style="font-size:12.8pt;font-weight:700;color:#222222;letter-spacing:0.2px;margin-bottom:2px;">
-                    TEKNİK KONTROL MERKEZİ BELGELENDİRME A.Ş.
+                <div style="font-size:12pt;font-weight:700;color:#222222;letter-spacing:0.2px;margin-bottom:2px;line-height:1.2;">
+                    ${escapeHtml(branding.companyFullName || 'TEKNİK KONTROL MERKEZİ BELGELENDİRME A.Ş.')}
                 </div>
                 <div style="font-size:8pt;color:#222222;line-height:1.25;">
-                    <strong>T:</strong> +90 (216) 526 61 41 <strong>F:</strong> +90 (216) 526 61 40
+                    ${escapeHtml(branding.companyPhone || '')}
                 </div>
                 <div style="font-size:8pt;color:#222222;line-height:1.25;margin-bottom:3px;">
-                    info@tkmkontrol.com www.tkmkontrol.com
+                    ${escapeHtml(branding.companyEmail || '')} ${escapeHtml(branding.companyWeb || '')}
                 </div>
                 <div style="font-size:11.6pt;font-weight:700;color:#222222;line-height:1.15;text-transform:uppercase;">
                     ${reportMainTitle}
@@ -5627,21 +5838,30 @@ function buildTkmPageHeader(reportMainTitle) {
                 </div>
             </div>
             <div style="display:flex;justify-content:center;align-items:center;">
-                <img src="${turkakLogoSrc}" alt="TÜRKAK AB-0227-M" style="width:72px;height:105px;object-fit:contain;display:block;">
+                ${showTurkak ? `<img src="${turkakLogoSrc}" alt="Akreditasyon ${escapeHtml(accNo)}" style="width:72px;height:105px;object-fit:contain;display:block;">` : `<div style="width:72px;"></div>`}
             </div>
         </div>
     `;
 }
 
 function buildTkmPageFooter(formCode, reportNo, pageNum, totalPages) {
+    const branding = (typeof CompanySettingsManager !== 'undefined') ? CompanySettingsManager.getSettings() : DEFAULT_COMPANY_BRANDING;
+    const disclaimer = ((branding.footerDisclaimer || DEFAULT_COMPANY_BRANDING.footerDisclaimer)).replace(/\{COMPANY_NAME\}/g, branding.companyFullName || 'TEKNİK KONTROL MERKEZİ BELGELENDİRME A.Ş.');
+    const revDefault = branding.defaultRevisionInfo || 'REV.00 / YT: 01.09.2025';
+
+    let displayFormCode = formCode || 'FR.01';
+    if (!displayFormCode.includes('REV') && !displayFormCode.includes('RT:')) {
+        displayFormCode = `${displayFormCode}, ${revDefault}`;
+    }
+
     return `
         <div class="tkm-footer">
             <div class="tkm-footer-disclaimer">
-                Muayene sonuçları sadece talep edilen hizmet veya muayene edilen ürün/parti veya proses ile ilgili olup, başka hizmet veya muayene edilmeyen ürün/ parti veya proses için geçerli değildir. Muayene raporları TEKNİK KONTROL MERKEZİ BELGELENDİRME A.Ş. ve müşterinin onayı olmaksızın kısmi olarak veya tamamen kopya edilip çoğaltılamaz. İmzasız raporlar geçersizdir. Bu rapor elektronik ortamda bir nüsha olarak hazırlanmıştır.
+                ${escapeHtml(disclaimer)}
             </div>
             <div class="tkm-footer-meta">
-                <span style="width:38%;text-align:left;">${formCode.includes('REV') ? formCode : (formCode + ', REV.00 / YT: 01.09.2025')}</span>
-                <span style="width:34%;text-align:center;">${reportNo}</span>
+                <span style="width:38%;text-align:left;">${escapeHtml(displayFormCode)}</span>
+                <span style="width:34%;text-align:center;">${escapeHtml(reportNo)}</span>
                 <span style="width:28%;text-align:right;">${pageNum} / ${totalPages}</span>
             </div>
         </div>
@@ -7189,15 +7409,14 @@ function openBackupManagerModal() {
         `;
     }
 
-    if (footerEl) {
-        footerEl.innerHTML = `
-            <button onclick="closeModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs rounded-lg active:scale-95 transition">
-                Kapat
-            </button>
-        `;
-    }
+    const modalTitle = '<i class="fa-solid fa-shield-halved text-amber-400 mr-2"></i>Veri Yedekleme ve Kurtarma Merkezi';
+    const modalFooter = `
+        <button onclick="closeModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs rounded-lg active:scale-95 transition">
+            Kapat
+        </button>
+    `;
 
-    openModal();
+    openModal(modalTitle, bodyEl ? bodyEl.innerHTML : '', modalFooter);
 }
 
 function importBackupFromFile(fileInput) {
@@ -8311,3 +8530,273 @@ window.togglePasswordVisibility = togglePasswordVisibility;
 window.openUserProfileModal = openUserProfileModal;
 window.saveUserProfileSubmit = saveUserProfileSubmit;
 window.updateHeaderUserWidget = updateHeaderUserWidget;
+
+// ============================================================================
+// COMPANY & REPORT BRANDING UI MODAL HANDLERS
+// ============================================================================
+function openCompanySettingsModal() {
+    const s = CompanySettingsManager.getSettings();
+    const currentLogo = CompanySettingsManager.getLogoSrc();
+    const currentTurkak = CompanySettingsManager.getTurkakLogoSrc();
+    
+    window._pendingBrandLogos = {
+        companyLogo: s.customCompanyLogo,
+        turkakLogo: s.customTurkakLogo,
+        clearedCompanyLogo: false,
+        clearedTurkakLogo: false
+    };
+
+    openModal(
+        '<i class="fa-solid fa-building-shield mr-2 text-sky-400"></i>Şirket, Logo & Rapor Şablon Ayarları',
+        `
+        <div class="space-y-4 text-xs">
+            <div class="p-3 bg-gradient-to-r from-sky-50 to-blue-50 border border-sky-200 rounded-xl text-sky-900 leading-relaxed">
+                Bu alandan şirketinizin <strong>logosunu, adını, akreditasyon bilgilerini ve rapor kodlarını</strong> özelleştirebilirsiniz. Uygulama başka şirketlere verilebilir ve tüm resmi A4 PDF çıktıları buradaki ayarlara göre oluşturulur.
+            </div>
+
+            <!-- LOGO AYARLARI -->
+            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                <div class="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                    <i class="fa-solid fa-image text-amber-500"></i>
+                    <span>Şirket Kurumsal Logosu</span>
+                </div>
+                
+                <div class="flex items-center gap-4">
+                    <div class="w-20 h-20 rounded-xl border-2 border-dashed border-slate-300 bg-white p-1.5 flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
+                        <img id="previewCompanyLogo" src="${currentLogo}" alt="Logo" class="max-w-full max-h-full object-contain">
+                    </div>
+                    <div class="space-y-1.5 flex-1 min-w-0">
+                        <label class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white rounded-lg font-bold text-[11px] cursor-pointer transition shadow-xs">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                            <span>Yeni Logo Yükle (PNG/JPG)</span>
+                            <input type="file" accept="image/*" class="hidden" onchange="handleBrandLogoSelected(this, 'company')">
+                        </label>
+                        <button type="button" onclick="revertBrandLogo('company')" class="block text-[11px] text-slate-500 hover:text-rose-600 font-semibold underline">
+                            Varsayılan TKM Logosuna Dön
+                        </button>
+                        <div class="text-[10px] text-slate-400">Önerilen: Şeffaf arka planlı kare veya yatay logo</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FİRMA RESMİ BİLGİLERİ -->
+            <div class="space-y-2.5">
+                <div>
+                    <label class="block font-bold text-slate-700 mb-0.5">Firma Tam Ticari Unvanı (Rapor Başlığı) *</label>
+                    <input type="text" id="cfgCompanyFullName" value="${escapeHtml(s.companyFullName)}"
+                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-bold text-slate-900 bg-white">
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-0.5">Firma Kısa Adı (Üst Başlık)</label>
+                        <input type="text" id="cfgCompanyShortName" value="${escapeHtml(s.companyShortName)}"
+                            class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-semibold bg-white">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-0.5">Adres / Şehir</label>
+                        <input type="text" id="cfgCompanyAddress" value="${escapeHtml(s.companyAddress)}"
+                            class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-0.5">Telefon / Faks</label>
+                        <input type="text" id="cfgCompanyPhone" value="${escapeHtml(s.companyPhone)}"
+                            class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-0.5">E-Posta & Web</label>
+                        <input type="text" id="cfgCompanyWeb" value="${escapeHtml(s.companyWeb)}"
+                            class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
+                    </div>
+                </div>
+            </div>
+
+            <!-- AKREDİTASYON (TÜRKAK VB.) AYARLARI -->
+            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
+                <div class="flex items-center justify-between">
+                    <label class="font-bold text-slate-800 text-xs flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="cfgShowTurkak" ${s.showTurkakLogo ? 'checked' : ''} class="w-4 h-4 accent-sky-600 rounded">
+                        <span>Raporda Akreditasyon Logosu Gösterilsin</span>
+                    </label>
+                    <span class="text-[10px] text-slate-400">TÜRKAK vb.</span>
+                </div>
+
+                <div class="flex items-center gap-4 pt-1">
+                    <div class="w-16 h-20 rounded-xl border border-slate-300 bg-white p-1 flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
+                        <img id="previewTurkakLogo" src="${currentTurkak}" alt="TÜRKAK" class="max-w-full max-h-full object-contain">
+                    </div>
+                    <div class="space-y-1.5 flex-1 min-w-0">
+                        <label class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 active:scale-95 text-sky-300 rounded-lg font-bold text-[10px] cursor-pointer transition">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                            <span>Özel Akreditasyon Logosu</span>
+                            <input type="file" accept="image/*" class="hidden" onchange="handleBrandLogoSelected(this, 'turkak')">
+                        </label>
+                        <button type="button" onclick="revertBrandLogo('turkak')" class="block text-[10px] text-slate-500 hover:text-rose-600 underline">
+                            Varsayılan TÜRKAK Logosuna Dön
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 pt-1">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-0.5">Akreditasyon No</label>
+                        <input type="text" id="cfgAccreditationNo" value="${escapeHtml(s.accreditationNo)}"
+                            class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono bg-white">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-0.5">Standart Kodu</label>
+                        <input type="text" id="cfgAccreditationStandard" value="${escapeHtml(s.accreditationStandard)}"
+                            class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono bg-white">
+                    </div>
+                </div>
+            </div>
+
+            <!-- RAPOR KODLARI VE DİPNOT FERAGATNAME -->
+            <div class="space-y-2.5">
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-0.5">Rapor No Ön Eki</label>
+                        <input type="text" id="cfgReportNoPrefix" value="${escapeHtml(s.reportNoPrefix)}"
+                            class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono bg-white" placeholder="Örn: TKM-">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-0.5">Form Revizyon Bilgisi</label>
+                        <input type="text" id="cfgDefaultRevision" value="${escapeHtml(s.defaultRevisionInfo)}"
+                            class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono bg-white">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-bold text-slate-700 mb-0.5">Rapor Altı Yasal Uyarı (Feragatname Metni)</label>
+                    <textarea id="cfgFooterDisclaimer" rows="3"
+                        class="w-full border border-slate-300 rounded-lg p-2 text-slate-800 text-[11px] leading-relaxed bg-white focus:outline-none focus:border-sky-500">${escapeHtml(s.footerDisclaimer)}</textarea>
+                    <div class="text-[10px] text-slate-400 mt-0.5">{COMPANY_NAME} etiketi otomatik olarak şirket tam adınız ile değiştirilir.</div>
+                </div>
+            </div>
+        </div>
+        `,
+        `
+        <button type="button" onclick="resetCompanySettingsSubmit()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs rounded-lg transition mr-auto">
+            <i class="fa-solid fa-rotate-left mr-1"></i>Varsayılana Sıfırla
+        </button>
+        <button type="button" onclick="closeModal()" class="px-3.5 py-2 bg-slate-200 text-slate-800 font-bold text-xs rounded-lg">İptal</button>
+        <button type="button" onclick="saveCompanySettingsSubmit()" class="px-4 py-2 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white font-bold text-xs rounded-lg shadow-sm transition">
+            <i class="fa-solid fa-floppy-disk mr-1"></i>Ayarları Kaydet
+        </button>
+        `
+    );
+}
+
+function handleBrandLogoSelected(fileInput, type) {
+    const file = fileInput.files && fileInput.files[0];
+    if (!file) return;
+
+    compressLogoImage(file, 340, function(dataUrl) {
+        if (!window._pendingBrandLogos) window._pendingBrandLogos = {};
+        if (type === 'company') {
+            window._pendingBrandLogos.companyLogo = dataUrl;
+            window._pendingBrandLogos.clearedCompanyLogo = false;
+            const preview = document.getElementById('previewCompanyLogo');
+            if (preview) preview.src = dataUrl;
+            showToast('Şirket logosu seçildi');
+        } else if (type === 'turkak') {
+            window._pendingBrandLogos.turkakLogo = dataUrl;
+            window._pendingBrandLogos.clearedTurkakLogo = false;
+            const preview = document.getElementById('previewTurkakLogo');
+            if (preview) preview.src = dataUrl;
+            showToast('Akreditasyon logosu seçildi');
+        }
+    });
+}
+
+function revertBrandLogo(type) {
+    if (!window._pendingBrandLogos) window._pendingBrandLogos = {};
+    if (type === 'company') {
+        window._pendingBrandLogos.companyLogo = null;
+        window._pendingBrandLogos.clearedCompanyLogo = true;
+        const preview = document.getElementById('previewCompanyLogo');
+        if (preview) preview.src = 'assets/tekkomer_logo.png';
+        showToast('Varsayılan TEKKOMER logosu ayarlandı');
+    } else if (type === 'turkak') {
+        window._pendingBrandLogos.turkakLogo = null;
+        window._pendingBrandLogos.clearedTurkakLogo = true;
+        const preview = document.getElementById('previewTurkakLogo');
+        if (preview) preview.src = 'assets/turkak_logo.jpg';
+        showToast('Varsayılan TÜRKAK logosu ayarlandı');
+    }
+}
+
+function saveCompanySettingsSubmit() {
+    const nameEl = document.getElementById('cfgCompanyFullName');
+    const shortEl = document.getElementById('cfgCompanyShortName');
+    const addrEl = document.getElementById('cfgCompanyAddress');
+    const phoneEl = document.getElementById('cfgCompanyPhone');
+    const webEl = document.getElementById('cfgCompanyWeb');
+    const showTurkakEl = document.getElementById('cfgShowTurkak');
+    const accNoEl = document.getElementById('cfgAccreditationNo');
+    const accStdEl = document.getElementById('cfgAccreditationStandard');
+    const repPrefixEl = document.getElementById('cfgReportNoPrefix');
+    const revInfoEl = document.getElementById('cfgDefaultRevision');
+    const discEl = document.getElementById('cfgFooterDisclaimer');
+
+    const updateObj = {
+        companyFullName: (nameEl ? nameEl.value.trim() : '') || DEFAULT_COMPANY_BRANDING.companyFullName,
+        companyShortName: (shortEl ? shortEl.value.trim() : '') || DEFAULT_COMPANY_BRANDING.companyShortName,
+        companyAddress: (addrEl ? addrEl.value.trim() : '') || DEFAULT_COMPANY_BRANDING.companyAddress,
+        companyPhone: (phoneEl ? phoneEl.value.trim() : '') || DEFAULT_COMPANY_BRANDING.companyPhone,
+        companyWeb: (webEl ? webEl.value.trim() : '') || DEFAULT_COMPANY_BRANDING.companyWeb,
+        showTurkakLogo: showTurkakEl ? showTurkakEl.checked : true,
+        accreditationNo: (accNoEl ? accNoEl.value.trim() : '') || DEFAULT_COMPANY_BRANDING.accreditationNo,
+        accreditationStandard: (accStdEl ? accStdEl.value.trim() : '') || DEFAULT_COMPANY_BRANDING.accreditationStandard,
+        reportNoPrefix: (repPrefixEl ? repPrefixEl.value.trim() : '') || DEFAULT_COMPANY_BRANDING.reportNoPrefix,
+        defaultRevisionInfo: (revInfoEl ? revInfoEl.value.trim() : '') || DEFAULT_COMPANY_BRANDING.defaultRevisionInfo,
+        footerDisclaimer: (discEl ? discEl.value.trim() : '') || DEFAULT_COMPANY_BRANDING.footerDisclaimer
+    };
+
+    if (window._pendingBrandLogos) {
+        if (window._pendingBrandLogos.clearedCompanyLogo) {
+            updateObj.customCompanyLogo = null;
+        } else if (window._pendingBrandLogos.companyLogo) {
+            updateObj.customCompanyLogo = window._pendingBrandLogos.companyLogo;
+        }
+
+        if (window._pendingBrandLogos.clearedTurkakLogo) {
+            updateObj.customTurkakLogo = null;
+        } else if (window._pendingBrandLogos.turkakLogo) {
+            updateObj.customTurkakLogo = window._pendingBrandLogos.turkakLogo;
+        }
+    }
+
+    const res = CompanySettingsManager.saveSettings(updateObj);
+    if (res.success) {
+        closeModal();
+        showToast('Şirket ve rapor ayarları güncellendi!');
+        if (AppState.currentRoute === 'home') {
+            renderHome();
+        }
+    } else {
+        showToast(res.message, 'error');
+    }
+}
+
+function resetCompanySettingsSubmit() {
+    if (!confirm('Tüm şirket, logo ve rapor kodlarını varsayılan TEKKOMER ayarlarına geri yüklemek istediğinize emin misiniz?')) return;
+    CompanySettingsManager.resetToDefault();
+    closeModal();
+    showToast('Tüm ayarlar varsayılana sıfırlandı.');
+    if (AppState.currentRoute === 'home') {
+        renderHome();
+    }
+}
+
+window.CompanySettingsManager = CompanySettingsManager;
+window.compressLogoImage = compressLogoImage;
+window.openCompanySettingsModal = openCompanySettingsModal;
+window.handleBrandLogoSelected = handleBrandLogoSelected;
+window.revertBrandLogo = revertBrandLogo;
+window.saveCompanySettingsSubmit = saveCompanySettingsSubmit;
+window.resetCompanySettingsSubmit = resetCompanySettingsSubmit;
+
