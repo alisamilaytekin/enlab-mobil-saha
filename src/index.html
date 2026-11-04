@@ -275,7 +275,7 @@
                     <i class="fa-solid fa-book-open"></i>
                 </div>
                 <span class="font-bold text-sm tracking-tight truncate">TKM Offline Rapor Kayıt</span>
-                <span class="text-[10px] bg-sky-500/20 text-sky-300 border border-sky-500/30 px-1.5 py-0.5 rounded font-mono font-bold shrink-0">v0.5</span>
+                <span class="text-[10px] bg-sky-500/20 text-sky-300 border border-sky-500/30 px-1.5 py-0.5 rounded font-mono font-bold shrink-0">v0.6</span>
             </div>
 
             <div class="flex items-center gap-2 shrink-0">
@@ -291,6 +291,37 @@
         <main id="pageContent" class="p-3 sm:p-4">
             <!-- Populated by app.js -->
         </main>
+        <!-- BOTTOM THUMB ACTION DOCK (MOBİL BAŞPARMAK HIZLI BARI) -->
+        <div id="bottomActionDock" class="no-print hidden shrink-0 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 text-white px-3 py-1.5 flex items-center justify-around shadow-2xl z-40">
+            <button onclick="triggerQuickCameraCapture()" class="flex flex-col items-center gap-0.5 text-slate-300 hover:text-white active:scale-95 transition touch-action-btn">
+                <div class="w-8 h-8 rounded-full bg-sky-500/20 text-sky-400 flex items-center justify-center text-sm border border-sky-500/30">
+                    <i class="fa-solid fa-camera"></i>
+                </div>
+                <span class="text-[10px] font-bold">Fotoğraf</span>
+            </button>
+
+            <button onclick="openTabNavSheet()" class="flex flex-col items-center gap-0.5 text-slate-300 hover:text-white active:scale-95 transition touch-action-btn">
+                <div class="w-8 h-8 rounded-full bg-slate-800 text-amber-400 flex items-center justify-center text-sm border border-slate-700">
+                    <i class="fa-solid fa-layer-group"></i>
+                </div>
+                <span class="text-[10px] font-bold">Sekmeler</span>
+            </button>
+
+            <button onclick="printOfficialReport()" class="flex flex-col items-center gap-0.5 text-slate-300 hover:text-white active:scale-95 transition touch-action-btn">
+                <div class="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm border border-emerald-500/30">
+                    <i class="fa-solid fa-file-pdf"></i>
+                </div>
+                <span class="text-[10px] font-bold">PDF Rapor</span>
+            </button>
+
+            <button onclick="saveCurrentInspection(true)" class="flex flex-col items-center gap-0.5 text-slate-300 hover:text-white active:scale-95 transition touch-action-btn">
+                <div class="w-8 h-8 rounded-full bg-slate-800 text-sky-400 flex items-center justify-center text-sm border border-slate-700">
+                    <i class="fa-solid fa-floppy-disk"></i>
+                </div>
+                <span class="text-[10px] font-bold">Kaydet</span>
+            </button>
+        </div>
+        <input type="file" id="quickCameraInput" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this)">
     </div>
 
     <!-- PRINTABLE A4 OFFICIAL REPORT CONTAINER -->
@@ -380,6 +411,58 @@
                     Kalkanı Kapat ve Çalışmaya Devam Et →
                 </button>
             </div>
+        </div>
+    </div>
+
+
+    <!-- PHOTO ANNOTATOR MODAL (KUSUR İŞARETLEME ARACI) -->
+    <div id="photoAnnotatorModal" class="no-print fixed inset-0 bg-slate-950 z-50 hidden flex flex-col overflow-hidden select-none modal-backdrop-animate">
+        <!-- Top Toolbar -->
+        <div class="bg-slate-900 border-b border-slate-800 px-3 py-2 flex items-center justify-between gap-2 shrink-0">
+            <button onclick="closePhotoAnnotatorModal()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 text-slate-200 font-bold text-xs flex items-center gap-1.5 active:scale-95">
+                <i class="fa-solid fa-xmark"></i>
+                <span>İptal</span>
+            </button>
+            <div class="flex items-center gap-1.5">
+                <button onclick="undoPhotoAnnotation()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 text-slate-200 font-bold text-xs flex items-center gap-1 active:scale-95" title="Geri Al">
+                    <i class="fa-solid fa-rotate-left"></i>
+                    <span class="hidden xs:inline">Geri Al</span>
+                </button>
+                <button onclick="clearPhotoAnnotation()" class="px-2 py-1.5 rounded-lg bg-slate-800 text-rose-300 font-bold text-xs active:scale-95" title="Temizle">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
+            </div>
+            <button onclick="savePhotoAnnotation()" class="px-3.5 py-1.5 rounded-lg bg-emerald-600 active:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm active:scale-95">
+                <i class="fa-solid fa-check"></i>
+                <span>Kaydet</span>
+            </button>
+        </div>
+
+        <!-- Shape & Color Controls -->
+        <div class="bg-slate-800/95 border-b border-slate-700 px-3 py-1.5 flex items-center justify-between shrink-0 text-xs">
+            <div class="flex items-center gap-1.5">
+                <button id="toolBtnArrow" onclick="setAnnotatorTool('arrow')" class="px-2.5 py-1 rounded-lg bg-rose-600 text-white font-bold flex items-center gap-1 text-[11px] border border-rose-400">
+                    <i class="fa-solid fa-arrow-right"></i>
+                    <span>Ok</span>
+                </button>
+                <button id="toolBtnCircle" onclick="setAnnotatorTool('circle')" class="px-2.5 py-1 rounded-lg bg-slate-700 text-slate-300 font-bold flex items-center gap-1 text-[11px] border border-slate-600">
+                    <i class="fa-regular fa-circle"></i>
+                    <span>Halka</span>
+                </button>
+                <button id="toolBtnRect" onclick="setAnnotatorTool('rect')" class="px-2.5 py-1 rounded-lg bg-slate-700 text-slate-300 font-bold flex items-center gap-1 text-[11px] border border-slate-600">
+                    <i class="fa-regular fa-square"></i>
+                    <span>Kutu</span>
+                </button>
+            </div>
+            <div class="text-[11px] text-amber-300 font-medium flex items-center gap-1">
+                <i class="fa-solid fa-fingerprint"></i>
+                <span>Kusurun üzerine parmağınızla çizin</span>
+            </div>
+        </div>
+
+        <!-- Canvas Workspace -->
+        <div id="annotatorCanvasWrapper" class="flex-1 overflow-hidden bg-black flex items-center justify-center p-2 relative touch-none">
+            <canvas id="annotatorCanvas" class="max-w-full max-h-full object-contain border border-slate-700 rounded-md"></canvas>
         </div>
     </div>
 

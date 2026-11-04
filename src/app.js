@@ -369,6 +369,10 @@ async function navigateTo(route, params = {}) {
     if (container) container.scrollTop = 0;
     container.innerHTML = `<div class="flex items-center justify-center py-12 text-slate-400 text-xs"><i class="fa-solid fa-circle-notch fa-spin mr-2 text-sky-600"></i> Yükleniyor...</div>`;
 
+    const dock = document.getElementById('bottomActionDock');
+    if (dock && route !== 'inspection-edit') dock.classList.add('hidden');
+    if (container && route !== 'inspection-edit') container.classList.remove('pb-24');
+
     switch (route) {
         case 'home': return renderHome();
         case 'field-notebook': return renderFieldNotebookPage();
@@ -2106,6 +2110,11 @@ async function renderInspectionEditor(inspectionId, overrideTemplateId = null) {
 function paintInspectionEditorUI() {
     const container = document.getElementById('pageContent');
     const insp = AppState.currentInspection;
+    
+    // Activate bottom thumb action dock & add padding
+    const dock = document.getElementById('bottomActionDock');
+    if (dock) dock.classList.remove('hidden');
+    if (container) container.classList.add('pb-24');
     const isElectrical2201 = String(insp.template_id) === '2201' && AppState.electricalTemplate && AppState.electricalTemplate.areas;
     const isGrounding2202 = String(insp.template_id) === '2202';
     const isGenerator2205 = String(insp.template_id) === '2205';
@@ -3345,16 +3354,29 @@ function renderPhotoSectionUI() {
                             <div class="p-2 space-y-1.5 flex-1 flex flex-col justify-between">
                                 <div>
                                     <label class="block text-[10px] font-bold text-slate-500 mb-0.5">Fotoğraf Açıklaması / Başlık</label>
-                                    <input type="text" value="${ph.caption || ''}"
-                                        placeholder=""
-                                        oninput="updatePhotoCaption(${idx}, this.value)"
-                                        class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs font-medium bg-white">
+                                    <div class="flex items-center gap-1.5">
+                                        <input type="text" id="photoCaptionInput_${idx}" value="${ph.caption || ''}"
+                                            placeholder="Fotoğraf açıklaması..."
+                                            oninput="updatePhotoCaption(${idx}, this.value)"
+                                            class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs font-medium bg-white">
+                                        <button type="button" onclick="toggleVoiceDictation('photoCaptionInput_${idx}', 'btnVoiceCaption_${idx}')"
+                                            id="btnVoiceCaption_${idx}"
+                                            class="px-2 py-1 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 rounded-lg text-xs font-bold border border-slate-300 shrink-0"
+                                            title="Sesle Açıklama Söyle">
+                                            <i class="fa-solid fa-microphone"></i>
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="flex items-center justify-between pt-1 border-t border-slate-200 text-[11px]">
-                                    <button onclick="savePhotoToGallery(${idx})" class="text-emerald-700 font-bold hover:underline flex items-center gap-1">
-                                        <i class="fa-solid fa-floppy-disk"></i> Galeriye Kaydet
-                                    </button>
-                                    <button onclick="removeReportPhoto(${idx})" class="text-rose-600 font-bold hover:underline flex items-center gap-1">
+                                    <div class="flex items-center gap-2.5">
+                                        <button onclick="openPhotoAnnotatorModal(${idx})" class="text-rose-600 hover:text-rose-700 font-bold flex items-center gap-1 active:scale-95" title="Fotoğraf üzerine kırmızı ok veya halka çizin">
+                                            <i class="fa-solid fa-pen-ruler"></i> Kusuru İşaretle
+                                        </button>
+                                        <button onclick="savePhotoToGallery(${idx})" class="text-emerald-700 hover:text-emerald-800 font-bold flex items-center gap-1 active:scale-95">
+                                            <i class="fa-solid fa-floppy-disk"></i> Galeri
+                                        </button>
+                                    </div>
+                                    <button onclick="removeReportPhoto(${idx})" class="text-slate-400 hover:text-rose-600 font-bold flex items-center gap-1 active:scale-95">
                                         <i class="fa-solid fa-trash-can"></i> Sil
                                     </button>
                                 </div>
@@ -3683,7 +3705,15 @@ function renderEvaluationAndFooterSection() {
 
             <div>
                 <div class="flex items-center justify-between mb-1">
-                    <label class="block font-bold text-slate-800">Kusur Açıklamaları / Uygunsuzluklar</label>
+                    <div class="flex items-center gap-2">
+                        <label class="block font-bold text-slate-800">Kusur Açıklamaları / Uygunsuzluklar</label>
+                        <button type="button" onclick="toggleVoiceDictation('defectNotesTextarea', 'btnVoiceDefectNotes')"
+                            id="btnVoiceDefectNotes"
+                            class="px-2 py-0.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-md text-[10px] font-bold flex items-center gap-1 active:scale-95 transition">
+                            <i class="fa-solid fa-microphone text-rose-600"></i>
+                            <span>Sesle Dikte</span>
+                        </button>
+                    </div>
                     ${fd.defectNotes ? `
                         <button type="button" onclick="if(confirm('Kusur açıklamalarını temizlemek istediğinize emin misiniz?')){ AppState.currentFormData.defectNotes=''; triggerAutoSave(); paintInspectionEditorUI(); }"
                             class="text-[11px] text-rose-600 hover:underline font-semibold">
@@ -5097,9 +5127,17 @@ function renderItemDefectPickerModalUI() {
                     <span class="text-[10px] text-amber-700">Diğer işlerde de hazır çıkar</span>
                 </div>
                 <div class="space-y-2">
-                    <textarea id="newItemDefectCustomInput" rows="2"
-                        placeholder="Örn: Bu madde için sahada tespit edilen özel uygunsuzluk cümlesini yazın..."
-                        class="w-full border border-amber-300 bg-white rounded-lg p-2 text-xs focus:border-amber-500 focus:outline-none"></textarea>
+                    <div class="relative">
+                        <textarea id="newItemDefectCustomInput" rows="2"
+                            placeholder="Örn: Bu madde için sahada tespit edilen özel uygunsuzluk cümlesini yazın veya sesle söyleyin..."
+                            class="w-full border border-amber-300 bg-white rounded-lg p-2 pr-24 text-xs focus:border-amber-500 focus:outline-none"></textarea>
+                        <button type="button" onclick="toggleVoiceDictation('newItemDefectCustomInput', 'btnVoiceItemDefect')"
+                            id="btnVoiceItemDefect"
+                            class="absolute right-2 top-2 px-2 py-1 bg-rose-100 hover:bg-rose-200 active:scale-95 text-rose-800 font-bold rounded-md text-[11px] flex items-center gap-1 shadow-2xs transition">
+                            <i class="fa-solid fa-microphone"></i>
+                            <span>Sesle Söyle</span>
+                        </button>
+                    </div>
                     <div class="flex justify-end">
                         <button type="button" onclick="submitNewItemDefectSentence()"
                             class="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 shadow-2xs transition-all">
@@ -7003,3 +7041,401 @@ window.dismissCrashShield = dismissCrashShield;
 window.exportEmergencyBackup = exportEmergencyBackup;
 window.openBackupManagerModal = openBackupManagerModal;
 window.importBackupFromFile = importBackupFromFile;
+
+
+// ============================================================================
+// 12. SAHA UX FAZ-1: SESLE DİKTE, FOTOĞRAF KUSUR İŞARETLEME VE BAŞPARMAK BARI
+// ============================================================================
+
+// --- 12.1 SESLE DİKTE (VOICE-TO-TEXT) ---
+let activeSpeechRecognition = null;
+
+function toggleVoiceDictation(targetInputId, triggerBtnId = null) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        showToast('Bu cihazda veya tarayıcıda sesli dikte desteklenmiyor. (Chrome/WebView gereklidir)', 'warning');
+        return;
+    }
+
+    if (activeSpeechRecognition) {
+        activeSpeechRecognition.stop();
+        activeSpeechRecognition = null;
+        return;
+    }
+
+    try {
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'tr-TR';
+        recognition.continuous = false;
+        recognition.interimResults = true;
+
+        const targetEl = document.getElementById(targetInputId);
+        const triggerBtn = triggerBtnId ? document.getElementById(triggerBtnId) : null;
+        let initialVal = targetEl ? targetEl.value : '';
+
+        if (triggerBtn) {
+            triggerBtn.classList.add('bg-rose-600', 'text-white', 'animate-pulse');
+            triggerBtn.innerHTML = '<i class="fa-solid fa-microphone-lines"></i> <span>Dinleniyor...</span>';
+        }
+        showToast('🎙️ Dinleniyor... Lütfen konuşun.', 'info');
+
+        recognition.onresult = (event) => {
+            const transcript = Array.from(event.results).map(r => r[0].transcript).join('');
+            if (targetEl) {
+                targetEl.value = (initialVal ? initialVal + ' ' : '') + transcript;
+                targetEl.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        };
+
+        recognition.onerror = (event) => {
+            console.warn('Speech recognition error:', event.error);
+            showToast('Ses tanıma: ' + (event.error === 'not-allowed' ? 'Mikrofon izni verilmedi' : event.error), 'error');
+        };
+
+        recognition.onend = () => {
+            activeSpeechRecognition = null;
+            if (triggerBtn) {
+                triggerBtn.classList.remove('bg-rose-600', 'text-white', 'animate-pulse');
+                triggerBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> <span>Sesle Söyle</span>';
+            }
+            showToast('Ses kaydı tamamlandı.');
+        };
+
+        activeSpeechRecognition = recognition;
+        recognition.start();
+    } catch (e) {
+        console.error('Ses tanıma başlatılamadı:', e);
+        showToast('Sesli dikte başlatılamadı', 'error');
+    }
+}
+window.toggleVoiceDictation = toggleVoiceDictation;
+
+// --- 12.2 FOTOĞRAF KUSUR İŞARETLEYİCİ (PHOTO ANNOTATOR) ---
+let currentAnnotatingPhotoIdx = -1;
+let annotatorTool = 'arrow'; // 'arrow', 'circle', 'rect'
+let annotatorHistory = [];
+let annotatorBaseImg = null;
+let isDrawingAnnotation = false;
+let drawStartX = 0;
+let drawStartY = 0;
+
+function openPhotoAnnotatorModal(idx) {
+    const fd = AppState.currentFormData;
+    if (!fd.photos || !fd.photos[idx]) return;
+    
+    currentAnnotatingPhotoIdx = idx;
+    annotatorHistory = [];
+    annotatorTool = 'arrow';
+    
+    const modal = document.getElementById('photoAnnotatorModal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    
+    updateAnnotatorToolButtons();
+    
+    const photo = fd.photos[idx];
+    const canvas = document.getElementById('annotatorCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    annotatorBaseImg = new Image();
+    annotatorBaseImg.onload = () => {
+        // Fit canvas to natural dimensions of image
+        canvas.width = annotatorBaseImg.naturalWidth || 1280;
+        canvas.height = annotatorBaseImg.naturalHeight || 960;
+        ctx.drawImage(annotatorBaseImg, 0, 0, canvas.width, canvas.height);
+        
+        // Save initial state to history
+        saveAnnotatorHistorySnapshot();
+        initAnnotatorCanvasListeners();
+    };
+    annotatorBaseImg.src = photo.dataUrl;
+}
+
+function closePhotoAnnotatorModal() {
+    const modal = document.getElementById('photoAnnotatorModal');
+    if (modal) modal.classList.add('hidden');
+    currentAnnotatingPhotoIdx = -1;
+    annotatorBaseImg = null;
+}
+
+function setAnnotatorTool(tool) {
+    annotatorTool = tool;
+    updateAnnotatorToolButtons();
+}
+
+function updateAnnotatorToolButtons() {
+    const tools = ['arrow', 'circle', 'rect'];
+    tools.forEach(t => {
+        const btn = document.getElementById('toolBtn' + t.charAt(0).toUpperCase() + t.slice(1));
+        if (btn) {
+            if (t === annotatorTool) {
+                btn.className = 'px-2.5 py-1 rounded-lg bg-rose-600 text-white font-bold flex items-center gap-1 text-[11px] border border-rose-400';
+            } else {
+                btn.className = 'px-2.5 py-1 rounded-lg bg-slate-700 text-slate-300 font-bold flex items-center gap-1 text-[11px] border border-slate-600';
+            }
+        }
+    });
+}
+
+function saveAnnotatorHistorySnapshot() {
+    const canvas = document.getElementById('annotatorCanvas');
+    if (canvas && annotatorHistory.length < 15) {
+        annotatorHistory.push(canvas.toDataURL('image/jpeg', 0.88));
+    }
+}
+
+function undoPhotoAnnotation() {
+    if (annotatorHistory.length <= 1) {
+        showToast('Geri alınacak çizim bulunmuyor', 'warning');
+        return;
+    }
+    annotatorHistory.pop(); // Remove current
+    const prev = annotatorHistory[annotatorHistory.length - 1];
+    const canvas = document.getElementById('annotatorCanvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    img.onload = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+    };
+    img.src = prev;
+}
+
+function clearPhotoAnnotation() {
+    if (!annotatorBaseImg) return;
+    const canvas = document.getElementById('annotatorCanvas');
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(annotatorBaseImg, 0, 0, canvas.width, canvas.height);
+    annotatorHistory = [canvas.toDataURL('image/jpeg', 0.88)];
+    showToast('Tüm çizimler temizlendi');
+}
+
+function savePhotoAnnotation() {
+    if (currentAnnotatingPhotoIdx < 0) return;
+    const canvas = document.getElementById('annotatorCanvas');
+    const fd = AppState.currentFormData;
+    if (!fd.photos || !fd.photos[currentAnnotatingPhotoIdx]) return;
+    
+    // Save high quality compressed JPEG
+    const finalDataUrl = canvas.toDataURL('image/jpeg', 0.82);
+    fd.photos[currentAnnotatingPhotoIdx].dataUrl = finalDataUrl;
+    fd.photos[currentAnnotatingPhotoIdx].annotated = true;
+    
+    triggerAutoSave();
+    paintInspectionEditorUI();
+    closePhotoAnnotatorModal();
+    showToast('Kusur işareti fotoğrafa uygulandı ve rapora kaydedildi!');
+}
+
+function getCanvasCoordinates(canvas, clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return {
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY
+    };
+}
+
+let annotatorListenersInitialized = false;
+function initAnnotatorCanvasListeners() {
+    if (annotatorListenersInitialized) return;
+    annotatorListenersInitialized = true;
+    
+    const canvas = document.getElementById('annotatorCanvas');
+    if (!canvas) return;
+    
+    let lastSnapshotImg = new Image();
+
+    function startDraw(clientX, clientY) {
+        isDrawingAnnotation = true;
+        const coords = getCanvasCoordinates(canvas, clientX, clientY);
+        drawStartX = coords.x;
+        drawStartY = coords.y;
+        lastSnapshotImg.src = canvas.toDataURL('image/jpeg', 0.88);
+    }
+
+    function moveDraw(clientX, clientY) {
+        if (!isDrawingAnnotation) return;
+        const coords = getCanvasCoordinates(canvas, clientX, clientY);
+        const ctx = canvas.getContext('2d');
+        
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(lastSnapshotImg, 0, 0);
+        
+        drawShape(ctx, annotatorTool, drawStartX, drawStartY, coords.x, coords.y);
+    }
+
+    function endDraw(clientX, clientY) {
+        if (!isDrawingAnnotation) return;
+        isDrawingAnnotation = false;
+        saveAnnotatorHistorySnapshot();
+    }
+
+    // Touch events for mobile
+    canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        if (e.touches.length > 0) startDraw(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        if (e.touches.length > 0) moveDraw(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        endDraw();
+    }, { passive: false });
+
+    // Mouse events for desktop testing
+    canvas.addEventListener('mousedown', (e) => startDraw(e.clientX, e.clientY));
+    window.addEventListener('mousemove', (e) => { if (isDrawingAnnotation) moveDraw(e.clientX, e.clientY); });
+    window.addEventListener('mouseup', (e) => { if (isDrawingAnnotation) endDraw(e.clientX, e.clientY); });
+}
+
+function drawShape(ctx, tool, x1, y1, x2, y2) {
+    ctx.strokeStyle = '#ef4444'; // High contrast red
+    ctx.fillStyle = '#ef4444';
+    ctx.lineWidth = Math.max(6, Math.round(ctx.canvas.width / 160));
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    if (tool === 'arrow') {
+        // Draw main line
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+
+        // Draw arrowhead at (x2, y2)
+        const angle = Math.atan2(y2 - y1, x2 - x1);
+        const headLen = Math.max(24, Math.round(ctx.canvas.width / 40));
+        ctx.beginPath();
+        ctx.moveTo(x2, y2);
+        ctx.lineTo(x2 - headLen * Math.cos(angle - Math.PI / 6), y2 - headLen * Math.sin(angle - Math.PI / 6));
+        ctx.lineTo(x2 - headLen * Math.cos(angle + Math.PI / 6), y2 - headLen * Math.sin(angle + Math.PI / 6));
+        ctx.closePath();
+        ctx.fill();
+    } else if (tool === 'circle') {
+        const rx = Math.abs(x2 - x1) / 2;
+        const ry = Math.abs(y2 - y1) / 2;
+        const cx = Math.min(x1, x2) + rx;
+        const cy = Math.min(y1, y2) + ry;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, Math.max(rx, 10), Math.max(ry, 10), 0, 0, 2 * Math.PI);
+        ctx.stroke();
+    } else if (tool === 'rect') {
+        const w = x2 - x1;
+        const h = y2 - y1;
+        ctx.beginPath();
+        ctx.strokeRect(x1, y1, w, h);
+    }
+}
+
+window.openPhotoAnnotatorModal = openPhotoAnnotatorModal;
+window.closePhotoAnnotatorModal = closePhotoAnnotatorModal;
+window.setAnnotatorTool = setAnnotatorTool;
+window.undoPhotoAnnotation = undoPhotoAnnotation;
+window.clearPhotoAnnotation = clearPhotoAnnotation;
+window.savePhotoAnnotation = savePhotoAnnotation;
+
+// --- 12.3 MOBİL BAŞPARMAK HIZLI EYLEM BARI (BOTTOM ACTION DOCK) ---
+function triggerQuickCameraCapture() {
+    const input = document.getElementById('quickCameraInput');
+    if (input) {
+        input.click();
+    } else {
+        showToast('Kamera açılıyor...');
+    }
+}
+
+function openTabNavSheet() {
+    const insp = AppState.currentInspection;
+    if (!insp) return;
+
+    let tabs = [];
+    if (String(insp.template_id) === '2201') {
+        tabs = [
+            { label: '1. Firma & Rapor Bilgileri', id: 0 },
+            { label: '2. Ölçüm Aletleri (4. Bölüm)', id: 1 },
+            { label: '3. Gözle Kontrol (Kriterler)', id: 2 },
+            { label: '4. Fonksiyon & Ölçüm Tabloları', id: 3 },
+            { label: `5. Fotoğraflar (${(AppState.currentFormData.photos || []).length})`, id: 4 },
+            { label: '6. Sonuç, Kanaat & Onay', id: 5 },
+            { label: 'Tüm Sayfayı Göster', id: -1 }
+        ];
+    } else if (String(insp.template_id) === '2202') {
+        tabs = [
+            { label: '1. Firma & Rapor Bilgileri', id: 0 },
+            { label: '2. Tesisat & Dağıtım Bilgileri', id: 1 },
+            { label: '3. Ölçüm Noktaları Tablosu', id: 2 },
+            { label: '4. Selektivite & Artık Akım', id: 3 },
+            { label: `5. Fotoğraflar (${(AppState.currentFormData.photos || []).length})`, id: 4 },
+            { label: '6. Sonuç & Onay', id: 5 },
+            { label: 'Tüm Sayfayı Göster', id: -1 }
+        ];
+    } else if (String(insp.template_id) === '2205') {
+        tabs = [
+            { label: '1. Firma & Genel Bilgiler', id: 0 },
+            { label: '2. Jeneratör Etiket & Karakteristik', id: 1 },
+            { label: '3. Kontrol Kriterleri (Gözle)', id: 2 },
+            { label: '4. Elektriksel Ölçümler', id: 3 },
+            { label: `5. Fotoğraflar (${(AppState.currentFormData.photos || []).length})`, id: 4 },
+            { label: '6. Sonuç & Onay', id: 5 },
+            { label: 'Tüm Sayfayı Göster', id: -1 }
+        ];
+    } else {
+        tabs = [
+            { label: '1. Firma Bilgileri', id: 0 },
+            { label: '2. Genel & Ölçüm Cihazı', id: 1 },
+            { label: '3. Kontrol Kriterleri', id: 2 },
+            { label: '4. Ölçüm Verileri', id: 3 },
+            { label: '5. Fotoğraflar', id: 4 },
+            { label: '6. Sonuç & Onay', id: 5 },
+            { label: 'Tümü', id: -1 }
+        ];
+    }
+
+    const titleEl = document.getElementById('modalTitle');
+    const bodyEl = document.getElementById('modalBody');
+    const footerEl = document.getElementById('modalFooter');
+
+    if (titleEl) {
+        titleEl.innerHTML = `<i class="fa-solid fa-layer-group text-amber-400 mr-2"></i>Rapor Bölümleri (Hızlı Geçiş)`;
+    }
+
+    if (bodyEl) {
+        bodyEl.innerHTML = `
+            <div class="space-y-2">
+                ${tabs.map(t => `
+                    <button onclick="setInspectionActiveTab(${t.id}); closeModal();"
+                        class="w-full p-3 rounded-xl border text-left font-bold text-xs flex items-center justify-between transition active:scale-98 ${
+                            AppState.currentActiveTab === t.id 
+                                ? 'bg-sky-500 text-white border-sky-600 shadow-sm' 
+                                : 'bg-slate-50 text-slate-800 border-slate-200 hover:bg-slate-100'
+                        }">
+                        <span>${t.label}</span>
+                        <i class="fa-solid fa-chevron-right text-xs opacity-70"></i>
+                    </button>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    if (footerEl) {
+        footerEl.innerHTML = `
+            <button onclick="closeModal()" class="w-full py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs rounded-xl active:scale-95 transition">
+                Kapat
+            </button>
+        `;
+    }
+
+    openModal();
+}
+
+window.triggerQuickCameraCapture = triggerQuickCameraCapture;
+window.openTabNavSheet = openTabNavSheet;
+
+window.previewA4ReportModal = printOfficialReport;
