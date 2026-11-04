@@ -1272,7 +1272,7 @@ async function renderWorkOrderDetails(workOrderId) {
                 <div class="grid grid-cols-3 gap-2 text-center">
                     <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
                         <div class="text-base font-black text-slate-900 tabular-nums">${inspections.length}</div>
-                        <div class="text-[10px] font-bold text-slate-500">Toplam Rapor</div>
+                        <div class="text-xs font-bold text-slate-700">Toplam Rapor</div>
                     </div>
                     <div class="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl">
                         <div class="text-base font-black text-emerald-700 tabular-nums">${inspections.filter(i => (i.result_status || 'UYGUN') === 'UYGUN').length}</div>
@@ -2704,31 +2704,31 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
                         </div>
                         <div class="grid grid-cols-2 gap-2">
                             <div class="col-span-2">
-                                <label class="block text-[10px] font-bold text-slate-500">Cihaz Adı</label>
+                                <label class="block text-xs font-bold text-slate-700">Cihaz Adı</label>
                                 <input type="text" value="${escapeHtml(dev.name || '')}" placeholder=""
                                     oninput="AppState.currentFormData.measuringDevices[${dIdx}].name=this.value; triggerAutoSave();"
                                     class="w-full px-2 py-1.5 border border-slate-300 rounded-lg bg-white font-semibold">
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-500">Seri No</label>
+                                <label class="block text-xs font-bold text-slate-700">Seri No</label>
                                 <input type="text" value="${escapeHtml(dev.serial || '')}" placeholder=""
                                     oninput="AppState.currentFormData.measuringDevices[${dIdx}].serial=this.value; triggerAutoSave();"
                                     class="w-full px-2 py-1.5 border border-slate-300 rounded-lg bg-white">
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-500">Sertifika No</label>
+                                <label class="block text-xs font-bold text-slate-700">Sertifika No</label>
                                 <input type="text" value="${escapeHtml(dev.certNo || '')}" placeholder=""
                                     oninput="AppState.currentFormData.measuringDevices[${dIdx}].certNo=this.value; triggerAutoSave();"
                                     class="w-full px-2 py-1.5 border border-slate-300 rounded-lg bg-white">
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-500">Kalibrasyon Tarihi</label>
+                                <label class="block text-xs font-bold text-slate-700">Kalibrasyon Tarihi</label>
                                 <input type="text" value="${escapeHtml(dev.calDate || '')}" placeholder=""
                                     oninput="AppState.currentFormData.measuringDevices[${dIdx}].calDate=this.value; triggerAutoSave();"
                                     class="w-full px-2 py-1.5 border border-slate-300 rounded-lg bg-white">
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-500">Geçerlilik Tarihi</label>
+                                <label class="block text-xs font-bold text-slate-700">Geçerlilik Tarihi</label>
                                 <input type="text" value="${escapeHtml(dev.validDate || '')}" placeholder=""
                                     oninput="AppState.currentFormData.measuringDevices[${dIdx}].validDate=this.value; triggerAutoSave();"
                                     class="w-full px-2 py-1.5 border border-slate-300 rounded-lg bg-white">
@@ -3353,7 +3353,7 @@ function renderSpecializedTemplateEditor() {
     const cardsHtml = fd.specializedRows.map((row, rIdx) => {
         const inputs = cols.map((col, cIdx) => `
             <div class="${cIdx === 1 ? 'col-span-2' : ''}">
-                <label class="block text-[10px] font-bold text-slate-500 mb-0.5 truncate">${col.label}</label>
+                <label class="block text-xs font-bold text-slate-700 mb-1 truncate">${col.label}</label>
                 <input type="text" value="${String(row[cIdx] ?? '').replace(/"/g, '&quot;')}"
                     oninput="AppState.currentFormData.specializedRows[${rIdx}][${cIdx}]=this.value; triggerAutoSave();"
                     class="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-xs bg-white focus:border-sky-500 focus:outline-none">
@@ -3777,7 +3777,7 @@ function renderPhotoSectionUI() {
                             </div>
                             <div class="p-2 space-y-1.5 flex-1 flex flex-col justify-between">
                                 <div>
-                                    <label class="block text-[10px] font-bold text-slate-500 mb-0.5">Fotoğraf Açıklaması / Başlık</label>
+                                    <label class="block text-xs font-bold text-slate-700 mb-1">Fotoğraf Açıklaması / Başlık</label>
                                     <div class="flex items-center gap-1.5">
                                         <input type="text" id="photoCaptionInput_${idx}" value="${ph.caption || ''}"
                                             placeholder="Fotoğraf açıklaması..."
@@ -4350,7 +4350,7 @@ const COMMON_LINYE_SUGGESTIONS = [
 ];
 
 const LinyeMemoryManager = {
-    STORAGE_KEY: 'enlab_linye_frequencies_v2',
+    STORAGE_KEY: 'enlab_linye_frequencies_v3',
 
     getFrequencies() {
         try {
@@ -4364,7 +4364,8 @@ const LinyeMemoryManager = {
         const trimmed = (title || '').trim();
         if (!trimmed || trimmed.length < 2) return;
         const freqs = this.getFrequencies();
-        freqs[trimmed] = (freqs[trimmed] || 0) + 1;
+        // Dengeli ve gerçekçi sayaç: maksimum 99 ile sınırlandırılır
+        freqs[trimmed] = Math.min((freqs[trimmed] || 0) + 1, 99);
         try {
             localStorage.setItem(this.STORAGE_KEY, JSON.stringify(freqs));
         } catch (e) {}
@@ -4374,19 +4375,9 @@ const LinyeMemoryManager = {
         try {
             const freqs = this.getFrequencies();
             let changed = false;
+            const seen = new Set();
 
-            // 1. Mevcut açık rapordaki linyeleri tara
-            if (AppState.currentFormData?.grounding?.points) {
-                AppState.currentFormData.grounding.points.forEach(p => {
-                    const name = (p.point || '').trim();
-                    if (name && name.length >= 2) {
-                        freqs[name] = (freqs[name] || 0) + 1;
-                        changed = true;
-                    }
-                });
-            }
-
-            // 2. Hafızadaki tüm kayıtlı raporlardaki linyeleri tara
+            // Sadece her raporda geçen linye isimlerini 1 kez tohumla
             for (let i = 0; i < localStorage.length; i++) {
                 const k = localStorage.key(i);
                 if (k && k.startsWith('enlab_insp_')) {
@@ -4395,8 +4386,9 @@ const LinyeMemoryManager = {
                         const pts = data?.grounding?.points || [];
                         pts.forEach(p => {
                             const name = (p.point || '').trim();
-                            if (name && name.length >= 2) {
-                                freqs[name] = (freqs[name] || 0) + 1;
+                            if (name && name.length >= 2 && !seen.has(`${k}_${name}`)) {
+                                seen.add(`${k}_${name}`);
+                                freqs[name] = Math.min((freqs[name] || 0) + 1, 8);
                                 changed = true;
                             }
                         });
@@ -4470,6 +4462,63 @@ const LinyeMemoryManager = {
         return combined.slice(0, 9);
     }
 };
+
+// ============================================================================
+// TOPRAKLAMA ACCORDION (KATLANABİLİR LİNYE KARTLARI) YÖNETİMİ
+// ============================================================================
+function isGroundingPointExpanded(pIdx) {
+    if (!AppState.expandedGroundingPoints) AppState.expandedGroundingPoints = {};
+    if (AppState.expandedGroundingPoints[pIdx] !== undefined) {
+        return AppState.expandedGroundingPoints[pIdx];
+    }
+    const gd = AppState.currentFormData?.grounding;
+    const pts = gd?.points || [];
+    if (pts.length <= 4) return true;
+    const p = pts[pIdx];
+    if (!p) return true;
+    if (!p.point || !p.zxRx) return true; // Tamamlanmamışlar açık kalır
+    if (pIdx === pts.length - 1) return true; // Son eklenen açık kalır
+    return false; // Tamamlanmışlar yer kaplamaz, özet satırına daralır
+}
+
+function toggleGroundingPointAccordion(pIdx) {
+    if (!AppState.expandedGroundingPoints) AppState.expandedGroundingPoints = {};
+    const cur = isGroundingPointExpanded(pIdx);
+    AppState.expandedGroundingPoints[pIdx] = !cur;
+    paintInspectionEditorUI();
+}
+
+function setAllGroundingPointsExpanded(expanded) {
+    if (!AppState.expandedGroundingPoints) AppState.expandedGroundingPoints = {};
+    const pts = AppState.currentFormData?.grounding?.points || [];
+    pts.forEach((_, idx) => {
+        AppState.expandedGroundingPoints[idx] = expanded;
+    });
+    paintInspectionEditorUI();
+    showToast(expanded ? 'Tüm ölçüm kartları açıldı' : 'Tüm ölçüm kartları daraltıldı');
+}
+
+function setGroundingPointBreakerPreset(pIdx, curve, inVal) {
+    updateGroundingPointField(pIdx, 'curve', curve);
+    updateGroundingPointField(pIdx, 'inAmp', inVal);
+    paintInspectionEditorUI();
+    const iaVal = (curve === 'B' ? parseInt(inVal)*5 : parseInt(inVal)*10);
+    showToast(`Sigorta: ${curve}${inVal}A seçildi (Ia: ${iaVal}A)`);
+}
+
+function undoDeleteGroundingPointRow() {
+    if (!window.__lastDeletedGroundingPoint) return;
+    const { index, point } = window.__lastDeletedGroundingPoint;
+    const gd = AppState.currentFormData.grounding;
+    if (!gd.points) gd.points = [];
+    gd.points.splice(index, 0, point);
+    if (!AppState.expandedGroundingPoints) AppState.expandedGroundingPoints = {};
+    AppState.expandedGroundingPoints[index] = true;
+    window.__lastDeletedGroundingPoint = null;
+    triggerAutoSave();
+    paintInspectionEditorUI();
+    showToast('Silinen ölçüm noktası geri getirildi!', 'success');
+}
 
 function renderLinyeDropdownItems(pIdx, query) {
     const q = (query || '').trim();
@@ -4646,13 +4695,13 @@ function renderGrounding2202Editor() {
                 <div class="text-[11px] font-black text-rose-700 uppercase tracking-wide">2.1. Etiket ve Detay Bilgileri</div>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Enerji Sağlayan Kuruluş</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Enerji Sağlayan Kuruluş</label>
                         <input type="text" value="${gd.details.supplier || ''}" placeholder=""
                             oninput="AppState.currentFormData.grounding.details.supplier=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5 flex items-center justify-between">
+                        <label class="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
                             <span>Şebeke Tipi</span>
                             <span class="text-[9px] font-mono font-bold ${(gd.details.networkType || '').startsWith('TN') ? 'text-amber-700' : 'text-sky-700'}">${(gd.details.networkType || '').startsWith('TN') ? 'TN (230/Ia)' : 'TT (50/Ia)'}</span>
                         </label>
@@ -4663,13 +4712,13 @@ function renderGrounding2202Editor() {
                         </select>
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Şebeke Gerilimi (V)</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Şebeke Gerilimi (V)</label>
                         <input type="text" value="${gd.details.voltage || ''}" placeholder=""
                             oninput="AppState.currentFormData.grounding.details.voltage=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Tesise Ait Proje Var mı?</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Tesise Ait Proje Var mı?</label>
                         <select onchange="AppState.currentFormData.grounding.details.hasProject=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs">
                             <option value="">Seçiniz...</option>
@@ -4678,7 +4727,7 @@ function renderGrounding2202Editor() {
                         </select>
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Tek Hat Şeması Var mı?</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Tek Hat Şeması Var mı?</label>
                         <select onchange="AppState.currentFormData.grounding.details.hasSingleLine=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs">
                             <option value="">Seçiniz...</option>
@@ -4687,19 +4736,19 @@ function renderGrounding2202Editor() {
                         </select>
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Kontrol Nedeni</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Kontrol Nedeni</label>
                         <input type="text" value="${gd.details.reason || ''}" placeholder=""
                             oninput="AppState.currentFormData.grounding.details.reason=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Proje Bilgileri</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Proje Bilgileri</label>
                         <input type="text" value="${gd.details.projectInfo || ''}" placeholder=""
                             oninput="AppState.currentFormData.grounding.details.projectInfo=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Topraklayıcı Tipi</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Topraklayıcı Tipi</label>
                         <select onchange="AppState.currentFormData.grounding.details.grounderType=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs">
                             <option value="">Seçiniz...</option>
@@ -4707,25 +4756,25 @@ function renderGrounding2202Editor() {
                         </select>
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Yapı Cinsi</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Yapı Cinsi</label>
                         <input type="text" value="${gd.details.buildingType || ''}" placeholder=""
                             oninput="AppState.currentFormData.grounding.details.buildingType=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Kullanım Amacı</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Kullanım Amacı</label>
                         <input type="text" value="${gd.details.usagePurpose || ''}" placeholder=""
                             oninput="AppState.currentFormData.grounding.details.usagePurpose=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Son Kontrol Tarihi</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Son Kontrol Tarihi</label>
                         <input type="text" value="${gd.details.lastControlDate || ''}" placeholder=""
                             oninput="AppState.currentFormData.grounding.details.lastControlDate=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Hava Durumu</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Hava Durumu</label>
                         <select onchange="AppState.currentFormData.grounding.details.weather=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs">
                             <option value="">Seçiniz...</option>
@@ -4733,13 +4782,13 @@ function renderGrounding2202Editor() {
                         </select>
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Hava Sıcaklığı (°C)</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Hava Sıcaklığı (°C)</label>
                         <input type="text" value="${gd.details.temperature || ''}" placeholder=""
                             oninput="AppState.currentFormData.grounding.details.temperature=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Zemin Nem Durumu</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Zemin Nem Durumu</label>
                         <select onchange="AppState.currentFormData.grounding.details.soilMoisture=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs">
                             <option value="">Seçiniz...</option>
@@ -4747,7 +4796,7 @@ function renderGrounding2202Editor() {
                         </select>
                     </div>
                     <div class="sm:col-span-3">
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Dolaylı Dokunmaya Karşı Koruma Önlemi</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Dolaylı Dokunmaya Karşı Koruma Önlemi</label>
                         <input type="text" value="${gd.details.protectionMeasure || ''}" placeholder=""
                             oninput="AppState.currentFormData.grounding.details.protectionMeasure=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs">
@@ -4759,7 +4808,7 @@ function renderGrounding2202Editor() {
                 <div class="text-[11px] font-black text-rose-700 uppercase tracking-wide">2.2. Tespit Edilen Bilgiler</div>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Tesisatta Kapsamlı Değişiklik Var mı?</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Tesisatta Kapsamlı Değişiklik Var mı?</label>
                         <select onchange="AppState.currentFormData.grounding.detected.majorChange=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs">
                             <option value="">Seçiniz...</option>
@@ -4768,7 +4817,7 @@ function renderGrounding2202Editor() {
                         </select>
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Önceki Kontrol Eki Var mı?</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Önceki Kontrol Eki Var mı?</label>
                         <select onchange="AppState.currentFormData.grounding.detected.prevReportAttached=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs">
                             <option value="">Seçiniz...</option>
@@ -4777,7 +4826,7 @@ function renderGrounding2202Editor() {
                         </select>
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Pano / Ekipman Tanımlaması</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Pano / Ekipman Tanımlaması</label>
                         <input type="text" value="${gd.detected.panelIdent || ''}" placeholder=""
                             oninput="AppState.currentFormData.grounding.detected.panelIdent=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs">
@@ -4788,7 +4837,7 @@ function renderGrounding2202Editor() {
             <div class="space-y-1.5 pt-2 border-t border-slate-100">
                 <div class="text-[11px] font-black text-rose-700 uppercase tracking-wide">4.1. Ölçüm Metodu</div>
                 <div>
-                    <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Ölçüm ve Doğrulama Metodu</label>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Ölçüm ve Doğrulama Metodu</label>
                     <input type="text" value="${gd.method || ''}" placeholder=""
                         oninput="AppState.currentFormData.grounding.method=this.value; triggerAutoSave();"
                         class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold">
@@ -4798,177 +4847,277 @@ function renderGrounding2202Editor() {
         </div>
     `;
 
-    // 4.2 Ölçüm Noktaları HTML
+    // 4.2 Ölçüm Noktaları HTML (KATLANABİLİR ACCORDION & 44PX ERGONOMİ)
     const showPoints = (activeTab === 2 || activeTab === -1);
     const resultOptions = [
         'Not-1', 'Not-2', 'Not-3', 'Not-4', 'Not-5', 'Not-6', 'Not-7', 'Not-8', 'Not-9', 'Not-10', 'Not-11'
     ];
     const pointsHtml = !showPoints ? '' : `
-        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
-            <div class="px-3.5 py-2.5 bg-slate-800 text-white font-bold text-xs flex items-center justify-between">
-                <span>4.2. Son Tüketim Noktalarında Dolaylı Dokunmaya Karşı Koruma Yeterliliği (${gd.points.length})</span>
-                <div class="flex items-center gap-1.5">
-                    <button onclick="openBatchRowGeneratorModal()" class="px-2.5 py-1 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow-2xs">
-                        <i class="fa-solid fa-layer-group"></i>
-                        <span>+ Toplu Satır Üret</span>
+        <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+            <!-- SECTION HEADER & GLOBAL ACTIONS -->
+            <div class="px-3.5 py-3 bg-slate-900 text-white font-bold text-xs sm:text-sm flex flex-wrap items-center justify-between gap-2 border-b border-slate-800">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                    <span>4.2. Son Tüketim Noktaları (${gd.points.length} Linye)</span>
+                </div>
+                <div class="flex items-center gap-1.5 flex-wrap">
+                    <button onclick="setAllGroundingPointsExpanded(true)" class="min-h-[36px] px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-bold rounded-xl text-xs flex items-center gap-1 border border-slate-700 transition" title="Tüm linyeleri aç">
+                        <i class="fa-solid fa-angles-down text-[11px] text-sky-400"></i>
+                        <span class="hidden xs:inline">Tümünü Aç</span>
                     </button>
-                    <button onclick="addGroundingPointRow()" class="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1">
+                    <button onclick="setAllGroundingPointsExpanded(false)" class="min-h-[36px] px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-bold rounded-xl text-xs flex items-center gap-1 border border-slate-700 transition" title="Tüm linyeleri özet satırına daralt">
+                        <i class="fa-solid fa-angles-up text-[11px] text-amber-400"></i>
+                        <span class="hidden xs:inline">Daralt</span>
+                    </button>
+                    <button onclick="openBatchRowGeneratorModal()" class="min-h-[36px] px-3 py-1.5 btn-craft-primary active:scale-95 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition">
+                        <i class="fa-solid fa-layer-group"></i>
+                        <span>+ Seri Üret</span>
+                    </button>
+                    <button onclick="addGroundingPointRow()" class="min-h-[36px] px-3 py-1.5 btn-craft-emerald active:scale-95 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition">
                         <i class="fa-solid fa-plus"></i>
                         <span>Nokta Ekle</span>
                     </button>
                 </div>
             </div>
-            <div class="p-3 space-y-3">
+
+            <div class="p-3 space-y-2.5 bg-slate-100/60">
                 ${gd.points.length === 0 ? `
-                    <div class="p-6 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-xs">
-                        Henüz ölçüm noktası eklenmedi. Ölçülen priz, aydınlatma veya pano noktalarını eklemek için yukarıdaki <strong>+ Nokta Ekle</strong> butonuna basınız.
+                    <div class="p-8 text-center text-slate-400 bg-white rounded-2xl border border-dashed border-slate-200 text-xs sm:text-sm">
+                        Henüz ölçüm noktası eklenmedi. Ölçülen priz, aydınlatma veya pano noktalarını eklemek için yukarıdaki <strong>+ Nokta Ekle</strong> butonuna dokununuz.
                     </div>
-                ` : gd.points.map((p, pIdx) => `
-                    <div class="p-3 rounded-xl border border-slate-200 bg-slate-50 space-y-2.5 text-xs shadow-2xs">
-                        <div class="flex items-center justify-between border-b border-slate-200 pb-1.5">
-                            <span class="font-bold text-slate-800">#${pIdx + 1} Ölçüm Noktası</span>
-                            <div class="flex items-center gap-1.5">
-                                <button onclick="duplicateGroundingPointRow(${pIdx})" class="px-2 py-0.5 bg-sky-100 hover:bg-sky-200 text-sky-800 font-bold text-[11px] rounded flex items-center gap-1">
-                                    <i class="fa-solid fa-copy"></i>
-                                    <span>Kopyala</span>
-                                </button>
-                                <button onclick="removeGroundingPointRow(${pIdx})" class="px-2 py-0.5 bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold text-[11px] rounded flex items-center gap-1">
-                                    <i class="fa-solid fa-trash-can"></i>
-                                    <span>Sil</span>
-                                </button>
+                ` : gd.points.map((p, pIdx) => {
+                    const isExpanded = isGroundingPointExpanded(pIdx);
+                    const isSuitable = p.result === 'Not-1' || p.result === 'Not-4';
+                    const isDefect = p.result && !isSuitable;
+
+                    const resultBadge = p.result === 'Not-1'
+                        ? '<span class="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 font-bold text-xs border border-emerald-200 flex items-center gap-1"><i class="fa-solid fa-check text-[10px]"></i>Not-1 (Uygun)</span>'
+                        : p.result === 'Not-4'
+                        ? '<span class="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 font-bold text-xs border border-emerald-300 flex items-center gap-1"><i class="fa-solid fa-shield-halved text-[10px]"></i>Not-4 (RCD Faal)</span>'
+                        : p.result
+                        ? `<span class="px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 font-bold text-xs border border-rose-200 flex items-center gap-1"><i class="fa-solid fa-triangle-exclamation text-[10px]"></i>${p.result}</span>`
+                        : '<span class="px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 font-bold text-xs border border-amber-200">Bekliyor</span>';
+
+                    return `
+                    <div class="card-craft-white overflow-hidden border border-slate-200 shadow-2xs transition-all">
+                        <!-- HEADER / ACCORDION TOGGLE ROW -->
+                        <div onclick="toggleGroundingPointAccordion(${pIdx})"
+                            class="p-3.5 cursor-pointer flex items-center justify-between gap-2.5 select-none hover:bg-slate-50/80 transition ${isExpanded ? 'bg-slate-50/70 border-b border-slate-200' : ''}">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div class="w-8 h-8 rounded-xl font-mono font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs ${isSuitable ? 'bg-emerald-600 text-white' : isDefect ? 'bg-rose-600 text-white' : 'bg-slate-800 text-white'}">
+                                    #${pIdx + 1}
+                                </div>
+                                <div class="min-w-0">
+                                    <div class="font-bold text-xs sm:text-sm text-slate-900 truncate leading-snug">
+                                        ${escapeHtml(p.point || 'İsimsiz Ölçüm Noktası')}
+                                    </div>
+                                    <div class="text-xs text-slate-500 font-mono flex items-center gap-2 mt-0.5 flex-wrap">
+                                        <span class="font-bold text-slate-800">${p.curve || 'C'}${p.inAmp || '16'}A</span>
+                                        <span>·</span>
+                                        <span>Zx: <strong class="text-sky-900 font-bold">${p.zxRx ? p.zxRx + ' Ω' : '-'}</strong></span>
+                                        <span>·</span>
+                                        <span>Zs: <strong class="text-slate-800 font-bold">${p.zsRa ? p.zsRa + ' Ω' : '-'}</strong></span>
+                                        ${p.ik1Amp ? `<span>· Ik1: <strong class="text-amber-800 font-bold">${p.ik1Amp}A</strong></span>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center gap-2 shrink-0">
+                                ${resultBadge}
+                                <div class="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 transition-transform ${isExpanded ? 'rotate-180 bg-slate-200 text-slate-800' : ''}">
+                                    <i class="fa-solid fa-chevron-down text-xs"></i>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- LİNYE & PANO ADI (NET, SAYDAM OLMAYAN ÖNERİ AÇILIR LİSTESİ) -->
-                        <div class="relative">
-                            <div class="flex items-center justify-between mb-0.5">
-                                <label class="text-[10px] font-bold text-slate-800 flex items-center gap-1">
-                                    <i class="fa-solid fa-tag text-sky-600"></i>
-                                    <span>Ölçüm Noktası / Pano Adı</span>
-                                </label>
-                                <span class="text-[9px] text-slate-400 font-medium">Yazın veya alttaki rozetlere dokunun</span>
-                            </div>
-                            <input type="text" id="pt_name_${pIdx}" autocomplete="off" value="${escapeHtml(p.point || '')}" placeholder="Örn: Ana Dağıtım Panosu (ADP)"
-                                onfocus="handleLinyeInputFocus(${pIdx}, this)"
-                                oninput="handleLinyeInputType(${pIdx}, this)"
-                                onblur="handleLinyeInputBlur(${pIdx})"
-                                class="w-full border border-slate-300 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-900 bg-white shadow-2xs">
-
-                            <!-- 100% OPAK ÖNERİLER DROPDOWN (DOKUNMATİK KAYDIRMA & GELİŞMİŞ SIKLIK HAFIZASI) -->
-                            <div id="linyeDropdown_${pIdx}"
-                                onpointerdown="window.__linyeDropdownInteracting = true;"
-                                ontouchstart="window.__linyeDropdownInteracting = true;"
-                                onpointerup="setTimeout(() => { window.__linyeDropdownInteracting = false; }, 400);"
-                                ontouchend="setTimeout(() => { window.__linyeDropdownInteracting = false; }, 400);"
-                                class="hidden absolute left-0 right-0 top-full mt-1 bg-white border-2 border-sky-600 rounded-xl shadow-2xl z-50 max-h-64 overflow-y-auto overscroll-contain touch-pan-y divide-y divide-slate-100 font-medium text-xs"></div>
-
-                            <!-- HIZLI SEÇİM ÇİPLERİ (EN ÇOK KULLANILANLAR DİNAMİK OLARAK ÖNDE) -->
-                            <div class="flex items-center gap-1 mt-1.5 overflow-x-auto py-0.5 no-scrollbar">
-                                ${LinyeMemoryManager.getQuickChips().map(preset => `
-                                    <button type="button" onclick="selectLinyeSuggestion(${pIdx}, '${escapeForJs(preset)}')"
-                                        class="px-2 py-0.5 bg-slate-100 hover:bg-sky-100 active:scale-95 text-slate-700 hover:text-sky-800 font-semibold text-[10px] rounded-lg border border-slate-200 shrink-0 transition shadow-2xs">
-                                        + ${escapeHtml(preset)}
+                        <!-- EXPANDED EDIT BODY -->
+                        ${!isExpanded ? '' : `
+                        <div class="p-3.5 sm:p-4 space-y-3.5 bg-white text-xs">
+                            <!-- ACTIONS BAR: KOPYALA / SİL -->
+                            <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                                <span class="font-bold text-slate-700 text-xs flex items-center gap-1.5">
+                                    <i class="fa-solid fa-pen-to-square text-sky-600"></i>
+                                    <span>Ölçüm Değerlerini Düzenle</span>
+                                </span>
+                                <div class="flex items-center gap-2">
+                                    <button onclick="duplicateGroundingPointRow(${pIdx})" class="min-h-[38px] px-3.5 py-1.5 bg-sky-50 hover:bg-sky-100 active:scale-95 text-sky-800 font-bold text-xs rounded-xl border border-sky-200 flex items-center gap-1.5 transition">
+                                        <i class="fa-solid fa-copy"></i>
+                                        <span>Kopyala</span>
                                     </button>
-                                `).join('')}
+                                    <button onclick="removeGroundingPointRow(${pIdx})" class="min-h-[38px] px-3.5 py-1.5 bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 flex items-center gap-1.5 transition">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                        <span>Sil</span>
+                                    </button>
+                                </div>
                             </div>
-                        </div>
 
-                        <!-- PARAMETRELER & HESAPLAMALAR -->
-                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-600 mb-0.5">In (A)</label>
-                                <input type="text" id="pt_in_${pIdx}" inputmode="decimal" enterkeyhint="next" value="${p.inAmp || ''}" placeholder="16"
-                                    oninput="updateGroundingPointField(${pIdx}, 'inAmp', this.value);"
-                                    class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs font-mono font-semibold">
-                                <div class="flex items-center gap-1 mt-1 overflow-x-auto py-0.5">
-                                    ${['10', '16', '20', '25', '32', '40', '63'].map(v => `
-                                        <button type="button" onclick="setGroundingPointPresetIn(${pIdx}, '${v}')"
-                                            class="px-1 py-0.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-800 rounded text-[9px] font-mono font-bold border border-slate-200">
-                                            ${v}A
+                            <!-- LİNYE & PANO ADI -->
+                            <div class="relative space-y-1">
+                                <label class="block text-xs font-bold text-slate-700 mb-0.5 flex items-center justify-between">
+                                    <span class="flex items-center gap-1.5">
+                                        <i class="fa-solid fa-tag text-sky-600"></i>
+                                        <span>Ölçüm Noktası / Pano Adı</span>
+                                    </span>
+                                    <span class="text-xs font-medium text-slate-400">Yazın veya rozete dokunun</span>
+                                </label>
+                                <input type="text" id="pt_name_${pIdx}" autocomplete="off" value="${escapeHtml(p.point || '')}" placeholder="Örn: Ana Dağıtım Panosu (ADP)"
+                                    onfocus="handleLinyeInputFocus(${pIdx}, this)"
+                                    oninput="handleLinyeInputType(${pIdx}, this)"
+                                    onblur="handleLinyeInputBlur(${pIdx})"
+                                    class="w-full min-h-[44px] border border-slate-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 bg-white shadow-2xs">
+
+                                <!-- 100% OPAK ÖNERİLER DROPDOWN -->
+                                <div id="linyeDropdown_${pIdx}"
+                                    onpointerdown="window.__linyeDropdownInteracting = true;"
+                                    ontouchstart="window.__linyeDropdownInteracting = true;"
+                                    onpointerup="setTimeout(() => { window.__linyeDropdownInteracting = false; }, 400);"
+                                    ontouchend="setTimeout(() => { window.__linyeDropdownInteracting = false; }, 400);"
+                                    class="hidden absolute left-0 right-0 top-full mt-1 bg-white border-2 border-sky-600 rounded-xl shadow-2xl z-50 max-h-64 overflow-y-auto overscroll-contain touch-pan-y divide-y divide-slate-100 font-medium text-xs"></div>
+
+                                <!-- HIZLI SEÇİM ÇİPLERİ -->
+                                <div class="flex items-center gap-1.5 mt-2 overflow-x-auto py-1 no-scrollbar">
+                                    ${LinyeMemoryManager.getQuickChips().map(preset => `
+                                        <button type="button" onclick="selectLinyeSuggestion(${pIdx}, '${escapeForJs(preset)}')"
+                                            class="min-h-[38px] px-3 py-1.5 bg-slate-100 hover:bg-sky-100 active:scale-95 text-slate-700 hover:text-sky-800 font-bold text-xs rounded-xl border border-slate-200 shrink-0 transition shadow-2xs">
+                                            + ${escapeHtml(preset)}
                                         </button>
                                     `).join('')}
                                 </div>
                             </div>
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Açma Eğrisi</label>
-                                <select id="pt_curve_${pIdx}" onchange="updateGroundingPointField(${pIdx}, 'curve', this.value);"
-                                    class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold bg-white">
-                                    ${['B', 'C', 'D', 'K', 'Z'].map(c => `<option value="${c}" ${(p.curve || 'C') === c ? 'selected' : ''}>${c}</option>`).join('')}
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-500 mb-0.5">Ia (A) [Oto]</label>
-                                <input type="text" id="pt_ia_${pIdx}" inputmode="decimal" enterkeyhint="next" value="${p.iaAmp || ''}" placeholder=""
-                                    oninput="updateGroundingPointField(${pIdx}, 'iaAmp', this.value);"
-                                    class="w-full border border-slate-200 bg-slate-100/80 rounded-lg px-2 py-1 text-xs font-mono font-semibold text-slate-700">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-bold text-sky-800 mb-0.5 flex items-center justify-between">
-                                    <span>Ik1 (A)</span>
-                                    <span class="text-[9px] text-sky-600 font-mono font-bold">[230/Zx]</span>
+
+                            <!-- HIZLI SİGORTA VE EĞRİ SEÇİCİ (TEK DOKUNUŞ) -->
+                            <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
+                                <label class="block text-xs font-bold text-slate-700 flex items-center justify-between">
+                                    <span class="flex items-center gap-1">
+                                        <i class="fa-solid fa-bolt text-amber-500"></i>
+                                        <span>Hızlı Sigorta Seçimi (MCB)</span>
+                                    </span>
+                                    <span class="text-xs font-mono font-bold text-sky-700">Seçili: ${(p.curve || 'C')}${p.inAmp || '16'}A (Ia: ${p.iaAmp || '160'}A)</span>
                                 </label>
-                                <input type="text" id="pt_ik1_${pIdx}" inputmode="decimal" enterkeyhint="next" value="${p.ik1Amp || ''}" placeholder="Oto"
-                                    oninput="updateGroundingPointField(${pIdx}, 'ik1Amp', this.value);"
-                                    class="w-full border border-sky-300 bg-sky-50/60 rounded-lg px-2 py-1 text-xs font-mono font-bold text-sky-950">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-bold text-sky-700 mb-0.5 flex items-center justify-between">
-                                    <span>Zx / Rx (Ω) [Ölçülen]</span>
-                                    <span class="text-[9px] text-amber-600 font-bold">Empedans</span>
-                                </label>
-                                <input type="text" id="pt_zx_${pIdx}" inputmode="decimal" enterkeyhint="next" value="${p.zxRx || ''}" placeholder="Örn: 0.28"
-                                    oninput="updateGroundingPointField(${pIdx}, 'zxRx', this.value);"
-                                    class="w-full border-2 border-sky-500 rounded-lg px-2 py-1 text-xs font-mono font-bold text-sky-950 bg-white shadow-2xs">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-600 mb-0.5 flex items-center justify-between">
-                                    <span>Zs Sınır (Ω)</span>
-                                    <span class="text-[9px] font-mono font-bold ${isTN ? 'text-amber-700 bg-amber-50 px-1 py-0.5 rounded border border-amber-200' : 'text-sky-700 bg-sky-50 px-1 py-0.5 rounded border border-sky-200'}">[${zsFormulaLabel}]</span>
-                                </label>
-                                <input type="text" id="pt_zs_${pIdx}" inputmode="decimal" enterkeyhint="next" value="${p.zsRa || ''}" placeholder=""
-                                    oninput="updateGroundingPointField(${pIdx}, 'zsRa', this.value);"
-                                    class="w-full border border-slate-200 bg-slate-100/80 rounded-lg px-2 py-1 text-xs font-mono font-semibold text-slate-700 tabular-nums">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-600 mb-0.5">RCD In / IΔn</label>
-                                <input type="text" id="pt_rcdSpec_${pIdx}" value="${p.rcdSpec || ''}" placeholder="Örn: 30mA"
-                                    oninput="updateGroundingPointField(${pIdx}, 'rcdSpec', this.value);"
-                                    class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs bg-white">
-                                <div class="flex items-center gap-1 mt-1">
-                                    <button type="button" onclick="updateGroundingPointField(${pIdx}, 'rcdSpec', '30mA');"
-                                        class="px-1.5 py-0.5 bg-sky-50 hover:bg-sky-100 text-sky-800 rounded text-[9px] font-bold border border-sky-300">30mA</button>
-                                    <button type="button" onclick="updateGroundingPointField(${pIdx}, 'rcdSpec', '300mA');"
-                                        class="px-1.5 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded text-[9px] font-bold border border-amber-300">300mA</button>
+                                <div class="flex items-center gap-1.5 overflow-x-auto py-1 no-scrollbar">
+                                    ${[
+                                        {c: 'B', a: '10'},
+                                        {c: 'B', a: '16'},
+                                        {c: 'C', a: '10'},
+                                        {c: 'C', a: '16'},
+                                        {c: 'C', a: '20'},
+                                        {c: 'C', a: '25'},
+                                        {c: 'C', a: '32'},
+                                        {c: 'C', a: '40'},
+                                        {c: 'C', a: '63'}
+                                    ].map(item => {
+                                        const isSel = (p.curve === item.c && String(p.inAmp) === item.a);
+                                        return `
+                                            <button type="button" onclick="setGroundingPointBreakerPreset(${pIdx}, '${item.c}', '${item.a}')"
+                                                class="min-h-[38px] px-3 py-1.5 rounded-xl font-mono font-bold text-xs shrink-0 border transition active:scale-95 ${isSel ? 'bg-sky-600 text-white border-sky-700 shadow-xs' : 'bg-white hover:bg-slate-100 text-slate-800 border-slate-300'}">
+                                                ${item.c}${item.a}
+                                            </button>
+                                        `;
+                                    }).join('')}
                                 </div>
                             </div>
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-600 mb-0.5">IΔ (mA)</label>
-                                <input type="text" id="pt_rcdId_${pIdx}" inputmode="decimal" enterkeyhint="next" value="${p.rcdId || ''}" placeholder=""
-                                    oninput="updateGroundingPointField(${pIdx}, 'rcdId', this.value);"
-                                    class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs font-mono bg-white">
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-600 mb-0.5">TΔ (ms)</label>
-                                <input type="text" id="pt_rcdTd_${pIdx}" inputmode="decimal" enterkeyhint="next" value="${p.rcdTd || ''}" placeholder=""
-                                    oninput="updateGroundingPointField(${pIdx}, 'rcdTd', this.value);"
-                                    class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs font-mono bg-white">
-                            </div>
-                            <div class="col-span-2 sm:col-span-3">
-                                <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Sonuç (Uygunluk Notu)</label>
-                                <select id="pt_res_${pIdx}" onchange="updateGroundingPointField(${pIdx}, 'result', this.value);"
-                                    class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-slate-900 bg-white">
-                                    <option value="">Seçiniz...</option>
-                                    ${resultOptions.map(opt => `<option value="${opt}" ${(p.result || '') === opt ? 'selected' : ''}>${opt} ${opt === 'Not-1' ? '(Uygun)' : opt === 'Not-4' ? '(RCD Faal, Uygun)' : '(Kusurlu)'}</option>`).join('')}
-                                </select>
+
+                            <!-- PARAMETRELER & HESAPLAMALAR GRID -->
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 mb-1">In (A)</label>
+                                    <input type="text" id="pt_in_${pIdx}" inputmode="decimal" enterkeyhint="next" value="${p.inAmp || ''}" placeholder="16"
+                                        oninput="updateGroundingPointField(${pIdx}, 'inAmp', this.value);"
+                                        class="w-full min-h-[42px] border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 tabular-nums">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 mb-1">Açma Eğrisi</label>
+                                    <select id="pt_curve_${pIdx}" onchange="updateGroundingPointField(${pIdx}, 'curve', this.value);"
+                                        class="w-full min-h-[42px] border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-900 bg-white">
+                                        ${['B', 'C', 'D', 'K', 'Z'].map(c => `<option value="${c}" ${(p.curve || 'C') === c ? 'selected' : ''}>${c} Eğrisi</option>`).join('')}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-600 mb-1 flex items-center justify-between">
+                                        <span>Ia (A)</span>
+                                        <span class="text-xs font-mono text-slate-500 font-bold bg-slate-200/80 px-1.5 py-0.2 rounded">ƒx Oto</span>
+                                    </label>
+                                    <input type="text" id="pt_ia_${pIdx}" inputmode="decimal" enterkeyhint="next" value="${p.iaAmp || ''}" placeholder=""
+                                        oninput="updateGroundingPointField(${pIdx}, 'iaAmp', this.value);"
+                                        class="w-full min-h-[42px] border border-slate-200 bg-slate-100/90 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-800 tabular-nums">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-sky-800 mb-1 flex items-center justify-between">
+                                        <span>Ik1 (A)</span>
+                                        <span class="text-xs font-mono font-bold text-sky-700 bg-sky-100 px-1.5 py-0.2 rounded">ƒx 230/Zx</span>
+                                    </label>
+                                    <input type="text" id="pt_ik1_${pIdx}" inputmode="decimal" enterkeyhint="next" value="${p.ik1Amp || ''}" placeholder="Oto"
+                                        oninput="updateGroundingPointField(${pIdx}, 'ik1Amp', this.value);"
+                                        class="w-full min-h-[42px] border border-sky-300 bg-sky-50/70 rounded-xl px-3 py-2 text-xs font-mono font-bold text-sky-950 tabular-nums">
+                                </div>
+
+                                <!-- Zx / Rx ÖLÇÜLEN (BELİRGİN ODAK) -->
+                                <div>
+                                    <label class="block text-xs font-bold text-sky-900 mb-1 flex items-center justify-between">
+                                        <span>Zx / Rx (Ω)</span>
+                                        <span class="text-xs font-bold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">Ölçülen</span>
+                                    </label>
+                                    <input type="text" id="pt_zx_${pIdx}" inputmode="decimal" enterkeyhint="next" value="${p.zxRx || ''}" placeholder="Örn: 0.28"
+                                        oninput="updateGroundingPointField(${pIdx}, 'zxRx', this.value);"
+                                        class="w-full min-h-[44px] border-2 border-sky-500 rounded-xl px-3 py-2 text-sm font-mono font-black text-sky-950 bg-white shadow-2xs tabular-nums">
+                                </div>
+
+                                <!-- Zs SINIR DEĞERİ -->
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                                        <span>Zs Sınır (Ω)</span>
+                                        <span class="text-xs font-mono font-bold ${isTN ? 'text-amber-800 bg-amber-50 border border-amber-200' : 'text-sky-800 bg-sky-50 border border-sky-200'} px-1.5 py-0.2 rounded">ƒx ${zsFormulaLabel}</span>
+                                    </label>
+                                    <input type="text" id="pt_zs_${pIdx}" inputmode="decimal" enterkeyhint="next" value="${p.zsRa || ''}" placeholder=""
+                                        oninput="updateGroundingPointField(${pIdx}, 'zsRa', this.value);"
+                                        class="w-full min-h-[44px] border border-slate-200 bg-slate-100/90 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-800 tabular-nums">
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 mb-1">RCD In / IΔn</label>
+                                    <input type="text" id="pt_rcdSpec_${pIdx}" value="${p.rcdSpec || ''}" placeholder="Örn: 30mA"
+                                        oninput="updateGroundingPointField(${pIdx}, 'rcdSpec', this.value);"
+                                        class="w-full min-h-[42px] border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold bg-white">
+                                    <div class="flex items-center gap-1.5 mt-1.5">
+                                        <button type="button" onclick="updateGroundingPointField(${pIdx}, 'rcdSpec', '30mA');"
+                                            class="min-h-[36px] px-3 py-1 bg-sky-50 hover:bg-sky-100 text-sky-800 rounded-lg text-xs font-bold border border-sky-300 active:scale-95 transition">30mA</button>
+                                        <button type="button" onclick="updateGroundingPointField(${pIdx}, 'rcdSpec', '300mA');"
+                                            class="min-h-[36px] px-3 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg text-xs font-bold border border-amber-300 active:scale-95 transition">300mA</button>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 mb-1">IΔ (mA)</label>
+                                    <input type="text" id="pt_rcdId_${pIdx}" inputmode="decimal" enterkeyhint="next" value="${p.rcdId || ''}" placeholder="Örn: 22"
+                                        oninput="updateGroundingPointField(${pIdx}, 'rcdId', this.value);"
+                                        class="w-full min-h-[42px] border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold bg-white tabular-nums">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 mb-1">TΔ (ms)</label>
+                                    <input type="text" id="pt_rcdTd_${pIdx}" inputmode="decimal" enterkeyhint="next" value="${p.rcdTd || ''}" placeholder="Örn: 18"
+                                        oninput="updateGroundingPointField(${pIdx}, 'rcdTd', this.value);"
+                                        class="w-full min-h-[42px] border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold bg-white tabular-nums">
+                                </div>
+
+                                <div class="col-span-2 sm:col-span-3">
+                                    <label class="block text-xs font-bold text-slate-700 mb-1">Sonuç (Uygunluk Notu)</label>
+                                    <select id="pt_res_${pIdx}" onchange="updateGroundingPointField(${pIdx}, 'result', this.value);"
+                                        class="w-full min-h-[44px] border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 bg-white shadow-2xs">
+                                        <option value="">Seçiniz...</option>
+                                        ${resultOptions.map(opt => `<option value="${opt}" ${(p.result || '') === opt ? 'selected' : ''}>${opt} ${opt === 'Not-1' ? '(Uygun)' : opt === 'Not-4' ? '(RCD Faal, Uygun)' : '(Kusurlu)'}</option>`).join('')}
+                                    </select>
+                                </div>
                             </div>
                         </div>
+                        `}
                     </div>
-                `).join('')}
+                    `;
+                }).join('')}
             </div>
         </div>
     `;
 
-    // 4.3 RCD Selektivite HTML
+        // 4.3 RCD Selektivite HTML
     const showSelectivity = (activeTab === 3 || activeTab === -1);
     const selectivityHtml = !showSelectivity ? '' : `
         <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
@@ -4995,31 +5144,31 @@ function renderGrounding2202Editor() {
                         </div>
                         <div class="grid grid-cols-2 gap-2">
                             <div class="col-span-2">
-                                <label class="block text-[10px] font-bold text-slate-600 mb-0.5">N Önceki Pano Adı</label>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">N Önceki Pano Adı</label>
                                 <input type="text" value="${s.priorPanel || ''}" placeholder=""
                                     oninput="AppState.currentFormData.grounding.selectivity[${sIdx}].priorPanel=this.value; triggerAutoSave();"
                                     class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs">
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Önceki RCD Tipi</label>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Önceki RCD Tipi</label>
                                 <input type="text" value="${s.priorRcdType || ''}" placeholder=""
                                     oninput="AppState.currentFormData.grounding.selectivity[${sIdx}].priorRcdType=this.value; triggerAutoSave();"
                                     class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs">
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Önceki In (A) / IΔn (mA)</label>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Önceki In (A) / IΔn (mA)</label>
                                 <input type="text" value="${s.priorRcdIn || ''}" placeholder=""
                                     oninput="AppState.currentFormData.grounding.selectivity[${sIdx}].priorRcdIn=this.value; triggerAutoSave();"
                                     class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs">
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Son Tüketim Pano Adı</label>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Son Tüketim Pano Adı</label>
                                 <input type="text" value="${s.destPanel || ''}" placeholder=""
                                     oninput="AppState.currentFormData.grounding.selectivity[${sIdx}].destPanel=this.value; triggerAutoSave();"
                                     class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs">
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Sonuç (Uygunluk Notu)</label>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Sonuç (Uygunluk Notu)</label>
                                 <input type="text" value="${s.result || 'Not-1'}" placeholder=""
                                     oninput="AppState.currentFormData.grounding.selectivity[${sIdx}].result=this.value; triggerAutoSave();"
                                     class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold">
@@ -5057,20 +5206,23 @@ function addGroundingPointRow() {
     if (!gd.points) gd.points = [];
     gd.points.push({
         point: '',
-        inAmp: '',
+        inAmp: '16',
         curve: 'C',
-        iaAmp: '',
+        iaAmp: '160',
         ik1Amp: '',
         zxRx: '',
-        zsRa: '',
+        zsRa: (gd.details && (gd.details.networkType || '').startsWith('TN')) ? '1.44' : '0.31',
         rcdSpec: '',
         rcdId: '',
         rcdTd: '',
         result: ''
     });
+    const newIdx = gd.points.length - 1;
+    if (!AppState.expandedGroundingPoints) AppState.expandedGroundingPoints = {};
+    AppState.expandedGroundingPoints[newIdx] = true;
     triggerAutoSave();
     paintInspectionEditorUI();
-    showToast('Yeni ölçüm noktası eklendi');
+    showToast(`Yeni ölçüm noktası #${newIdx + 1} eklendi`);
 }
 
 function duplicateGroundingPointRow(idx) {
@@ -5078,18 +5230,25 @@ function duplicateGroundingPointRow(idx) {
     if (!gd.points || !gd.points[idx]) return;
     const copy = JSON.parse(JSON.stringify(gd.points[idx]));
     gd.points.push(copy);
+    const newIdx = gd.points.length - 1;
+    if (!AppState.expandedGroundingPoints) AppState.expandedGroundingPoints = {};
+    AppState.expandedGroundingPoints[newIdx] = true;
     triggerAutoSave();
     paintInspectionEditorUI();
-    showToast(`Ölçüm Noktası #${idx + 1} kopyalanıp sona eklendi`);
+    showToast(`Ölçüm Noktası #${idx + 1} kopyalandı ve açıldı`);
 }
 
 function removeGroundingPointRow(idx) {
     const gd = AppState.currentFormData.grounding;
     if (!gd.points || !gd.points[idx]) return;
+    window.__lastDeletedGroundingPoint = {
+        index: idx,
+        point: JSON.parse(JSON.stringify(gd.points[idx]))
+    };
     gd.points.splice(idx, 1);
     triggerAutoSave();
     paintInspectionEditorUI();
-    showToast('Ölçüm noktası silindi');
+    showToast('Ölçüm noktası silindi', 'warning');
 }
 
 function addGroundingSelectivityRow() {
@@ -5275,7 +5434,7 @@ function renderGenerator2205Editor() {
                     <div class="text-[11px] font-black text-rose-700 uppercase tracking-wide mb-2">3. Muayeneye Ait Genel Bilgiler</div>
                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         <div>
-                            <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Muayene Nedeni</label>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Muayene Nedeni</label>
                             <select onchange="AppState.currentFormData.generator.info.reason=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold">
                             <option value="">Seçiniz...</option>
@@ -5283,7 +5442,7 @@ function renderGenerator2205Editor() {
                         </select>
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Hava Durumu</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Hava Durumu</label>
                         <select onchange="AppState.currentFormData.generator.info.weather=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs">
                             <option value="">Seçiniz...</option>
@@ -5291,7 +5450,7 @@ function renderGenerator2205Editor() {
                         </select>
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Toprak Durumu</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Toprak Durumu</label>
                         <select onchange="AppState.currentFormData.generator.info.soilStatus=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs">
                             <option value="">Seçiniz...</option>
@@ -5299,7 +5458,7 @@ function renderGenerator2205Editor() {
                         </select>
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Şebeke Tipi</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Şebeke Tipi</label>
                         <select onchange="AppState.currentFormData.generator.info.networkType=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold">
                             <option value="">Seçiniz...</option>
@@ -5307,7 +5466,7 @@ function renderGenerator2205Editor() {
                         </select>
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Topraklama Tipi</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Topraklama Tipi</label>
                         <select onchange="AppState.currentFormData.generator.info.groundingType=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold">
                             <option value="">Seçiniz...</option>
@@ -5315,7 +5474,7 @@ function renderGenerator2205Editor() {
                         </select>
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Eşpotansiyel Bara</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Eşpotansiyel Bara</label>
                         <select onchange="AppState.currentFormData.generator.info.equipotentialBar=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold">
                             <option value="">Seçiniz...</option>
@@ -5330,31 +5489,31 @@ function renderGenerator2205Editor() {
                 <div class="text-[11px] font-black text-rose-700 uppercase tracking-wide mb-2">3.1. Ekipman Bilgileri</div>
                 <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Marka</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Marka</label>
                         <input type="text" value="${gen.equipment.brand || ''}" placeholder=""
                             oninput="AppState.currentFormData.generator.equipment.brand=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Model</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Model</label>
                         <input type="text" value="${gen.equipment.model || ''}" placeholder=""
                             oninput="AppState.currentFormData.generator.equipment.model=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Seri No</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Seri No</label>
                         <input type="text" value="${gen.equipment.serialNo || ''}" placeholder=""
                             oninput="AppState.currentFormData.generator.equipment.serialNo=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">İmal Yılı</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">İmal Yılı</label>
                         <input type="text" value="${gen.equipment.mfgYear || ''}" placeholder=""
                             oninput="AppState.currentFormData.generator.equipment.mfgYear=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Yakıt</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Yakıt</label>
                         <select onchange="AppState.currentFormData.generator.equipment.fuel=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold">
                             <option value="">Seçiniz...</option>
@@ -5362,7 +5521,7 @@ function renderGenerator2205Editor() {
                         </select>
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Ses İzolasyon</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Ses İzolasyon</label>
                         <select onchange="AppState.currentFormData.generator.equipment.soundInsulation=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold">
                             <option value="">Seçiniz...</option>
@@ -5370,7 +5529,7 @@ function renderGenerator2205Editor() {
                         </select>
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Tip</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Tip</label>
                         <select onchange="AppState.currentFormData.generator.equipment.type=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold">
                             <option value="">Seçiniz...</option>
@@ -5378,19 +5537,19 @@ function renderGenerator2205Editor() {
                         </select>
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Gerilim (V)</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Gerilim (V)</label>
                         <input type="text" value="${gen.equipment.voltage || ''}" placeholder=""
                             oninput="AppState.currentFormData.generator.equipment.voltage=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Güç (kVA)</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Güç (kVA)</label>
                         <input type="text" value="${gen.equipment.power || ''}" placeholder=""
                             oninput="AppState.currentFormData.generator.equipment.power=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Frekans (Hz)</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Frekans (Hz)</label>
                         <input type="text" value="${gen.equipment.frequency || ''}" placeholder=""
                             oninput="AppState.currentFormData.generator.equipment.frequency=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs">
@@ -5474,43 +5633,43 @@ function renderGenerator2205Editor() {
                 <div class="text-[11px] font-black text-rose-700 uppercase tracking-wide">5.1. Potansiyel Ölçümleri (V)</div>
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">L1 – N (V)</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">L1 – N (V)</label>
                         <input type="text" value="${gen.potential.l1_n || ''}" placeholder=""
                             oninput="AppState.currentFormData.generator.potential.l1_n=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">L2 – N (V)</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">L2 – N (V)</label>
                         <input type="text" value="${gen.potential.l2_n || ''}" placeholder=""
                             oninput="AppState.currentFormData.generator.potential.l2_n=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">L3 – N (V)</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">L3 – N (V)</label>
                         <input type="text" value="${gen.potential.l3_n || ''}" placeholder=""
                             oninput="AppState.currentFormData.generator.potential.l3_n=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">L1 – L2 (V)</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">L1 – L2 (V)</label>
                         <input type="text" value="${gen.potential.l1_l2 || ''}" placeholder=""
                             oninput="AppState.currentFormData.generator.potential.l1_l2=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">L1 – L3 (V)</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">L1 – L3 (V)</label>
                         <input type="text" value="${gen.potential.l1_l3 || ''}" placeholder=""
                             oninput="AppState.currentFormData.generator.potential.l1_l3=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">L2 – L3 (V)</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">L2 – L3 (V)</label>
                         <input type="text" value="${gen.potential.l2_l3 || ''}" placeholder=""
                             oninput="AppState.currentFormData.generator.potential.l2_l3=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">N – Pe (V)</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">N – Pe (V)</label>
                         <input type="text" value="${gen.potential.n_pe || ''}" placeholder=""
                             oninput="AppState.currentFormData.generator.potential.n_pe=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-sky-800">
@@ -5523,43 +5682,43 @@ function renderGenerator2205Editor() {
                 <div class="text-[11px] font-black text-rose-700 uppercase tracking-wide">5.2. Aydınlatma, Ses, Topraklama ve Frekans</div>
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Aydınlatma (lux)</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Aydınlatma (lux)</label>
                         <input type="text" value="${gen.measurements.lux || ''}" placeholder=""
                             oninput="AppState.currentFormData.generator.measurements.lux=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">1 mt Ses Seviyesi (dB)</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">1 mt Ses Seviyesi (dB)</label>
                         <input type="text" value="${gen.measurements.db_1m || ''}" placeholder=""
                             oninput="AppState.currentFormData.generator.measurements.db_1m=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">7 mt Ses Seviyesi (dB)</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">7 mt Ses Seviyesi (dB)</label>
                         <input type="text" value="${gen.measurements.db_7m || ''}" placeholder=""
                             oninput="AppState.currentFormData.generator.measurements.db_7m=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Gövde Topraklaması (Ω)</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Gövde Topraklaması (Ω)</label>
                         <input type="text" value="${gen.measurements.ground_r || ''}" placeholder=""
                             oninput="AppState.currentFormData.generator.measurements.ground_r=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-emerald-800">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">L1 Frekans (Hz)</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">L1 Frekans (Hz)</label>
                         <input type="text" value="${gen.measurements.hz_l1 || ''}" placeholder=""
                             oninput="AppState.currentFormData.generator.measurements.hz_l1=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">L2 Frekans (Hz)</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">L2 Frekans (Hz)</label>
                         <input type="text" value="${gen.measurements.hz_l2 || ''}" placeholder=""
                             oninput="AppState.currentFormData.generator.measurements.hz_l2=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">L3 Frekans (Hz)</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">L3 Frekans (Hz)</label>
                         <input type="text" value="${gen.measurements.hz_l3 || ''}" placeholder=""
                             oninput="AppState.currentFormData.generator.measurements.hz_l3=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs">
@@ -5572,37 +5731,37 @@ function renderGenerator2205Editor() {
                 <div class="text-[11px] font-black text-rose-700 uppercase tracking-wide">5.3. Akü Bilgileri ve Ölçümleri</div>
                 <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Akü Markası</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Akü Markası</label>
                         <input type="text" value="${gen.battery.brand || ''}" placeholder=""
                             oninput="AppState.currentFormData.generator.battery.brand=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1 text-xs">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Akü Modeli</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Akü Modeli</label>
                         <input type="text" value="${gen.battery.model || ''}" placeholder=""
                             oninput="AppState.currentFormData.generator.battery.model=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1 text-xs">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Akü Seri No</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Akü Seri No</label>
                         <input type="text" value="${gen.battery.serialNo || ''}" placeholder=""
                             oninput="AppState.currentFormData.generator.battery.serialNo=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1 text-xs">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">İmal Yılı</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">İmal Yılı</label>
                         <input type="text" value="${gen.battery.mfgYear || ''}" placeholder=""
                             oninput="AppState.currentFormData.generator.battery.mfgYear=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1 text-xs">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Redresör Devredeyken (V)</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Redresör Devredeyken (V)</label>
                         <input type="text" value="${gen.battery.v_on || ''}" placeholder=""
                             oninput="AppState.currentFormData.generator.battery.v_on=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-bold text-emerald-700">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Redresör Devre Dışıyken (V)</label>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Redresör Devre Dışıyken (V)</label>
                         <input type="text" value="${gen.battery.v_off || ''}" placeholder=""
                             oninput="AppState.currentFormData.generator.battery.v_off=this.value; triggerAutoSave();"
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-bold text-amber-700">
@@ -6096,11 +6255,6 @@ async function saveCurrentInspection(manualToast = false) {
 
     try {
         localStorage.setItem(`enlab_insp_${insp.id}`, JSON.stringify(fd));
-        if (fd?.grounding?.points && typeof LinyeMemoryManager !== 'undefined') {
-            fd.grounding.points.forEach(p => {
-                if (p.point) LinyeMemoryManager.recordUsage(p.point);
-            });
-        }
     } catch (e) {
         console.warn('LocalStorage kotası uyarısı:', e);
     }
@@ -7712,15 +7866,15 @@ function openBackupManagerModal() {
                 <div class="grid grid-cols-3 gap-2 text-center">
                     <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
                         <div class="text-base font-black text-slate-800">${workOrderCount}</div>
-                        <div class="text-[10px] font-bold text-slate-500">Şirket / Klasör</div>
+                        <div class="text-xs font-bold text-slate-700">Şirket / Klasör</div>
                     </div>
                     <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
                         <div class="text-base font-black text-sky-700">${inspectionCount}</div>
-                        <div class="text-[10px] font-bold text-slate-500">Rapor</div>
+                        <div class="text-xs font-bold text-slate-700">Rapor</div>
                     </div>
                     <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
                         <div class="text-base font-black text-emerald-700">${customDefectCount}</div>
-                        <div class="text-[10px] font-bold text-slate-500">Özel Cümle</div>
+                        <div class="text-xs font-bold text-slate-700">Özel Cümle</div>
                     </div>
                 </div>
 
@@ -9244,4 +9398,9 @@ window.handleLinyeInputType = handleLinyeInputType;
 window.handleLinyeInputBlur = handleLinyeInputBlur;
 window.selectLinyeSuggestion = selectLinyeSuggestion;
 window.updateGroundingNetworkType = updateGroundingNetworkType;
+window.isGroundingPointExpanded = isGroundingPointExpanded;
+window.toggleGroundingPointAccordion = toggleGroundingPointAccordion;
+window.setAllGroundingPointsExpanded = setAllGroundingPointsExpanded;
+window.setGroundingPointBreakerPreset = setGroundingPointBreakerPreset;
+window.undoDeleteGroundingPointRow = undoDeleteGroundingPointRow;
 
