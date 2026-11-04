@@ -1019,6 +1019,31 @@ async function renderWorkOrderDetails(workOrderId) {
                 </button>
             </div>
 
+            <!-- YÖNETİCİ & SAHA İSTATİSTİKLERİ KARTI -->
+            <div class="bg-white rounded-xl border border-slate-200 p-3.5 space-y-3 shadow-2xs">
+                <div class="flex items-center justify-between">
+                    <span class="font-bold text-xs text-slate-800 flex items-center gap-1.5">
+                        <i class="fa-solid fa-chart-column text-sky-600"></i>
+                        <span>İş Özeti & Durum Göstergesi</span>
+                    </span>
+                    <span class="text-[11px] text-slate-500 font-mono">📅 1 Yıl Geçerli</span>
+                </div>
+                <div class="grid grid-cols-3 gap-2 text-center">
+                    <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                        <div class="text-base font-black text-slate-900">${inspections.length}</div>
+                        <div class="text-[10px] font-bold text-slate-500">Toplam Rapor</div>
+                    </div>
+                    <div class="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl">
+                        <div class="text-base font-black text-emerald-700">${inspections.filter(i => (i.result_status || 'UYGUN') === 'UYGUN').length}</div>
+                        <div class="text-[10px] font-bold text-emerald-800">Uygun Rapor</div>
+                    </div>
+                    <div class="p-2.5 bg-rose-50 border border-rose-200 rounded-xl">
+                        <div class="text-base font-black text-rose-700">${inspections.filter(i => i.result_status === 'UYGUN DEĞİL').length}</div>
+                        <div class="text-[10px] font-bold text-rose-800">Kusurlu Rapor</div>
+                    </div>
+                </div>
+            </div>
+
             <!-- NOT DEFTERİ -->
             <div class="bg-white rounded-xl border border-slate-200 p-3.5 space-y-2">
                 <div class="flex items-center justify-between">
@@ -1090,6 +1115,11 @@ function renderWoInspectionRows(list, workOrderId) {
                 <button onclick="navigateTo('inspection-complete', {id: '${item.id}', templateId: '${item.template_id}'})"
                     class="px-3 py-2 bg-sky-600 active:bg-sky-700 text-white font-bold rounded-lg text-xs">
                     Doldur
+                </button>
+                <button onclick="cloneInspectionReport('${item.id}', '${workOrderId}')"
+                    class="px-2.5 py-2 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold rounded-lg text-xs flex items-center gap-1" title="Bu Raporu Klonla (Tüm Satırlarıyla Kopyala)">
+                    <i class="fa-solid fa-clone text-sky-600"></i>
+                    <span class="hidden sm:inline">Klonla</span>
                 </button>
                 <button onclick="quickPreviewReportFromList('${item.id}')"
                     class="px-3 py-2 bg-slate-900 active:bg-slate-800 text-amber-400 font-bold rounded-lg text-xs flex items-center gap-1">
@@ -2316,9 +2346,15 @@ function renderSharedCompanyInfoSection() {
 
     return `
         <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
-            <div class="px-3.5 py-2.5 bg-slate-800 text-white font-bold text-xs flex items-center justify-between">
+            <div class="px-3.5 py-2.5 bg-slate-800 text-white font-bold text-xs flex items-center justify-between gap-2">
                 <span>1. Firma ve Rapor Bilgileri</span>
-                <span class="text-[11px] text-slate-300 font-mono">${escapeHtml(ci.reportNo || insp.report_no || '')}</span>
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="syncCompanyAndDevicesToAllReports()" class="px-2.5 py-1 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white font-bold text-[11px] rounded-lg flex items-center gap-1 shadow-2xs" title="Bu firma ve ölçüm aleti bilgilerini bu işteki tüm diğer raporlara otomatik kopyalar">
+                        <i class="fa-solid fa-arrows-rotate"></i>
+                        <span>Diğer Raporlara Dağıt</span>
+                    </button>
+                    <span class="text-[11px] text-slate-300 font-mono hidden sm:inline">${escapeHtml(ci.reportNo || insp.report_no || '')}</span>
+                </div>
             </div>
             <div class="p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
                 <div class="sm:col-span-2">
@@ -2558,6 +2594,17 @@ function renderElectrical2201AreaBlock(area, secNum) {
                 <span class="truncate">${secNum}. ${area.name}</span>
                 ${area.index === 2 ? `<button onclick="markAllVisualChecksSuitable()" class="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-[11px] shrink-0">Boş Kalanları Uygun Yap</button>` : ''}
             </div>
+            ${area.index === 2 ? `
+                <div class="p-2.5 bg-slate-100 border-b border-slate-200">
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                        <input type="text" id="visualCheckSearchInput" value="${escapeHtml(AppState.visualSearchQuery || '')}"
+                            oninput="AppState.visualSearchQuery=this.value; filterVisualCheckQuestionsLive(this.value);"
+                            placeholder="🔍 Maddelerde ara (Örn: klemens, kablo, etiket, yangın, priz)..."
+                            class="w-full bg-white border border-slate-300 rounded-lg pl-8 pr-3 py-1.5 text-xs font-semibold focus:border-sky-500 focus:outline-none">
+                    </div>
+                </div>
+            ` : ''}
             <div class="p-3 space-y-4">
                 ${area.topics.map(topic => renderElectrical2201Topic(area, topic, secNum)).join('')}
             </div>
@@ -3197,6 +3244,48 @@ function compressImage(file, maxDimension = 1280, quality = 0.78) {
                 ctx.imageSmoothingEnabled = true;
                 ctx.imageSmoothingQuality = 'medium';
                 ctx.drawImage(img, 0, 0, width, height);
+
+                // --- 2.1 AKREDİTE SAHA KANIT DAMGASI (WATERMARK) ---
+                try {
+                    const insp = AppState.currentInspection;
+                    const now = new Date();
+                    const pad = (n) => String(n).padStart(2, '0');
+                    const dateStr = `${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+                    const compName = (insp?.customer_name || 'ENLAB Denetim').slice(0, 32);
+                    const repNo = insp?.report_no || 'TKM-RAPOR';
+                    const equipName = (insp?.equipment_name || 'Saha Periyodik Kontrol').slice(0, 36);
+
+                    const fontSize = Math.max(15, Math.round(width / 44));
+                    const padPx = Math.round(fontSize * 0.75);
+                    const barH = fontSize * 2.5 + padPx * 2;
+
+                    // Semi-transparent slate-950 bottom banner
+                    ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
+                    ctx.fillRect(0, height - barH, width, barH);
+
+                    // Amber top accent line
+                    ctx.fillStyle = '#f59e0b';
+                    ctx.fillRect(0, height - barH, width, Math.max(3, Math.round(width / 360)));
+
+                    ctx.textBaseline = 'top';
+                    ctx.textAlign = 'left';
+
+                    // Line 1: Date & Report No
+                    ctx.font = `bold ${fontSize}px sans-serif`;
+                    ctx.fillStyle = '#38bdf8'; // Sky blue
+                    ctx.fillText(`📅 ${dateStr}`, padPx, height - barH + padPx);
+
+                    ctx.fillStyle = '#fbbf24'; // Amber
+                    ctx.fillText(`📑 Rapor: ${repNo}`, padPx + Math.round(width * 0.42), height - barH + padPx);
+
+                    // Line 2: Company & Equipment
+                    ctx.font = `600 ${Math.round(fontSize * 0.88)}px sans-serif`;
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillText(`🏢 ${compName}  |  ⚡ ${equipName}`, padPx, height - barH + padPx + fontSize * 1.3);
+                } catch (wmErr) {
+                    console.warn('Watermark hatası (yoksayıldı):', wmErr);
+                }
+
                 const dataUrl = canvas.toDataURL('image/jpeg', quality);
 
                 // RAM Koruması: Canvas ve Image hafızasını GPU/RAM'den anında boşalt
@@ -4188,10 +4277,16 @@ function renderGrounding2202Editor() {
         <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
             <div class="px-3.5 py-2.5 bg-slate-800 text-white font-bold text-xs flex items-center justify-between">
                 <span>4.2. Son Tüketim Noktalarında Dolaylı Dokunmaya Karşı Koruma Yeterliliği (${gd.points.length})</span>
-                <button onclick="addGroundingPointRow()" class="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1">
-                    <i class="fa-solid fa-plus"></i>
-                    <span>Nokta Ekle</span>
-                </button>
+                <div class="flex items-center gap-1.5">
+                    <button onclick="openBatchRowGeneratorModal()" class="px-2.5 py-1 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow-2xs">
+                        <i class="fa-solid fa-layer-group"></i>
+                        <span>+ Toplu Satır Üret</span>
+                    </button>
+                    <button onclick="addGroundingPointRow()" class="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Nokta Ekle</span>
+                    </button>
+                </div>
             </div>
             <div class="p-3 space-y-3">
                 ${gd.points.length === 0 ? `
@@ -4215,66 +4310,83 @@ function renderGrounding2202Editor() {
                         </div>
 
                         <div>
-                            <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Ölçüm Noktası / Etiket veya Kodu</label>
-                            <input type="text" value="${p.point || ''}" placeholder=""
+                            <label class="block text-[10px] font-bold text-slate-700 mb-0.5 flex items-center justify-between">
+                                <span>Ölçüm Noktası / Pano Adı</span>
+                                <span class="text-[9px] text-slate-400 font-normal">Önerilen isimlerden seçebilirsiniz</span>
+                            </label>
+                            <input type="text" list="commonPanelNames" value="${p.point || ''}" placeholder="Örn: Ana Dağıtım Panosu (ADP)"
                                 oninput="AppState.currentFormData.grounding.points[${pIdx}].point=this.value; triggerAutoSave();"
-                                class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold">
+                                class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-900 bg-white">
                         </div>
 
                         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-600 mb-0.5">In (A)</label>
-                                <input type="text" inputmode="decimal" enterkeyhint="next" value="${p.inAmp || ''}" placeholder="Örn: 16"
-                                    oninput="AppState.currentFormData.grounding.points[${pIdx}].inAmp=this.value; triggerAutoSave();"
+                                <input type="text" inputmode="decimal" enterkeyhint="next" value="${p.inAmp || ''}" placeholder="16"
+                                    oninput="updateGroundingPointField(${pIdx}, 'inAmp', this.value);"
                                     class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs font-mono font-semibold">
+                                <div class="flex items-center gap-1 mt-1 overflow-x-auto py-0.5">
+                                    ${['10', '16', '20', '25', '32', '40', '63'].map(v => `
+                                        <button type="button" onclick="setGroundingPointPresetIn(${pIdx}, '${v}')"
+                                            class="px-1 py-0.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-800 rounded text-[9px] font-mono font-bold border border-slate-200">
+                                            ${v}A
+                                        </button>
+                                    `).join('')}
+                                </div>
                             </div>
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Açma Eğrisi</label>
-                                <select onchange="AppState.currentFormData.grounding.points[${pIdx}].curve=this.value; triggerAutoSave();"
+                                <select onchange="updateGroundingPointField(${pIdx}, 'curve', this.value);"
                                     class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold">
                                     ${['B', 'C', 'D', 'K', 'Z'].map(c => `<option value="${c}" ${(p.curve || 'C') === c ? 'selected' : ''}>${c}</option>`).join('')}
                                 </select>
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Ia (A)</label>
+                                <label class="block text-[10px] font-bold text-slate-500 mb-0.5">Ia (A) [Oto]</label>
                                 <input type="text" inputmode="decimal" enterkeyhint="next" value="${p.iaAmp || ''}" placeholder=""
-                                    oninput="AppState.currentFormData.grounding.points[${pIdx}].iaAmp=this.value; triggerAutoSave();"
-                                    class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs font-mono">
+                                    oninput="updateGroundingPointField(${pIdx}, 'iaAmp', this.value);"
+                                    class="w-full border border-slate-200 bg-slate-50 rounded-lg px-2 py-1 text-xs font-mono">
                             </div>
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Ik1 (A)</label>
                                 <input type="text" inputmode="decimal" enterkeyhint="next" value="${p.ik1Amp || ''}" placeholder=""
-                                    oninput="AppState.currentFormData.grounding.points[${pIdx}].ik1Amp=this.value; triggerAutoSave();"
+                                    oninput="updateGroundingPointField(${pIdx}, 'ik1Amp', this.value);"
                                     class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs font-mono">
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold text-sky-700 mb-0.5">Zx / Rx (Ω)</label>
-                                <input type="text" inputmode="decimal" enterkeyhint="next" value="${p.zxRx || ''}" placeholder="Örn: 0.42"
-                                    oninput="AppState.currentFormData.grounding.points[${pIdx}].zxRx=this.value; triggerAutoSave();"
+                                <label class="block text-[10px] font-bold text-sky-700 mb-0.5">Zx / Rx (Ω) [Ölçülen]</label>
+                                <input type="text" inputmode="decimal" enterkeyhint="next" value="${p.zxRx || ''}" placeholder="Örn: 0.28"
+                                    oninput="updateGroundingPointField(${pIdx}, 'zxRx', this.value);"
                                     class="w-full border-2 border-sky-400 rounded-lg px-2 py-1 text-xs font-mono font-bold text-sky-950 bg-sky-50/50">
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Zs / RA (Ω)</label>
+                                <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Zs Sınır (Ω) [50/Ia]</label>
                                 <input type="text" inputmode="decimal" enterkeyhint="next" value="${p.zsRa || ''}" placeholder=""
-                                    oninput="AppState.currentFormData.grounding.points[${pIdx}].zsRa=this.value; triggerAutoSave();"
-                                    class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs font-mono">
+                                    oninput="updateGroundingPointField(${pIdx}, 'zsRa', this.value);"
+                                    class="w-full border border-slate-200 bg-slate-50 rounded-lg px-2 py-1 text-xs font-mono font-semibold text-slate-700">
                             </div>
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-600 mb-0.5">RCD In / IΔn</label>
                                 <input type="text" value="${p.rcdSpec || ''}" placeholder="Örn: 30mA"
-                                    oninput="AppState.currentFormData.grounding.points[${pIdx}].rcdSpec=this.value; triggerAutoSave();"
+                                    oninput="updateGroundingPointField(${pIdx}, 'rcdSpec', this.value);"
                                     class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs">
+                                <div class="flex items-center gap-1 mt-1">
+                                    <button type="button" onclick="updateGroundingPointField(${pIdx}, 'rcdSpec', '30mA'); paintInspectionEditorUI();"
+                                        class="px-1.5 py-0.5 bg-sky-50 text-sky-800 rounded text-[9px] font-bold border border-sky-300">30mA</button>
+                                    <button type="button" onclick="updateGroundingPointField(${pIdx}, 'rcdSpec', '300mA'); paintInspectionEditorUI();"
+                                        class="px-1.5 py-0.5 bg-amber-50 text-amber-800 rounded text-[9px] font-bold border border-amber-300">300mA</button>
+                                </div>
                             </div>
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-600 mb-0.5">IΔ (mA)</label>
                                 <input type="text" inputmode="decimal" enterkeyhint="next" value="${p.rcdId || ''}" placeholder=""
-                                    oninput="AppState.currentFormData.grounding.points[${pIdx}].rcdId=this.value; triggerAutoSave();"
+                                    oninput="updateGroundingPointField(${pIdx}, 'rcdId', this.value);"
                                     class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs font-mono">
                             </div>
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-600 mb-0.5">TΔ (ms)</label>
                                 <input type="text" inputmode="decimal" enterkeyhint="next" value="${p.rcdTd || ''}" placeholder=""
-                                    oninput="AppState.currentFormData.grounding.points[${pIdx}].rcdTd=this.value; triggerAutoSave();"
+                                    oninput="updateGroundingPointField(${pIdx}, 'rcdTd', this.value);"
                                     class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs font-mono">
                             </div>
                             <div class="col-span-2 sm:col-span-3">
@@ -7445,3 +7557,252 @@ window.triggerQuickCameraCapture = triggerQuickCameraCapture;
 window.openTabNavSheet = openTabNavSheet;
 
 window.previewA4ReportModal = printOfficialReport;
+
+
+// ============================================================================
+// 13. SAHA SÜPER PAKET FONKSİYONLARI (OTOMASYON, KLONLAMA, SENKRONİZASYON)
+// ============================================================================
+
+// --- 13.1 TOPRAKLAMA OTOMATİK DOKUNMA GERİLİMİ HESAPLAYICI (Zs x Ia <= 50V) ---
+function updateGroundingPointField(pIdx, field, val) {
+    const gd = AppState.currentFormData.grounding;
+    if (!gd || !gd.points || !gd.points[pIdx]) return;
+    const p = gd.points[pIdx];
+    p[field] = val;
+
+    if (field === 'inAmp' || field === 'curve' || field === 'zxRx') {
+        const inNum = parseFloat(String(p.inAmp || '').replace(',', '.'));
+        const curve = (p.curve || 'C').toUpperCase();
+
+        if (!isNaN(inNum) && inNum > 0) {
+            let mult = 10;
+            if (curve === 'B') mult = 5;
+            else if (curve === 'C') mult = 10;
+            else if (curve === 'D') mult = 20;
+            else if (curve === 'K') mult = 14;
+            else if (curve === 'Z') mult = 3;
+
+            const ia = inNum * mult;
+            p.iaAmp = String(ia);
+
+            // Dokunma Gerilimi Sınır Empedansı: Zs(limit) = 50V / Ia
+            const zsLimit = parseFloat((50 / ia).toFixed(2));
+            p.zsRa = String(zsLimit);
+
+            // Ölçülen Zx girilmişse uygunluk sonucunu otomatik belirle
+            if (p.zxRx) {
+                const zx = parseFloat(String(p.zxRx).replace(',', '.'));
+                if (!isNaN(zx)) {
+                    if (zx <= zsLimit) {
+                        p.result = 'Not-1'; // Uygun
+                    } else {
+                        p.result = 'Not-2'; // Güvenlik şartı sağlanamadığından uygun değildir (Ağır kusur)
+                    }
+                }
+            }
+        }
+    }
+
+    triggerAutoSave();
+}
+
+function setGroundingPointPresetIn(pIdx, inVal) {
+    updateGroundingPointField(pIdx, 'inAmp', inVal);
+    paintInspectionEditorUI();
+}
+
+// --- 13.2 SERİ SATIR ÇOĞALTICI (BATCH ROW GENERATOR) ---
+function openBatchRowGeneratorModal() {
+    openModal(
+        '<i class="fa-solid fa-layer-group mr-2 text-sky-500"></i>Toplu Ölçüm Satırı Üretici',
+        `
+        <div class="space-y-3.5 text-xs">
+            <p class="text-slate-600 leading-relaxed">
+                Tek tıkla ardışık numaralandırılmış hazır ölçüm noktaları üretir ve formül hesaplamalarını otomatik uygular.
+            </p>
+            <div class="grid grid-cols-2 gap-2.5">
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">Satır Sayısı</label>
+                    <select id="batchRowCountInput" class="w-full border border-slate-300 rounded-lg p-2 font-bold text-xs bg-white">
+                        <option value="5">5 Adet Satır</option>
+                        <option value="10" selected>10 Adet Satır</option>
+                        <option value="15">15 Adet Satır</option>
+                        <option value="20">20 Adet Satır</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">Pano / Linye Ön Adı</label>
+                    <input type="text" id="batchPrefixInput" value="Linye" placeholder="Örn: Linye, Pano, Priz"
+                        class="w-full border border-slate-300 rounded-lg p-2 font-bold text-xs bg-white">
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2.5">
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">Varsayılan Sigorta (In)</label>
+                    <select id="batchDefaultInInput" class="w-full border border-slate-300 rounded-lg p-2 font-bold text-xs bg-white">
+                        <option value="10">10 A</option>
+                        <option value="16" selected>16 A</option>
+                        <option value="20">20 A</option>
+                        <option value="25">25 A</option>
+                        <option value="32">32 A</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">Açma Eğrisi</label>
+                    <select id="batchDefaultCurveInput" class="w-full border border-slate-300 rounded-lg p-2 font-bold text-xs bg-white">
+                        <option value="B">B Tipi</option>
+                        <option value="C" selected>C Tipi</option>
+                        <option value="D">D Tipi</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        `,
+        `
+        <button onclick="closeModal()" class="px-3 py-2 bg-slate-200 text-slate-800 font-bold text-xs rounded-lg">İptal</button>
+        <button onclick="submitBatchRowGenerator()" class="px-4 py-2 bg-sky-600 text-white font-bold text-xs rounded-lg active:scale-95 shadow-sm">
+            <i class="fa-solid fa-plus mr-1"></i>Satırları Üret
+        </button>
+        `
+    );
+}
+
+function submitBatchRowGenerator() {
+    const count = parseInt(document.getElementById('batchRowCountInput')?.value || '10', 10);
+    const prefix = document.getElementById('batchPrefixInput')?.value || 'Linye';
+    const defIn = document.getElementById('batchDefaultInInput')?.value || '16';
+    const defCurve = document.getElementById('batchDefaultCurveInput')?.value || 'C';
+
+    const gd = AppState.currentFormData.grounding;
+    if (!gd.points) gd.points = [];
+
+    const startNum = gd.points.length + 1;
+    const inNum = parseFloat(defIn);
+    let mult = defCurve === 'B' ? 5 : defCurve === 'C' ? 10 : 20;
+    const ia = inNum * mult;
+    const zsLimit = parseFloat((50 / ia).toFixed(2));
+
+    for (let i = 0; i < count; i++) {
+        gd.points.push({
+            point: `${prefix} ${startNum + i}`,
+            inAmp: defIn,
+            curve: defCurve,
+            iaAmp: String(ia),
+            ik1Amp: '',
+            zxRx: '',
+            zsRa: String(zsLimit),
+            rcdSpec: '',
+            rcdId: '',
+            rcdTd: '',
+            result: ''
+        });
+    }
+
+    triggerAutoSave();
+    closeModal();
+    paintInspectionEditorUI();
+    showToast(`${count} adet yeni ölçüm satırı otomatik formüllerle üretildi!`);
+}
+
+// --- 13.3 ORTAK FİRMA VE CİHAZ SENKRONİZASYONU ---
+function syncCompanyAndDevicesToAllReports() {
+    const currentInsp = AppState.currentInspection;
+    if (!currentInsp) return;
+    const currentFd = AppState.currentFormData;
+    if (!currentFd || !currentFd.companyInfo) return;
+
+    OfflineDB.init();
+    const woId = currentInsp.work_order_id;
+    const targetInspections = (OfflineDB.state.inspections || []).filter(i => String(i.work_order_id) === String(woId));
+
+    let updatedCount = 0;
+    targetInspections.forEach(other => {
+        if (String(other.id) !== String(currentInsp.id)) {
+            const rawKey = `enlab_insp_${other.id}`;
+            let otherFd = null;
+            try {
+                const stored = localStorage.getItem(rawKey);
+                if (stored) otherFd = JSON.parse(stored);
+            } catch (e) {}
+
+            if (!otherFd) otherFd = {};
+            if (!otherFd.companyInfo) otherFd.companyInfo = {};
+
+            // Clone company info
+            otherFd.companyInfo.firmName = currentFd.companyInfo.firmName;
+            otherFd.companyInfo.address = currentFd.companyInfo.address;
+            otherFd.companyInfo.sgkSicilNo = currentFd.companyInfo.sgkSicilNo;
+            otherFd.companyInfo.isgKatipNo = currentFd.companyInfo.isgKatipNo;
+            otherFd.companyInfo.inspectionDate = currentFd.companyInfo.inspectionDate;
+            otherFd.companyInfo.nextDate = currentFd.companyInfo.nextDate;
+
+            // Clone measuring devices if available
+            if (currentFd.measuringDevices && currentFd.measuringDevices.length > 0) {
+                otherFd.measuringDevices = JSON.parse(JSON.stringify(currentFd.measuringDevices));
+            }
+
+            try {
+                localStorage.setItem(rawKey, JSON.stringify(otherFd));
+                updatedCount++;
+            } catch (e) {}
+        }
+    });
+
+    OfflineDB.save();
+    showToast(`Firma ve cihaz bilgileri bu işteki diğer ${updatedCount} rapora başarıyla aktarıldı!`);
+}
+
+// --- 13.4 GEÇMİŞ RAPORU KLONLAMA ---
+function cloneInspectionReport(sourceId, workOrderId) {
+    if (!confirm('Bu raporu tüm ölçüm satırları ve ayarlarıyla klonlamak istediğinize emin misiniz?')) return;
+
+    OfflineDB.init();
+    const sourceInsp = (OfflineDB.state.inspections || []).find(i => String(i.id) === String(sourceId));
+    if (!sourceInsp) return showToast('Kaynak rapor bulunamadı', 'error');
+
+    const newId = String(Date.now() + Math.floor(Math.random() * 1000));
+    const clonedInsp = JSON.parse(JSON.stringify(sourceInsp));
+    clonedInsp.id = newId;
+    clonedInsp.equipment_name = (clonedInsp.equipment_name || 'Rapor') + ' (Kopya)';
+    clonedInsp.report_no = `TKM-26-02-${newId.slice(-5)}`;
+
+    // Clone localStorage data
+    try {
+        const rawSource = localStorage.getItem(`enlab_insp_${sourceId}`);
+        if (rawSource) {
+            localStorage.setItem(`enlab_insp_${newId}`, rawSource);
+        }
+    } catch (e) {}
+
+    OfflineDB.state.inspections.push(clonedInsp);
+    OfflineDB.save();
+
+    renderWorkOrderDetails(workOrderId);
+    showToast('Rapor başarıyla klonlandı!');
+}
+
+// --- 13.5 GÖZLE KONTROL CANLI MADDE ARAMA ---
+function filterVisualCheckQuestionsLive(query) {
+    const qTrim = (query || '').toLowerCase().trim();
+    const rows = document.querySelectorAll('#pageContent .space-y-4 > div, #pageContent .space-y-2 > div');
+    rows.forEach(r => {
+        if (!qTrim) {
+            r.style.display = '';
+            return;
+        }
+        const text = r.textContent.toLowerCase();
+        if (text.includes(qTrim)) {
+            r.style.display = '';
+        } else {
+            r.style.display = 'none';
+        }
+    });
+}
+
+window.updateGroundingPointField = updateGroundingPointField;
+window.setGroundingPointPresetIn = setGroundingPointPresetIn;
+window.openBatchRowGeneratorModal = openBatchRowGeneratorModal;
+window.submitBatchRowGenerator = submitBatchRowGenerator;
+window.syncCompanyAndDevicesToAllReports = syncCompanyAndDevicesToAllReports;
+window.cloneInspectionReport = cloneInspectionReport;
+window.filterVisualCheckQuestionsLive = filterVisualCheckQuestionsLive;
