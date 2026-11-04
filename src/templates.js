@@ -1,5 +1,12 @@
-// All Official TKM / ENLAB Report Templates & Specific Engineering Schemas
+// AKTİF RAPOR ŞABLONLARI: Sadece Elektrik İç Tesisat, Topraklama ve Jeneratör
 window.ENLAB_REPORT_TEMPLATES = [
+    { id: "2201", code: "TKM-FR.318", category: "Elektriksel", name: "ELEKTRİK İÇ TESİSATI GÖZLE KONTROL VE TESTLERİ" },
+    { id: "2202", code: "TKM-FR.317", category: "Elektriksel", name: "ALÇAK GERİLİM TOPRAKLAMA TESİSATI" },
+    { id: "2205", code: "TKM-FR.164", category: "Elektriksel", name: "JENERATÖR PERİYODİK KONTROLÜ" }
+];
+
+// İleride açılacak diğer şablonların güvenli yedeği:
+window.ENLAB_ALL_REPORT_TEMPLATES_BACKUP = [
     { id: "2201", code: "TKM-FR.318", category: "Elektriksel", name: "ELEKTRİK İÇ TESİSATI GÖZLE KONTROL VE FONKSİYON TESTLERİ" },
     { id: "2202", code: "TKM-FR.317", category: "Elektriksel", name: "ALÇAK GERİLİM TOPRAKLAMA TESİSATI" },
     { id: "2074", code: "TKM-FR.320", category: "Elektriksel", name: "YILDIRIMDAN KORUNMA TESİSATI (PARATONER)" },
@@ -29,6 +36,47 @@ window.ENLAB_REPORT_TEMPLATES = [
     { id: "2140", code: "TKM-FR.122", category: "Kaldırma İletme", name: "VİNÇ / CARASKAL" },
     { id: "2035", code: "TKM-FR.125", category: "Kaldırma İletme", name: "YÜKSELTİLEBİLEN SEYYAR İŞ PLATFORMU" },
     { id: "1737", code: "TKM-FR.160", category: "Makina", name: "MAKİNA / TEZGAH GÜVENLİĞİ" }
+];
+
+// STANDART VE ÖZELLEŞTİRİLEBİLİR UYGUNSUZLUK KÜTÜPHANESİ
+window.DEFAULT_NON_CONFORMITY_LIBRARY = [
+    // --- ELEKTRİK İÇ TESİSATI & PANO (TKM-FR.318) ---
+    { id: "def_1", category: "İç Tesisat", text: "Pano içerisinde doğrudan dokunmaya karşı şeffaf pleksi / koruyucu iç kapak bulunmamaktadır (TS HD 60364-4-41)." },
+    { id: "def_2", category: "İç Tesisat", text: "Pano metal kapağı ile gövde arasında min. 6 mm² esnek sarı-yeşil topraklama köprüsü bulunmamaktadır." },
+    { id: "def_3", category: "İç Tesisat", text: "Pano önünde TS EN 61111 standardına uygun dielektrik yalıtkan paspas (izolasyon halısı) bulunmamaktadır." },
+    { id: "def_4", category: "İç Tesisat", text: "Kaçak akım koruma rölesi (RCD 30mA / 300mA) bulunmamaktadır veya test açması yapmamaktadır." },
+    { id: "def_5", category: "İç Tesisat", text: "Pano içerisindeki şalter, sigorta ve klemenslerin beslediği linyeleri belirten etiketlemeler eksiktir." },
+    { id: "def_6", category: "İç Tesisat", text: "Pano dış kapağında standart ölüm tehlikesi / elektrik uyarı levhası bulunmamaktadır." },
+    { id: "def_7", category: "İç Tesisat", text: "Pano içerisinde güncel onaylı tek hat şeması ve işletme talimatı bulunmamaktadır." },
+    { id: "def_8", category: "İç Tesisat", text: "Pano kablo giriş ve çıkışlarında rakor / mekanik koruyucu elemanlar eksiktir." },
+    { id: "def_9", category: "İç Tesisat", text: "Nötr (Mavi) ve Koruma/Toprak (Sarı-Yeşil) iletkenlerinde standart renk kodlamasına uyulmamıştır." },
+    { id: "def_10", category: "İç Tesisat", text: "Pano önünde ve çevresinde müdahaleyi engelleyen veya yangın riski oluşturan yabancı malzemeler bulunmaktadır." },
+    { id: "def_11", category: "İç Tesisat", text: "Termal kamera incelemesinde klemens/şalter bağlantı noktasında kontak gevşekliği kaynaklı aşırı ısınma tespit edilmiştir." },
+    { id: "def_12", category: "İç Tesisat", text: "Termal kamera incelemesinde PVC yalıtımlı iletkenlerde 70°C sınır değerinin üzerinde aşırı yük ısınması tespit edilmiştir." },
+    { id: "def_13", category: "İç Tesisat", text: "Pano gövdesi zemine veya duvara devrilmeye ve depreme karşı rijit şekilde sabitlenmemiştir." },
+    { id: "def_14", category: "İç Tesisat", text: "Pano içerisinde toz, örümcek ağı ve yabancı partikül birikimi mevcut olup temizlik ve bakım yapılmalıdır." },
+    { id: "def_15", category: "İç Tesisat", text: "Pano kapak kilit mekanizması işlevsizdir veya yetkisiz erişime açık durumdadır." },
+
+    // --- ALÇAK GERİLİM TOPRAKLAMA TESİSATI (TKM-FR.317) ---
+    { id: "def_16", category: "Topraklama", text: "Ölçülen topraklama geçiş direnci değeri ilgili standart ve yönetmelik sınır değerinin üzerindedir (Rx > Ra)." },
+    { id: "def_17", category: "Topraklama", text: "Ana potansiyel (eşpotansiyel) dengeleme barası ve ana topraklama iletken bağlantısı tesis edilmemiştir." },
+    { id: "def_18", category: "Topraklama", text: "Koruma topraklaması iletken kesiti faz kesitine göre yetersizdir." },
+    { id: "def_19", category: "Topraklama", text: "Tesisatta dolaylı dokunmaya karşı koruma sağlayan Kaçak Akım Koruma Rölesi (RCD) tesis edilmemiştir." },
+    { id: "def_20", category: "Topraklama", text: "Topraklama ölçüm klemenslerinde (test ayırma noktalarında) korozyon / gevşeklik tespit edilmiştir." },
+    { id: "def_21", category: "Topraklama", text: "Binadaki metal su/doğalgaz ana boru hatları ve yapı çelik konstrüksiyonu eşpotansiyel baraya irtibatlandırılmamıştır." },
+    { id: "def_22", category: "Topraklama", text: "Son kullanıcı priz ve gövde koruma iletkenlerinde süreklilik kopukluğu tespit edilmiştir." },
+    { id: "def_23", category: "Topraklama", text: "Topraklama elektrot muayene ve test bacaları ulaşılamaz durumdadır / kapatılmıştır." },
+
+    // --- JENERATÖR PERİYODİK KONTROLÜ (TKM-FR.164) ---
+    { id: "def_24", category: "Jeneratör", text: "Jeneratör gövde ve nötr topraklaması ayrı ayrı yapılmamıştır veya topraklama iletken kesiti yetersizdir." },
+    { id: "def_25", category: "Jeneratör", text: "Jeneratör egzoz borusunda personeli yanmaya karşı koruyacak ısı yalıtımı / izolasyon kaplaması eksiktir." },
+    { id: "def_26", category: "Jeneratör", text: "Şebeke - Jeneratör transfer panosu (ATS) elektriksel ve mekanik kilitlemesi işlevsizdir / bulunmamaktadır." },
+    { id: "def_27", category: "Jeneratör", text: "Jeneratör yakıt tankı havalandırma borusu açık havaya tahliye edilmemiştir ve yakıt taşma tavası yoktur." },
+    { id: "def_28", category: "Jeneratör", text: "Jeneratör dairesinde acil durum durdurma (Acil Stop) butonu bulunmamaktadır veya işlevsizdir." },
+    { id: "def_29", category: "Jeneratör", text: "Starter akü kutup başlarında korozyon / sülfatlaşma mevcuttur ve akü koruyucu kapağı eksiktir." },
+    { id: "def_30", category: "Jeneratör", text: "Jeneratör odası otomatik hava giriş ve egzoz panjurları devreye girmemektedir / havalandırma yetersizdir." },
+    { id: "def_31", category: "Jeneratör", text: "Jeneratör mahallinde elektrik ve yakıt yangınlarına uygun seyyar yangın söndürme tüpü (CO2/KKT) bulunmamaktadır." },
+    { id: "def_32", category: "Jeneratör", text: "Jeneratör hareketli parçaları (kayış, kasnak, fan) üzerinde koruyucu kafes muhafazası bulunmamaktadır." }
 ];
 
 // Standard Defect Descriptions for Automatic Filling when "Uygun Değil" or "Hafif Kusur" is selected

@@ -477,17 +477,25 @@ function filterHomeJobs(query) {
 function openQuickFieldJobModal() {
     const templates = window.ENLAB_REPORT_TEMPLATES || [];
     const tplCheckboxes = templates.map((t) => `
-        <label class="quick-tpl-item flex items-center gap-2.5 p-2 rounded-lg border border-slate-200 cursor-pointer text-xs" data-search="${(t.code + ' ' + t.name).toLowerCase()}">
-            <input type="checkbox" name="quickJobTpl" value="${t.id}" class="w-4 h-4 accent-sky-600 rounded shrink-0">
-            <span class="font-semibold text-slate-800 truncate">${t.name}</span>
+        <label class="quick-tpl-item flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-white hover:border-sky-500 cursor-pointer transition-all shadow-2xs">
+            <div class="flex items-center gap-3 min-w-0">
+                <input type="checkbox" name="quickJobTpl" value="${t.id}" checked class="w-5 h-5 accent-sky-600 rounded shrink-0">
+                <div class="min-w-0">
+                    <div class="font-bold text-slate-900 text-xs truncate">${t.name}</div>
+                    <div class="text-[10px] text-slate-500 font-mono">${t.code}</div>
+                </div>
+            </div>
+            <span class="text-[11px] font-bold text-sky-700 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded shrink-0">
+                ${t.code}
+            </span>
         </label>
     `).join('');
 
     openModal(
-        'Yeni Başlık Aç',
+        'Yeni İşyeri / Saha Klasörü Aç',
         `<div class="space-y-3 text-xs">
             <div>
-                <label class="block font-bold text-slate-800 mb-1">Başlık / İşin Adı *</label>
+                <label class="block font-bold text-slate-800 mb-1">İşyeri / Firma Adı *</label>
                 <input type="text" id="qjCompanyName" placeholder="Örn: Teknosa Manisa Soma"
                     class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-bold text-slate-900 focus:border-sky-500 focus:outline-none">
             </div>
@@ -502,19 +510,22 @@ function openQuickFieldJobModal() {
                     class="w-full border border-slate-300 rounded-lg p-2.5 text-slate-800 focus:border-sky-500 focus:outline-none"></textarea>
             </div>
             <div>
-                <div class="flex items-center justify-between gap-2 mb-1">
-                    <label class="font-bold text-slate-800">Rapor Örneği Ekle</label>
-                    <input type="text" oninput="filterQuickJobTemplates(this.value)" placeholder="Rapor ara..."
-                        class="border border-slate-300 rounded-lg px-2 py-1 text-[11px] w-36 focus:outline-none">
+                <div class="flex items-center justify-between gap-2 mb-1.5">
+                    <label class="font-bold text-slate-800 flex items-center gap-1.5">
+                        <i class="fa-solid fa-bolt text-amber-500"></i>
+                        <span>Oluşturulacak Elektrik Raporları</span>
+                    </label>
+                    <span class="text-[10px] text-slate-400">İstediğinizi seçin</span>
                 </div>
-                <div id="qjTemplatesGrid" class="space-y-1.5 max-h-44 overflow-y-auto p-2 border border-slate-200 rounded-lg bg-slate-50">
+                <div id="qjTemplatesGrid" class="space-y-2 p-2 border border-slate-200 rounded-xl bg-slate-50">
                     ${tplCheckboxes}
                 </div>
             </div>
         </div>`,
         `<button onclick="closeModal()" class="px-3 py-2 rounded-lg bg-slate-200 text-slate-700 font-bold text-xs">İptal</button>
-         <button onclick="submitQuickFieldJob(false)" class="px-4 py-2 rounded-lg bg-emerald-500 text-slate-950 font-black text-xs">
-            Oluştur ve Aç
+         <button onclick="submitQuickFieldJob(false)" class="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-2xs">
+            <i class="fa-solid fa-folder-plus"></i>
+            <span>Klasörü ve Raporları Oluştur</span>
          </button>`
     );
     setTimeout(() => document.getElementById('qjCompanyName')?.focus(), 100);
@@ -3284,6 +3295,285 @@ function renderPhotoSectionUI() {
 }
 
 // ============================================================================
+// ELEKTRİK UYGUNSUZLUK KÜTÜPHANESİ & AKILLI SEÇİCİ MODALİ
+// ============================================================================
+
+const DefectLibraryManager = {
+    STORAGE_KEY: 'enlab_defects_library_v1',
+    activeCategory: 'Tümü',
+    searchQuery: '',
+
+    getAll() {
+        try {
+            const raw = localStorage.getItem(this.STORAGE_KEY);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed) && parsed.length) return parsed;
+            }
+        } catch (e) {
+            console.warn('Defect library load error:', e);
+        }
+        const initial = window.DEFAULT_NON_CONFORMITY_LIBRARY || [];
+        this.saveAll(initial);
+        return initial;
+    },
+
+    saveAll(list) {
+        try {
+            localStorage.setItem(this.STORAGE_KEY, JSON.stringify(list));
+        } catch (e) {
+            console.error('Defect library save error:', e);
+        }
+    },
+
+    addItem(text, category = 'İç Tesisat') {
+        const trimmed = (text || '').trim();
+        if (!trimmed) return null;
+        const all = this.getAll();
+        const newId = 'custom_' + Date.now();
+        all.unshift({ id: newId, category: category || 'İç Tesisat', text: trimmed, isCustom: true });
+        this.saveAll(all);
+        return newId;
+    },
+
+    deleteItem(id) {
+        let all = this.getAll();
+        all = all.filter(item => item.id !== id);
+        this.saveAll(all);
+    },
+
+    resetToDefault() {
+        const initial = window.DEFAULT_NON_CONFORMITY_LIBRARY || [];
+        this.saveAll(initial);
+        return initial;
+    }
+};
+
+let currentPickerSelectedIds = new Set();
+
+function openNonConformityPickerModal() {
+    currentPickerSelectedIds = new Set();
+    DefectLibraryManager.searchQuery = '';
+
+    const tplId = String(AppState.currentInspection?.template_id || '');
+    if (tplId === '2201') DefectLibraryManager.activeCategory = 'İç Tesisat';
+    else if (tplId === '2202') DefectLibraryManager.activeCategory = 'Topraklama';
+    else if (tplId === '2205') DefectLibraryManager.activeCategory = 'Jeneratör';
+    else DefectLibraryManager.activeCategory = 'Tümü';
+
+    renderNonConformityPickerModalUI();
+}
+
+function renderNonConformityPickerModalUI() {
+    const all = DefectLibraryManager.getAll();
+    const q = (DefectLibraryManager.searchQuery || '').toLowerCase();
+    const cat = DefectLibraryManager.activeCategory;
+
+    const filtered = all.filter(item => {
+        const matchCat = (cat === 'Tümü' || item.category === cat);
+        const matchQuery = !q || item.text.toLowerCase().includes(q) || (item.category || '').toLowerCase().includes(q);
+        return matchCat && matchQuery;
+    });
+
+    const categories = ['Tümü', 'İç Tesisat', 'Topraklama', 'Jeneratör'];
+    const catPills = categories.map(c => `
+        <button type="button" onclick="setDefectCategory('${c}')"
+            class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                cat === c ? 'bg-sky-600 text-white shadow-2xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }">
+            ${c}
+        </button>
+    `).join('');
+
+    const itemsHtml = filtered.length ? filtered.map(item => {
+        const isChecked = currentPickerSelectedIds.has(item.id);
+        return `
+            <div class="flex items-start gap-2.5 p-2.5 rounded-xl border ${
+                isChecked ? 'border-sky-500 bg-sky-50/70' : 'border-slate-200 bg-white hover:border-slate-300'
+            } transition-all">
+                <input type="checkbox" id="chk_${item.id}"
+                    onchange="togglePickerItemSelection('${item.id}', this.checked)"
+                    ${isChecked ? 'checked' : ''}
+                    class="w-4 h-4 accent-sky-600 rounded mt-0.5 shrink-0 cursor-pointer">
+                <label for="chk_${item.id}" class="flex-1 text-xs text-slate-800 leading-relaxed cursor-pointer font-medium select-none">
+                    <span class="inline-block text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded mr-1.5 ${
+                        item.category === 'İç Tesisat' ? 'bg-amber-100 text-amber-800' :
+                        item.category === 'Topraklama' ? 'bg-emerald-100 text-emerald-800' :
+                        'bg-violet-100 text-violet-800'
+                    }">${item.category}</span>
+                    ${item.text}
+                </label>
+                <button type="button" onclick="deleteDefectItemFromPicker('${item.id}', event)"
+                    class="text-slate-400 hover:text-rose-600 p-1 shrink-0 rounded transition-all"
+                    title="Bu uygunsuzluk maddesini kütüphaneden sil">
+                    <i class="fa-solid fa-trash-can text-xs"></i>
+                </button>
+            </div>
+        `;
+    }).join('') : `
+        <div class="p-6 text-center text-slate-400 text-xs">
+            Aradığınız kritere uygun madde bulunamadı. Aşağıdaki kutudan yeni bir madde ekleyebilirsiniz.
+        </div>
+    `;
+
+    const modalBody = `
+        <div class="space-y-3 text-xs">
+            <!-- ARAMA VE KATEGORİ -->
+            <div class="space-y-2">
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400"></i>
+                    <input type="text" value="${DefectLibraryManager.searchQuery}"
+                        oninput="onDefectSearchInput(this.value)"
+                        placeholder="Uygunsuzluk maddesi ara (örn: paspas, pleksi, etiket, kilit, direnç, jeneratör...)"
+                        class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl text-xs focus:border-sky-500 focus:outline-none">
+                </div>
+                <div class="flex items-center gap-1.5 overflow-x-auto pb-1">
+                    ${catPills}
+                </div>
+            </div>
+
+            <!-- LİSTE -->
+            <div id="defectsListScrollContainer" class="space-y-1.5 max-h-60 overflow-y-auto p-1.5 border border-slate-200 rounded-xl bg-slate-50">
+                ${itemsHtml}
+            </div>
+
+            <!-- YENİ UYGUNSUZLUK EKLE ALANI -->
+            <div class="bg-slate-100/90 p-2.5 rounded-xl border border-slate-200 space-y-2">
+                <div class="flex items-center justify-between">
+                    <span class="font-bold text-slate-700 text-[11px] flex items-center gap-1">
+                        <i class="fa-solid fa-circle-plus text-sky-600"></i> Yeni Uygunsuzluk Tanımla & Listeye Kaydet
+                    </span>
+                    <button type="button" onclick="resetDefectsLibraryConfirm()" class="text-[10px] text-slate-400 hover:text-slate-700 underline">
+                        Varsayılana Sıfırla
+                    </button>
+                </div>
+                <div class="flex gap-1.5">
+                    <input type="text" id="newDefectCustomText"
+                        placeholder="Yeni uygunsuzluk açıklamasını yazın..."
+                        class="flex-1 border border-slate-300 bg-white rounded-lg px-2.5 py-1.5 text-xs focus:border-sky-500 focus:outline-none">
+                    <button type="button" onclick="submitNewDefectToLibrary()"
+                        class="px-3 py-1.5 bg-slate-900 active:bg-slate-800 text-white font-bold rounded-lg text-xs shrink-0 flex items-center gap-1">
+                        <span>+ Ekle</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const selectedCount = currentPickerSelectedIds.size;
+    const modalFooter = `
+        <div class="flex items-center justify-between w-full">
+            <span class="text-xs text-slate-500 font-semibold">
+                Seçilen: <strong class="text-sky-600">${selectedCount}</strong> madde
+            </span>
+            <div class="flex items-center gap-2">
+                <button type="button" onclick="closeModal()" class="px-3 py-2 rounded-xl bg-slate-200 text-slate-700 font-bold text-xs">
+                    Kapat
+                </button>
+                <button type="button" onclick="applySelectedDefectsToReport()"
+                    class="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all">
+                    <i class="fa-solid fa-check"></i>
+                    <span>Seçilenleri Rapora Ekle (${selectedCount})</span>
+                </button>
+            </div>
+        </div>
+    `;
+
+    openModal('Uygunsuzluk Kütüphanesi & Seçici', modalBody, modalFooter);
+}
+
+function setDefectCategory(cat) {
+    DefectLibraryManager.activeCategory = cat;
+    renderNonConformityPickerModalUI();
+}
+
+function onDefectSearchInput(val) {
+    DefectLibraryManager.searchQuery = val;
+    renderNonConformityPickerModalUI();
+}
+
+function togglePickerItemSelection(id, isChecked) {
+    if (isChecked) {
+        currentPickerSelectedIds.add(id);
+    } else {
+        currentPickerSelectedIds.delete(id);
+    }
+    renderNonConformityPickerModalUI();
+}
+
+function submitNewDefectToLibrary() {
+    const input = document.getElementById('newDefectCustomText');
+    const val = (input?.value || '').trim();
+    if (!val) {
+        showToast('Lütfen uygunsuzluk metnini yazın', 'warning');
+        input?.focus();
+        return;
+    }
+    const cat = DefectLibraryManager.activeCategory === 'Tümü' ? 'İç Tesisat' : DefectLibraryManager.activeCategory;
+    const newId = DefectLibraryManager.addItem(val, cat);
+    if (newId) {
+        currentPickerSelectedIds.add(newId);
+        showToast('Yeni uygunsuzluk listeye kaydedildi ve seçildi');
+        renderNonConformityPickerModalUI();
+    }
+}
+
+function deleteDefectItemFromPicker(id, event) {
+    if (event) event.stopPropagation();
+    if (!confirm('Bu uygunsuzluk maddesini kütüphaneden silmek istediğinize emin misiniz?')) return;
+    DefectLibraryManager.deleteItem(id);
+    currentPickerSelectedIds.delete(id);
+    showToast('Madde listeden silindi');
+    renderNonConformityPickerModalUI();
+}
+
+function resetDefectsLibraryConfirm() {
+    if (!confirm('Tüm uygunsuzluk listesi varsayılan standart listeye sıfırlansın mı?')) return;
+    DefectLibraryManager.resetToDefault();
+    currentPickerSelectedIds.clear();
+    showToast('Uygunsuzluk listesi varsayılana sıfırlandı');
+    renderNonConformityPickerModalUI();
+}
+
+function applySelectedDefectsToReport() {
+    if (!currentPickerSelectedIds.size) {
+        showToast('Lütfen listeden en az bir uygunsuzluk maddesi seçin', 'warning');
+        return;
+    }
+    const all = DefectLibraryManager.getAll();
+    const selectedItems = all.filter(item => currentPickerSelectedIds.has(item.id));
+    if (!selectedItems.length) return;
+
+    const fd = AppState.currentFormData;
+    let currentText = (fd.defectNotes || '').trim();
+
+    const linesToAdd = selectedItems.map(item => `• ${item.text}`);
+    if (currentText) {
+        currentText += '\n' + linesToAdd.join('\n');
+    } else {
+        currentText = linesToAdd.join('\n');
+    }
+
+    fd.defectNotes = currentText;
+    fd.overallResult = 'UYGUN DEĞİL';
+    if (AppState.currentInspection) {
+        AppState.currentInspection.result_status = 'UYGUN DEĞİL';
+    }
+
+    triggerAutoSave();
+    closeModal();
+
+    const ta = document.getElementById('defectNotesTextarea');
+    if (ta) ta.value = currentText;
+
+    if (typeof paintInspectionEditorUI === 'function') {
+        paintInspectionEditorUI();
+    }
+
+    showToast(`${selectedItems.length} adet uygunsuzluk rapora eklendi!`, 'success');
+}
+
+// ============================================================================
 // EVALUATION, DEFECT NOTES & PHOTO SECTION (7. KUSUR, 8. NOTLAR, 9. SONUÇ, 10. ONAY)
 // ============================================================================
 
@@ -3303,26 +3593,43 @@ function renderEvaluationAndFooterSection() {
         <div class="bg-white rounded-xl border border-slate-200 overflow-hidden space-y-3 p-3.5 text-xs">
             <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                 <span class="font-black text-xs text-slate-800 uppercase tracking-wide">6. Sonuç & Onay Değerlendirmesi</span>
-                <button type="button" onclick="autoCompileDefectNotes()" class="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1 shadow-2xs">
-                    <i class="fa-solid fa-wand-magic-sparkles"></i>
-                    <span>Otomatik Uygunsuzlukları Ekle</span>
-                </button>
+                <div class="flex items-center gap-1.5">
+                    <button type="button" onclick="openNonConformityPickerModal()"
+                        class="px-3 py-1.5 bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-2xs transition-all">
+                        <i class="fa-solid fa-list-check"></i>
+                        <span>Uygunsuzluk Seç / Ekle</span>
+                    </button>
+                    <button type="button" onclick="autoCompileDefectNotes()"
+                        class="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-bold rounded-xl text-xs flex items-center gap-1 shadow-2xs transition-all"
+                        title="Formdaki uygunsuzlukları otomatik derle">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        <span>Otomatik Derle</span>
+                    </button>
+                </div>
             </div>
 
             <div>
-                <label class="block font-bold text-slate-800 mb-1">Kusur Açıklamaları</label>
-                <textarea id="defectNotesTextarea" rows="3"
+                <div class="flex items-center justify-between mb-1">
+                    <label class="block font-bold text-slate-800">Kusur Açıklamaları / Uygunsuzluklar</label>
+                    ${fd.defectNotes ? `
+                        <button type="button" onclick="if(confirm('Kusur açıklamalarını temizlemek istediğinize emin misiniz?')){ AppState.currentFormData.defectNotes=''; triggerAutoSave(); paintInspectionEditorUI(); }"
+                            class="text-[11px] text-rose-600 hover:underline font-semibold">
+                            Temizle
+                        </button>
+                    ` : ''}
+                </div>
+                <textarea id="defectNotesTextarea" rows="4"
                     oninput="AppState.currentFormData.defectNotes=this.value; triggerAutoSave();"
-                    placeholder=""
-                    class="w-full border border-slate-300 rounded-lg p-2.5 text-slate-800 focus:border-sky-500 focus:outline-none">${fd.defectNotes || ''}</textarea>
+                    placeholder="Uygunsuzluk maddeleri buraya eklenecektir veya yukarıdaki 'Uygunsuzluk Seç / Ekle' butonundan hazır seçebilirsiniz..."
+                    class="w-full border border-slate-300 rounded-xl p-2.5 text-slate-800 leading-relaxed focus:border-sky-500 focus:outline-none font-medium">${fd.defectNotes || ''}</textarea>
             </div>
 
             <div>
-                <label class="block font-bold text-slate-800 mb-1">Notlar</label>
+                <label class="block font-bold text-slate-800 mb-1">Genel Notlar / Öneriler</label>
                 <textarea rows="2"
                     oninput="AppState.currentFormData.generalNotes=this.value; triggerAutoSave();"
-                    placeholder=""
-                    class="w-full border border-slate-300 rounded-lg p-2.5 text-slate-700 focus:border-sky-500 focus:outline-none">${fd.generalNotes || ''}</textarea>
+                    placeholder="İsteğe bağlı ek notlar..."
+                    class="w-full border border-slate-300 rounded-xl p-2.5 text-slate-700 focus:border-sky-500 focus:outline-none">${fd.generalNotes || ''}</textarea>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
