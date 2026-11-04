@@ -88,10 +88,14 @@ function normalizeInspection(i) {
     try {
         formData = typeof i.data_json === 'string' ? JSON.parse(i.data_json || '{}') : (i.form_data || {});
     } catch (e) {}
+    const curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || null;
     return Object.assign({}, i, {
         work_order_no: i.work_order_code || i.work_order_no || '',
         customer_name: i.company_name || i.customer_name || '',
-        inspector_name: i.inspector || i.inspector_name || 'Ali Şamil Aytekin',
+        inspector_name: i.inspector || i.inspector_name || (curUser ? curUser.fullName : 'Ali Şamil Aytekin'),
+        inspector_title: i.inspector_title || (curUser ? curUser.title : 'Elektrik Mühendisi'),
+        ministry_reg_no: i.ministry_reg_no || (curUser ? curUser.ministryRegNo : 'K2023224376'),
+        diploma_no: i.diploma_no || (curUser ? curUser.diplomaNoDate : '249538 / 28.09.2022'),
         result_status: i.result || i.result_status || 'UYGUN',
         form_data: formData
     });
@@ -101,7 +105,15 @@ function normalizeInspection(i) {
 window.addEventListener('DOMContentLoaded', async () => {
     await loadInitData();
     await preloadInstruments();
-    navigateTo('home');
+    
+    // Auth Check
+    const curUser = AuthManager.getCurrentUser();
+    updateHeaderUserWidget();
+    if (!curUser) {
+        renderAuthScreen();
+    } else {
+        navigateTo('home');
+    }
 
     document.addEventListener('click', (e) => {
         if (!e.target.closest('#toolsDropdown') && !e.target.closest('[onclick*="toolsDropdown"]')) {
@@ -401,6 +413,12 @@ function handleBackupFileImport(input) {
 // ============================================================================
 
 async function navigateTo(route, params = {}) {
+    // If not logged in and not auth, redirect to auth
+    if (!AuthManager.getCurrentUser() && route !== 'auth') {
+        return renderAuthScreen();
+    }
+    updateHeaderUserWidget();
+
     AppState.currentRoute = route;
     AppState.currentParams = params;
 
@@ -5632,7 +5650,19 @@ function buildTkmPageFooter(formCode, reportNo, pageNum, totalPages) {
 
 function buildTkmOnaySection(insp, sectionNumber = '10') {
     const qrSrc = (window.TKM_EMBEDDED_ASSETS && window.TKM_EMBEDDED_ASSETS.qrDefault) || 'assets/qr_default.jpg';
-    const eimzaSrc = (window.TKM_EMBEDDED_ASSETS && window.TKM_EMBEDDED_ASSETS.eimza) || 'assets/eimza.jpg';
+    const curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || {
+        fullName: 'Ali Şamil Aytekin',
+        title: 'Elektrik Mühendisi',
+        ministryRegNo: 'K2023224376',
+        diplomaNoDate: '249538 / 28.09.2022'
+    };
+
+    const inspectorName = (insp && insp.inspector_name) || curUser.fullName || 'Ali Şamil Aytekin';
+    const inspectorTitle = (insp && insp.inspector_title) || curUser.title || 'Elektrik Mühendisi';
+    const ministryNo = (insp && insp.ministry_reg_no) || curUser.ministryRegNo || 'K2023224376';
+    const diplomaNo = (insp && insp.diploma_no) || curUser.diplomaNoDate || '249538 / 28.09.2022';
+    const eimzaSrc = curUser.signatureImage || (window.TKM_EMBEDDED_ASSETS && window.TKM_EMBEDDED_ASSETS.eimza) || 'assets/eimza.jpg';
+
     return `
         <div class="tkm-sec-title">${sectionNumber}. ONAY</div>
         <table class="tkm-table">
@@ -5651,18 +5681,18 @@ function buildTkmOnaySection(insp, sectionNumber = '10') {
             <tbody>
                 <tr>
                     <td style="font-weight:700;text-align:left;">Adı Soyadı / Mesleği</td>
-                    <td style="text-align:center;">Ali Şamil Aytekin / Elektrik Mühendisi</td>
+                    <td style="text-align:center;font-weight:bold;">${inspectorName} / ${inspectorTitle}</td>
                     <td rowspan="4" style="text-align:center;vertical-align:middle;padding:4px;">
                         <img src="${qrSrc}" alt="QR Code" style="width:76px;height:76px;object-fit:contain;display:inline-block;">
                     </td>
                 </tr>
                 <tr>
                     <td style="font-weight:700;text-align:left;">Bakanlık Kayıt No</td>
-                    <td style="text-align:center;">K2023224376</td>
+                    <td style="text-align:center;font-weight:bold;">${ministryNo}</td>
                 </tr>
                 <tr>
                     <td style="font-weight:700;text-align:left;">Diploma No / Tarih</td>
-                    <td style="text-align:center;">249538 / 28.09.2022</td>
+                    <td style="text-align:center;font-weight:bold;">${diplomaNo}</td>
                 </tr>
                 <tr style="height:44px;">
                     <td style="font-weight:700;text-align:left;vertical-align:middle;">İmza</td>
@@ -7806,3 +7836,478 @@ window.submitBatchRowGenerator = submitBatchRowGenerator;
 window.syncCompanyAndDevicesToAllReports = syncCompanyAndDevicesToAllReports;
 window.cloneInspectionReport = cloneInspectionReport;
 window.filterVisualCheckQuestionsLive = filterVisualCheckQuestionsLive;
+
+
+// ============================================================================
+// 14. ENLAB KULLANICI HESAP, ŞİFRE & KİMLİK YÖNETİM SİSTEMİ (OFFLINE-FIRST)
+// ============================================================================
+
+const AuthManager = {
+    STORAGE_USERS_KEY: 'enlab_user_accounts_v1',
+    STORAGE_SESSION_KEY: 'enlab_current_user_id',
+
+    getUsers() {
+        try {
+            const raw = localStorage.getItem(this.STORAGE_USERS_KEY);
+            if (raw) {
+                const list = JSON.parse(raw);
+                if (Array.isArray(list) && list.length > 0) return list;
+            }
+        } catch (e) {}
+
+        // Standart Varsayılan Mühendis Hesabı
+        const defaultUsers = [
+            {
+                id: 'usr_alisamil',
+                username: 'alisamil',
+                password: '123',
+                fullName: 'Ali Şamil Aytekin',
+                title: 'Elektrik Mühendisi',
+                ministryRegNo: 'K2023224376',
+                diplomaNoDate: '249538 / 28.09.2022',
+                emoNo: '64215',
+                createdAt: '2026-01-01'
+            }
+        ];
+        this.saveUsers(defaultUsers);
+        return defaultUsers;
+    },
+
+    saveUsers(users) {
+        try {
+            localStorage.setItem(this.STORAGE_USERS_KEY, JSON.stringify(users));
+        } catch (e) {}
+    },
+
+    getCurrentUser() {
+        const users = this.getUsers();
+        const curId = localStorage.getItem(this.STORAGE_SESSION_KEY);
+        if (curId) {
+            const found = users.find(u => String(u.id) === String(curId));
+            if (found) return found;
+        }
+        return null;
+    },
+
+    login(username, password) {
+        const users = this.getUsers();
+        const uTrim = String(username || '').trim().toLowerCase();
+        const pTrim = String(password || '').trim();
+
+        const user = users.find(u => 
+            u.username.trim().toLowerCase() === uTrim && 
+            String(u.password).trim() === pTrim
+        );
+
+        if (user) {
+            localStorage.setItem(this.STORAGE_SESSION_KEY, user.id);
+            updateHeaderUserWidget();
+            return { success: true, user };
+        }
+        return { success: false, message: 'Kullanıcı adı veya şifre hatalı!' };
+    },
+
+    register(data) {
+        const users = this.getUsers();
+        const uTrim = String(data.username || '').trim().toLowerCase();
+
+        if (!data.fullName || !data.username || !data.password) {
+            return { success: false, message: 'Lütfen Ad Soyad, Kullanıcı Adı ve Şifre alanlarını doldurun.' };
+        }
+
+        const exists = users.find(u => u.username.trim().toLowerCase() === uTrim);
+        if (exists) {
+            return { success: false, message: 'Bu kullanıcı adı zaten kullanılmaktadır!' };
+        }
+
+        const newUser = {
+            id: 'usr_' + Date.now(),
+            username: String(data.username).trim(),
+            password: String(data.password).trim(),
+            fullName: String(data.fullName).trim(),
+            title: String(data.title || 'Elektrik Mühendisi').trim(),
+            ministryRegNo: String(data.ministryRegNo || '').trim(),
+            diplomaNoDate: String(data.diplomaNoDate || '').trim(),
+            emoNo: String(data.emoNo || '').trim(),
+            createdAt: new Date().toISOString()
+        };
+
+        users.push(newUser);
+        this.saveUsers(users);
+        localStorage.setItem(this.STORAGE_SESSION_KEY, newUser.id);
+        updateHeaderUserWidget();
+        return { success: true, user: newUser };
+    },
+
+    updateProfile(userId, fields) {
+        const users = this.getUsers();
+        const idx = users.findIndex(u => String(u.id) === String(userId));
+        if (idx >= 0) {
+            Object.assign(users[idx], fields);
+            this.saveUsers(users);
+            updateHeaderUserWidget();
+            return { success: true, user: users[idx] };
+        }
+        return { success: false, message: 'Kullanıcı bulunamadı.' };
+    },
+
+    logout() {
+        localStorage.removeItem(this.STORAGE_SESSION_KEY);
+        updateHeaderUserWidget();
+        const dock = document.getElementById('bottomActionDock');
+        if (dock) dock.classList.add('hidden');
+        renderAuthScreen('login');
+        showToast('Oturum kapatıldı.');
+    }
+};
+
+function updateHeaderUserWidget() {
+    const el = document.getElementById('headerUserWidget');
+    if (!el) return;
+    const cur = AuthManager.getCurrentUser();
+    if (cur) {
+        const shortName = cur.fullName.split(' ')[0] || cur.fullName;
+        el.innerHTML = `
+            <button onclick="openUserProfileModal()" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 border border-slate-700 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer" title="Muayene Personeli Profili">
+                <i class="fa-solid fa-user-tie text-amber-400"></i>
+                <span class="max-w-[95px] truncate">${escapeHtml(shortName)}</span>
+            </button>
+        `;
+    } else {
+        el.innerHTML = `
+            <button onclick="renderAuthScreen('login')" class="px-2.5 py-1 rounded-lg bg-sky-600 hover:bg-sky-500 active:scale-95 text-white text-xs font-bold flex items-center gap-1 transition">
+                <i class="fa-solid fa-right-to-bracket"></i>
+                <span>Giriş</span>
+            </button>
+        `;
+    }
+}
+
+function renderAuthScreen(activeTab = 'login') {
+    const container = document.getElementById('pageContent');
+    if (!container) return;
+    container.scrollTop = 0;
+
+    const dock = document.getElementById('bottomActionDock');
+    if (dock) dock.classList.add('hidden');
+
+    const users = AuthManager.getUsers();
+
+    container.innerHTML = `
+        <div class="max-w-md mx-auto my-4 sm:my-8 bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden modal-sheet-animate">
+            <!-- BRAND HEADER -->
+            <div class="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-5 text-center">
+                <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-amber-400 text-slate-950 text-xl font-black shadow-lg mb-2">
+                    <i class="fa-solid fa-bolt"></i>
+                </div>
+                <h1 class="font-black text-base tracking-tight">ENLAB Mobil Saha Sistemi</h1>
+                <p class="text-xs text-slate-300 mt-0.5">Akredite Elektrik Periyodik Kontrol ve Raporlama</p>
+                <div class="mt-2.5 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-400/30 text-[10px] font-bold">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    <span>%100 Çevrimdışı Yetkili Personel Sistemi</span>
+                </div>
+            </div>
+
+            <!-- TABS -->
+            <div class="p-4 space-y-4">
+                <div class="grid grid-cols-2 p-1 bg-slate-100 rounded-xl gap-1 text-xs font-bold">
+                    <button onclick="renderAuthScreen('login')"
+                        class="py-2.5 rounded-lg transition ${activeTab === 'login' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}">
+                        <i class="fa-solid fa-right-to-bracket mr-1"></i> Giriş Yap
+                    </button>
+                    <button onclick="renderAuthScreen('register')"
+                        class="py-2.5 rounded-lg transition ${activeTab === 'register' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}">
+                        <i class="fa-solid fa-user-plus mr-1"></i> Yeni Hesap Oluştur
+                    </button>
+                </div>
+
+                ${activeTab === 'login' ? renderLoginFormHtml(users) : renderRegisterFormHtml()}
+            </div>
+        </div>
+    `;
+}
+
+function renderLoginFormHtml(users) {
+    return `
+        <div class="space-y-3.5 text-xs">
+            ${users.length > 0 ? `
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1 flex items-center justify-between">
+                        <span>Kayıtlı Mühendis / Personel Seçin:</span>
+                        <span class="text-[10px] text-slate-400 font-normal">Hızlı doldurur</span>
+                    </label>
+                    <div class="grid grid-cols-1 gap-1.5 max-h-36 overflow-y-auto p-1 border border-slate-200 rounded-xl bg-slate-50">
+                        ${users.map(u => `
+                            <button type="button" onclick="selectQuickUser('${escapeForJs(u.username)}')"
+                                class="p-2 rounded-lg bg-white border border-slate-200 hover:border-sky-500 text-left flex items-center justify-between transition active:scale-98">
+                                <div class="min-w-0">
+                                    <div class="font-bold text-slate-900 truncate">${escapeHtml(u.fullName)}</div>
+                                    <div class="text-[10px] text-slate-500 truncate">${escapeHtml(u.title || 'Mühendis')}</div>
+                                </div>
+                                <span class="text-[10px] text-sky-700 font-mono font-bold bg-sky-50 px-1.5 py-0.5 rounded">@${escapeHtml(u.username)}</span>
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : ''}
+
+            <div>
+                <label class="block font-bold text-slate-700 mb-1">Kullanıcı Adı</label>
+                <input type="text" id="loginUsername" placeholder="Kullanıcı adınızı girin"
+                    class="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:border-sky-500 focus:outline-none bg-white">
+            </div>
+
+            <div>
+                <label class="block font-bold text-slate-700 mb-1">Şifre</label>
+                <div class="relative">
+                    <input type="password" id="loginPassword" placeholder="••••••••"
+                        onkeydown="if(event.key==='Enter') handleLoginSubmit()"
+                        class="w-full border border-slate-300 rounded-xl px-3 py-2 pr-10 text-xs font-semibold focus:border-sky-500 focus:outline-none bg-white">
+                    <button type="button" onclick="togglePasswordVisibility('loginPassword', this)"
+                        class="absolute right-3 top-2 text-slate-400 hover:text-slate-600 p-0.5 text-xs">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                </div>
+                <p class="text-[10px] text-slate-400 mt-1">Varsayılan demo şifresi: <strong>123</strong></p>
+            </div>
+
+            <button type="button" onclick="handleLoginSubmit()"
+                class="w-full py-3 bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-right-to-bracket"></i>
+                <span>Giriş Yap ve Raporlara Başla</span>
+            </button>
+        </div>
+    `;
+}
+
+function renderRegisterFormHtml() {
+    return `
+        <div class="space-y-3 text-xs">
+            <p class="text-slate-500 text-[11px] leading-relaxed">
+                Aşağıdaki bilgiler oluşturacağınız resmi periyodik kontrol raporlarının <strong>"Muayene Personeli"</strong> ve onay bölümlerinde otomatik olarak yer alacaktır.
+            </p>
+
+            <div>
+                <label class="block font-bold text-slate-700 mb-0.5">Adı Soyadı <span class="text-rose-500">*</span></label>
+                <input type="text" id="regFullName" placeholder="Örn: Yusuf Kılıç"
+                    class="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 bg-white">
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                    <label class="block font-bold text-slate-700 mb-0.5">Meslek / Unvan</label>
+                    <select id="regTitle" class="w-full border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-semibold bg-white">
+                        <option value="Elektrik Mühendisi">Elektrik Mühendisi</option>
+                        <option value="Elektrik-Elektronik Mühendisi">Elektrik-Elektronik Mühendisi</option>
+                        <option value="Elektrik Teknikeri">Elektrik Teknikeri</option>
+                        <option value="Teknik Öğretmen">Teknik Öğretmen</option>
+                        <option value="Muayene Uzmanı">Muayene Uzmanı</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-700 mb-0.5">Bakanlık Kayıt No</label>
+                    <input type="text" id="regMinistry" placeholder="Örn: K2024119876"
+                        class="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono bg-white">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                    <label class="block font-bold text-slate-700 mb-0.5">Diploma No / Mezuniyet</label>
+                    <input type="text" id="regDiploma" placeholder="Örn: 249538 / 28.09.2022"
+                        class="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono bg-white">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-700 mb-0.5">Oda / EMO Sicil No</label>
+                    <input type="text" id="regEmo" placeholder="Örn: 64215"
+                        class="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono bg-white">
+                </div>
+            </div>
+
+            <div class="pt-1 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                    <label class="block font-bold text-slate-700 mb-0.5">Kullanıcı Adı <span class="text-rose-500">*</span></label>
+                    <input type="text" id="regUsername" placeholder="Örn: yusuf"
+                        class="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold bg-white">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-700 mb-0.5">Şifre <span class="text-rose-500">*</span></label>
+                    <input type="password" id="regPassword" placeholder="Şifrenizi belirleyin"
+                        class="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold bg-white">
+                </div>
+            </div>
+
+            <button type="button" onclick="handleRegisterSubmit()"
+                class="w-full mt-2 py-3 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-user-check"></i>
+                <span>Hesabı Oluştur ve Giriş Yap</span>
+            </button>
+        </div>
+    `;
+}
+
+function selectQuickUser(username) {
+    const input = document.getElementById('loginUsername');
+    if (input) {
+        input.value = username;
+        document.getElementById('loginPassword')?.focus();
+    }
+}
+
+function togglePasswordVisibility(inputId, btn) {
+    const el = document.getElementById(inputId);
+    if (!el) return;
+    if (el.type === 'password') {
+        el.type = 'text';
+        btn.innerHTML = '<i class="fa-solid fa-eye-slash"></i>';
+    } else {
+        el.type = 'password';
+        btn.innerHTML = '<i class="fa-solid fa-eye"></i>';
+    }
+}
+
+function handleLoginSubmit() {
+    const u = document.getElementById('loginUsername')?.value;
+    const p = document.getElementById('loginPassword')?.value;
+    if (!u || !p) return showToast('Lütfen kullanıcı adı ve şifre girin', 'warning');
+
+    const res = AuthManager.login(u, p);
+    if (res.success) {
+        showToast(`Hoş geldiniz, ${res.user.fullName}!`);
+        navigateTo('home');
+    } else {
+        showToast(res.message, 'error');
+    }
+}
+
+function handleRegisterSubmit() {
+    const fullName = document.getElementById('regFullName')?.value;
+    const title = document.getElementById('regTitle')?.value;
+    const ministryRegNo = document.getElementById('regMinistry')?.value;
+    const diplomaNoDate = document.getElementById('regDiploma')?.value;
+    const emoNo = document.getElementById('regEmo')?.value;
+    const username = document.getElementById('regUsername')?.value;
+    const password = document.getElementById('regPassword')?.value;
+
+    const res = AuthManager.register({
+        fullName, title, ministryRegNo, diplomaNoDate, emoNo, username, password
+    });
+
+    if (res.success) {
+        showToast(`Hesabınız oluşturuldu! Hoş geldiniz, ${res.user.fullName}`);
+        navigateTo('home');
+    } else {
+        showToast(res.message, 'error');
+    }
+}
+
+// --- KULLANICI PROFİL DÜZENLEME & ÇIKIŞ MODALİ ---
+function openUserProfileModal() {
+    const user = AuthManager.getCurrentUser();
+    if (!user) return renderAuthScreen('login');
+
+    openModal(
+        '<i class="fa-solid fa-user-gear mr-2 text-amber-500"></i>Yetkili Muayene Personeli Profili',
+        `
+        <div class="space-y-3 text-xs">
+            <div class="p-3 bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-xl flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-10 h-10 rounded-full bg-amber-400 text-slate-950 font-black text-sm flex items-center justify-center">
+                        <i class="fa-solid fa-user-tie"></i>
+                    </div>
+                    <div>
+                        <div class="font-bold text-sm">${escapeHtml(user.fullName)}</div>
+                        <div class="text-[11px] text-slate-300">@${escapeHtml(user.username)} · ${escapeHtml(user.title || 'Mühendis')}</div>
+                    </div>
+                </div>
+                <button type="button" onclick="closeModal(); AuthManager.logout();"
+                    class="px-2.5 py-1.5 bg-rose-600/80 hover:bg-rose-600 active:scale-95 text-white font-bold text-[11px] rounded-lg flex items-center gap-1 transition">
+                    <i class="fa-solid fa-power-off"></i>
+                    <span>Çıkış Yap</span>
+                </button>
+            </div>
+
+            <div class="p-3 bg-sky-50 border border-sky-200 rounded-xl text-sky-900 text-[11px] leading-relaxed">
+                Bu bilgiler resmi A4 PDF raporlarının <strong>"Muayene Personeli"</strong> ve onay bölümlerinde basılmaktadır. İhtiyaç halinde buradan güncelleyebilirsiniz.
+            </div>
+
+            <div>
+                <label class="block font-bold text-slate-700 mb-0.5">Adı Soyadı</label>
+                <input type="text" id="profFullName" value="${escapeHtml(user.fullName || '')}"
+                    class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-bold text-slate-900 bg-white">
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+                <div>
+                    <label class="block font-bold text-slate-700 mb-0.5">Meslek / Unvan</label>
+                    <input type="text" id="profTitle" value="${escapeHtml(user.title || 'Elektrik Mühendisi')}"
+                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-semibold bg-white">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-700 mb-0.5">Bakanlık Kayıt No</label>
+                    <input type="text" id="profMinistry" value="${escapeHtml(user.ministryRegNo || '')}"
+                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono bg-white">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+                <div>
+                    <label class="block font-bold text-slate-700 mb-0.5">Diploma No / Tarih</label>
+                    <input type="text" id="profDiploma" value="${escapeHtml(user.diplomaNoDate || '')}"
+                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono bg-white">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-700 mb-0.5">EMO / Oda Sicil No</label>
+                    <input type="text" id="profEmo" value="${escapeHtml(user.emoNo || '')}"
+                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono bg-white">
+                </div>
+            </div>
+
+            <div>
+                <label class="block font-bold text-slate-700 mb-0.5">Şifre Değiştir (İsteğe Bağlı)</label>
+                <input type="password" id="profPassword" value="${escapeHtml(user.password || '')}"
+                    class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono bg-white">
+            </div>
+        </div>
+        `,
+        `
+        <button onclick="closeModal()" class="px-3 py-2 bg-slate-200 text-slate-800 font-bold text-xs rounded-lg">Kapat</button>
+        <button onclick="saveUserProfileSubmit('${user.id}')" class="px-4 py-2 bg-emerald-600 active:bg-emerald-700 text-white font-bold text-xs rounded-lg active:scale-95 shadow-sm">
+            <i class="fa-solid fa-floppy-disk mr-1"></i>Bilgileri Kaydet
+        </button>
+        `
+    );
+}
+
+function saveUserProfileSubmit(userId) {
+    const fullName = document.getElementById('profFullName')?.value;
+    const title = document.getElementById('profTitle')?.value;
+    const ministryRegNo = document.getElementById('profMinistry')?.value;
+    const diplomaNoDate = document.getElementById('profDiploma')?.value;
+    const emoNo = document.getElementById('profEmo')?.value;
+    const password = document.getElementById('profPassword')?.value;
+
+    const res = AuthManager.updateProfile(userId, {
+        fullName, title, ministryRegNo, diplomaNoDate, emoNo, password
+    });
+
+    if (res.success) {
+        showToast('Profil ve rapor onay bilgileriniz güncellendi!');
+        closeModal();
+        if (AppState.currentRoute === 'inspection-complete') {
+            paintInspectionEditorUI();
+        }
+    } else {
+        showToast(res.message, 'error');
+    }
+}
+
+window.AuthManager = AuthManager;
+window.renderAuthScreen = renderAuthScreen;
+window.handleLoginSubmit = handleLoginSubmit;
+window.handleRegisterSubmit = handleRegisterSubmit;
+window.selectQuickUser = selectQuickUser;
+window.togglePasswordVisibility = togglePasswordVisibility;
+window.openUserProfileModal = openUserProfileModal;
+window.saveUserProfileSubmit = saveUserProfileSubmit;
+window.updateHeaderUserWidget = updateHeaderUserWidget;

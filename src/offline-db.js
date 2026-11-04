@@ -111,6 +111,7 @@
             const localForms = {};
             let customDefects = null;
             let defectLibrary = null;
+            let userAccounts = null;
             try {
                 for (let i = 0; i < localStorage.length; i++) {
                     const k = localStorage.key(i);
@@ -124,6 +125,8 @@
                 if (rawCustom) customDefects = JSON.parse(rawCustom);
                 const rawLib = localStorage.getItem('enlab_defects_library_v1');
                 if (rawLib) defectLibrary = JSON.parse(rawLib);
+                const rawUsers = localStorage.getItem('enlab_user_accounts_v1');
+                if (rawUsers) userAccounts = JSON.parse(rawUsers);
             } catch (e) {}
             return {
                 version: 4,
@@ -133,7 +136,8 @@
                 db: this.state,
                 localForms,
                 customDefects,
-                defectLibrary
+                defectLibrary,
+                userAccounts
             };
         },
 
@@ -157,6 +161,11 @@
                     if (backupObj.defectLibrary) {
                         try {
                             localStorage.setItem('enlab_defects_library_v1', JSON.stringify(backupObj.defectLibrary));
+                        } catch (e) {}
+                    }
+                    if (backupObj.userAccounts) {
+                        try {
+                            localStorage.setItem('enlab_user_accounts_v1', JSON.stringify(backupObj.userAccounts));
                         } catch (e) {}
                     }
                     this.save();
