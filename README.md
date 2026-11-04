@@ -35,7 +35,8 @@ tkm uygulaması/
 │   └── uber-apk-signer.jar       <-- Android v1, v2, v3 sertifika imzalama motoru
 │
 ├── start_dev.bat                 <-- 🚀 Çift tıkla: Canlı geliştirme sunucusunu ve tarayıcıyı açar
-├── build_apk.bat                 <-- 🔨 Çift tıkla: src/ içeriğinden yeni imzalı APK üretir
+├── build_apk.bat                 <-- 🔨 Çift tıkla: src/ içeriğinden yeni imzalı APK üretir (versiyonu artırır, eskileri korur)
+├── push_to_github.bat            <-- 🌐 Çift tıkla: Yapılan tüm değişiklikleri GitHub'a yükler
 └── README.md                     <-- Bu rehber belgesi
 ```
 
