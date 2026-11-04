@@ -4587,6 +4587,9 @@ function renderGrounding2202Editor() {
         fd.grounding = { details: {}, detected: {}, method: 'Çevrim empedansı', points: [], selectivity: [] };
     }
     const gd = fd.grounding;
+    const netType = (gd.details && gd.details.networkType) ? gd.details.networkType.trim().toUpperCase() : '';
+    const isTN = netType.startsWith('TN');
+    const zsFormulaLabel = isTN ? '230/Ia' : '50/Ia';
     if (!gd.details) gd.details = {};
     if (!gd.detected) gd.detected = {};
     if (!gd.points) gd.points = [];
@@ -4649,9 +4652,12 @@ function renderGrounding2202Editor() {
                             class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Şebeke Tipi</label>
-                        <select onchange="AppState.currentFormData.grounding.details.networkType=this.value; triggerAutoSave();"
-                            class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold">
+                        <label class="block text-[10px] font-bold text-slate-600 mb-0.5 flex items-center justify-between">
+                            <span>Şebeke Tipi</span>
+                            <span class="text-[9px] font-mono font-bold ${(gd.details.networkType || '').startsWith('TN') ? 'text-amber-700' : 'text-sky-700'}">${(gd.details.networkType || '').startsWith('TN') ? 'TN (230/Ia)' : 'TT (50/Ia)'}</span>
+                        </label>
+                        <select onchange="updateGroundingNetworkType(this.value);"
+                            class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold bg-white shadow-2xs">
                             <option value="">Seçiniz...</option>
                             ${['TT', 'TN-S', 'TN-C-S', 'TN-C', 'IT'].map(opt => `<option value="${opt}" ${(gd.details.networkType || '') === opt ? 'selected' : ''}>${opt}</option>`).join('')}
                         </select>
@@ -4915,10 +4921,13 @@ function renderGrounding2202Editor() {
                                     class="w-full border-2 border-sky-500 rounded-lg px-2 py-1 text-xs font-mono font-bold text-sky-950 bg-white shadow-2xs">
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Zs Sınır (Ω) [50/Ia]</label>
+                                <label class="block text-[10px] font-bold text-slate-600 mb-0.5 flex items-center justify-between">
+                                    <span>Zs Sınır (Ω)</span>
+                                    <span class="text-[9px] font-mono font-bold ${isTN ? 'text-amber-700 bg-amber-50 px-1 py-0.5 rounded border border-amber-200' : 'text-sky-700 bg-sky-50 px-1 py-0.5 rounded border border-sky-200'}">[${zsFormulaLabel}]</span>
+                                </label>
                                 <input type="text" id="pt_zs_${pIdx}" inputmode="decimal" enterkeyhint="next" value="${p.zsRa || ''}" placeholder=""
                                     oninput="updateGroundingPointField(${pIdx}, 'zsRa', this.value);"
-                                    class="w-full border border-slate-200 bg-slate-100/80 rounded-lg px-2 py-1 text-xs font-mono font-semibold text-slate-700">
+                                    class="w-full border border-slate-200 bg-slate-100/80 rounded-lg px-2 py-1 text-xs font-mono font-semibold text-slate-700 tabular-nums">
                             </div>
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-600 mb-0.5">RCD In / IΔn</label>
@@ -8147,14 +8156,60 @@ window.previewA4ReportModal = printOfficialReport;
 // 13. SAHA SÜPER PAKET FONKSİYONLARI (OTOMASYON, KLONLAMA, SENKRONİZASYON)
 // ============================================================================
 
-// --- 13.1 TOPRAKLAMA OTOMATİK DOKUNMA GERİLİMİ HESAPLAYICI (Zs x Ia <= 50V) ---
+// --- 13.1 TOPRAKLAMA OTOMATİK DOKUNMA GERİLİMİ HESAPLAYICI (TN: 230/Ia, TT: 50/Ia) ---
+function updateGroundingNetworkType(newType) {
+    if (!AppState.currentFormData?.grounding) return;
+    if (!AppState.currentFormData.grounding.details) AppState.currentFormData.grounding.details = {};
+    AppState.currentFormData.grounding.details.networkType = newType;
+
+    const isTN = (newType || '').trim().toUpperCase().startsWith('TN');
+    const voltageLimit = isTN ? 230 : 50;
+
+    // Tüm mevcut linye satırlarının Zs sınırlarını yeni şebeke tipine göre otomatik güncelle
+    const pts = AppState.currentFormData.grounding.points || [];
+    let updatedCount = 0;
+    pts.forEach((p, idx) => {
+        const inNum = parseFloat(String(p.inAmp || '').replace(',', '.'));
+        const curve = (p.curve || 'C').toUpperCase();
+        let mult = curve === 'B' ? 5 : curve === 'C' ? 10 : curve === 'D' ? 20 : curve === 'K' ? 14 : curve === 'Z' ? 3 : 10;
+
+        if (!isNaN(inNum) && inNum > 0) {
+            const ia = inNum * mult;
+            p.iaAmp = String(ia);
+            const zsLimit = parseFloat((voltageLimit / ia).toFixed(2));
+            p.zsRa = String(zsLimit);
+            updatedCount++;
+
+            // Uygunluk durumunu da sınır değişimine göre yeniden değerlendir
+            const zxCheck = parseFloat(String(p.zxRx || '').replace(',', '.'));
+            if (!isNaN(zxCheck) && zxCheck > 0) {
+                if (zxCheck <= zsLimit) {
+                    p.result = 'Not-1';
+                } else {
+                    const hasRcd = (p.rcdSpec && p.rcdSpec.trim() && p.rcdSpec.trim() !== '-') || (p.rcdId && parseFloat(p.rcdId) > 0);
+                    p.result = hasRcd ? 'Not-4' : 'Not-2';
+                }
+            }
+        }
+    });
+
+    triggerAutoSave();
+    showToast(`Şebeke Tipi: ${newType || 'Belirtilmedi'} → Zs Formülü: ${voltageLimit}/Ia (${isTN ? 'TN-S / 230V' : 'TT / 50V'})`);
+    paintInspectionEditorUI();
+}
+
 function updateGroundingPointField(pIdx, field, val) {
     const gd = AppState.currentFormData.grounding;
     if (!gd || !gd.points || !gd.points[pIdx]) return;
     const p = gd.points[pIdx];
     p[field] = val;
 
-    // 1. In (A) veya Açma Eğrisi (Curve) girildiğinde Ia (açma akımı) ve Zs Sınır (50/Ia) hesapla
+    // Şebeke tipine göre gerilim sınırını belirle: TN-S/TN-C ise 230V, TT ise 50V
+    const netType = (gd.details && gd.details.networkType) ? gd.details.networkType.trim().toUpperCase() : '';
+    const isTN = netType.startsWith('TN');
+    const voltageLimit = isTN ? 230 : 50;
+
+    // 1. In (A) veya Açma Eğrisi (Curve) girildiğinde Ia (açma akımı) ve Zs Sınır (TN: 230/Ia, TT: 50/Ia) hesapla
     const inNum = parseFloat(String(p.inAmp || '').replace(',', '.'));
     const curve = (p.curve || 'C').toUpperCase();
     let mult = 10;
@@ -8167,7 +8222,7 @@ function updateGroundingPointField(pIdx, field, val) {
     if (!isNaN(inNum) && inNum > 0) {
         const ia = inNum * mult;
         p.iaAmp = String(ia);
-        const zsLimit = parseFloat((50 / ia).toFixed(2));
+        const zsLimit = parseFloat((voltageLimit / ia).toFixed(2));
         p.zsRa = String(zsLimit);
 
         const elIa = document.getElementById(`pt_ia_${pIdx}`);
@@ -8304,10 +8359,14 @@ function submitBatchRowGenerator() {
     if (!gd.points) gd.points = [];
 
     const startNum = gd.points.length + 1;
+    const netType = (gd.details && gd.details.networkType) ? gd.details.networkType.trim().toUpperCase() : '';
+    const isTN = netType.startsWith('TN');
+    const voltageLimit = isTN ? 230 : 50;
+
     const inNum = parseFloat(defIn);
     let mult = defCurve === 'B' ? 5 : defCurve === 'C' ? 10 : 20;
     const ia = inNum * mult;
-    const zsLimit = parseFloat((50 / ia).toFixed(2));
+    const zsLimit = parseFloat((voltageLimit / ia).toFixed(2));
 
     for (let i = 0; i < count; i++) {
         gd.points.push({
@@ -9184,4 +9243,5 @@ window.handleLinyeInputFocus = handleLinyeInputFocus;
 window.handleLinyeInputType = handleLinyeInputType;
 window.handleLinyeInputBlur = handleLinyeInputBlur;
 window.selectLinyeSuggestion = selectLinyeSuggestion;
+window.updateGroundingNetworkType = updateGroundingNetworkType;
 
