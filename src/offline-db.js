@@ -107,47 +107,73 @@
 
         exportFullBackupObject() {
             this.init();
-            // Also include any per-inspection localStorage form data
+            // Include all per-inspection localStorage form data & custom defect memories
             const localForms = {};
+            let customDefects = null;
+            let defectLibrary = null;
             try {
                 for (let i = 0; i < localStorage.length; i++) {
                     const k = localStorage.key(i);
                     if (k && k.startsWith('enlab_insp_')) {
-                        localForms[k] = JSON.parse(localStorage.getItem(k));
+                        try {
+                            localForms[k] = JSON.parse(localStorage.getItem(k));
+                        } catch (e) {}
                     }
                 }
+                const rawCustom = localStorage.getItem('enlab_item_custom_defects_v2');
+                if (rawCustom) customDefects = JSON.parse(rawCustom);
+                const rawLib = localStorage.getItem('enlab_defects_library_v1');
+                if (rawLib) defectLibrary = JSON.parse(rawLib);
             } catch (e) {}
             return {
+                version: 4,
                 exported_at: new Date().toLocaleString('tr-TR'),
+                timestamp: Date.now(),
                 app: 'ENLAB Mobil Saha & Rapor Sistemi (Offline)',
                 db: this.state,
-                localForms
+                localForms,
+                customDefects,
+                defectLibrary
             };
         },
 
         importFullBackupObject(backupObj) {
             if (!backupObj) return false;
-            if (backupObj.db && backupObj.db.workOrders) {
-                this.state = backupObj.db;
-                if (backupObj.localForms) {
-                    Object.keys(backupObj.localForms).forEach(k => {
+            try {
+                if (backupObj.db && backupObj.db.workOrders) {
+                    this.state = backupObj.db;
+                    if (backupObj.localForms) {
+                        Object.keys(backupObj.localForms).forEach(k => {
+                            try {
+                                localStorage.setItem(k, JSON.stringify(backupObj.localForms[k]));
+                            } catch (e) {}
+                        });
+                    }
+                    if (backupObj.customDefects) {
                         try {
-                            localStorage.setItem(k, JSON.stringify(backupObj.localForms[k]));
+                            localStorage.setItem('enlab_item_custom_defects_v2', JSON.stringify(backupObj.customDefects));
                         } catch (e) {}
+                    }
+                    if (backupObj.defectLibrary) {
+                        try {
+                            localStorage.setItem('enlab_defects_library_v1', JSON.stringify(backupObj.defectLibrary));
+                        } catch (e) {}
+                    }
+                    this.save();
+                    return true;
+                } else if (Array.isArray(backupObj)) {
+                    // Legacy array of inspections backup
+                    this.init();
+                    backupObj.forEach(insp => {
+                        const idx = this.state.inspections.findIndex(x => String(x.id) === String(insp.id));
+                        if (idx >= 0) this.state.inspections[idx] = insp;
+                        else this.state.inspections.unshift(insp);
                     });
+                    this.save();
+                    return true;
                 }
-                this.save();
-                return true;
-            } else if (Array.isArray(backupObj)) {
-                // Legacy array of inspections backup
-                this.init();
-                backupObj.forEach(insp => {
-                    const idx = this.state.inspections.findIndex(x => String(x.id) === String(insp.id));
-                    if (idx >= 0) this.state.inspections[idx] = insp;
-                    else this.state.inspections.unshift(insp);
-                });
-                this.save();
-                return true;
+            } catch (err) {
+                console.error('Yedek içe aktarma hatası:', err);
             }
             return false;
         },

@@ -3093,13 +3093,13 @@ function cloneSpecializedRow() {
 // PHOTO MANAGEMENT & GALLERY EXPORT HELPERS
 // ============================================================================
 
-function compressImage(file, maxDimension = 1280, quality = 0.82) {
+function compressImage(file, maxDimension = 1280, quality = 0.78) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onerror = reject;
+        reader.onerror = () => reject(new Error('Dosya okunamadı'));
         reader.onload = (e) => {
             const img = new Image();
-            img.onerror = reject;
+            img.onerror = () => reject(new Error('Resim yüklenemedi'));
             img.onload = () => {
                 let width = img.width;
                 let height = img.height;
@@ -3116,8 +3116,16 @@ function compressImage(file, maxDimension = 1280, quality = 0.82) {
                 canvas.width = width;
                 canvas.height = height;
                 const ctx = canvas.getContext('2d');
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'medium';
                 ctx.drawImage(img, 0, 0, width, height);
                 const dataUrl = canvas.toDataURL('image/jpeg', quality);
+
+                // RAM Koruması: Canvas ve Image hafızasını GPU/RAM'den anında boşalt
+                canvas.width = 0;
+                canvas.height = 0;
+                img.src = '';
+
                 resolve(dataUrl);
             };
             img.src = e.target.result;
@@ -3132,11 +3140,14 @@ async function handlePhotoUpload(input) {
     const fd = AppState.currentFormData;
     if (!fd.photos) fd.photos = [];
     
-    showToast(`${files.length} fotoğraf işleniyor...`);
+    showToast(`${files.length} fotoğraf güvenle optimize ediliyor...`);
     try {
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
-            const dataUrl = await compressImage(file);
+            if (files.length > 1) {
+                showToast(`Fotoğraf optimize ediliyor (${i + 1}/${files.length})...`);
+            }
+            const dataUrl = await compressImage(file, 1280, 0.78);
             const photoNum = fd.photos.length + 1;
             fd.photos.push({
                 id: 'ph_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
@@ -3147,10 +3158,10 @@ async function handlePhotoUpload(input) {
         }
         triggerAutoSave();
         paintInspectionEditorUI();
-        showToast('Fotoğraflar rapora eklendi');
+        showToast(`${files.length} fotoğraf hafıza korumasıyla rapora eklendi!`);
     } catch (err) {
         console.error('Fotoğraf yükleme hatası:', err);
-        showToast('Fotoğraf işlenirken hata oluştu', 'error');
+        showToast('Fotoğraf işlenirken hata oluştu: ' + (err.message || ''), 'error');
     } finally {
         input.value = '';
     }
@@ -5267,31 +5278,25 @@ function markAllVisualChecksSuitable() {
     showToast('Tüm gözle kontrol maddeleri "✓ Uygun" olarak işaretlendi!');
 }
 
-function handlePhotoUpload(input) {
-    const files = Array.from(input.files || []);
-    files.forEach(file => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            AppState.currentFormData.photos.push(e.target.result);
-            triggerAutoSave();
-            paintInspectionEditorUI();
-        };
-        reader.readAsDataURL(file);
-    });
-}
+// Duplicate handlePhotoUpload removed; primary optimized handler is active above.
 
 function triggerAutoSave() {
     const insp = AppState.currentInspection;
     if (!insp) return;
-    localStorage.setItem(`enlab_insp_${insp.id}`, JSON.stringify(AppState.currentFormData));
+    try {
+        localStorage.setItem(`enlab_insp_${insp.id}`, JSON.stringify(AppState.currentFormData));
+    } catch (e) {
+        console.warn('LocalStorage kotası uyarısı:', e);
+    }
 
     const badge = document.getElementById('lastSavedBadge');
     if (badge) {
+        badge.classList.remove('hidden');
         badge.innerHTML = `<i class="fa-solid fa-rotate fa-spin text-amber-400 mr-1"></i> Kaydediliyor...`;
     }
 
     clearTimeout(AppState.saveTimer);
-    AppState.saveTimer = setTimeout(() => saveCurrentInspection(false), 450);
+    AppState.saveTimer = setTimeout(() => saveCurrentInspection(false), 300);
 }
 
 async function saveCurrentInspection(manualToast = false) {
@@ -5308,7 +5313,12 @@ async function saveCurrentInspection(manualToast = false) {
         cached.template_code = insp.template_code;
     }
 
-    localStorage.setItem(`enlab_insp_${insp.id}`, JSON.stringify(fd));
+    try {
+        localStorage.setItem(`enlab_insp_${insp.id}`, JSON.stringify(fd));
+    } catch (e) {
+        console.warn('LocalStorage kotası uyarısı:', e);
+    }
+
     try {
         await fetch(`/api/inspections/${insp.id}`, {
             method: 'POST',
@@ -5326,12 +5336,19 @@ async function saveCurrentInspection(manualToast = false) {
         });
         const badge = document.getElementById('lastSavedBadge');
         if (badge) {
+            badge.classList.remove('hidden');
             const nowStr = new Date().toLocaleTimeString('tr-TR');
             badge.innerHTML = `<i class="fa-solid fa-cloud-check text-emerald-400 mr-1"></i> Kaydedildi (${nowStr})`;
         }
         if (manualToast) showToast('Rapor veritabanına ve yerel hafızaya kaydedildi!');
     } catch (e) {
         setSyncStatus(false, 'Çevrimdışı Kaydedildi (Cihaz Hafızasında)');
+        const badge = document.getElementById('lastSavedBadge');
+        if (badge) {
+            badge.classList.remove('hidden');
+            const nowStr = new Date().toLocaleTimeString('tr-TR');
+            badge.innerHTML = `<i class="fa-solid fa-floppy-disk text-sky-400 mr-1"></i> Kaydedildi (${nowStr})`;
+        }
         if (manualToast) showToast('Çevrimdışı olarak cihaz hafızasına kaydedildi!');
     }
 }
@@ -6797,3 +6814,192 @@ function printOfficialReport(directPrint = false) {
         triggerBrowserPrint();
     }
 }
+
+
+// ============================================================================
+// ACİL DURUM YEDEKLEME, VERİ KURTARMA & GÜVENLİK KALKANI (v0.5)
+// ============================================================================
+
+function exportEmergencyBackup() {
+    try {
+        if (AppState.currentInspection && AppState.currentFormData) {
+            try {
+                localStorage.setItem(`enlab_insp_${AppState.currentInspection.id}`, JSON.stringify(AppState.currentFormData));
+            } catch (e) {}
+        }
+
+        const backupData = OfflineDB.exportFullBackupObject();
+        const jsonStr = JSON.stringify(backupData, null, 2);
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        
+        const now = new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        const timeStamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+        const fileName = `ENLAB_Saha_Yedek_${timeStamp}.json`;
+
+        if (window.AndroidBridge && typeof window.AndroidBridge.exportBackupFile === 'function') {
+            window.AndroidBridge.exportBackupFile(jsonStr, fileName);
+            showToast('Yedek Android cihazınıza kaydedildi: ' + fileName);
+            return;
+        }
+
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1500);
+
+        showToast('Acil durum yedeği başarıyla indirildi!');
+    } catch (err) {
+        console.error('Yedek alma hatası:', err);
+        showToast('Yedek alınırken hata oluştu: ' + (err.message || ''), 'error');
+    }
+}
+
+function openBackupManagerModal() {
+    OfflineDB.init();
+    const db = OfflineDB.state || {};
+    const workOrderCount = (db.workOrders || []).length;
+    const inspectionCount = (db.inspections || []).length;
+    
+    let customDefectCount = 0;
+    try {
+        const raw = localStorage.getItem('enlab_item_custom_defects_v2');
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            Object.values(parsed).forEach(arr => {
+                if (Array.isArray(arr)) customDefectCount += arr.length;
+            });
+        }
+    } catch (e) {}
+
+    const titleEl = document.getElementById('modalTitle');
+    const bodyEl = document.getElementById('modalBody');
+    const footerEl = document.getElementById('modalFooter');
+
+    if (titleEl) {
+        titleEl.innerHTML = `<i class="fa-solid fa-shield-halved text-amber-400 mr-2"></i>Veri Yedekleme ve Kurtarma Merkezi`;
+    }
+
+    if (bodyEl) {
+        bodyEl.innerHTML = `
+            <div class="space-y-4">
+                <div class="p-3.5 bg-gradient-to-r from-sky-50 to-blue-50 border border-sky-200 rounded-2xl">
+                    <div class="flex items-center gap-2.5 text-sky-950 font-bold text-xs mb-1">
+                        <i class="fa-solid fa-circle-check text-sky-600 text-sm"></i>
+                        <span>%100 Çevrimdışı & Yerel Koruma</span>
+                    </div>
+                    <p class="text-[11px] text-sky-900 leading-relaxed">
+                        Tüm iş emirleriniz, elektrik muayene raporlarınız, ölçüm değerleriniz ve girdiğiniz özel uygunsuzluk cümleleri cihazınızın güvenli depolama alanında saklanmaktadır.
+                    </p>
+                </div>
+
+                <!-- İstatistikler -->
+                <div class="grid grid-cols-3 gap-2 text-center">
+                    <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                        <div class="text-base font-black text-slate-800">${workOrderCount}</div>
+                        <div class="text-[10px] font-bold text-slate-500">Şirket / Klasör</div>
+                    </div>
+                    <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                        <div class="text-base font-black text-sky-700">${inspectionCount}</div>
+                        <div class="text-[10px] font-bold text-slate-500">Rapor</div>
+                    </div>
+                    <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                        <div class="text-base font-black text-emerald-700">${customDefectCount}</div>
+                        <div class="text-[10px] font-bold text-slate-500">Özel Cümle</div>
+                    </div>
+                </div>
+
+                <!-- Aksiyonlar -->
+                <div class="space-y-2.5 pt-1">
+                    <button onclick="exportEmergencyBackup()" class="w-full p-3 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs rounded-xl flex items-center justify-between shadow-sm transition">
+                        <div class="flex items-center gap-2.5">
+                            <i class="fa-solid fa-file-arrow-down text-base"></i>
+                            <div class="text-left">
+                                <div>Tek Tıkla Tam Yedek İndir (JSON)</div>
+                                <div class="text-[10px] font-normal text-emerald-100">Tüm raporları ve uygunsuzluk hafızasını tek dosyada indirir</div>
+                            </div>
+                        </div>
+                        <i class="fa-solid fa-chevron-right text-xs opacity-70"></i>
+                    </button>
+
+                    <label class="w-full p-3 bg-slate-800 hover:bg-slate-900 active:scale-95 text-white font-bold text-xs rounded-xl flex items-center justify-between shadow-sm transition cursor-pointer">
+                        <div class="flex items-center gap-2.5">
+                            <i class="fa-solid fa-file-arrow-up text-base text-sky-400"></i>
+                            <div class="text-left">
+                                <div>Yedekten Geri Yükle (JSON İçe Aktar)</div>
+                                <div class="text-[10px] font-normal text-slate-300">Daha önce indirilmiş bir yedeği sisteme aktarır</div>
+                            </div>
+                        </div>
+                        <i class="fa-solid fa-chevron-right text-xs opacity-70"></i>
+                        <input type="file" accept=".json,application/json" class="hidden" onchange="importBackupFromFile(this)">
+                    </label>
+                </div>
+            </div>
+        `;
+    }
+
+    if (footerEl) {
+        footerEl.innerHTML = `
+            <button onclick="closeModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs rounded-lg active:scale-95 transition">
+                Kapat
+            </button>
+        `;
+    }
+
+    openModal();
+}
+
+function importBackupFromFile(fileInput) {
+    const file = fileInput.files && fileInput.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const parsed = JSON.parse(e.target.result);
+            const success = OfflineDB.importFullBackupObject(parsed);
+            if (success) {
+                showToast('Yedek başarıyla geri yüklendi! Yenileniyor...');
+                setTimeout(() => {
+                    location.reload();
+                }, 800);
+            } else {
+                showToast('Geçersiz yedek dosyası formatı!', 'error');
+            }
+        } catch (err) {
+            console.error('Yedek okuma hatası:', err);
+            showToast('Yedek dosyası okunamadı: ' + err.message, 'error');
+        } finally {
+            fileInput.value = '';
+        }
+    };
+    reader.readAsText(file);
+}
+
+function showGlobalCrashShield(message, error) {
+    const shieldEl = document.getElementById('globalCrashShield');
+    const msgEl = document.getElementById('crashShieldErrorMessage');
+    if (shieldEl) {
+        shieldEl.classList.remove('hidden');
+        if (msgEl) {
+            const errStr = (message || 'Bilinmeyen Hata') + (error && error.stack ? '\n' + error.stack : '');
+            msgEl.textContent = errStr;
+        }
+    }
+}
+
+function dismissCrashShield() {
+    const shieldEl = document.getElementById('globalCrashShield');
+    if (shieldEl) {
+        shieldEl.classList.add('hidden');
+    }
+}
+window.showGlobalCrashShield = showGlobalCrashShield;
+window.dismissCrashShield = dismissCrashShield;
+window.exportEmergencyBackup = exportEmergencyBackup;
+window.openBackupManagerModal = openBackupManagerModal;
+window.importBackupFromFile = importBackupFromFile;

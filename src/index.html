@@ -191,7 +191,79 @@
             }
         }
         .print-only { display: none; }
+        /* Fluid Touch & Modern Mobile Micro-Animations */
+        button, a, [role="button"], .touch-action-btn {
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            transition: transform 0.12s cubic-bezier(0.2, 0, 0, 1), opacity 0.12s ease;
+        }
+        button:active, a:active, .touch-action-btn:active {
+            transform: scale(0.96) !important;
+            opacity: 0.90;
+        }
+        .card-interactive {
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            will-change: transform;
+        }
+        .card-interactive:active {
+            transform: scale(0.985);
+        }
+
+        /* Modal & Bottom-Sheet Animations */
+        @keyframes modalFadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes sheetSlideUp {
+            from { transform: translateY(24px) scale(0.98); opacity: 0; }
+            to { transform: translateY(0) scale(1); opacity: 1; }
+        }
+        .modal-backdrop-animate {
+            animation: modalFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .modal-sheet-animate {
+            animation: sheetSlideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            will-change: transform, opacity;
+        }
+
+        /* Custom Sleek Scrollbars */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.04);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(100, 116, 139, 0.4);
+            border-radius: 999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(100, 116, 139, 0.7);
+        }
+
     </style>
+    <script>
+        // Global Error Boundary & Crash Shield (Early Protection)
+        window.__ENLAB_CRASH_LOGS = [];
+        window.onerror = function(message, source, lineno, colno, error) {
+            console.error('[ENLAB Shield] window.onerror caught:', message, error);
+            window.__ENLAB_CRASH_LOGS.push({ time: new Date().toLocaleTimeString(), message: message, source: source, lineno: lineno, colno: colno, stack: error ? error.stack : '' });
+            if (typeof window.showGlobalCrashShield === 'function') {
+                window.showGlobalCrashShield(message, error);
+            }
+            return false;
+        };
+        window.addEventListener('unhandledrejection', function(event) {
+            console.error('[ENLAB Shield] unhandledrejection caught:', event.reason);
+            var reasonMsg = event.reason ? (event.reason.message || String(event.reason)) : 'Bilinmeyen asenkron hata';
+            window.__ENLAB_CRASH_LOGS.push({ time: new Date().toLocaleTimeString(), message: reasonMsg, stack: event.reason && event.reason.stack });
+            if (typeof window.showGlobalCrashShield === 'function') {
+                window.showGlobalCrashShield(reasonMsg, event.reason);
+            }
+        });
+    </script>
 </head>
 <body>
 
@@ -203,11 +275,15 @@
                     <i class="fa-solid fa-book-open"></i>
                 </div>
                 <span class="font-bold text-sm tracking-tight truncate">TKM Offline Rapor Kayıt</span>
-                <span class="text-[10px] bg-sky-500/20 text-sky-300 border border-sky-500/30 px-1.5 py-0.5 rounded font-mono font-bold shrink-0">v0.4</span>
+                <span class="text-[10px] bg-sky-500/20 text-sky-300 border border-sky-500/30 px-1.5 py-0.5 rounded font-mono font-bold shrink-0">v0.5</span>
             </div>
 
             <div class="flex items-center gap-2 shrink-0">
                 <span id="lastSavedBadge" class="hidden text-[11px] text-emerald-400 font-medium"></span>
+                <button onclick="openBackupManagerModal()" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-sky-300 border border-slate-700 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer" title="Veri Yedekleme ve Kurtarma">
+                    <i class="fa-solid fa-shield-halved text-amber-400"></i>
+                    <span>Yedekle</span>
+                </button>
             </div>
         </header>
 
@@ -243,8 +319,8 @@
     </div>
 
     <!-- SIMPLE MODAL -->
-    <div id="appModal" class="no-print fixed inset-0 bg-slate-950/70 z-50 hidden flex items-center justify-center p-3">
-        <div class="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-lg w-full max-h-[88vh] flex flex-col overflow-hidden">
+    <div id="appModal" class="no-print fixed inset-0 bg-slate-950/70 z-50 hidden flex items-center justify-center p-3 modal-backdrop-animate">
+        <div class="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-lg w-full max-h-[88vh] flex flex-col overflow-hidden modal-sheet-animate">
             <div class="px-4 py-3 bg-slate-900 text-white flex items-center justify-between shrink-0">
                 <h3 id="modalTitle" class="font-bold text-sm">İşlem</h3>
                 <button onclick="closeModal()" class="text-slate-400 hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
@@ -264,5 +340,48 @@
     <script src="offline-db.js"></script>
     <script src="templates.js"></script>
     <script src="app.js"></script>
+
+    <!-- GLOBAL CRASH SHIELD (BEYAZ EKRAN & ÇÖKME KALKANI) -->
+    <div id="globalCrashShield" class="no-print fixed inset-0 bg-slate-950/85 z-[100] hidden flex items-center justify-center p-3 modal-backdrop-animate">
+        <div class="bg-white rounded-2xl shadow-2xl border-2 border-rose-500 max-w-md w-full overflow-hidden modal-sheet-animate">
+            <div class="px-4 py-3 bg-gradient-to-r from-rose-600 to-rose-700 text-white flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-shield-halved text-amber-300 text-lg"></i>
+                    <h3 class="font-bold text-sm">ENLAB Güvenlik Kalkanı Aktif</h3>
+                </div>
+                <button onclick="dismissCrashShield()" class="text-white/80 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="p-4 space-y-3 text-xs text-slate-700">
+                <div class="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-900 font-semibold flex items-start gap-2">
+                    <i class="fa-solid fa-circle-check text-emerald-600 text-base shrink-0 mt-0.5"></i>
+                    <div>
+                        <div class="font-bold">Verileriniz Güvende!</div>
+                        <div class="text-[11px] text-emerald-800 font-normal">Beklenmeyen bir durum algılandı, ancak girdiğiniz tüm rapor ve ölçüm verileri cihaz hafızasında güvenle saklanmaktadır.</div>
+                    </div>
+                </div>
+                <div id="crashShieldErrorMessage" class="p-2.5 bg-slate-100 rounded-lg font-mono text-[11px] text-rose-700 border border-slate-200 break-words max-h-24 overflow-y-auto">
+                    Hata detayı
+                </div>
+                <div class="grid grid-cols-2 gap-2 pt-1">
+                    <button onclick="exportEmergencyBackup()" class="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition">
+                        <i class="fa-solid fa-download"></i>
+                        <span>Acil Yedek Al (JSON)</span>
+                    </button>
+                    <button onclick="location.reload()" class="w-full py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition">
+                        <i class="fa-solid fa-rotate-right"></i>
+                        <span>Uygulamayı Yenile</span>
+                    </button>
+                </div>
+            </div>
+            <div class="px-4 py-2.5 bg-slate-50 border-t border-slate-200 text-center">
+                <button onclick="dismissCrashShield()" class="text-slate-500 hover:text-slate-800 font-semibold text-[11px]">
+                    Kalkanı Kapat ve Çalışmaya Devam Et →
+                </button>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
