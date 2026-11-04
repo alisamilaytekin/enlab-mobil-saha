@@ -1,0 +1,7 @@
+# Python
+__pycache__/
+*.pyc
+
+# Geçici derleme dosyaları
+dist/unsigned_temp.apk
+dist/*.idsig
