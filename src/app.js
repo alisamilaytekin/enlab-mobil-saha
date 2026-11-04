@@ -4281,6 +4281,109 @@ function autoCompileDefectNotes() {
 // ALÇAK GERİLİM TOPRAKLAMA TESİSATI (2202 / TKM-FR.317) EDITOR & HELPERS
 // ============================================================================
 
+
+// ============================================================================
+// TOPRAKLAMA PANO & LİNYE İSİMLERİ AKILLI ÖNERİ LİSTESİ (100% OPAQUE AUTOCOMPLETE)
+// ============================================================================
+const COMMON_LINYE_SUGGESTIONS = [
+    { title: 'Ana Dağıtım Panosu (ADP)', tag: 'Ana Pano' },
+    { title: 'Tali Dağıtım Panosu (TDP)', tag: 'Tali Pano' },
+    { title: 'Aydınlatma Panosu', tag: 'Aydınlatma' },
+    { title: 'Priz Linyeleri', tag: 'Priz' },
+    { title: 'UPS / Kesintisiz Güç Panosu', tag: 'UPS' },
+    { title: 'Havalandırma / Klima Santrali (KKS)', tag: 'Klima' },
+    { title: 'Kompresör Panosu', tag: 'Kompresör' },
+    { title: 'Kazan Dairesi Panosu', tag: 'Isıtma' },
+    { title: 'Yangın Pompası Panosu', tag: 'Yangın' },
+    { title: 'Hidrofor / Pompa Panosu', tag: 'Pompa' },
+    { title: 'Çatı GES / İnvertör Panosu', tag: 'Solar' },
+    { title: 'Soğutma Grubu Panosu', tag: 'Soğutma' },
+    { title: 'Ofis Tali Panosu', tag: 'Ofis' },
+    { title: 'Mutfak / Yemekhane Panosu', tag: 'Mutfak' },
+    { title: 'Makine / Atölye Besleme Panosu', tag: 'Makine' },
+    { title: 'Jeneratör Transfer Panosu (ATS)', tag: 'Jeneratör' },
+    { title: 'Kompanzasyon Panosu', tag: 'Reaktif' },
+    { title: 'Dış Aydınlatma / Çevre Panosu', tag: 'Aydınlatma' },
+    { title: 'Kantar / Güvenlik Panosu', tag: 'Saha' },
+    { title: 'Yangın Algılama Paneli Beslemesi', tag: 'Yangın' }
+];
+
+function renderLinyeDropdownItems(pIdx, query) {
+    const q = (query || '').toLowerCase().trim();
+    const dropdown = document.getElementById(`linyeDropdown_${pIdx}`);
+    if (!dropdown) return;
+
+    let filtered = COMMON_LINYE_SUGGESTIONS;
+    if (q) {
+        filtered = COMMON_LINYE_SUGGESTIONS.filter(item => 
+            item.title.toLowerCase().includes(q) || item.tag.toLowerCase().includes(q)
+        );
+    }
+
+    if (filtered.length === 0) {
+        dropdown.innerHTML = `
+            <div class="p-2.5 text-center text-slate-500 font-medium text-[11px] bg-white">
+                "${escapeHtml(query)}" için standart öneri bulunamadı. Yazdığınız metin kaydedilecektir.
+            </div>
+        `;
+        dropdown.classList.remove('hidden');
+        return;
+    }
+
+    dropdown.innerHTML = `
+        <div class="px-3 py-1.5 bg-slate-900 text-white font-bold text-[10px] flex items-center justify-between border-b border-slate-800">
+            <span>Önerilen Pano & Linye İsimleri</span>
+            <span class="text-[9px] text-sky-300 font-semibold">Dokunup seçin</span>
+        </div>
+        <div class="bg-white divide-y divide-slate-100">
+            ${filtered.slice(0, 8).map(item => `
+                <div onmousedown="selectLinyeSuggestion(${pIdx}, '${item.title.replace(/'/g, "\'")}')"
+                     ontouchstart="selectLinyeSuggestion(${pIdx}, '${item.title.replace(/'/g, "\'")}')"
+                    class="p-2.5 hover:bg-sky-50 active:bg-sky-100 cursor-pointer flex items-center justify-between transition bg-white text-slate-900 select-none">
+                    <span class="font-bold text-xs text-slate-900">${item.title}</span>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">${item.tag}</span>
+                </div>
+            `).join('')}
+        </div>
+    `;
+    dropdown.classList.remove('hidden');
+}
+
+function handleLinyeInputFocus(pIdx, inputEl) {
+    renderLinyeDropdownItems(pIdx, inputEl.value);
+}
+
+function handleLinyeInputType(pIdx, inputEl) {
+    const val = inputEl.value;
+    if (AppState.currentFormData?.grounding?.points?.[pIdx]) {
+        AppState.currentFormData.grounding.points[pIdx].point = val;
+    }
+    triggerAutoSave();
+    renderLinyeDropdownItems(pIdx, val);
+}
+
+function handleLinyeInputBlur(pIdx) {
+    // Tıklamaların algılanması için hafif gecikmeyle kapat
+    setTimeout(() => {
+        const dropdown = document.getElementById(`linyeDropdown_${pIdx}`);
+        if (dropdown) dropdown.classList.add('hidden');
+    }, 250);
+}
+
+function selectLinyeSuggestion(pIdx, chosenTitle) {
+    if (AppState.currentFormData?.grounding?.points?.[pIdx]) {
+        AppState.currentFormData.grounding.points[pIdx].point = chosenTitle;
+    }
+    const inputEl = document.getElementById(`pt_name_${pIdx}`);
+    if (inputEl) inputEl.value = chosenTitle;
+    
+    const dropdown = document.getElementById(`linyeDropdown_${pIdx}`);
+    if (dropdown) dropdown.classList.add('hidden');
+    
+    triggerAutoSave();
+    showToast(`Pano: ${chosenTitle}`);
+}
+
 function renderGrounding2202Editor() {
     const insp = AppState.currentInspection;
     const fd = AppState.currentFormData;
@@ -4534,20 +4637,40 @@ function renderGrounding2202Editor() {
                             </div>
                         </div>
 
-                        <div>
-                            <label class="block text-[10px] font-bold text-slate-700 mb-0.5 flex items-center justify-between">
-                                <span>Ölçüm Noktası / Pano Adı</span>
-                                <span class="text-[9px] text-slate-400 font-normal">Önerilen isimlerden seçebilirsiniz</span>
-                            </label>
-                            <input type="text" list="commonPanelNames" value="${p.point || ''}" placeholder="Örn: Ana Dağıtım Panosu (ADP)"
-                                oninput="AppState.currentFormData.grounding.points[${pIdx}].point=this.value; triggerAutoSave();"
-                                class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-900 bg-white">
+                        <!-- LİNYE & PANO ADI (NET, SAYDAM OLMAYAN ÖNERİ AÇILIR LİSTESİ) -->
+                        <div class="relative">
+                            <div class="flex items-center justify-between mb-0.5">
+                                <label class="text-[10px] font-bold text-slate-800 flex items-center gap-1">
+                                    <i class="fa-solid fa-tag text-sky-600"></i>
+                                    <span>Ölçüm Noktası / Pano Adı</span>
+                                </label>
+                                <span class="text-[9px] text-slate-400 font-medium">Yazın veya alttaki rozetlere dokunun</span>
+                            </div>
+                            <input type="text" id="pt_name_${pIdx}" autocomplete="off" value="${escapeHtml(p.point || '')}" placeholder="Örn: Ana Dağıtım Panosu (ADP)"
+                                onfocus="handleLinyeInputFocus(${pIdx}, this)"
+                                oninput="handleLinyeInputType(${pIdx}, this)"
+                                onblur="handleLinyeInputBlur(${pIdx})"
+                                class="w-full border border-slate-300 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 rounded-lg px-2.5 py-1.5 text-xs font-bold text-slate-900 bg-white shadow-2xs">
+
+                            <!-- 100% OPAK ÖNERİLER DROPDOWN (SAYDAMLIK BUGI TAMAMEN GİDERİLDİ) -->
+                            <div id="linyeDropdown_${pIdx}" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border-2 border-sky-600 rounded-xl shadow-2xl z-50 max-h-56 overflow-y-auto divide-y divide-slate-100 font-medium text-xs"></div>
+
+                            <!-- HIZLI SEÇİM ÇİPLERİ -->
+                            <div class="flex items-center gap-1 mt-1.5 overflow-x-auto py-0.5 no-scrollbar">
+                                ${['ADP', 'TDP', 'Aydınlatma', 'Priz Linyeleri', 'UPS Panosu', 'Klima Santrali', 'Kazan Dairesi', 'Kompresör', 'Yangın Pompası', 'GES İnvertör'].map(preset => `
+                                    <button type="button" onclick="selectLinyeSuggestion(${pIdx}, '${preset}')"
+                                        class="px-2 py-0.5 bg-slate-100 hover:bg-sky-100 active:scale-95 text-slate-700 hover:text-sky-800 font-semibold text-[10px] rounded-lg border border-slate-200 shrink-0 transition shadow-2xs">
+                                        + ${preset}
+                                    </button>
+                                `).join('')}
+                            </div>
                         </div>
 
+                        <!-- PARAMETRELER & HESAPLAMALAR -->
                         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-600 mb-0.5">In (A)</label>
-                                <input type="text" inputmode="decimal" enterkeyhint="next" value="${p.inAmp || ''}" placeholder="16"
+                                <input type="text" id="pt_in_${pIdx}" inputmode="decimal" enterkeyhint="next" value="${p.inAmp || ''}" placeholder="16"
                                     oninput="updateGroundingPointField(${pIdx}, 'inAmp', this.value);"
                                     class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs font-mono font-semibold">
                                 <div class="flex items-center gap-1 mt-1 overflow-x-auto py-0.5">
@@ -4561,62 +4684,68 @@ function renderGrounding2202Editor() {
                             </div>
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Açma Eğrisi</label>
-                                <select onchange="updateGroundingPointField(${pIdx}, 'curve', this.value);"
-                                    class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold">
+                                <select id="pt_curve_${pIdx}" onchange="updateGroundingPointField(${pIdx}, 'curve', this.value);"
+                                    class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold bg-white">
                                     ${['B', 'C', 'D', 'K', 'Z'].map(c => `<option value="${c}" ${(p.curve || 'C') === c ? 'selected' : ''}>${c}</option>`).join('')}
                                 </select>
                             </div>
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-500 mb-0.5">Ia (A) [Oto]</label>
-                                <input type="text" inputmode="decimal" enterkeyhint="next" value="${p.iaAmp || ''}" placeholder=""
+                                <input type="text" id="pt_ia_${pIdx}" inputmode="decimal" enterkeyhint="next" value="${p.iaAmp || ''}" placeholder=""
                                     oninput="updateGroundingPointField(${pIdx}, 'iaAmp', this.value);"
-                                    class="w-full border border-slate-200 bg-slate-50 rounded-lg px-2 py-1 text-xs font-mono">
+                                    class="w-full border border-slate-200 bg-slate-100/80 rounded-lg px-2 py-1 text-xs font-mono font-semibold text-slate-700">
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Ik1 (A)</label>
-                                <input type="text" inputmode="decimal" enterkeyhint="next" value="${p.ik1Amp || ''}" placeholder=""
+                                <label class="block text-[10px] font-bold text-sky-800 mb-0.5 flex items-center justify-between">
+                                    <span>Ik1 (A)</span>
+                                    <span class="text-[9px] text-sky-600 font-mono font-bold">[230/Zx]</span>
+                                </label>
+                                <input type="text" id="pt_ik1_${pIdx}" inputmode="decimal" enterkeyhint="next" value="${p.ik1Amp || ''}" placeholder="Oto"
                                     oninput="updateGroundingPointField(${pIdx}, 'ik1Amp', this.value);"
-                                    class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs font-mono">
+                                    class="w-full border border-sky-300 bg-sky-50/60 rounded-lg px-2 py-1 text-xs font-mono font-bold text-sky-950">
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold text-sky-700 mb-0.5">Zx / Rx (Ω) [Ölçülen]</label>
-                                <input type="text" inputmode="decimal" enterkeyhint="next" value="${p.zxRx || ''}" placeholder="Örn: 0.28"
+                                <label class="block text-[10px] font-bold text-sky-700 mb-0.5 flex items-center justify-between">
+                                    <span>Zx / Rx (Ω) [Ölçülen]</span>
+                                    <span class="text-[9px] text-amber-600 font-bold">Empedans</span>
+                                </label>
+                                <input type="text" id="pt_zx_${pIdx}" inputmode="decimal" enterkeyhint="next" value="${p.zxRx || ''}" placeholder="Örn: 0.28"
                                     oninput="updateGroundingPointField(${pIdx}, 'zxRx', this.value);"
-                                    class="w-full border-2 border-sky-400 rounded-lg px-2 py-1 text-xs font-mono font-bold text-sky-950 bg-sky-50/50">
+                                    class="w-full border-2 border-sky-500 rounded-lg px-2 py-1 text-xs font-mono font-bold text-sky-950 bg-white shadow-2xs">
                             </div>
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Zs Sınır (Ω) [50/Ia]</label>
-                                <input type="text" inputmode="decimal" enterkeyhint="next" value="${p.zsRa || ''}" placeholder=""
+                                <input type="text" id="pt_zs_${pIdx}" inputmode="decimal" enterkeyhint="next" value="${p.zsRa || ''}" placeholder=""
                                     oninput="updateGroundingPointField(${pIdx}, 'zsRa', this.value);"
-                                    class="w-full border border-slate-200 bg-slate-50 rounded-lg px-2 py-1 text-xs font-mono font-semibold text-slate-700">
+                                    class="w-full border border-slate-200 bg-slate-100/80 rounded-lg px-2 py-1 text-xs font-mono font-semibold text-slate-700">
                             </div>
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-600 mb-0.5">RCD In / IΔn</label>
-                                <input type="text" value="${p.rcdSpec || ''}" placeholder="Örn: 30mA"
+                                <input type="text" id="pt_rcdSpec_${pIdx}" value="${p.rcdSpec || ''}" placeholder="Örn: 30mA"
                                     oninput="updateGroundingPointField(${pIdx}, 'rcdSpec', this.value);"
-                                    class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs">
+                                    class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs bg-white">
                                 <div class="flex items-center gap-1 mt-1">
-                                    <button type="button" onclick="updateGroundingPointField(${pIdx}, 'rcdSpec', '30mA'); paintInspectionEditorUI();"
-                                        class="px-1.5 py-0.5 bg-sky-50 text-sky-800 rounded text-[9px] font-bold border border-sky-300">30mA</button>
-                                    <button type="button" onclick="updateGroundingPointField(${pIdx}, 'rcdSpec', '300mA'); paintInspectionEditorUI();"
-                                        class="px-1.5 py-0.5 bg-amber-50 text-amber-800 rounded text-[9px] font-bold border border-amber-300">300mA</button>
+                                    <button type="button" onclick="updateGroundingPointField(${pIdx}, 'rcdSpec', '30mA');"
+                                        class="px-1.5 py-0.5 bg-sky-50 hover:bg-sky-100 text-sky-800 rounded text-[9px] font-bold border border-sky-300">30mA</button>
+                                    <button type="button" onclick="updateGroundingPointField(${pIdx}, 'rcdSpec', '300mA');"
+                                        class="px-1.5 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded text-[9px] font-bold border border-amber-300">300mA</button>
                                 </div>
                             </div>
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-600 mb-0.5">IΔ (mA)</label>
-                                <input type="text" inputmode="decimal" enterkeyhint="next" value="${p.rcdId || ''}" placeholder=""
+                                <input type="text" id="pt_rcdId_${pIdx}" inputmode="decimal" enterkeyhint="next" value="${p.rcdId || ''}" placeholder=""
                                     oninput="updateGroundingPointField(${pIdx}, 'rcdId', this.value);"
-                                    class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs font-mono">
+                                    class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs font-mono bg-white">
                             </div>
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-600 mb-0.5">TΔ (ms)</label>
-                                <input type="text" inputmode="decimal" enterkeyhint="next" value="${p.rcdTd || ''}" placeholder=""
+                                <input type="text" id="pt_rcdTd_${pIdx}" inputmode="decimal" enterkeyhint="next" value="${p.rcdTd || ''}" placeholder=""
                                     oninput="updateGroundingPointField(${pIdx}, 'rcdTd', this.value);"
-                                    class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs font-mono">
+                                    class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs font-mono bg-white">
                             </div>
                             <div class="col-span-2 sm:col-span-3">
                                 <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Sonuç (Uygunluk Notu)</label>
-                                <select onchange="AppState.currentFormData.grounding.points[${pIdx}].result=this.value; triggerAutoSave();"
+                                <select id="pt_res_${pIdx}" onchange="updateGroundingPointField(${pIdx}, 'result', this.value);"
                                     class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-slate-900 bg-white">
                                     <option value="">Seçiniz...</option>
                                     ${resultOptions.map(opt => `<option value="${opt}" ${(p.result || '') === opt ? 'selected' : ''}>${opt} ${opt === 'Not-1' ? '(Uygun)' : opt === 'Not-4' ? '(RCD Faal, Uygun)' : '(Kusurlu)'}</option>`).join('')}
@@ -7819,37 +7948,80 @@ function updateGroundingPointField(pIdx, field, val) {
     const p = gd.points[pIdx];
     p[field] = val;
 
-    if (field === 'inAmp' || field === 'curve' || field === 'zxRx') {
-        const inNum = parseFloat(String(p.inAmp || '').replace(',', '.'));
-        const curve = (p.curve || 'C').toUpperCase();
+    // 1. In (A) veya Açma Eğrisi (Curve) girildiğinde Ia (açma akımı) ve Zs Sınır (50/Ia) hesapla
+    const inNum = parseFloat(String(p.inAmp || '').replace(',', '.'));
+    const curve = (p.curve || 'C').toUpperCase();
+    let mult = 10;
+    if (curve === 'B') mult = 5;
+    else if (curve === 'C') mult = 10;
+    else if (curve === 'D') mult = 20;
+    else if (curve === 'K') mult = 14;
+    else if (curve === 'Z') mult = 3;
 
-        if (!isNaN(inNum) && inNum > 0) {
-            let mult = 10;
-            if (curve === 'B') mult = 5;
-            else if (curve === 'C') mult = 10;
-            else if (curve === 'D') mult = 20;
-            else if (curve === 'K') mult = 14;
-            else if (curve === 'Z') mult = 3;
+    if (!isNaN(inNum) && inNum > 0) {
+        const ia = inNum * mult;
+        p.iaAmp = String(ia);
+        const zsLimit = parseFloat((50 / ia).toFixed(2));
+        p.zsRa = String(zsLimit);
 
-            const ia = inNum * mult;
-            p.iaAmp = String(ia);
+        const elIa = document.getElementById(`pt_ia_${pIdx}`);
+        if (elIa && field !== 'iaAmp') elIa.value = p.iaAmp;
 
-            // Dokunma Gerilimi Sınır Empedansı: Zs(limit) = 50V / Ia
-            const zsLimit = parseFloat((50 / ia).toFixed(2));
-            p.zsRa = String(zsLimit);
+        const elZs = document.getElementById(`pt_zs_${pIdx}`);
+        if (elZs && field !== 'zsRa') elZs.value = p.zsRa;
+    }
 
-            // Ölçülen Zx girilmişse uygunluk sonucunu otomatik belirle
-            if (p.zxRx) {
-                const zx = parseFloat(String(p.zxRx).replace(',', '.'));
-                if (!isNaN(zx)) {
-                    if (zx <= zsLimit) {
-                        p.result = 'Not-1'; // Uygun
-                    } else {
-                        p.result = 'Not-2'; // Güvenlik şartı sağlanamadığından uygun değildir (Ağır kusur)
-                    }
-                }
+    // 2. EMPEDANS (Zx/Rx) GİRİLDİĞİNDE OTOMATİK Ik1 HESAPLA: Ik1 = 230 / Empedans
+    if (field === 'zxRx') {
+        const zx = parseFloat(String(val || '').replace(',', '.'));
+        if (!isNaN(zx) && zx > 0) {
+            const ik1Val = 230 / zx;
+            let formattedIk1 = '';
+            if (ik1Val >= 100) {
+                formattedIk1 = String(Math.round(ik1Val));
+            } else if (ik1Val >= 10) {
+                formattedIk1 = String(parseFloat(ik1Val.toFixed(1)));
+            } else {
+                formattedIk1 = String(parseFloat(ik1Val.toFixed(2)));
             }
+            p.ik1Amp = formattedIk1;
+            const elIk1 = document.getElementById(`pt_ik1_${pIdx}`);
+            if (elIk1) elIk1.value = formattedIk1;
+        } else if (val === '') {
+            p.ik1Amp = '';
+            const elIk1 = document.getElementById(`pt_ik1_${pIdx}`);
+            if (elIk1) elIk1.value = '';
         }
+    } else if (field !== 'ik1Amp' && p.zxRx && !p.ik1Amp) {
+        // Eğer daha önce zx girilmiş ama ik1 boş kalmışsa tamamla
+        const zx = parseFloat(String(p.zxRx).replace(',', '.'));
+        if (!isNaN(zx) && zx > 0) {
+            const ik1Val = 230 / zx;
+            p.ik1Amp = ik1Val >= 100 ? String(Math.round(ik1Val)) : String(parseFloat(ik1Val.toFixed(1)));
+            const elIk1 = document.getElementById(`pt_ik1_${pIdx}`);
+            if (elIk1) elIk1.value = p.ik1Amp;
+        }
+    }
+
+    // 3. Empedans (Zx) ve Zs Sınır varsa Uygunluk Notunu Otomatik Belirle
+    const zxCheck = parseFloat(String(p.zxRx || '').replace(',', '.'));
+    const zsCheck = parseFloat(String(p.zsRa || '').replace(',', '.'));
+    if (!isNaN(zxCheck) && zxCheck > 0 && !isNaN(zsCheck) && zsCheck > 0) {
+        if (zxCheck <= zsCheck) {
+            p.result = 'Not-1'; // Uygun
+        } else {
+            // Sınır aşıldı: RCD aktifse Not-4, yoksa Not-2
+            const hasRcd = (p.rcdSpec && p.rcdSpec.trim() && p.rcdSpec.trim() !== '-') || (p.rcdId && parseFloat(p.rcdId) > 0);
+            p.result = hasRcd ? 'Not-4' : 'Not-2';
+        }
+        const elRes = document.getElementById(`pt_res_${pIdx}`);
+        if (elRes && field !== 'result') elRes.value = p.result;
+    }
+
+    // Güncellenen alanı inputun kendisine de yaz (özellikle preset butonları için)
+    if (field === 'rcdSpec') {
+        const elRcd = document.getElementById(`pt_rcdSpec_${pIdx}`);
+        if (elRcd) elRcd.value = val;
     }
 
     triggerAutoSave();
@@ -8799,4 +8971,10 @@ window.handleBrandLogoSelected = handleBrandLogoSelected;
 window.revertBrandLogo = revertBrandLogo;
 window.saveCompanySettingsSubmit = saveCompanySettingsSubmit;
 window.resetCompanySettingsSubmit = resetCompanySettingsSubmit;
+window.COMMON_LINYE_SUGGESTIONS = COMMON_LINYE_SUGGESTIONS;
+window.renderLinyeDropdownItems = renderLinyeDropdownItems;
+window.handleLinyeInputFocus = handleLinyeInputFocus;
+window.handleLinyeInputType = handleLinyeInputType;
+window.handleLinyeInputBlur = handleLinyeInputBlur;
+window.selectLinyeSuggestion = selectLinyeSuggestion;
 
