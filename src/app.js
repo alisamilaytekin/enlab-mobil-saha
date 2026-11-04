@@ -1,3 +1,46 @@
+
+function calculateInspectionProgress(insp, fd) {
+    let total = 0;
+    let answered = 0;
+    let defects = 0;
+
+    if (String(insp.template_id) === '2201' && AppState.electricalTemplate) {
+        (AppState.electricalTemplate.areas || []).forEach(a => {
+            (a.topics || []).forEach(t => {
+                (t.questions || []).forEach(q => {
+                    if (q.type === 'YesNo') {
+                        total++;
+                        const ans = fd.answers?.[`q_${q.guid}`];
+                        if (ans) answered++;
+                        if (ans === 'Uygun Değil' || ans === 'Kısmen Uygun') defects++;
+                    }
+                });
+            });
+        });
+    } else if (String(insp.template_id) === '2202' && fd.grounding) {
+        total = (fd.grounding.points || []).length || 1;
+        (fd.grounding.points || []).forEach(p => {
+            if (p.point && p.zxRx) answered++;
+            if (p.result && p.result !== 'Not-1' && p.result !== 'Not-4') defects++;
+        });
+    } else if (String(insp.template_id) === '2205' && fd.generator) {
+        const schema = window.getDynamicSchemaForEquipment(insp.template_id, insp.equipment_name);
+        total = (schema.visualChecks || []).length || 10;
+        (schema.visualChecks || []).forEach((_, idx) => {
+            const c = fd.specializedChecks?.[`chk_${idx}`];
+            if (c) answered++;
+            if (c === 'Uygun Değil') defects++;
+        });
+    } else {
+        total = 10;
+        answered = 5;
+    }
+
+    const percent = total > 0 ? Math.min(100, Math.round((answered / total) * 100)) : 100;
+    const unanswered = Math.max(0, total - answered);
+    return { total, answered, unanswered, defects, percent };
+}
+
 // ============================================================================
 // ENLAB v2.7.90 FULL APPLICATION ENGINE (Part A: Core, Normalizers, Navigation, Lists & Work Orders)
 // ============================================================================
@@ -2185,6 +2228,32 @@ function paintInspectionEditorUI() {
                 </div>
             </div>
 
+            <!-- CANLI İLERLEME ÇUBUĞU & KONTROL SAYACI -->
+            ${(() => {
+                const prog = calculateInspectionProgress(insp, AppState.currentFormData);
+                return `
+                    <div class="bg-white rounded-xl border border-slate-200 p-2.5 space-y-1.5 shadow-2xs">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="font-bold text-slate-800 flex items-center gap-1.5">
+                                <i class="fa-solid fa-chart-pie text-sky-600"></i>
+                                <span>Rapor Tamamlanma Durumu</span>
+                            </span>
+                            <span class="font-black ${prog.percent === 100 ? 'text-emerald-600' : 'text-sky-600'}">${prog.percent}%</span>
+                        </div>
+                        <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200">
+                            <div class="h-full rounded-full transition-all duration-300 ${prog.percent === 100 ? 'bg-emerald-500' : 'bg-sky-500'}" style="width: ${prog.percent}%;"></div>
+                        </div>
+                        <div class="flex items-center justify-between text-[11px] font-medium">
+                            <span class="text-slate-600">${prog.answered} / ${prog.total} madde kontrol edildi</span>
+                            <div class="flex items-center gap-2">
+                                ${prog.defects > 0 ? `<span class="text-rose-600 font-bold bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">${prog.defects} Uygunsuzluk</span>` : ''}
+                                ${prog.unanswered > 0 ? `<span class="text-amber-700 font-bold">${prog.unanswered} boş kaldı</span>` : `<span class="text-emerald-600 font-bold">Tamamlandı ✓</span>`}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            })()}
+
             <!-- COLLAPSIBLE NOTEBOOK DRAWER -->
             <div id="editorNotebookDrawer" class="hidden bg-amber-50 rounded-xl border border-amber-300 p-3 space-y-2">
                 <div class="flex items-center justify-between gap-2">
@@ -2487,7 +2556,7 @@ function renderElectrical2201AreaBlock(area, secNum) {
         <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
             <div class="px-3.5 py-2.5 bg-slate-800 text-white font-bold text-xs flex items-center justify-between gap-2">
                 <span class="truncate">${secNum}. ${area.name}</span>
-                ${area.index === 2 ? `<button onclick="markAllVisualChecksSuitable()" class="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-[11px] shrink-0">Tümünü Uygun Seç</button>` : ''}
+                ${area.index === 2 ? `<button onclick="markAllVisualChecksSuitable()" class="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-[11px] shrink-0">Boş Kalanları Uygun Yap</button>` : ''}
             </div>
             <div class="p-3 space-y-4">
                 ${area.topics.map(topic => renderElectrical2201Topic(area, topic, secNum)).join('')}
@@ -3025,7 +3094,7 @@ function renderSpecializedTemplateEditor() {
                 <span>3. Kontrol Kriterleri</span>
                 <button onclick="markAllVisualChecksSuitable()" class="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1 shadow-2xs">
                     <i class="fa-solid fa-check-double"></i>
-                    <span>Tümünü Uygun Seç</span>
+                    <span>Boş Kalanları Uygun Yap</span>
                 </button>
             </div>
             <div class="p-3 space-y-2">
@@ -3359,12 +3428,6 @@ function renderPhotoSectionUI() {
                                             placeholder="Fotoğraf açıklaması..."
                                             oninput="updatePhotoCaption(${idx}, this.value)"
                                             class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs font-medium bg-white">
-                                        <button type="button" onclick="toggleVoiceDictation('photoCaptionInput_${idx}', 'btnVoiceCaption_${idx}')"
-                                            id="btnVoiceCaption_${idx}"
-                                            class="px-2 py-1 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 rounded-lg text-xs font-bold border border-slate-300 shrink-0"
-                                            title="Sesle Açıklama Söyle">
-                                            <i class="fa-solid fa-microphone"></i>
-                                        </button>
                                     </div>
                                 </div>
                                 <div class="flex items-center justify-between pt-1 border-t border-slate-200 text-[11px]">
@@ -3707,12 +3770,7 @@ function renderEvaluationAndFooterSection() {
                 <div class="flex items-center justify-between mb-1">
                     <div class="flex items-center gap-2">
                         <label class="block font-bold text-slate-800">Kusur Açıklamaları / Uygunsuzluklar</label>
-                        <button type="button" onclick="toggleVoiceDictation('defectNotesTextarea', 'btnVoiceDefectNotes')"
-                            id="btnVoiceDefectNotes"
-                            class="px-2 py-0.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-md text-[10px] font-bold flex items-center gap-1 active:scale-95 transition">
-                            <i class="fa-solid fa-microphone text-rose-600"></i>
-                            <span>Sesle Dikte</span>
-                        </button>
+
                     </div>
                     ${fd.defectNotes ? `
                         <button type="button" onclick="if(confirm('Kusur açıklamalarını temizlemek istediğinize emin misiniz?')){ AppState.currentFormData.defectNotes=''; triggerAutoSave(); paintInspectionEditorUI(); }"
@@ -4166,9 +4224,9 @@ function renderGrounding2202Editor() {
                         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-600 mb-0.5">In (A)</label>
-                                <input type="text" value="${p.inAmp || ''}" placeholder=""
+                                <input type="text" inputmode="decimal" enterkeyhint="next" value="${p.inAmp || ''}" placeholder="Örn: 16"
                                     oninput="AppState.currentFormData.grounding.points[${pIdx}].inAmp=this.value; triggerAutoSave();"
-                                    class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs">
+                                    class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs font-mono font-semibold">
                             </div>
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Açma Eğrisi</label>
@@ -4179,45 +4237,45 @@ function renderGrounding2202Editor() {
                             </div>
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Ia (A)</label>
-                                <input type="text" value="${p.iaAmp || ''}" placeholder=""
+                                <input type="text" inputmode="decimal" enterkeyhint="next" value="${p.iaAmp || ''}" placeholder=""
                                     oninput="AppState.currentFormData.grounding.points[${pIdx}].iaAmp=this.value; triggerAutoSave();"
-                                    class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs">
+                                    class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs font-mono">
                             </div>
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Ik1 (A)</label>
-                                <input type="text" value="${p.ik1Amp || ''}" placeholder=""
+                                <input type="text" inputmode="decimal" enterkeyhint="next" value="${p.ik1Amp || ''}" placeholder=""
                                     oninput="AppState.currentFormData.grounding.points[${pIdx}].ik1Amp=this.value; triggerAutoSave();"
-                                    class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs">
+                                    class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs font-mono">
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Zx / Rx (Ω)</label>
-                                <input type="text" value="${p.zxRx || ''}" placeholder=""
+                                <label class="block text-[10px] font-bold text-sky-700 mb-0.5">Zx / Rx (Ω)</label>
+                                <input type="text" inputmode="decimal" enterkeyhint="next" value="${p.zxRx || ''}" placeholder="Örn: 0.42"
                                     oninput="AppState.currentFormData.grounding.points[${pIdx}].zxRx=this.value; triggerAutoSave();"
-                                    class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs">
+                                    class="w-full border-2 border-sky-400 rounded-lg px-2 py-1 text-xs font-mono font-bold text-sky-950 bg-sky-50/50">
                             </div>
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Zs / RA (Ω)</label>
-                                <input type="text" value="${p.zsRa || ''}" placeholder=""
+                                <input type="text" inputmode="decimal" enterkeyhint="next" value="${p.zsRa || ''}" placeholder=""
                                     oninput="AppState.currentFormData.grounding.points[${pIdx}].zsRa=this.value; triggerAutoSave();"
-                                    class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs">
+                                    class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs font-mono">
                             </div>
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-600 mb-0.5">RCD In / IΔn</label>
-                                <input type="text" value="${p.rcdSpec || ''}" placeholder=""
+                                <input type="text" value="${p.rcdSpec || ''}" placeholder="Örn: 30mA"
                                     oninput="AppState.currentFormData.grounding.points[${pIdx}].rcdSpec=this.value; triggerAutoSave();"
                                     class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs">
                             </div>
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-600 mb-0.5">IΔ (mA)</label>
-                                <input type="text" value="${p.rcdId || ''}" placeholder=""
+                                <input type="text" inputmode="decimal" enterkeyhint="next" value="${p.rcdId || ''}" placeholder=""
                                     oninput="AppState.currentFormData.grounding.points[${pIdx}].rcdId=this.value; triggerAutoSave();"
-                                    class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs">
+                                    class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs font-mono">
                             </div>
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-600 mb-0.5">TΔ (ms)</label>
-                                <input type="text" value="${p.rcdTd || ''}" placeholder=""
+                                <input type="text" inputmode="decimal" enterkeyhint="next" value="${p.rcdTd || ''}" placeholder=""
                                     oninput="AppState.currentFormData.grounding.points[${pIdx}].rcdTd=this.value; triggerAutoSave();"
-                                    class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs">
+                                    class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs font-mono">
                             </div>
                             <div class="col-span-2 sm:col-span-3">
                                 <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Sonuç (Uygunluk Notu)</label>
@@ -5129,14 +5187,8 @@ function renderItemDefectPickerModalUI() {
                 <div class="space-y-2">
                     <div class="relative">
                         <textarea id="newItemDefectCustomInput" rows="2"
-                            placeholder="Örn: Bu madde için sahada tespit edilen özel uygunsuzluk cümlesini yazın veya sesle söyleyin..."
-                            class="w-full border border-amber-300 bg-white rounded-lg p-2 pr-24 text-xs focus:border-amber-500 focus:outline-none"></textarea>
-                        <button type="button" onclick="toggleVoiceDictation('newItemDefectCustomInput', 'btnVoiceItemDefect')"
-                            id="btnVoiceItemDefect"
-                            class="absolute right-2 top-2 px-2 py-1 bg-rose-100 hover:bg-rose-200 active:scale-95 text-rose-800 font-bold rounded-md text-[11px] flex items-center gap-1 shadow-2xs transition">
-                            <i class="fa-solid fa-microphone"></i>
-                            <span>Sesle Söyle</span>
-                        </button>
+                            placeholder="Örn: Bu madde için sahada tespit edilen özel uygunsuzluk cümlesini yazın..."
+                            class="w-full border border-amber-300 bg-white rounded-lg p-2 text-xs focus:border-amber-500 focus:outline-none"></textarea>
                     </div>
                     <div class="flex justify-end">
                         <button type="button" onclick="submitNewItemDefectSentence()"
@@ -5291,15 +5343,23 @@ function appendStandardDefectNote(questionTitle) {
     syncAllDefectsToDefectNotes();
 }
 
-function markAllVisualChecksSuitable() {
+function markAllVisualChecksSuitable(onlyUnanswered = true) {
     const insp = AppState.currentInspection;
     const fd = AppState.currentFormData;
+    let filledCount = 0;
+
     if (String(insp.template_id) === '2201' && AppState.electricalTemplate) {
         AppState.electricalTemplate.areas.forEach(area => {
             (area.topics || []).forEach(topic => {
                 (topic.questions || []).forEach(q => {
                     if (q.type === 'YesNo') {
-                        fd.answers[`q_${q.guid}`] = 'Uygun';
+                        const cur = fd.answers[`q_${q.guid}`];
+                        if (!onlyUnanswered || !cur) {
+                            if (cur !== 'Uygun Değil' || !onlyUnanswered) {
+                                fd.answers[`q_${q.guid}`] = 'Uygun';
+                                filledCount++;
+                            }
+                        }
                     }
                 });
             });
@@ -5307,14 +5367,21 @@ function markAllVisualChecksSuitable() {
     } else {
         const schema = window.getDynamicSchemaForEquipment(insp.template_id, insp.equipment_name);
         (schema.visualChecks || []).forEach((_, idx) => {
-            fd.specializedChecks[`chk_${idx}`] = 'Uygun';
+            const cur = fd.specializedChecks[`chk_${idx}`];
+            if (!onlyUnanswered || !cur) {
+                if (cur !== 'Uygun Değil' || !onlyUnanswered) {
+                    fd.specializedChecks[`chk_${idx}`] = 'Uygun';
+                    filledCount++;
+                }
+            }
         });
     }
-    fd.overallResult = 'UYGUN';
+
     triggerAutoSave();
     paintInspectionEditorUI();
-    showToast('Tüm gözle kontrol maddeleri "✓ Uygun" olarak işaretlendi!');
+    showToast(`${filledCount} adet boş madde "✓ Uygun" olarak tamamlandı! (Kusurlar korundu)`);
 }
+window.markAllVisualChecksSuitable = markAllVisualChecksSuitable;
 
 // Duplicate handlePhotoUpload removed; primary optimized handler is active above.
 
@@ -7047,68 +7114,7 @@ window.importBackupFromFile = importBackupFromFile;
 // 12. SAHA UX FAZ-1: SESLE DİKTE, FOTOĞRAF KUSUR İŞARETLEME VE BAŞPARMAK BARI
 // ============================================================================
 
-// --- 12.1 SESLE DİKTE (VOICE-TO-TEXT) ---
-let activeSpeechRecognition = null;
-
-function toggleVoiceDictation(targetInputId, triggerBtnId = null) {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-        showToast('Bu cihazda veya tarayıcıda sesli dikte desteklenmiyor. (Chrome/WebView gereklidir)', 'warning');
-        return;
-    }
-
-    if (activeSpeechRecognition) {
-        activeSpeechRecognition.stop();
-        activeSpeechRecognition = null;
-        return;
-    }
-
-    try {
-        const recognition = new SpeechRecognition();
-        recognition.lang = 'tr-TR';
-        recognition.continuous = false;
-        recognition.interimResults = true;
-
-        const targetEl = document.getElementById(targetInputId);
-        const triggerBtn = triggerBtnId ? document.getElementById(triggerBtnId) : null;
-        let initialVal = targetEl ? targetEl.value : '';
-
-        if (triggerBtn) {
-            triggerBtn.classList.add('bg-rose-600', 'text-white', 'animate-pulse');
-            triggerBtn.innerHTML = '<i class="fa-solid fa-microphone-lines"></i> <span>Dinleniyor...</span>';
-        }
-        showToast('🎙️ Dinleniyor... Lütfen konuşun.', 'info');
-
-        recognition.onresult = (event) => {
-            const transcript = Array.from(event.results).map(r => r[0].transcript).join('');
-            if (targetEl) {
-                targetEl.value = (initialVal ? initialVal + ' ' : '') + transcript;
-                targetEl.dispatchEvent(new Event('input', { bubbles: true }));
-            }
-        };
-
-        recognition.onerror = (event) => {
-            console.warn('Speech recognition error:', event.error);
-            showToast('Ses tanıma: ' + (event.error === 'not-allowed' ? 'Mikrofon izni verilmedi' : event.error), 'error');
-        };
-
-        recognition.onend = () => {
-            activeSpeechRecognition = null;
-            if (triggerBtn) {
-                triggerBtn.classList.remove('bg-rose-600', 'text-white', 'animate-pulse');
-                triggerBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> <span>Sesle Söyle</span>';
-            }
-            showToast('Ses kaydı tamamlandı.');
-        };
-
-        activeSpeechRecognition = recognition;
-        recognition.start();
-    } catch (e) {
-        console.error('Ses tanıma başlatılamadı:', e);
-        showToast('Sesli dikte başlatılamadı', 'error');
-    }
-}
-window.toggleVoiceDictation = toggleVoiceDictation;
+// (Voice dictation removed as requested)
 
 // --- 12.2 FOTOĞRAF KUSUR İŞARETLEYİCİ (PHOTO ANNOTATOR) ---
 let currentAnnotatingPhotoIdx = -1;
