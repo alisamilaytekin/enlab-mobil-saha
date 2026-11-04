@@ -2509,19 +2509,40 @@ function renderElectrical2201Topic(area, topic, secNum) {
                 ? 'border-rose-500 bg-rose-50 text-rose-900 font-bold'
                 : 'border-slate-300 bg-slate-50 text-slate-700 font-semibold';
 
+            const isDefect = (val === 'Uygun Değil' || val === 'Kısmen Uygun');
+            const selectedDefect = AppState.currentFormData.itemDefectSelections && AppState.currentFormData.itemDefectSelections[qKey]?.sentence;
+
             return `
-                <div class="p-2.5 border-b border-slate-100 last:border-b-0 flex items-center justify-between gap-2 text-xs">
-                    <div class="min-w-0 flex-1 text-slate-800 leading-snug">
-                        <strong class="text-slate-900 mr-1">${letters[qIdx] || (qIdx + 1)}.</strong>${q.question}
+                <div class="border-b border-slate-100 last:border-b-0">
+                    <div class="p-2.5 flex items-center justify-between gap-2 text-xs">
+                        <div class="min-w-0 flex-1 text-slate-800 leading-snug">
+                            <strong class="text-slate-900 mr-1">${letters[qIdx] || (qIdx + 1)}.</strong>${q.question}
+                        </div>
+                        <select onchange="handleAnswerChange('${qKey}', this.value, '${q.question.replace(/'/g, "\\'")}')"
+                            class="w-32 shrink-0 border rounded-lg px-2 py-1.5 text-xs ${badgeCls}">
+                            <option value="" ${val === '' ? 'selected' : ''}>Seçiniz...</option>
+                            <option value="Uygun" ${val === 'Uygun' ? 'selected' : ''}>✓ Uygun</option>
+                            <option value="Uygun Değil" ${val === 'Uygun Değil' ? 'selected' : ''}>✕ Uygun Değil</option>
+                            <option value="Uygulaması Yok" ${val === 'Uygulaması Yok' ? 'selected' : ''}>N Uyg. Yok</option>
+                            <option value="Görülemedi" ${val === 'Görülemedi' ? 'selected' : ''}>G Görülemedi</option>
+                        </select>
                     </div>
-                    <select onchange="handleAnswerChange('${qKey}', this.value, '${q.question.replace(/'/g, "\\'")}')"
-                        class="w-32 shrink-0 border rounded-lg px-2 py-1.5 text-xs ${badgeCls}">
-                        <option value="" ${val === '' ? 'selected' : ''}>Seçiniz...</option>
-                        <option value="Uygun" ${val === 'Uygun' ? 'selected' : ''}>✓ Uygun</option>
-                        <option value="Uygun Değil" ${val === 'Uygun Değil' ? 'selected' : ''}>X Uygun Değil</option>
-                        <option value="Uygulaması Yok" ${val === 'Uygulaması Yok' ? 'selected' : ''}>N Uyg. Yok</option>
-                        <option value="Görülemedi" ${val === 'Görülemedi' ? 'selected' : ''}>G Görülemedi</option>
-                    </select>
+                    ${isDefect ? `
+                        <div class="mx-2.5 mb-2.5 p-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-xs flex items-center justify-between gap-2">
+                            <div class="flex items-start gap-1.5 min-w-0">
+                                <i class="fa-solid fa-triangle-exclamation text-rose-600 mt-0.5 shrink-0 text-xs"></i>
+                                <div class="min-w-0">
+                                    <span class="text-[9px] font-bold text-rose-700 uppercase tracking-wide block">Tespit Edilen Uygunsuzluk Cümlesi:</span>
+                                    <span class="font-medium text-slate-800 text-[11px] leading-snug block">${selectedDefect || 'Henüz uygunsuzluk cümlesi seçilmedi (seçmek için butona dokunun)'}</span>
+                                </div>
+                            </div>
+                            <button type="button" onclick="openItemDefectPickerModal('${qKey}', '${q.question.replace(/'/g, "\\'")}', 'answer')"
+                                class="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white rounded-lg font-bold text-[11px] shrink-0 flex items-center gap-1 shadow-2xs transition-all">
+                                <i class="fa-solid fa-list-check"></i>
+                                <span>${selectedDefect ? 'Değiştir' : 'Cümle Seç'}</span>
+                            </button>
+                        </div>
+                    ` : ''}
                 </div>
             `;
         }).join('');
@@ -2568,15 +2589,36 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
 
     if (q.type === 'YesNo') {
         const opts = ['Uygun', 'Uygun Değil', 'Uygulaması Yok', 'Görülemedi'];
-        const optLabels = { 'Uygun': '✓ Uygun', 'Uygun Değil': 'X Uygun Değil', 'Uygulaması Yok': 'N Uyg. Yok', 'Görülemedi': 'G Görülemedi' };
+        const optLabels = { 'Uygun': '✓ Uygun', 'Uygun Değil': '✕ Uygun Değil', 'Uygulaması Yok': 'N Uyg. Yok', 'Görülemedi': 'G Görülemedi' };
+        const isDefect = (val === 'Uygun Değil' || val === 'Kısmen Uygun');
+        const selectedDefect = fd.itemDefectSelections && fd.itemDefectSelections[qKey]?.sentence;
+
         return `
-            <div class="p-2.5 rounded-lg border border-slate-200 bg-slate-50/50 flex flex-col justify-between gap-1.5">
-                <label class="text-xs font-semibold text-slate-700 leading-snug">${qTitle}</label>
-                <select onchange="handleAnswerChange('${qKey}', this.value, '${qTitle.replace(/'/g, "\\'")}')"
-                    class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-bold bg-white">
-                    <option value="">Seçiniz...</option>
-                    ${opts.map(o => `<option value="${o}" ${val === o ? 'selected' : ''}>${optLabels[o]}</option>`).join('')}
-                </select>
+            <div class="p-2.5 rounded-xl border ${isDefect ? 'border-rose-300 bg-rose-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between gap-2 transition-all">
+                <div class="flex items-start justify-between gap-2">
+                    <label class="text-xs font-semibold text-slate-700 leading-snug">${qTitle}</label>
+                    <select onchange="handleAnswerChange('${qKey}', this.value, '${qTitle.replace(/'/g, "\\'")}')"
+                        class="border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-bold bg-white shrink-0 ${isDefect ? 'text-rose-700 border-rose-400' : ''}">
+                        <option value="">Seçiniz...</option>
+                        ${opts.map(o => `<option value="${o}" ${val === o ? 'selected' : ''}>${optLabels[o]}</option>`).join('')}
+                    </select>
+                </div>
+                ${isDefect ? `
+                    <div class="p-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-900 text-xs flex items-center justify-between gap-2">
+                        <div class="flex items-start gap-1.5 min-w-0">
+                            <i class="fa-solid fa-triangle-exclamation text-rose-600 mt-0.5 shrink-0 text-xs"></i>
+                            <div class="min-w-0">
+                                <span class="text-[9px] font-bold text-rose-700 uppercase tracking-wide block">Uygunsuzluk Cümlesi:</span>
+                                <span class="font-medium text-slate-800 text-[11px] leading-snug block">${selectedDefect || 'Henüz cümle seçilmedi'}</span>
+                            </div>
+                        </div>
+                        <button type="button" onclick="openItemDefectPickerModal('${qKey}', '${qTitle.replace(/'/g, "\\'")}', 'answer')"
+                            class="px-2 py-1 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white rounded-lg font-bold text-[10px] shrink-0 flex items-center gap-1 shadow-2xs transition-all">
+                            <i class="fa-solid fa-list-check"></i>
+                            <span>${selectedDefect ? 'Değiştir' : 'Cümle Seç'}</span>
+                        </button>
+                    </div>
+                ` : ''}
             </div>
         `;
     }
@@ -2877,23 +2919,43 @@ function renderSpecializedTemplateEditor() {
         const cKey = `chk_${idx}`;
         if (fd.specializedChecks[cKey] === undefined) fd.specializedChecks[cKey] = '';
         const val = fd.specializedChecks[cKey];
+        const isDefect = (val === 'Uygun Değil' || val === 'Kısmen Uygun');
+        const selectedDefect = fd.itemDefectSelections && fd.itemDefectSelections[cKey]?.sentence;
         const colorCls = val === 'Uygun'
             ? 'border-emerald-400 bg-emerald-50 text-emerald-900 font-bold'
-            : val === 'Uygun Değil'
+            : isDefect
             ? 'border-rose-400 bg-rose-50 text-rose-900 font-bold'
             : 'border-slate-300 bg-slate-50 text-slate-700';
 
         return `
-            <div class="p-2.5 rounded-lg border border-slate-200 bg-slate-50/60 flex items-center justify-between gap-2">
-                <span class="text-xs font-medium text-slate-800 min-w-0 flex-1"><strong class="text-slate-900 mr-1">${idx + 1}.</strong>${chkText}</span>
-                <select onchange="handleSpecializedCheckChange('${cKey}', this.value, '${chkText.replace(/'/g, "\\'")}')"
-                    class="w-32 shrink-0 border rounded-lg px-2 py-1.5 text-xs ${colorCls}">
-                    <option value="" ${val === '' ? 'selected' : ''}>Seçiniz...</option>
-                    <option value="Uygun" ${val === 'Uygun' ? 'selected' : ''}>✓ Uygun</option>
-                    <option value="Uygun Değil" ${val === 'Uygun Değil' ? 'selected' : ''}>X Uygun Değil</option>
-                    <option value="Uygulaması Yok" ${val === 'Uygulaması Yok' ? 'selected' : ''}>N Uyg. Yok</option>
-                    <option value="Görülemedi" ${val === 'Görülemedi' ? 'selected' : ''}>G Görülemedi</option>
-                </select>
+            <div class="rounded-xl border ${isDefect ? 'border-rose-300 bg-rose-50/40' : 'border-slate-200 bg-slate-50/60'} overflow-hidden transition-all">
+                <div class="p-2.5 flex items-center justify-between gap-2">
+                    <span class="text-xs font-medium text-slate-800 min-w-0 flex-1"><strong class="text-slate-900 mr-1">${idx + 1}.</strong>${chkText}</span>
+                    <select onchange="handleSpecializedCheckChange('${cKey}', this.value, '${chkText.replace(/'/g, "\\'")}')"
+                        class="w-32 shrink-0 border rounded-lg px-2 py-1.5 text-xs ${colorCls}">
+                        <option value="" ${val === '' ? 'selected' : ''}>Seçiniz...</option>
+                        <option value="Uygun" ${val === 'Uygun' ? 'selected' : ''}>✓ Uygun</option>
+                        <option value="Uygun Değil" ${val === 'Uygun Değil' ? 'selected' : ''}>✕ Uygun Değil</option>
+                        <option value="Uygulaması Yok" ${val === 'Uygulaması Yok' ? 'selected' : ''}>N Uyg. Yok</option>
+                        <option value="Görülemedi" ${val === 'Görülemedi' ? 'selected' : ''}>G Görülemedi</option>
+                    </select>
+                </div>
+                ${isDefect ? `
+                    <div class="mx-2.5 mb-2.5 p-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-900 text-xs flex items-center justify-between gap-2">
+                        <div class="flex items-start gap-1.5 min-w-0">
+                            <i class="fa-solid fa-triangle-exclamation text-rose-600 mt-0.5 shrink-0 text-xs"></i>
+                            <div class="min-w-0">
+                                <span class="text-[9px] font-bold text-rose-700 uppercase tracking-wide block">Tespit Edilen Uygunsuzluk:</span>
+                                <span class="font-medium text-slate-800 text-[11px] leading-snug block">${selectedDefect || 'Henüz uygunsuzluk cümlesi seçilmedi'}</span>
+                            </div>
+                        </div>
+                        <button type="button" onclick="openItemDefectPickerModal('${cKey}', '${chkText.replace(/'/g, "\\'")}', 'specialized')"
+                            class="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white rounded-lg font-bold text-[10px] shrink-0 flex items-center gap-1 shadow-2xs transition-all">
+                            <i class="fa-solid fa-list-check"></i>
+                            <span>${selectedDefect ? 'Değiştir' : 'Cümle Seç'}</span>
+                        </button>
+                    </div>
+                ` : ''}
             </div>
         `;
     }).join('');
@@ -4867,46 +4929,317 @@ function seedGeneratorDefaultDevices() {
 }
 
 
-// FIELD AUTOMATION HELPERS (Auto-Defect Note, 1-Click Suitable, AutoSave)
 // ============================================================================
+// FIELD AUTOMATION & MADDEYE ÖZEL UYGUNSUZLUK SEÇİCİ / YÖNETİCİSİ
+// ============================================================================
+
+const ItemDefectManager = {
+    STORAGE_KEY: 'enlab_item_custom_defects_v2',
+
+    getCustomDefects() {
+        try {
+            const raw = localStorage.getItem(this.STORAGE_KEY);
+            if (raw) return JSON.parse(raw);
+        } catch (e) {
+            console.warn('Item defects load error:', e);
+        }
+        return {};
+    },
+
+    saveCustomDefects(map) {
+        try {
+            localStorage.setItem(this.STORAGE_KEY, JSON.stringify(map));
+        } catch (e) {
+            console.error('Item defects save error:', e);
+        }
+    },
+
+    getSentencesForQuestion(questionTitle) {
+        const title = (questionTitle || '').trim();
+        const catalog = window.ITEM_DEFECT_CATALOG || {};
+        const customMap = this.getCustomDefects();
+
+        let baseList = [];
+        // 1. Doğrudan katalog eşleşmesi
+        if (catalog[title] && Array.isArray(catalog[title])) {
+            baseList = [...catalog[title]];
+        } else {
+            // 2. Kısmi eşleşme
+            const matchKey = Object.keys(catalog).find(k =>
+                title.toLowerCase().includes(k.toLowerCase().slice(0, 14)) ||
+                k.toLowerCase().includes(title.toLowerCase().slice(0, 14))
+            );
+            if (matchKey && catalog[matchKey]) {
+                baseList = [...catalog[matchKey]];
+            } else {
+                baseList = [
+                    `"${title}" kriterinde ilgili mevzuat ve TS HD 60364-6 standardına göre uygunsuzluk tespit edilmiştir.`
+                ];
+            }
+        }
+
+        // 3. Kullanıcının bu soru için daha önce eklediği özel cümleler (en başta görünsün)
+        const userAdded = customMap[title] || [];
+        userAdded.forEach(sentence => {
+            if (!baseList.includes(sentence)) {
+                baseList.unshift(sentence);
+            }
+        });
+
+        return baseList;
+    },
+
+    addSentenceForQuestion(questionTitle, sentence) {
+        const title = (questionTitle || '').trim();
+        const text = (sentence || '').trim();
+        if (!title || !text) return false;
+
+        const customMap = this.getCustomDefects();
+        if (!customMap[title]) customMap[title] = [];
+        if (!customMap[title].includes(text)) {
+            customMap[title].unshift(text);
+            this.saveCustomDefects(customMap);
+        }
+        return true;
+    },
+
+    deleteSentenceForQuestion(questionTitle, sentence) {
+        const title = (questionTitle || '').trim();
+        const customMap = this.getCustomDefects();
+        if (customMap[title]) {
+            customMap[title] = customMap[title].filter(s => s !== sentence);
+            this.saveCustomDefects(customMap);
+        }
+    }
+};
+
+let currentPickerTarget = { qKey: '', questionTitle: '', contextType: 'answer' };
+
+function openItemDefectPickerModal(qKey, questionTitle, contextType = 'answer') {
+    currentPickerTarget = { qKey, questionTitle, contextType };
+    renderItemDefectPickerModalUI();
+}
+
+function renderItemDefectPickerModalUI() {
+    const { qKey, questionTitle, contextType } = currentPickerTarget;
+    const fd = AppState.currentFormData;
+    if (!fd.itemDefectSelections) fd.itemDefectSelections = {};
+
+    const currentSelection = fd.itemDefectSelections[qKey]?.sentence || '';
+    const sentences = ItemDefectManager.getSentencesForQuestion(questionTitle);
+
+    const cardsHtml = sentences.map((sentence, idx) => {
+        const isSelected = (currentSelection === sentence);
+        const escaped = sentence.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        return `
+            <div class="flex items-start gap-2.5 p-3 rounded-xl border transition-all ${
+                isSelected ? 'border-rose-500 bg-rose-50/70 shadow-2xs' : 'border-slate-200 bg-white hover:border-slate-300'
+            }">
+                <div onclick="selectItemDefectSentence('${escaped}')" class="flex-1 flex items-start gap-2.5 cursor-pointer select-none">
+                    <div class="w-4 h-4 rounded-full border mt-0.5 flex items-center justify-center shrink-0 ${
+                        isSelected ? 'border-rose-600 bg-rose-600 text-white' : 'border-slate-400 bg-white'
+                    }">
+                        ${isSelected ? '<i class="fa-solid fa-check text-[9px]"></i>' : ''}
+                    </div>
+                    <span class="text-xs ${isSelected ? 'font-bold text-rose-900' : 'text-slate-800 font-medium'} leading-relaxed">
+                        ${sentence}
+                    </span>
+                </div>
+                <button type="button" onclick="deleteItemDefectFromList('${escaped}', event)"
+                    class="text-slate-300 hover:text-rose-600 p-1 shrink-0 rounded transition-all"
+                    title="Bu cümleyi bu maddenin hafızasından sil">
+                    <i class="fa-solid fa-trash-can text-xs"></i>
+                </button>
+            </div>
+        `;
+    }).join('');
+
+    const modalBody = `
+        <div class="space-y-3.5 text-xs">
+            <!-- MADDE BAŞLIĞI BİLGİSİ -->
+            <div class="p-3 bg-slate-900 text-white rounded-xl flex items-start gap-2.5">
+                <i class="fa-solid fa-triangle-exclamation text-amber-400 mt-0.5 shrink-0 text-sm"></i>
+                <div class="min-w-0">
+                    <span class="text-[10px] text-slate-400 uppercase font-mono block">Uygunsuzluk Maddesi</span>
+                    <strong class="text-xs text-white leading-snug">${questionTitle}</strong>
+                </div>
+            </div>
+
+            <!-- CÜMLE SEÇİM LİSTESİ -->
+            <div>
+                <label class="block font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+                    <span>Kayıtlı Uygunsuzluk Cümleleri (Birine Dokunun)</span>
+                    <span class="text-[10px] text-slate-400 font-normal">Tek dokunuşla seçilir</span>
+                </label>
+                <div class="space-y-2 max-h-56 overflow-y-auto p-1.5 border border-slate-200 rounded-xl bg-slate-50">
+                    ${cardsHtml}
+                </div>
+            </div>
+
+            <!-- YENİ CÜMLE EKLEME ALANI -->
+            <div class="p-3 bg-amber-50/80 border border-amber-200 rounded-xl space-y-2">
+                <div class="flex items-center justify-between">
+                    <span class="font-bold text-amber-900 text-[11px] flex items-center gap-1.5">
+                        <i class="fa-solid fa-circle-plus text-amber-600"></i>
+                        <span>Bu Maddeye Yeni Uygunsuzluk Cümlesi Ekle</span>
+                    </span>
+                    <span class="text-[10px] text-amber-700">Diğer işlerde de hazır çıkar</span>
+                </div>
+                <div class="space-y-2">
+                    <textarea id="newItemDefectCustomInput" rows="2"
+                        placeholder="Örn: Bu madde için sahada tespit edilen özel uygunsuzluk cümlesini yazın..."
+                        class="w-full border border-amber-300 bg-white rounded-lg p-2 text-xs focus:border-amber-500 focus:outline-none"></textarea>
+                    <div class="flex justify-end">
+                        <button type="button" onclick="submitNewItemDefectSentence()"
+                            class="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 shadow-2xs transition-all">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>Bu Maddeye Kaydet & Rapora Uygula</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const modalFooter = `
+        <div class="flex items-center justify-between w-full">
+            <button type="button" onclick="removeDefectFromItem('${qKey}')" class="text-rose-600 hover:underline font-bold text-xs">
+                Uygunsuzluğu Kaldır
+            </button>
+            <button type="button" onclick="closeModal()" class="px-4 py-2 bg-slate-900 active:bg-slate-800 text-white font-bold rounded-xl text-xs">
+                Tamam / Kapat
+            </button>
+        </div>
+    `;
+
+    openModal('Uygunsuzluk Cümlesi Seçimi', modalBody, modalFooter);
+}
+
+function selectItemDefectSentence(sentence) {
+    const { qKey, questionTitle, contextType } = currentPickerTarget;
+    const fd = AppState.currentFormData;
+    if (!fd.itemDefectSelections) fd.itemDefectSelections = {};
+
+    fd.itemDefectSelections[qKey] = {
+        title: questionTitle,
+        sentence: sentence
+    };
+
+    if (contextType === 'specialized') {
+        fd.specializedChecks[qKey] = 'Uygun Değil';
+    } else {
+        fd.answers[qKey] = 'Uygun Değil';
+    }
+
+    syncAllDefectsToDefectNotes();
+    paintInspectionEditorUI();
+    closeModal();
+    showToast('Uygunsuzluk cümlesi rapora eklendi!');
+}
+
+function submitNewItemDefectSentence() {
+    const input = document.getElementById('newItemDefectCustomInput');
+    const val = (input?.value || '').trim();
+    if (!val) {
+        showToast('Lütfen uygunsuzluk cümlesini yazın', 'warning');
+        input?.focus();
+        return;
+    }
+    const { questionTitle } = currentPickerTarget;
+    ItemDefectManager.addSentenceForQuestion(questionTitle, val);
+    selectItemDefectSentence(val);
+}
+
+function deleteItemDefectFromList(sentence, event) {
+    if (event) event.stopPropagation();
+    if (!confirm('Bu cümleyi bu maddenin hafızasından silmek istediğinize emin misiniz?')) return;
+    const { questionTitle } = currentPickerTarget;
+    ItemDefectManager.deleteSentenceForQuestion(questionTitle, sentence);
+    showToast('Cümle silindi');
+    renderItemDefectPickerModalUI();
+}
+
+function removeDefectFromItem(qKey) {
+    const fd = AppState.currentFormData;
+    if (fd.itemDefectSelections && fd.itemDefectSelections[qKey]) {
+        delete fd.itemDefectSelections[qKey];
+    }
+    syncAllDefectsToDefectNotes();
+    paintInspectionEditorUI();
+    closeModal();
+    showToast('Uygunsuzluk kaldırıldı');
+}
+
+function syncAllDefectsToDefectNotes() {
+    const fd = AppState.currentFormData;
+    if (!fd.itemDefectSelections) fd.itemDefectSelections = {};
+
+    const lines = [];
+    Object.keys(fd.itemDefectSelections).forEach(k => {
+        const item = fd.itemDefectSelections[k];
+        if (item && item.sentence) {
+            lines.push(`• [${item.title}]: ${item.sentence}`);
+        }
+    });
+
+    const cur = (fd.defectNotes || '').trim();
+    const existingManual = cur ? cur.split('\n').filter(l => l.trim() && !l.trim().startsWith('• [')) : [];
+
+    if (lines.length) {
+        fd.defectNotes = lines.join('\n') + (existingManual.length ? '\n\n' + existingManual.join('\n') : '');
+        fd.overallResult = 'UYGUN DEĞİL';
+        if (AppState.currentInspection) AppState.currentInspection.result_status = 'UYGUN DEĞİL';
+    } else {
+        fd.defectNotes = existingManual.join('\n');
+    }
+
+    triggerAutoSave();
+}
 
 function handleAnswerChange(qKey, value, questionTitle = '') {
     const fd = AppState.currentFormData;
     fd.answers[qKey] = value;
 
-    if ((value === 'Uygun Değil' || value === 'Kısmen Uygun') && questionTitle) {
-        appendStandardDefectNote(questionTitle);
-        if (value === 'Uygun Değil') fd.overallResult = 'UYGUN DEĞİL';
-        paintInspectionEditorUI();
-    } else {
+    if (value === 'Uygun Değil' || value === 'Kısmen Uygun') {
+        fd.overallResult = 'UYGUN DEĞİL';
         triggerAutoSave();
+        paintInspectionEditorUI();
+        if (questionTitle) {
+            setTimeout(() => openItemDefectPickerModal(qKey, questionTitle, 'answer'), 50);
+        }
+    } else {
+        if (fd.itemDefectSelections && fd.itemDefectSelections[qKey]) {
+            delete fd.itemDefectSelections[qKey];
+            syncAllDefectsToDefectNotes();
+        }
+        triggerAutoSave();
+        paintInspectionEditorUI();
     }
 }
 
 function handleSpecializedCheckChange(cKey, value, checkTitle = '') {
     const fd = AppState.currentFormData;
     fd.specializedChecks[cKey] = value;
-    if ((value === 'Uygun Değil' || value === 'Kısmen Uygun') && checkTitle) {
-        appendStandardDefectNote(checkTitle);
-        if (value === 'Uygun Değil') fd.overallResult = 'UYGUN DEĞİL';
+
+    if (value === 'Uygun Değil' || value === 'Kısmen Uygun') {
+        fd.overallResult = 'UYGUN DEĞİL';
+        triggerAutoSave();
+        paintInspectionEditorUI();
+        if (checkTitle) {
+            setTimeout(() => openItemDefectPickerModal(cKey, checkTitle, 'specialized'), 50);
+        }
+    } else {
+        if (fd.itemDefectSelections && fd.itemDefectSelections[cKey]) {
+            delete fd.itemDefectSelections[cKey];
+            syncAllDefectsToDefectNotes();
+        }
+        triggerAutoSave();
+        paintInspectionEditorUI();
     }
-    triggerAutoSave();
-    paintInspectionEditorUI();
 }
 
 function appendStandardDefectNote(questionTitle) {
-    const fd = AppState.currentFormData;
-    const notesMap = window.STANDARD_DEFECT_NOTES || {};
-    let stdNote = notesMap[questionTitle];
-    if (!stdNote) {
-        const matchKey = Object.keys(notesMap).find(k => questionTitle.toLowerCase().includes(k.toLowerCase().slice(0, 18)));
-        stdNote = matchKey ? notesMap[matchKey] : `• [KUSUR] "${questionTitle}" kriterinde ilgili yönetmelik ve TS HD 60364-6 standardına göre uygunsuzluk tespit edilmiştir.`;
-    }
-    if (!(fd.defectNotes || '').includes(stdNote)) {
-        fd.defectNotes = (fd.defectNotes ? fd.defectNotes + '\n' : '') + stdNote;
-        showToast('Uygunsuzluk açıklaması mevzuat metniyle otomatik eklendi!', 'warning');
-    }
-    triggerAutoSave();
+    syncAllDefectsToDefectNotes();
 }
 
 function markAllVisualChecksSuitable() {

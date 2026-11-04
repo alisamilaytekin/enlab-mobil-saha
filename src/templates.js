@@ -79,6 +79,127 @@ window.DEFAULT_NON_CONFORMITY_LIBRARY = [
     { id: "def_32", category: "Jeneratör", text: "Jeneratör hareketli parçaları (kayış, kasnak, fan) üzerinde koruyucu kafes muhafazası bulunmamaktadır." }
 ];
 
+// GÖZLE KONTROL MADDELERİ İÇİN MADDEYE ÖZEL HAZIR UYGUNSUZLUK CÜMLELERİ KATALOĞU
+window.ITEM_DEFECT_CATALOG = {
+    "Zemin izolasyonu": [
+        "Pano önünde TS EN 61111 standardına uygun dielektrik yalıtkan paspas (izolasyon halısı) bulunmamaktadır.",
+        "Mevcut yalıtkan paspas yırtılmış / aşınmış durumda olup dielektrik koruma özelliğini yitirmiştir, yenilenmelidir.",
+        "Yalıtkan paspas çalışma alanı boyunca süreklilik sağlamamakta, pano kapağı açıldığında basma alanını tam örtmemektedir."
+    ],
+    "Pano iç kapak, faza erişim engeli veya pleksi koruma": [
+        "Pano içerisinde gerilim altındaki aktif bölümlere doğrudan dokunmayı önleyen iç kapak veya pleksi koruma bulunmamaktadır (TS HD 60364-4-41).",
+        "Pano iç koruma pleksisi kırık/eksik olup bara ve sigorta giriş terminalleri açıkta durmaktadır.",
+        "Pano iç kapağı açık bırakılmış veya montaj vidaları eksik durumdadır."
+    ],
+    "Pano kapak bağlantısı kontrolü 6 mm2": [
+        "Pano metal kapağı ile gövde arasında min. 6 mm² esnek sarı-yeşil topraklama köprüsü bulunmamaktadır.",
+        "Pano kapak topraklama köprüsü cıvata bağlantısında gevşeklik ve temassızlık tespit edilmiştir.",
+        "Pano kapağı topraklama iletken kesiti yetersizdir."
+    ],
+    "Kablo renk kodları Nötr: Mavi Toprak: Sarı/ Yeşil": [
+        "Tesisatta Nötr (Mavi) ve Koruma/Toprak (Sarı-Yeşil) iletken renk kodlaması standartlara uygun değildir.",
+        "Toprak iletkeni olarak mavi/siyah iletken kullanılmış veya faz iletkeniyle karıştırılmıştır.",
+        "Nötr iletkeni olarak sarı-yeşil kablo kullanılmıştır."
+    ],
+    "Koruma cihaz ve terminal etiket": [
+        "Pano içerisindeki şalter, sigorta, RCD ve klemenslerin beslediği linyeleri belirten etiketlemeler eksiktir.",
+        "Pano linye etiketleri silinmiş, yıpranmış veya okunamayacak durumdadır.",
+        "Sigorta akım değerleri ve linyelerin beslediği mahaller panoda belirtilmemiştir."
+    ],
+    "Tehlike işaretleri ve diğer uyarı işaretleri": [
+        "Pano dış kapağında standart ölüm tehlikesi / elektrik uyarı levhası bulunmamaktadır.",
+        "Pano dışındaki elektrik tehlike uyarı levhası yırtılmış / deforme olmuştur, yenilenmelidir."
+    ],
+    "Şemalar, talimatlar, devre çizimleri ve kısa bilgiler": [
+        "Pano içerisinde güncel onaylı tek hat şeması ve işletme talimatı bulunmamaktadır.",
+        "Pano içindeki mevcut tek hat şeması güncel revizyonları ve eklenen yeni linyeleri yansıtmamaktadır."
+    ],
+    "Kablo yollarının uygunluğu ve mekanik koruma": [
+        "Kablo tava ve kanallarında kapak eksikliği, sarkma veya mekanik hasar tespit edilmiştir.",
+        "Pano kablo giriş ve çıkışlarında rakor kullanılmamış olup kablolar sac kenarına sürtünmektedir."
+    ],
+    "Elektrik panosu etrafında yabancı malzemeler": [
+        "Elektrik panosu önünde ve çevresinde müdahaleyi engelleyen veya yangın riski oluşturan yabancı malzemeler bulunmaktadır.",
+        "Pano önü depolama alanı olarak kullanılmış olup acil müdahale mesafesi (min. 1 metre) kapalıdır."
+    ],
+    "Kontak gevşekliği ısınması": [
+        "Termal kamera incelemesinde klemens/şalter bağlantı noktasında kontak gevşekliği kaynaklı aşırı ısınma tespit edilmiştir.",
+        "Bara bağlantı cıvatalarında gevşeklik kaynaklı ark izi ve renk değişimi görülmüştür."
+    ],
+    "Aşırı yük ısınması PVC kablolar için >70 derece": [
+        "Termal kamera incelemesinde PVC yalıtımlı iletkenlerde 70°C sınır değerinin üzerinde aşırı yük ısınması tespit edilmiştir.",
+        "Kablo akım taşıma kapasitesinin üzerinde yük çekilmekte olup hat kesiti veya sigorta anma akımı revize edilmelidir."
+    ],
+    "Topraklama iletkeni": [
+        "Pano ana topraklama barası bağlantısı veya topraklama iletkeni kesiti standartlara uygun değildir.",
+        "Topraklama iletkeninde kopukluk veya korozyon kaynaklı kesit kaybı mevcuttur."
+    ],
+    "Ana potansiyel dengeleme iletkeni": [
+        "Ana potansiyel dengeleme barası ve iletken bağlantısı tesis edilmemiştir.",
+        "Ana potansiyel dengeleme iletkeni kesiti yönetmelik sınırının altındadır."
+    ],
+    "Ek Potansiyel dengeleme İletkeni (Tamamlayıcı pot.den)": [
+        "Metal gövdeli donanımlar ile elektrik panosu arasında tamamlayıcı potansiyel dengeleme bağlantısı eksiktir."
+    ],
+    "Ekipman yakınında elektriksel ekipman yangın söndürme tertibatı": [
+        "Pano odası / yakınında elektrik yangınlarına uygun (CO2 / KKT) yangın söndürme tüpü bulunmamaktadır.",
+        "Yangın söndürme tüpünün periyodik kontrol tarihi geçmiş durumdadır."
+    ],
+    "Ekipman temizlik/bakım durumu": [
+        "Pano içerisinde toz, örümcek ağı ve yabancı partikül birikimi mevcut olup pano içi temizlik ve bakım yapılmalıdır."
+    ],
+    "Pano sabitlenmesi (Depreme dayanıklılık)": [
+        "Pano gövdesi zemine veya duvara devrilmeye ve depreme karşı rijit şekilde sabitlenmemiştir."
+    ],
+    "Kablo şebeke tarafı": [
+        "Pano şebeke besleme kablosu girişinde mekanik koruma (rakor/conta) eksikliği tespit edilmiştir."
+    ],
+    "Kablo donanım tarafı": [
+        "Pano çıkış kablo bağlantılarında gevşeklik, yüksük eksikliği veya uygunsuz klemens bağlantısı tespit edilmiştir."
+    ],
+    "Dış darbelere karşı koruma önlemi": [
+        "Pano dış darbelere ve çevresel etkilere (IP koruma sınıfı) karşı korumasız durumdadır."
+    ],
+    // --- TOPRAKLAMA TESİSATI (2202) MADDELERİ ---
+    "Gözle Muayene": [
+        "Topraklama elektrot bağlantı noktalarında korozyon ve iletken kopukluğu tespit edilmiştir.",
+        "Topraklama ölçüm ayırma klemensleri (test noktaları) mevcut değildir veya erişilemez durumdadır.",
+        "Eşpotansiyel dengeleme barası klemens bağlantılarında gevşeklik mevcuttur."
+    ],
+    "Süreklilik Testi": [
+        "Son kullanıcı prizleri koruma iletkeni süreklilik testinde hat kopukluğu tespit edilmiştir.",
+        "Gövde koruma topraklaması süreklilik direnci sınır değerin üzerindedir (> 0.2 Ω)."
+    ],
+    "Topraklama Direnç Değeri": [
+        "Ölçülen topraklama geçiş direnci değeri standart sınır değerin üzerindedir (Rx > Ra).",
+        "Dokunma gerilimi sınır değeri aşmaktadır, Kaçak Akım Koruma Rölesi ile koruma zorunludur."
+    ],
+    // --- JENERATÖR (2205) MADDELERİ ---
+    "Jeneratör Gövde ve Nötr Topraklaması": [
+        "Jeneratör gövde ve nötr topraklamaları ayrı ayrı yapılmamıştır veya iletken kesiti yetersizdir.",
+        "Jeneratör topraklama bağlantısında gevşeklik ve oksitlenme mevcuttur."
+    ],
+    "Jeneratör Egzoz Sistemi": [
+        "Jeneratör egzoz borusunda personeli yanmaya karşı koruyacak ısı yalıtımı / izolasyon kaplaması eksiktir.",
+        "Egzoz gazı tahliyesi uygunsuz olup havalandırma açıklığına veya bina içine yönelmektedir."
+    ],
+    "Transfer Panosu (ATS)": [
+        "Şebeke - Jeneratör transfer panosu (ATS) elektriksel ve mekanik kilitlemesi işlevsizdir / bulunmamaktadır.",
+        "Transfer panosu kontaktörlerinde aşırı ark izi ve kontak aşınması görülmüştür."
+    ],
+    "Yakıt Sistemi ve Taşma Tavası": [
+        "Jeneratör yakıt tankı altında yakıt sızıntısını engelleyecek taşma tavası bulunmamaktadır.",
+        "Yakıt tankı havalandırma borusu açık atmosfere çıkarılmamıştır."
+    ],
+    "Acil Durdurma (Acil Stop)": [
+        "Jeneratör dairesinde acil durum durdurma (Acil Stop) butonu bulunmamaktadır veya işlevsizdir."
+    ],
+    "Akü ve Başlatma Sistemi": [
+        "Starter akü kutup başlarında aşırı oksitlenme mevcuttur ve akü muhafaza kapağı eksiktir.",
+        "Akü şarj redresörü arızalı olup akü tampon şarj voltajı standart dışıdır."
+    ]
+};
+
 // Standard Defect Descriptions for Automatic Filling when "Uygun Değil" or "Hafif Kusur" is selected
 window.STANDARD_DEFECT_NOTES = {
     "Kablo şebeke tarafı": "Pano şebeke besleme kablosu girişinde mekanik koruma (rakor/conta) eksikliği veya uygunsuzluğu tespit edilmiştir.",
