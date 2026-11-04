@@ -191,40 +191,126 @@
             }
         }
         .print-only { display: none; }
-        /* Fluid Touch & Modern Mobile Micro-Animations */
+        /* ==========================================================================
+           EMIL KOWALSKI CRAFT & IMPECCABLE DESIGN SYSTEM
+           ========================================================================== */
+        :root {
+            --spring-snappy: cubic-bezier(0.16, 1, 0.3, 1);
+            --spring-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+            --spring-smooth: cubic-bezier(0.32, 0.72, 0, 1);
+        }
+
+        /* Tactile Touch Feedback & Signature Emil Kowalski Spring Physics */
         button, a, [role="button"], .touch-action-btn {
             user-select: none;
             -webkit-user-select: none;
             touch-action: manipulation;
-            transition: transform 0.12s cubic-bezier(0.2, 0, 0, 1), opacity 0.12s ease;
-        }
-        button:active, a:active, .touch-action-btn:active {
-            transform: scale(0.96) !important;
-            opacity: 0.90;
-        }
-        .card-interactive {
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            transition: transform 0.14s var(--spring-snappy), opacity 0.12s ease, box-shadow 0.14s ease;
             will-change: transform;
         }
-        .card-interactive:active {
+        button:active, a:active, .touch-action-btn:active {
+            transform: scale(0.97) !important;
+            opacity: 0.92;
+        }
+
+        /* Impeccable Card Depth & Polish */
+        .card-craft-dark {
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 4px 14px -2px rgba(15, 23, 42, 0.45);
+            border-radius: 1rem;
+            transition: transform 0.18s var(--spring-snappy), box-shadow 0.18s ease;
+        }
+        .card-craft-white {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 6px 16px -4px rgba(15, 23, 42, 0.05), inset 0 1px 0 #ffffff;
+            border-radius: 1rem;
+            transition: transform 0.18s var(--spring-snappy), box-shadow 0.18s ease, border-color 0.18s ease;
+        }
+        .card-craft-white:active {
             transform: scale(0.985);
         }
 
-        /* Modal & Bottom-Sheet Animations */
-        @keyframes modalFadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
+        /* Tabular Numerals for Electrical Measurements & Calculations */
+        .tabular-nums, input[inputmode="decimal"], input[type="number"], .font-mono {
+            font-variant-numeric: tabular-nums;
+            -webkit-font-feature-settings: "tnum";
+            font-feature-settings: "tnum";
         }
-        @keyframes sheetSlideUp {
-            from { transform: translateY(24px) scale(0.98); opacity: 0; }
-            to { transform: translateY(0) scale(1); opacity: 1; }
+
+        /* Fluid Input Focus States (Linear / Raycast Style) */
+        input[type="text"], input[type="number"], select, textarea {
+            transition: border-color 0.15s ease, box-shadow 0.15s var(--spring-snappy), background-color 0.15s ease;
+        }
+        input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:focus {
+            outline: none !important;
+            border-color: #0284c7 !important;
+            box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.18) !important;
+        }
+
+        /* Vaul & Emil Kowalski Dialog & Sheet Physics */
+        @keyframes vaulBackdropFade {
+            from { opacity: 0; backdrop-filter: blur(0px); }
+            to { opacity: 1; backdrop-filter: blur(8px); }
+        }
+        @keyframes vaulSheetEnter {
+            0% { transform: translate3d(0, 28px, 0) scale(0.96); opacity: 0; }
+            100% { transform: translate3d(0, 0, 0) scale(1); opacity: 1; }
         }
         .modal-backdrop-animate {
-            animation: modalFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            animation: vaulBackdropFade 0.22s var(--spring-snappy) forwards;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
         }
         .modal-sheet-animate {
-            animation: sheetSlideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            animation: vaulSheetEnter 0.26s var(--spring-snappy) forwards;
             will-change: transform, opacity;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+        }
+
+        /* Emil Kowalski Signature Sonner Toast Pill */
+        .sonner-toast-pill {
+            background: rgba(15, 23, 42, 0.94);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+            transform: translate3d(0, 80px, 0) scale(0.92);
+            opacity: 0;
+            visibility: hidden;
+            transition: transform 0.32s var(--spring-snappy), opacity 0.24s var(--spring-snappy), visibility 0.32s;
+            will-change: transform, opacity;
+        }
+        .sonner-toast-pill.sonner-visible {
+            transform: translate3d(0, 0, 0) scale(1);
+            opacity: 1;
+            visibility: visible;
+        }
+        @keyframes sonnerIconPop {
+            0% { transform: scale(0.5); }
+            60% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        .sonner-toast-icon-bounce {
+            animation: sonnerIconPop 0.3s var(--spring-bounce);
+        }
+
+        /* Buttons with Inner Light Highlights (Linear / Emil Craft) */
+        .btn-craft-primary {
+            background: linear-gradient(180deg, #0284c7 0%, #0369a1 100%) !important;
+            border: 1px solid #0284c7 !important;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 2px 6px rgba(2, 132, 199, 0.35) !important;
+        }
+        .btn-craft-dark {
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%) !important;
+            border: 1px solid rgba(255, 255, 255, 0.12) !important;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 2px 6px rgba(15, 23, 42, 0.4) !important;
+        }
+        .btn-craft-emerald {
+            background: linear-gradient(180deg, #059669 0%, #047857 100%) !important;
+            border: 1px solid #059669 !important;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 2px 6px rgba(5, 150, 105, 0.35) !important;
         }
 
         /* Custom Sleek Scrollbars */
@@ -318,22 +404,26 @@
         </div>
     </div>
 
-    <!-- SIMPLE MODAL -->
-    <div id="appModal" class="no-print fixed inset-0 bg-slate-950/70 z-50 hidden flex items-center justify-center p-3 modal-backdrop-animate">
-        <div class="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-lg w-full max-h-[88vh] flex flex-col overflow-hidden modal-sheet-animate">
-            <div class="px-4 py-3 bg-slate-900 text-white flex items-center justify-between shrink-0">
-                <h3 id="modalTitle" class="font-bold text-sm">İşlem</h3>
-                <button onclick="closeModal()" class="text-slate-400 hover:text-white p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+    <!-- SIMPLE MODAL (VAUL / EMIL KOWALSKI CRAFT) -->
+    <div id="appModal" class="no-print fixed inset-0 bg-slate-950/75 z-50 hidden flex items-center justify-center p-3 modal-backdrop-animate">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200/90 max-w-lg w-full max-h-[88vh] flex flex-col overflow-hidden modal-sheet-animate">
+            <div class="px-4 py-3 bg-slate-900 text-white flex items-center justify-between shrink-0 border-b border-slate-800">
+                <h3 id="modalTitle" class="font-bold text-sm tracking-tight">İşlem</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition active:scale-90"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
             <div id="modalBody" class="p-4 overflow-y-auto space-y-3 text-sm"></div>
-            <div id="modalFooter" class="px-4 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2 shrink-0"></div>
+            <div id="modalFooter" class="px-4 py-2.5 bg-slate-50 border-t border-slate-200/80 flex items-center justify-end gap-2 shrink-0"></div>
         </div>
     </div>
 
-    <!-- TOAST -->
-    <div id="toast" class="no-print fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-xl flex items-center gap-2 transform translate-y-24 transition-all duration-200 pointer-events-none border border-slate-700">
-        <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400"></i>
-        <span id="toastMsg">Kaydedildi</span>
+    <!-- EMIL KOWALSKI CRAFT: SONNER TOAST SYSTEM -->
+    <div id="sonnerContainer" class="no-print fixed bottom-6 inset-x-0 flex justify-center items-center pointer-events-none z-50 px-4">
+        <div id="toast" class="sonner-toast-pill flex items-center gap-2.5 px-4 py-2.5 rounded-full pointer-events-auto">
+            <div id="toastIconWrapper" class="w-6 h-6 rounded-full flex items-center justify-center shrink-0 bg-emerald-500/20 text-emerald-400">
+                <i id="toastIcon" class="fa-solid fa-circle-check text-xs sonner-toast-icon-bounce"></i>
+            </div>
+            <span id="toastMsg" class="text-xs font-semibold text-slate-100 tracking-tight truncate max-w-[70vw]">Kaydedildi</span>
+        </div>
     </div>
 
     <script src="offline-data.js"></script>

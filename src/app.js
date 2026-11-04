@@ -409,19 +409,41 @@ function toggleRowActionMenu(menuId, event) {
     document.getElementById(menuId)?.classList.toggle('hidden');
 }
 
+let toastTimeoutId = null;
 function showToast(msg, type = 'success') {
     const toast = document.getElementById('toast');
     const toastMsg = document.getElementById('toastMsg');
     const toastIcon = document.getElementById('toastIcon');
+    const toastIconWrapper = document.getElementById('toastIconWrapper');
     if (!toast || !toastMsg) return;
+
+    if (toastTimeoutId) {
+        clearTimeout(toastTimeoutId);
+        toastTimeoutId = null;
+    }
+
     toastMsg.textContent = msg;
-    toastIcon.className = type === 'success'
-        ? 'fa-solid fa-circle-check text-emerald-400 text-sm'
-        : type === 'warning'
-        ? 'fa-solid fa-triangle-exclamation text-amber-400 text-sm'
-        : 'fa-solid fa-circle-info text-sky-400 text-sm';
+
+    if (type === 'success') {
+        if (toastIconWrapper) toastIconWrapper.className = 'w-6 h-6 rounded-full flex items-center justify-center shrink-0 bg-emerald-500/20 text-emerald-400';
+        if (toastIcon) toastIcon.className = 'fa-solid fa-circle-check text-xs sonner-toast-icon-bounce';
+    } else if (type === 'warning') {
+        if (toastIconWrapper) toastIconWrapper.className = 'w-6 h-6 rounded-full flex items-center justify-center shrink-0 bg-amber-500/20 text-amber-400';
+        if (toastIcon) toastIcon.className = 'fa-solid fa-triangle-exclamation text-xs sonner-toast-icon-bounce';
+    } else if (type === 'error') {
+        if (toastIconWrapper) toastIconWrapper.className = 'w-6 h-6 rounded-full flex items-center justify-center shrink-0 bg-rose-500/20 text-rose-400';
+        if (toastIcon) toastIcon.className = 'fa-solid fa-circle-exclamation text-xs sonner-toast-icon-bounce';
+    } else {
+        if (toastIconWrapper) toastIconWrapper.className = 'w-6 h-6 rounded-full flex items-center justify-center shrink-0 bg-sky-500/20 text-sky-400';
+        if (toastIcon) toastIcon.className = 'fa-solid fa-circle-info text-xs sonner-toast-icon-bounce';
+    }
+
     toast.classList.remove('translate-y-32', 'translate-y-24');
-    setTimeout(() => toast.classList.add('translate-y-32'), 2800);
+    toast.classList.add('sonner-visible');
+
+    toastTimeoutId = setTimeout(() => {
+        toast.classList.remove('sonner-visible');
+    }, 2800);
 }
 
 function openModal(title, bodyHtml, footerHtml = '') {
@@ -606,8 +628,8 @@ async function renderHome() {
 
     container.innerHTML = `
         <div class="max-w-2xl mx-auto space-y-3 pb-8">
-            <!-- 1. AKTİF MUAYENE PERSONELİ & HESAP DEĞİŞTİRME PANELİ (GENİŞ, FERAH MOBİL DÜZEN) -->
-            <div class="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-800 text-white rounded-2xl p-4 shadow-sm border border-slate-700/80 space-y-3">
+            <!-- 1. AKTİF MUAYENE PERSONELİ & HESAP DEĞİŞTİRME PANELİ (EMIL KOWALSKI CRAFT ELEVATION) -->
+            <div class="card-craft-dark text-white p-4 space-y-3">
                 <div class="flex items-center gap-3">
                     <div class="w-12 h-12 rounded-2xl bg-amber-400 text-slate-950 font-black text-lg flex items-center justify-center shrink-0 shadow-sm">
                         <i class="fa-solid fa-user-tie"></i>
@@ -624,7 +646,7 @@ async function renderHome() {
                 </div>
                 
                 <div class="grid grid-cols-2 gap-2 pt-1 border-t border-slate-700/60">
-                    <button onclick="openUserProfileModal()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-sky-300 border border-slate-600 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-xs">
+                    <button onclick="openUserProfileModal()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-sky-300 border border-slate-600/80 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-xs">
                         <i class="fa-solid fa-user-pen text-amber-400"></i>
                         <span>Profilimi Düzenle</span>
                     </button>
@@ -635,8 +657,8 @@ async function renderHome() {
                 </div>
             </div>
 
-            <!-- 2. ŞİRKET, LOGO & RAPOR KODLARI AYARLARI (GENİŞ, TAM YAZILI DÜZEN) -->
-            <div class="bg-white rounded-2xl p-4 shadow-2xs border border-slate-200 space-y-3">
+            <!-- 2. ŞİRKET, LOGO & RAPOR KODLARI AYARLARI (IMPECCABLE CRAFT ELEVATION) -->
+            <div class="card-craft-white p-4 space-y-3">
                 <div class="flex items-start gap-3.5">
                     <div class="w-13 h-13 rounded-xl bg-slate-50 border border-slate-200 p-1 flex items-center justify-center shrink-0 shadow-2xs">
                         <img src="${logoSrc}" alt="Logo" class="max-w-full max-h-full object-contain">
@@ -653,7 +675,7 @@ async function renderHome() {
                 </div>
                 
                 <div class="grid grid-cols-5 gap-2 pt-1 border-t border-slate-100">
-                    <button onclick="openCompanySettingsModal()" class="col-span-4 py-2 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition">
+                    <button onclick="openCompanySettingsModal()" class="col-span-4 py-2 btn-craft-primary active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition">
                         <i class="fa-solid fa-sliders"></i>
                         <span>Şirket, Logo & Rapor Ayarları</span>
                     </button>
@@ -695,7 +717,7 @@ function renderMinimalJobCards(jobs) {
         const count = wo.actual_inspection_count ?? wo.inspection_count ?? 0;
         return `
             <div onclick="navigateTo('work-order-details', {id: '${wo.id}'})"
-                class="bg-white rounded-xl border border-slate-200 active:border-sky-500 p-3.5 shadow-2xs cursor-pointer transition flex items-center justify-between gap-2">
+                class="card-craft-white p-3.5 cursor-pointer flex items-center justify-between gap-2">
                 <div class="min-w-0 flex-1">
                     <div class="font-bold text-slate-900 text-sm truncate">${wo.customer_name}</div>
                     ${wo.customer_branch ? `<div class="text-[11px] text-slate-500 truncate mt-0.5">${wo.customer_branch}</div>` : ''}
@@ -1219,10 +1241,10 @@ async function renderWorkOrderDetails(workOrderId) {
 
     container.innerHTML = `
         <div class="max-w-2xl mx-auto space-y-3 pb-8">
-            <!-- HEADER -->
-            <div class="bg-white rounded-xl border border-slate-200 p-3.5 flex items-center justify-between gap-2">
+            <!-- HEADER (EMIL KOWALSKI CRAFT) -->
+            <div class="card-craft-white p-3.5 flex items-center justify-between gap-2">
                 <div class="flex items-center gap-2.5 min-w-0">
-                    <button onclick="navigateTo('home')" class="px-2.5 py-1.5 bg-slate-100 active:bg-slate-200 text-slate-700 rounded-lg font-bold text-xs shrink-0">
+                    <button onclick="navigateTo('home')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 rounded-xl font-bold text-xs shrink-0 transition border border-slate-200">
                         <i class="fa-solid fa-arrow-left mr-1"></i>Geri
                     </button>
                     <div class="min-w-0">
@@ -1230,13 +1252,13 @@ async function renderWorkOrderDetails(workOrderId) {
                         ${wo.customer_branch ? `<div class="text-[11px] text-slate-500 truncate">${wo.customer_branch}</div>` : ''}
                     </div>
                 </div>
-                <button onclick="deleteWorkOrderHeading('${wo.id}', event)" class="px-2.5 py-1.5 bg-rose-50 active:bg-rose-100 text-rose-700 rounded-lg font-bold text-xs shrink-0">
+                <button onclick="deleteWorkOrderHeading('${wo.id}', event)" class="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-700 rounded-xl font-bold text-xs shrink-0 transition border border-rose-200">
                     <i class="fa-solid fa-trash-can mr-1"></i>Sil
                 </button>
             </div>
 
             <!-- YÖNETİCİ & SAHA İSTATİSTİKLERİ KARTI -->
-            <div class="bg-white rounded-xl border border-slate-200 p-3.5 space-y-3 shadow-2xs">
+            <div class="card-craft-white p-3.5 space-y-3">
                 <div class="flex items-center justify-between">
                     <span class="font-bold text-xs text-slate-800 flex items-center gap-1.5">
                         <i class="fa-solid fa-chart-column text-sky-600"></i>
@@ -1246,22 +1268,22 @@ async function renderWorkOrderDetails(workOrderId) {
                 </div>
                 <div class="grid grid-cols-3 gap-2 text-center">
                     <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
-                        <div class="text-base font-black text-slate-900">${inspections.length}</div>
+                        <div class="text-base font-black text-slate-900 tabular-nums">${inspections.length}</div>
                         <div class="text-[10px] font-bold text-slate-500">Toplam Rapor</div>
                     </div>
                     <div class="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl">
-                        <div class="text-base font-black text-emerald-700">${inspections.filter(i => (i.result_status || 'UYGUN') === 'UYGUN').length}</div>
+                        <div class="text-base font-black text-emerald-700 tabular-nums">${inspections.filter(i => (i.result_status || 'UYGUN') === 'UYGUN').length}</div>
                         <div class="text-[10px] font-bold text-emerald-800">Uygun Rapor</div>
                     </div>
                     <div class="p-2.5 bg-rose-50 border border-rose-200 rounded-xl">
-                        <div class="text-base font-black text-rose-700">${inspections.filter(i => i.result_status === 'UYGUN DEĞİL').length}</div>
+                        <div class="text-base font-black text-rose-700 tabular-nums">${inspections.filter(i => i.result_status === 'UYGUN DEĞİL').length}</div>
                         <div class="text-[10px] font-bold text-rose-800">Kusurlu Rapor</div>
                     </div>
                 </div>
             </div>
 
             <!-- NOT DEFTERİ -->
-            <div class="bg-white rounded-xl border border-slate-200 p-3.5 space-y-2">
+            <div class="card-craft-white p-3.5 space-y-2">
                 <div class="flex items-center justify-between">
                     <label class="font-bold text-xs text-slate-800 flex items-center gap-1.5">
                         <i class="fa-solid fa-note-sticky text-amber-500"></i>
@@ -1272,17 +1294,17 @@ async function renderWorkOrderDetails(workOrderId) {
                 <textarea id="woFieldNotesTextarea_${wo.id}" rows="4"
                     oninput="saveWorkOrderNotesRealtime('${wo.id}', this.value)"
                     placeholder="Saha notlarınızı buraya yazın..."
-                    class="w-full border border-slate-200 bg-amber-50/30 rounded-lg p-2.5 text-xs sm:text-sm text-slate-900 focus:border-amber-400 focus:outline-none">${wo.field_notes || ''}</textarea>
+                    class="w-full border border-slate-200 bg-amber-50/30 rounded-xl p-2.5 text-xs sm:text-sm text-slate-900 focus:border-amber-400 focus:outline-none">${wo.field_notes || ''}</textarea>
             </div>
 
-            <!-- RAPORLAR -->
-            <div class="bg-white rounded-xl border border-slate-200 p-3.5 space-y-3">
+            <!-- RAPORLAR (IMPECCABLE CRAFT) -->
+            <div class="card-craft-white p-3.5 space-y-3">
                 <div class="flex items-center justify-between gap-2">
                     <div class="font-bold text-xs text-slate-800 flex items-center gap-1.5">
                         <i class="fa-solid fa-file-lines text-sky-600"></i>
                         <span>Rapor Taslakları (${inspections.length})</span>
                     </div>
-                    <button onclick="openAddInspectionModal('${wo.id}')" class="px-3 py-1.5 bg-emerald-500 active:bg-emerald-600 text-slate-950 font-bold text-xs rounded-lg flex items-center gap-1">
+                    <button onclick="openAddInspectionModal('${wo.id}')" class="px-3.5 py-1.5 btn-craft-emerald active:scale-95 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition">
                         <i class="fa-solid fa-plus"></i>
                         <span>Rapor Ekle</span>
                     </button>
@@ -1316,7 +1338,7 @@ function renderWoInspectionRows(list, workOrderId) {
         return `<div class="p-6 text-center text-slate-400 text-xs border border-dashed border-slate-200 rounded-lg">Henüz rapor eklenmedi. <strong>"+ Rapor Ekle"</strong> butonuna dokunun.</div>`;
     }
     return list.map(item => `
-        <div class="p-3.5 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition space-y-2.5 shadow-2xs">
+        <div class="card-craft-white p-3.5 transition space-y-2.5">
             <!-- TIER 1: REPORT TITLE & SUBTITLE - 100% FULL WIDTH (NO TRUNCATION) -->
             <div onclick="navigateTo('inspection-complete', {id: '${item.id}', templateId: '${item.template_id}'})" class="cursor-pointer">
                 <div class="flex items-start justify-between gap-2">
@@ -1341,15 +1363,15 @@ function renderWoInspectionRows(list, workOrderId) {
                 </div>
             </div>
 
-            <!-- TIER 2: ACTION BUTTONS - WIDE, EASY TO TAP -->
+            <!-- TIER 2: ACTION BUTTONS (EMIL KOWALSKI TACTILE CRAFT) -->
             <div class="grid grid-cols-6 gap-2 pt-2 border-t border-slate-100">
                 <button onclick="navigateTo('inspection-complete', {id: '${item.id}', templateId: '${item.template_id}'})"
-                    class="col-span-3 py-2 bg-sky-600 hover:bg-sky-500 active:bg-sky-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-xs transition">
+                    class="col-span-3 py-2 btn-craft-primary active:scale-95 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition">
                     <i class="fa-solid fa-pen-to-square"></i>
                     <span>Formu Doldur</span>
                 </button>
                 <button onclick="quickPreviewReportFromList('${item.id}')"
-                    class="col-span-2 py-2 bg-slate-900 active:bg-slate-800 text-amber-400 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-xs transition">
+                    class="col-span-2 py-2 btn-craft-dark active:scale-95 text-amber-400 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition">
                     <i class="fa-solid fa-file-pdf"></i>
                     <span>PDF Rapor</span>
                 </button>
@@ -2443,20 +2465,20 @@ function paintInspectionEditorUI() {
 
     container.innerHTML = `
         <div class="max-w-2xl mx-auto space-y-3 pb-8">
-            <!-- MINIMAL EDITOR HEADER -->
-            <div class="bg-white rounded-xl border border-slate-200 p-3 space-y-2.5">
+            <!-- MINIMAL EDITOR HEADER (EMIL KOWALSKI CRAFT) -->
+            <div class="card-craft-white p-3.5 space-y-2.5">
                 <div class="flex items-center justify-between gap-2">
-                    <button onclick="navigateTo('work-order-details', {id: '${insp.work_order_id || 43129}'})" class="px-2.5 py-1.5 bg-slate-100 active:bg-slate-200 text-slate-700 font-bold text-xs rounded-lg shrink-0">
+                    <button onclick="navigateTo('work-order-details', {id: '${insp.work_order_id || 43129}'})" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs rounded-xl shrink-0 transition border border-slate-200">
                         <i class="fa-solid fa-arrow-left mr-1"></i>Geri
                     </button>
                     <div class="flex items-center gap-1.5 shrink-0">
-                        <button onclick="document.getElementById('editorNotebookDrawer')?.classList.toggle('hidden')" class="px-2.5 py-1.5 bg-amber-100 text-amber-900 font-bold text-xs rounded-lg">
-                            <i class="fa-solid fa-note-sticky mr-1"></i>Notlar
+                        <button onclick="document.getElementById('editorNotebookDrawer')?.classList.toggle('hidden')" class="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-900 font-bold text-xs rounded-xl border border-amber-300 transition">
+                            <i class="fa-solid fa-note-sticky mr-1 text-amber-600"></i>Notlar
                         </button>
-                        <button onclick="saveCurrentInspection(true)" class="px-3 py-1.5 bg-sky-600 text-white font-bold text-xs rounded-lg">
-                            Kaydet
+                        <button onclick="saveCurrentInspection(true)" class="px-3.5 py-1.5 btn-craft-primary active:scale-95 text-white font-bold text-xs rounded-xl transition">
+                            <i class="fa-solid fa-floppy-disk mr-1"></i>Kaydet
                         </button>
-                        <button onclick="printOfficialReport()" class="px-3 py-1.5 bg-slate-900 text-amber-400 font-black text-xs rounded-lg flex items-center gap-1">
+                        <button onclick="printOfficialReport()" class="px-3.5 py-1.5 btn-craft-dark active:scale-95 text-amber-400 font-black text-xs rounded-xl flex items-center gap-1.5 transition">
                             <i class="fa-solid fa-file-pdf"></i>
                             <span>PDF Çıktı</span>
                         </button>
