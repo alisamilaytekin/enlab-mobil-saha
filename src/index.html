@@ -102,140 +102,126 @@
 
 
 
-        /* Official TKM / ENLAB Corporate A4 Report Styles (1:1 Print Output) */
+        /* ==========================================================================
+           OFFICIAL TKM / ENLAB CORPORATE A4 REPORT STYLES (MULTI-THEME & CROSS-PLATFORM)
+           ========================================================================== */
+
+        /* Root Varsayılan Tema (Klasik Resmi Bordo - TÜRKAK / Bakanlık) */
+        :root, [data-pdf-theme="classic"], .tkm-a4-page[data-pdf-theme="classic"] {
+            --tkm-theme-primary: #b91c1c;
+            --tkm-theme-subbar-bg: #f8fafc;
+            --tkm-theme-subbar-border: #b91c1c;
+            --tkm-theme-subbar-text: #0f172a;
+            --tkm-theme-header-border: #000000;
+        }
+
+        /* Kurumsal Safir Lacivert Tema */
+        [data-pdf-theme="navy"], .tkm-a4-page[data-pdf-theme="navy"] {
+            --tkm-theme-primary: #1e3a8a;
+            --tkm-theme-subbar-bg: #f0f7ff;
+            --tkm-theme-subbar-border: #1d4ed8;
+            --tkm-theme-subbar-text: #0f172a;
+            --tkm-theme-header-border: #1e3a8a;
+        }
+
+        /* Mühendislik & İSG Zümrüt Yeşili Tema */
+        [data-pdf-theme="emerald"], .tkm-a4-page[data-pdf-theme="emerald"] {
+            --tkm-theme-primary: #065f46;
+            --tkm-theme-subbar-bg: #f0fdf4;
+            --tkm-theme-subbar-border: #059669;
+            --tkm-theme-subbar-text: #064e3b;
+            --tkm-theme-header-border: #065f46;
+        }
+
+        /* Monokrom Arşiv & Fotokopi Tema */
+        [data-pdf-theme="monochrome"], .tkm-a4-page[data-pdf-theme="monochrome"] {
+            --tkm-theme-primary: #0f172a;
+            --tkm-theme-subbar-bg: #f1f5f9;
+            --tkm-theme-subbar-border: #334155;
+            --tkm-theme-subbar-text: #0f172a;
+            --tkm-theme-header-border: #000000;
+        }
 
         .tkm-a4-page {
-
             width: 210mm;
-
             min-height: 296.5mm;
-
             height: 296.5mm;
-
             padding: 6.5mm 10.5mm 6mm 10.5mm;
-
             box-sizing: border-box;
-
             background: #ffffff;
-
             color: #111111;
-
-            font-family: Calibri, 'Segoe UI', Arial, sans-serif;
-
+            /* Evrensel Çapraz Platform Türkçe Font Yığını (Android: Roboto, iOS/Mac: SF Pro/Helvetica, Win: Segoe UI) */
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
             font-size: 7.8pt;
-
             line-height: 1.16;
-
+            text-rendering: optimizeLegibility;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            font-feature-settings: "kern" 1;
             display: flex;
-
             flex-direction: column;
-
             justify-content: space-between;
-
             position: relative;
-
             -webkit-print-color-adjust: exact !important;
-
             print-color-adjust: exact !important;
-
         }
 
         .tkm-page-body {
-
             flex: 1;
-
             display: flex;
-
             flex-direction: column;
-
             justify-content: flex-start;
-
         }
 
         .tkm-block {
-
             break-inside: avoid;
-
             page-break-inside: avoid;
-
             margin-bottom: 2px;
-
         }
 
         .tkm-preview-sheet {
-
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-
             margin: 0 auto 20px auto;
-
             border: 1px solid #cbd5e1;
-
             transform-origin: top center;
-
         }
 
         .tkm-header {
-
             display: grid;
-
             grid-template-columns: 92px 1fr 78px;
-
             align-items: center;
-
-            border-bottom: 1.8px solid #000000;
-
+            border-bottom: 1.8px solid var(--tkm-theme-header-border, #000000);
             padding-bottom: 4px;
-
             margin-bottom: 3px;
-
             flex-shrink: 0;
-
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
         }
 
         .tkm-sec-title {
-
-            color: #c00000 !important;
-
+            color: var(--tkm-theme-primary, #b91c1c) !important;
             font-size: 8.5pt;
-
             font-weight: 700;
-
             margin: 4px 0 2px 0;
-
             letter-spacing: 0.1px;
-
             break-after: avoid;
-
             page-break-after: avoid;
-
             -webkit-print-color-adjust: exact !important;
-
             print-color-adjust: exact !important;
-
         }
 
         .tkm-sub-bar {
-
-            background-color: #d3d3d3 !important;
-
-            color: #111111 !important;
-
+            background-color: var(--tkm-theme-subbar-bg, #f8fafc) !important;
+            color: var(--tkm-theme-subbar-text, #0f172a) !important;
+            border-left: 3.5px solid var(--tkm-theme-subbar-border, #b91c1c) !important;
             font-size: 7.8pt;
-
             font-weight: 700;
-
             padding: 2.5px 6px;
-
             margin: 3px 0 2px 0;
-
             break-after: avoid;
-
             page-break-after: avoid;
-
             -webkit-print-color-adjust: exact !important;
-
             print-color-adjust: exact !important;
-
         }
 
         .tkm-table {
@@ -788,13 +774,22 @@
 
         <div class="bg-slate-900 border-b border-slate-800 px-3 py-2.5 flex items-center justify-between gap-2 shrink-0">
 
-            <button onclick="closeA4PreviewModal()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 text-slate-200 font-bold text-xs flex items-center gap-1.5">
-
-                <i class="fa-solid fa-arrow-left"></i>
-
-                <span>Geri</span>
-
-            </button>
+            <div class="flex items-center gap-2">
+                <button onclick="closeA4PreviewModal()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center gap-1.5 transition-colors">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span>Geri</span>
+                </button>
+                <div class="flex items-center gap-1.5 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1">
+                    <i class="fa-solid fa-palette text-amber-400 text-xs"></i>
+                    <span class="text-[11px] text-slate-300 font-medium hidden sm:inline">Tema:</span>
+                    <select id="pdfThemeSelect" onchange="setPdfTheme(this.value)" class="bg-transparent text-slate-200 text-xs font-bold focus:outline-none cursor-pointer">
+                        <option value="classic" class="bg-slate-900 text-white">Klasik Bordo (Resmi)</option>
+                        <option value="navy" class="bg-slate-900 text-white">Safir Lacivert (Kurumsal)</option>
+                        <option value="emerald" class="bg-slate-900 text-white">Zümrüt Yeşili (İSG)</option>
+                        <option value="monochrome" class="bg-slate-900 text-white">Monokrom (Arşiv/Fotokopi)</option>
+                    </select>
+                </div>
+            </div>
 
             <div class="flex items-center bg-slate-800 rounded-lg border border-slate-700 p-0.5 text-xs">
 

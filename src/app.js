@@ -13460,6 +13460,44 @@ function closeA4PreviewModal() {
 
 }
 
+function getPdfTheme() {
+    try {
+        return localStorage.getItem('tkm_pdf_theme') || 'classic';
+    } catch (e) {
+        return 'classic';
+    }
+}
+
+function setPdfTheme(themeName) {
+    const validThemes = ['classic', 'navy', 'emerald', 'monochrome'];
+    const theme = validThemes.includes(themeName) ? themeName : 'classic';
+    try {
+        localStorage.setItem('tkm_pdf_theme', theme);
+    } catch (e) {}
+
+    const select = document.getElementById('pdfThemeSelect');
+    if (select && select.value !== theme) {
+        select.value = theme;
+    }
+
+    const previewContainer = document.getElementById('a4PreviewPagesContainer');
+    if (previewContainer) {
+        previewContainer.setAttribute('data-pdf-theme', theme);
+        previewContainer.querySelectorAll('.tkm-a4-page').forEach(el => {
+            el.setAttribute('data-pdf-theme', theme);
+        });
+    }
+
+    const printArea = document.getElementById('printableReportArea');
+    if (printArea) {
+        printArea.setAttribute('data-pdf-theme', theme);
+        printArea.querySelectorAll('.tkm-a4-page').forEach(el => {
+            el.setAttribute('data-pdf-theme', theme);
+        });
+    }
+}
+
+
 
 
 function paginateBlocksIntoA4Pages(blocksHtmlArray, reportMainTitle, formCode, reportNo) {
@@ -16026,30 +16064,24 @@ function printOfficialReport(directPrint = false) {
 
 
 
+    const activePdfTheme = getPdfTheme();
+    const themeSelect = document.getElementById('pdfThemeSelect');
+    if (themeSelect) themeSelect.value = activePdfTheme;
+
     // Populate Printable Container (for @media print)
-
-    printArea.innerHTML = pagesArray.map(p => `<div class="tkm-a4-page">${p}</div>`).join('');
-
-
+    printArea.setAttribute('data-pdf-theme', activePdfTheme);
+    printArea.innerHTML = pagesArray.map(p => `<div class="tkm-a4-page" data-pdf-theme="${activePdfTheme}">${p}</div>`).join('');
 
     // Populate On-Screen A4 Preview Modal
-
     const previewContainer = document.getElementById('a4PreviewPagesContainer');
-
     const previewModal = document.getElementById('a4PreviewModal');
-
     const previewTitle = document.getElementById('a4PreviewTitle');
-
     if (previewTitle) {
-
         previewTitle.textContent = `${reportNo} · ${insp.equipment_name || 'Periyodik Kontrol Raporu'} (${pagesArray.length} Sayfa A4)`;
-
     }
-
     if (previewContainer) {
-
-        previewContainer.innerHTML = pagesArray.map(p => `<div class="tkm-a4-page tkm-preview-sheet">${p}</div>`).join('');
-
+        previewContainer.setAttribute('data-pdf-theme', activePdfTheme);
+        previewContainer.innerHTML = pagesArray.map(p => `<div class="tkm-a4-page tkm-preview-sheet" data-pdf-theme="${activePdfTheme}">${p}</div>`).join('');
     }
 
     if (previewModal && !directPrint) {
