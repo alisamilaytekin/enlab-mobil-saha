@@ -1294,43 +1294,35 @@ async function renderWorkOrderDetails(workOrderId) {
                 </div>
             </div>
 
-            <!-- YÖNETİCİ & SAHA İSTATİSTİKLERİ KARTI -->
-            <div class="card-craft-white p-2.5 space-y-2">
-                <div class="flex items-center justify-between">
-                    <span class="font-bold text-xs text-slate-800 flex items-center gap-1.5">
-                        <i class="fa-solid fa-chart-column text-sky-600"></i>
-                        <span>İş Özeti & Durum Göstergesi</span>
-                    </span>
+            <!-- YÖNETİCİ & SAHA İSTATİSTİKLERİ (KOMPAKT METRİK ŞERİDİ) -->
+            <div class="card-craft-white p-2 px-3 flex items-center justify-between text-xs font-semibold">
+                <div class="flex items-center gap-1.5 text-slate-700">
+                    <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+                    <span>Toplam: <strong class="text-slate-900 font-bold">${inspections.length}</strong></span>
                 </div>
-                <div class="grid grid-cols-3 gap-2 text-center">
-                    <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
-                        <div class="text-base font-black text-slate-900 tabular-nums">${inspections.length}</div>
-                        <div class="text-xs font-bold text-slate-700">Toplam Rapor</div>
-                    </div>
-                    <div class="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl">
-                        <div class="text-base font-black text-emerald-700 tabular-nums">${inspections.filter(i => (i.result_status || 'UYGUN') === 'UYGUN').length}</div>
-                        <div class="text-[10px] font-bold text-emerald-800">Uygun Rapor</div>
-                    </div>
-                    <div class="p-2.5 bg-rose-50 border border-rose-200 rounded-xl">
-                        <div class="text-base font-black text-rose-700 tabular-nums">${inspections.filter(i => i.result_status === 'UYGUN DEĞİL').length}</div>
-                        <div class="text-[10px] font-bold text-rose-800">Kusurlu Rapor</div>
-                    </div>
+                <div class="flex items-center gap-1.5 text-emerald-700">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <span>Uygun: <strong class="font-bold">${inspections.filter(i => (i.result_status || 'UYGUN') === 'UYGUN').length}</strong></span>
+                </div>
+                <div class="flex items-center gap-1.5 text-rose-700">
+                    <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                    <span>Kusurlu: <strong class="font-bold">${inspections.filter(i => i.result_status === 'UYGUN DEĞİL').length}</strong></span>
                 </div>
             </div>
 
-            <!-- NOT DEFTERİ -->
-            <div class="card-craft-white p-3.5 space-y-2">
+            <!-- NOT DEFTERİ (KOMPAKT) -->
+            <div class="card-craft-white p-2.5 space-y-1.5">
                 <div class="flex items-center justify-between">
                     <label class="font-bold text-xs text-slate-800 flex items-center gap-1.5">
                         <i class="fa-solid fa-note-sticky text-amber-500"></i>
-                        <span>Notlar</span>
+                        <span>Saha Notları</span>
                     </label>
-                    <span id="woNoteSaveStatus_${wo.id}" class="text-[11px] text-slate-400">Otomatik kaydedilir</span>
+                    <span id="woNoteSaveStatus_${wo.id}" class="text-[10px] text-slate-400">Otomatik kaydedilir</span>
                 </div>
-                <textarea id="woFieldNotesTextarea_${wo.id}" rows="4"
+                <textarea id="woFieldNotesTextarea_${wo.id}" rows="2"
                     oninput="saveWorkOrderNotesRealtime('${wo.id}', this.value)"
                     placeholder="Saha notlarınızı buraya yazın..."
-                    class="w-full border border-slate-200 bg-amber-50/30 rounded-xl p-2.5 text-xs sm:text-sm text-slate-900 focus:border-amber-400 focus:outline-none">${wo.field_notes || ''}</textarea>
+                    class="w-full border border-slate-200 bg-amber-50/20 rounded-lg p-2 text-xs text-slate-900 focus:border-amber-400 focus:outline-none">${wo.field_notes || ''}</textarea>
             </div>
 
             <!-- RAPORLAR (IMPECCABLE CRAFT) -->
@@ -1371,53 +1363,61 @@ function escapeForJs(str) {
 
 function renderWoInspectionRows(list, workOrderId) {
     if (!list.length) {
-        return `<div class="p-6 text-center text-slate-400 text-xs border border-dashed border-slate-200 rounded-lg">Henüz rapor eklenmedi. <strong>"+ Rapor Ekle"</strong> butonuna dokunun.</div>`;
+        return `<div class="p-4 text-center text-slate-400 text-xs border border-dashed border-slate-200 rounded-lg">Henüz rapor eklenmedi. Üstteki <strong>"+ Rapor Ekle"</strong> butonuna dokunun.</div>`;
     }
-    return list.map(item => `
-        <div class="card-craft-white p-3.5 transition space-y-2.5">
-            <!-- TIER 1: REPORT TITLE & SUBTITLE - 100% FULL WIDTH (NO TRUNCATION) -->
+    return list.map(item => {
+        const isSuitable = (item.result_status || 'UYGUN') === 'UYGUN';
+        return `
+        <div class="card-craft-white p-2.5 transition space-y-2 hover:border-slate-300">
+            <!-- TIER 1: REPORT TITLE & SUBTITLE -->
             <div onclick="navigateTo('inspection-complete', {id: '${item.id}', templateId: '${item.template_id}'})" class="cursor-pointer">
                 <div class="flex items-start justify-between gap-2">
-                    <div class="font-bold text-slate-900 text-sm leading-snug flex-1">
+                    <div class="font-bold text-slate-900 text-xs leading-snug flex-1 truncate">
                         ${escapeHtml(item.equipment_name || 'İsimsiz Rapor')}
                     </div>
-                    <div class="flex items-center gap-1 shrink-0">
-                        <button onclick="event.stopPropagation(); openRenameInspectionModal('${item.id}', '${escapeForJs(item.equipment_name || '')}', '${workOrderId}')"
-                            class="p-1.5 text-slate-400 hover:text-sky-600 rounded-lg hover:bg-slate-100 transition" title="Rapor İsmini Değiştir">
-                            <i class="fa-solid fa-pen-to-square text-xs text-sky-600"></i>
-                        </button>
-                        <button onclick="event.stopPropagation(); deleteInspectionItem('${item.id}', '${workOrderId}', '${(item.equipment_name || 'Muayene Raporu').replace(/'/g, "\\'")}')"
-                            class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition" title="Raporu Sil">
-                            <i class="fa-solid fa-trash-can text-xs text-rose-500"></i>
-                        </button>
-                    </div>
+                    <span class="inline-flex items-center gap-1 text-[10px] font-semibold ${isSuitable ? 'text-emerald-700' : 'text-rose-700'} shrink-0">
+                        <span class="w-1.5 h-1.5 rounded-full ${isSuitable ? 'bg-emerald-500' : 'bg-rose-500'}"></span>
+                        ${item.result_status || 'UYGUN'}
+                    </span>
                 </div>
-                <div class="flex items-center gap-2 text-xs text-slate-500 font-medium mt-1 flex-wrap">
-                    <span class="font-mono bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-bold text-[11px] border border-slate-200">${item.template_code || 'TKM-FR.318'}</span>
+                <div class="flex items-center gap-2 text-[10px] text-slate-500 font-mono mt-0.5 flex-wrap">
+                    <span class="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-bold border border-slate-200">${item.template_code || 'TKM-FR.318'}</span>
                     <span>${escapeHtml(item.serial_no || 'Saha Kontrolü')}</span>
-                    ${item.result_status ? `<span class="ml-auto font-bold text-[10px] px-2 py-0.5 rounded ${item.result_status === 'UYGUN' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}">${item.result_status}</span>` : ''}
                 </div>
             </div>
 
-            <!-- TIER 2: ACTION BUTTONS (EMIL KOWALSKI TACTILE CRAFT) -->
-            <div class="grid grid-cols-6 gap-2 pt-2 border-t border-slate-100">
-                <button onclick="navigateTo('inspection-complete', {id: '${item.id}', templateId: '${item.template_id}'})"
-                    class="col-span-3 py-2 btn-craft-primary active:scale-95 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition">
-                    <i class="fa-solid fa-pen-to-square"></i>
-                    <span>Formu Doldur</span>
-                </button>
-                <button onclick="quickPreviewReportFromList('${item.id}')"
-                    class="col-span-2 py-2 btn-craft-dark active:scale-95 text-amber-400 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition">
-                    <i class="fa-solid fa-file-pdf"></i>
-                    <span>PDF Rapor</span>
-                </button>
-                <button onclick="cloneInspectionReport('${item.id}', '${workOrderId}')"
-                    class="col-span-1 py-2 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold rounded-xl text-xs flex items-center justify-center transition border border-slate-200" title="Raporu Klonla">
-                    <i class="fa-solid fa-clone text-sky-600"></i>
-                </button>
+            <!-- TIER 2: ACTION BUTTONS (KOMPAKT & RAFİNE) -->
+            <div class="flex items-center justify-between gap-1.5 pt-1.5 border-t border-slate-100">
+                <div class="flex items-center gap-1.5 flex-1 min-w-0">
+                    <button onclick="navigateTo('inspection-complete', {id: '${item.id}', templateId: '${item.template_id}'})"
+                        class="px-2.5 py-1 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white font-semibold rounded-lg text-xs flex items-center gap-1 transition shadow-2xs">
+                        <i class="fa-solid fa-pen-to-square text-[10px]"></i>
+                        <span>Doldur</span>
+                    </button>
+                    <button onclick="quickPreviewReportFromList('${item.id}')"
+                        class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-semibold rounded-lg text-xs flex items-center gap-1 transition border border-slate-200">
+                        <i class="fa-solid fa-file-pdf text-amber-600 text-[10px]"></i>
+                        <span>PDF</span>
+                    </button>
+                </div>
+                <div class="flex items-center gap-0.5 shrink-0">
+                    <button onclick="cloneInspectionReport('${item.id}', '${workOrderId}')"
+                        class="p-1 text-slate-400 hover:text-sky-600 active:scale-90 rounded-md transition" title="Raporu Klonla">
+                        <i class="fa-solid fa-clone text-xs"></i>
+                    </button>
+                    <button onclick="event.stopPropagation(); openRenameInspectionModal('${item.id}', '${escapeForJs(item.equipment_name || '')}', '${workOrderId}')"
+                        class="p-1 text-slate-400 hover:text-sky-600 active:scale-90 rounded-md transition" title="Rapor İsmini Değiştir">
+                        <i class="fa-solid fa-pen text-xs"></i>
+                    </button>
+                    <button onclick="event.stopPropagation(); deleteInspectionItem('${item.id}', '${workOrderId}', '${(item.equipment_name || 'Muayene Raporu').replace(/'/g, "\\'")}')"
+                        class="p-1 text-slate-400 hover:text-rose-600 active:scale-90 rounded-md transition" title="Raporu Sil">
+                        <i class="fa-solid fa-trash-can text-xs text-rose-500"></i>
+                    </button>
+                </div>
             </div>
         </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 function openRenameInspectionModal(inspectionId, currentName, workOrderId) {
@@ -4904,19 +4904,19 @@ function renderGrounding2202Editor() {
                     <span>4.2. Son Tüketim Noktaları (${gd.points.length} Linye)</span>
                 </div>
                 <div class="flex items-center gap-1.5 flex-wrap">
-                    <button onclick="setAllGroundingPointsExpanded(true)" class="min-h-[36px] px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-bold rounded-xl text-xs flex items-center gap-1 border border-slate-700 transition" title="Tüm linyeleri aç">
+                    <button onclick="setAllGroundingPointsExpanded(true)" class="py-1 px-2 text-[11px] px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-bold rounded-xl text-xs flex items-center gap-1 border border-slate-700 transition" title="Tüm linyeleri aç">
                         <i class="fa-solid fa-angles-down text-[11px] text-sky-400"></i>
                         <span class="hidden xs:inline">Tümünü Aç</span>
                     </button>
-                    <button onclick="setAllGroundingPointsExpanded(false)" class="min-h-[36px] px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-bold rounded-xl text-xs flex items-center gap-1 border border-slate-700 transition" title="Tüm linyeleri özet satırına daralt">
+                    <button onclick="setAllGroundingPointsExpanded(false)" class="py-1 px-2 text-[11px] px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-bold rounded-xl text-xs flex items-center gap-1 border border-slate-700 transition" title="Tüm linyeleri özet satırına daralt">
                         <i class="fa-solid fa-angles-up text-[11px] text-amber-400"></i>
                         <span class="hidden xs:inline">Daralt</span>
                     </button>
-                    <button onclick="openBatchRowGeneratorModal()" class="min-h-[36px] px-3 py-1.5 btn-craft-primary active:scale-95 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition">
+                    <button onclick="openBatchRowGeneratorModal()" class="py-1 px-2 text-[11px] px-3 py-1.5 btn-craft-primary active:scale-95 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition">
                         <i class="fa-solid fa-layer-group"></i>
                         <span>+ Seri Üret</span>
                     </button>
-                    <button onclick="addGroundingPointRow()" class="min-h-[36px] px-3 py-1.5 btn-craft-emerald active:scale-95 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition">
+                    <button onclick="addGroundingPointRow()" class="py-1 px-2 text-[11px] px-3 py-1.5 btn-craft-emerald active:scale-95 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition">
                         <i class="fa-solid fa-plus"></i>
                         <span>Nokta Ekle</span>
                     </button>
@@ -4943,18 +4943,18 @@ function renderGrounding2202Editor() {
 
                     return `
                     <div class="card-craft-white overflow-hidden border border-slate-200 shadow-2xs transition-all">
-                        <!-- HEADER / ACCORDION TOGGLE ROW -->
+                        <!-- HEADER / ACCORDION TOGGLE ROW (KOMPAKT) -->
                         <div onclick="toggleGroundingPointAccordion(${pIdx})"
-                            class="p-3.5 cursor-pointer flex items-center justify-between gap-2.5 select-none hover:bg-slate-50/80 transition ${isExpanded ? 'bg-slate-50/70 border-b border-slate-200' : ''}">
-                            <div class="flex items-center gap-3 min-w-0">
-                                <div class="w-8 h-8 rounded-xl font-mono font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs ${isSuitable ? 'bg-emerald-600 text-white' : isDefect ? 'bg-rose-600 text-white' : 'bg-slate-800 text-white'}">
+                            class="p-2 px-2.5 cursor-pointer flex items-center justify-between gap-2 select-none hover:bg-slate-50/80 transition ${isExpanded ? 'bg-slate-50/70 border-b border-slate-200' : ''}">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <div class="w-6 h-6 rounded-md font-mono font-bold text-[10px] flex items-center justify-center shrink-0 ${isSuitable ? 'bg-emerald-600 text-white' : isDefect ? 'bg-rose-600 text-white' : 'bg-slate-800 text-white'}">
                                     #${pIdx + 1}
                                 </div>
                                 <div class="min-w-0">
-                                    <div class="font-bold text-xs sm:text-sm text-slate-900 truncate leading-snug">
+                                    <div class="font-bold text-xs text-slate-900 truncate leading-snug">
                                         ${escapeHtml(p.point || 'İsimsiz Ölçüm Noktası')}
                                     </div>
-                                    <div class="text-xs text-slate-500 font-mono flex items-center gap-2 mt-0.5 flex-wrap">
+                                    <div class="text-[10px] text-slate-500 font-mono flex items-center gap-1.5 mt-0.5 flex-wrap">
                                         <span class="font-bold text-slate-800">${p.curve || 'C'}${p.inAmp || '16'}A</span>
                                         <span>·</span>
                                         <span>Zx: <strong class="text-sky-900 font-bold">${p.zxRx ? p.zxRx + ' Ω' : '-'}</strong></span>
@@ -4965,10 +4965,12 @@ function renderGrounding2202Editor() {
                                 </div>
                             </div>
 
-                            <div class="flex items-center gap-2 shrink-0">
-                                ${resultBadge}
-                                <div class="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 transition-transform ${isExpanded ? 'rotate-180 bg-slate-200 text-slate-800' : ''}">
-                                    <i class="fa-solid fa-chevron-down text-xs"></i>
+                            <div class="flex items-center gap-1.5 shrink-0">
+                                <span class="px-2 py-0.5 rounded-md text-[10px] font-semibold ${isSuitable ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : isDefect ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}">
+                                    ${p.result || 'Bekliyor'}
+                                </span>
+                                <div class="w-6 h-6 rounded-md bg-slate-100 flex items-center justify-center text-slate-500 transition-transform ${isExpanded ? 'rotate-180 bg-slate-200 text-slate-800' : ''}">
+                                    <i class="fa-solid fa-chevron-down text-[10px]"></i>
                                 </div>
                             </div>
                         </div>
@@ -4983,11 +4985,11 @@ function renderGrounding2202Editor() {
                                     <span>Ölçüm Değerlerini Düzenle</span>
                                 </span>
                                 <div class="flex items-center gap-2">
-                                    <button onclick="duplicateGroundingPointRow(${pIdx})" class="min-h-[38px] px-3.5 py-1.5 bg-sky-50 hover:bg-sky-100 active:scale-95 text-sky-800 font-bold text-xs rounded-xl border border-sky-200 flex items-center gap-1.5 transition">
+                                    <button onclick="duplicateGroundingPointRow(${pIdx})" class="py-1 px-2.5 text-xs px-3.5 py-1.5 bg-sky-50 hover:bg-sky-100 active:scale-95 text-sky-800 font-bold text-xs rounded-xl border border-sky-200 flex items-center gap-1.5 transition">
                                         <i class="fa-solid fa-copy"></i>
                                         <span>Kopyala</span>
                                     </button>
-                                    <button onclick="removeGroundingPointRow(${pIdx})" class="min-h-[38px] px-3.5 py-1.5 bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 flex items-center gap-1.5 transition">
+                                    <button onclick="removeGroundingPointRow(${pIdx})" class="py-1 px-2.5 text-xs px-3.5 py-1.5 bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 flex items-center gap-1.5 transition">
                                         <i class="fa-solid fa-trash-can"></i>
                                         <span>Sil</span>
                                     </button>
@@ -5007,7 +5009,7 @@ function renderGrounding2202Editor() {
                                     onfocus="handleLinyeInputFocus(${pIdx}, this)"
                                     oninput="handleLinyeInputType(${pIdx}, this)"
                                     onblur="handleLinyeInputBlur(${pIdx})"
-                                    class="w-full min-h-[44px] border border-slate-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 bg-white shadow-2xs">
+                                    class="w-full h-8 py-1 px-2 text-xs border border-slate-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 bg-white shadow-2xs">
 
                                 <!-- 100% OPAK ÖNERİLER DROPDOWN -->
                                 <div id="linyeDropdown_${pIdx}"
@@ -5021,7 +5023,7 @@ function renderGrounding2202Editor() {
                                 <div class="flex items-center gap-1.5 mt-2 overflow-x-auto py-1 no-scrollbar">
                                     ${LinyeMemoryManager.getQuickChips().map(preset => `
                                         <button type="button" onclick="selectLinyeSuggestion(${pIdx}, '${escapeForJs(preset)}')"
-                                            class="min-h-[38px] px-3 py-1.5 bg-slate-100 hover:bg-sky-100 active:scale-95 text-slate-700 hover:text-sky-800 font-bold text-xs rounded-xl border border-slate-200 shrink-0 transition shadow-2xs">
+                                            class="py-1 px-2.5 text-xs px-3 py-1.5 bg-slate-100 hover:bg-sky-100 active:scale-95 text-slate-700 hover:text-sky-800 font-bold text-xs rounded-xl border border-slate-200 shrink-0 transition shadow-2xs">
                                             + ${escapeHtml(preset)}
                                         </button>
                                     `).join('')}
@@ -5052,7 +5054,7 @@ function renderGrounding2202Editor() {
                                         const isSel = (p.curve === item.c && String(p.inAmp) === item.a);
                                         return `
                                             <button type="button" onclick="setGroundingPointBreakerPreset(${pIdx}, '${item.c}', '${item.a}')"
-                                                class="min-h-[38px] px-3 py-1.5 rounded-xl font-mono font-bold text-xs shrink-0 border transition active:scale-95 ${isSel ? 'bg-sky-600 text-white border-sky-700 shadow-xs' : 'bg-white hover:bg-slate-100 text-slate-800 border-slate-300'}">
+                                                class="py-1 px-2.5 text-xs px-3 py-1.5 rounded-xl font-mono font-bold text-xs shrink-0 border transition active:scale-95 ${isSel ? 'bg-sky-600 text-white border-sky-700 shadow-xs' : 'bg-white hover:bg-slate-100 text-slate-800 border-slate-300'}">
                                                 ${item.c}${item.a}
                                             </button>
                                         `;
@@ -5066,12 +5068,12 @@ function renderGrounding2202Editor() {
                                     <label class="block text-xs font-bold text-slate-700 mb-1">In (A)</label>
                                     <input type="text" id="pt_in_${pIdx}" inputmode="decimal" enterkeyhint="next" value="${p.inAmp || ''}" placeholder="16"
                                         oninput="updateGroundingPointField(${pIdx}, 'inAmp', this.value);"
-                                        class="w-full min-h-[42px] border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 tabular-nums">
+                                        class="w-full h-8 py-1 px-2 text-xs border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 tabular-nums">
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-slate-700 mb-1">Açma Eğrisi</label>
                                     <select id="pt_curve_${pIdx}" onchange="updateGroundingPointField(${pIdx}, 'curve', this.value);"
-                                        class="w-full min-h-[42px] border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-900 bg-white">
+                                        class="w-full h-8 py-1 px-2 text-xs border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-900 bg-white">
                                         ${['B', 'C', 'D', 'K', 'Z'].map(c => `<option value="${c}" ${(p.curve || 'C') === c ? 'selected' : ''}>${c} Eğrisi</option>`).join('')}
                                     </select>
                                 </div>
@@ -5082,7 +5084,7 @@ function renderGrounding2202Editor() {
                                     </label>
                                     <input type="text" id="pt_ia_${pIdx}" inputmode="decimal" enterkeyhint="next" value="${p.iaAmp || ''}" placeholder=""
                                         oninput="updateGroundingPointField(${pIdx}, 'iaAmp', this.value);"
-                                        class="w-full min-h-[42px] border border-slate-200 bg-slate-100/90 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-800 tabular-nums">
+                                        class="w-full h-8 py-1 px-2 text-xs border border-slate-200 bg-slate-100/90 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-800 tabular-nums">
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-sky-800 mb-1 flex items-center justify-between">
@@ -5091,7 +5093,7 @@ function renderGrounding2202Editor() {
                                     </label>
                                     <input type="text" id="pt_ik1_${pIdx}" inputmode="decimal" enterkeyhint="next" value="${p.ik1Amp || ''}" placeholder="Oto"
                                         oninput="updateGroundingPointField(${pIdx}, 'ik1Amp', this.value);"
-                                        class="w-full min-h-[42px] border border-sky-300 bg-sky-50/70 rounded-xl px-3 py-2 text-xs font-mono font-bold text-sky-950 tabular-nums">
+                                        class="w-full h-8 py-1 px-2 text-xs border border-sky-300 bg-sky-50/70 rounded-xl px-3 py-2 text-xs font-mono font-bold text-sky-950 tabular-nums">
                                 </div>
 
                                 <!-- Zx / Rx ÖLÇÜLEN (BELİRGİN ODAK) -->
@@ -5102,7 +5104,7 @@ function renderGrounding2202Editor() {
                                     </label>
                                     <input type="text" id="pt_zx_${pIdx}" inputmode="decimal" enterkeyhint="next" value="${p.zxRx || ''}" placeholder="Örn: 0.28"
                                         oninput="updateGroundingPointField(${pIdx}, 'zxRx', this.value);"
-                                        class="w-full min-h-[44px] border-2 border-sky-500 rounded-xl px-3 py-2 text-sm font-mono font-black text-sky-950 bg-white shadow-2xs tabular-nums">
+                                        class="w-full h-8 py-1 px-2 text-xs border-2 border-sky-500 rounded-xl px-3 py-2 text-sm font-mono font-black text-sky-950 bg-white shadow-2xs tabular-nums">
                                 </div>
 
                                 <!-- Zs SINIR DEĞERİ -->
@@ -5113,19 +5115,19 @@ function renderGrounding2202Editor() {
                                     </label>
                                     <input type="text" id="pt_zs_${pIdx}" inputmode="decimal" enterkeyhint="next" value="${p.zsRa || ''}" placeholder=""
                                         oninput="updateGroundingPointField(${pIdx}, 'zsRa', this.value);"
-                                        class="w-full min-h-[44px] border border-slate-200 bg-slate-100/90 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-800 tabular-nums">
+                                        class="w-full h-8 py-1 px-2 text-xs border border-slate-200 bg-slate-100/90 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-800 tabular-nums">
                                 </div>
 
                                 <div>
                                     <label class="block text-xs font-bold text-slate-700 mb-1">RCD In / IΔn</label>
                                     <input type="text" id="pt_rcdSpec_${pIdx}" value="${p.rcdSpec || ''}" placeholder="Örn: 30mA"
                                         oninput="updateGroundingPointField(${pIdx}, 'rcdSpec', this.value);"
-                                        class="w-full min-h-[42px] border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold bg-white">
+                                        class="w-full h-8 py-1 px-2 text-xs border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold bg-white">
                                     <div class="flex items-center gap-1.5 mt-1.5">
                                         <button type="button" onclick="updateGroundingPointField(${pIdx}, 'rcdSpec', '30mA');"
-                                            class="min-h-[36px] px-3 py-1 bg-sky-50 hover:bg-sky-100 text-sky-800 rounded-lg text-xs font-bold border border-sky-300 active:scale-95 transition">30mA</button>
+                                            class="py-1 px-2 text-[11px] px-3 py-1 bg-sky-50 hover:bg-sky-100 text-sky-800 rounded-lg text-xs font-bold border border-sky-300 active:scale-95 transition">30mA</button>
                                         <button type="button" onclick="updateGroundingPointField(${pIdx}, 'rcdSpec', '300mA');"
-                                            class="min-h-[36px] px-3 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg text-xs font-bold border border-amber-300 active:scale-95 transition">300mA</button>
+                                            class="py-1 px-2 text-[11px] px-3 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg text-xs font-bold border border-amber-300 active:scale-95 transition">300mA</button>
                                     </div>
                                 </div>
 
@@ -5133,19 +5135,19 @@ function renderGrounding2202Editor() {
                                     <label class="block text-xs font-bold text-slate-700 mb-1">IΔ (mA)</label>
                                     <input type="text" id="pt_rcdId_${pIdx}" inputmode="decimal" enterkeyhint="next" value="${p.rcdId || ''}" placeholder="Örn: 22"
                                         oninput="updateGroundingPointField(${pIdx}, 'rcdId', this.value);"
-                                        class="w-full min-h-[42px] border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold bg-white tabular-nums">
+                                        class="w-full h-8 py-1 px-2 text-xs border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold bg-white tabular-nums">
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-slate-700 mb-1">TΔ (ms)</label>
                                     <input type="text" id="pt_rcdTd_${pIdx}" inputmode="decimal" enterkeyhint="next" value="${p.rcdTd || ''}" placeholder="Örn: 18"
                                         oninput="updateGroundingPointField(${pIdx}, 'rcdTd', this.value);"
-                                        class="w-full min-h-[42px] border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold bg-white tabular-nums">
+                                        class="w-full h-8 py-1 px-2 text-xs border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold bg-white tabular-nums">
                                 </div>
 
                                 <div class="col-span-2 sm:col-span-3">
                                     <label class="block text-xs font-bold text-slate-700 mb-1">Sonuç (Uygunluk Notu)</label>
                                     <select id="pt_res_${pIdx}" onchange="updateGroundingPointField(${pIdx}, 'result', this.value);"
-                                        class="w-full min-h-[44px] border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 bg-white shadow-2xs">
+                                        class="w-full h-8 py-1 px-2 text-xs border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm font-bold text-slate-900 bg-white shadow-2xs">
                                         <option value="">Seçiniz...</option>
                                         ${resultOptions.map(opt => `<option value="${opt}" ${(p.result || '') === opt ? 'selected' : ''}>${opt} ${opt === 'Not-1' ? '(Uygun)' : opt === 'Not-4' ? '(RCD Faal, Uygun)' : '(Kusurlu)'}</option>`).join('')}
                                     </select>
