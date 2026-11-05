@@ -277,7 +277,7 @@
                             company_name: newWO.company_name,
                             company_branch: newWO.company_branch,
                             address: newWO.company_address,
-                            equipment_name: tplObj.name,
+                            equipment_name: body.equipment_name || (tplObj.name.includes('TOPRAKLAMA') ? 'Topraklama Tesisi' : (tplObj.name.includes('JENERATÖR') ? 'Jeneratör-1' : 'Ana Dağıtım Panosu (ADP)')),
                             accreditation: 'AK',
                             serial_no: body.default_serial || '',
                             location: body.default_location || '',
