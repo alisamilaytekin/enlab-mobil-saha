@@ -5394,11 +5394,9 @@ function paintInspectionEditorUI() {
 
                     </div>
 
-                    <select onchange="switchEditorTemplate(this.value)" class="border border-slate-200 rounded-lg px-2 py-1 text-xs font-semibold bg-slate-50 text-slate-800 max-w-[190px] truncate">
-
-                        ${templateOptions}
-
-                    </select>
+                    <span class="px-2.5 py-1 bg-slate-100 border border-slate-200 text-slate-700 font-bold text-xs rounded-lg shrink-0">
+                        ${getCleanTemplateTypeLabel(insp.template_id, insp.template_code)}
+                    </span>
 
                 </div>
 
@@ -5412,7 +5410,7 @@ function paintInspectionEditorUI() {
 
                         <i class="fa-solid fa-file-pen text-amber-600"></i>
 
-                        <span>Rapor Adı:</span>
+                        <span>Ekipman Adı:</span>
 
                     </label>
 
@@ -5429,58 +5427,6 @@ function paintInspectionEditorUI() {
                 </div>
 
             </div>
-
-
-
-            <!-- CANLI İLERLEME ÇUBUĞU & KONTROL SAYACI -->
-
-            ${(() => {
-
-                const prog = calculateInspectionProgress(insp, AppState.currentFormData);
-
-                return `
-
-                    <div class="bg-white rounded-xl border border-slate-200 p-2.5 space-y-1.5 shadow-2xs">
-
-                        <div class="flex items-center justify-between text-xs">
-
-                            <span class="font-bold text-slate-800 flex items-center gap-1.5">
-
-                                <i class="fa-solid fa-chart-pie text-sky-600"></i>
-
-                                <span>Rapor Tamamlanma Durumu</span>
-
-                            </span>
-
-                            <span class="font-black ${prog.percent === 100 ? 'text-emerald-600' : 'text-sky-600'}">${prog.percent}%</span>
-
-                        </div>
-
-                        <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200">
-
-                            <div class="h-full rounded-full transition-all duration-300 ${prog.percent === 100 ? 'bg-emerald-500' : 'bg-sky-500'}" style="width: ${prog.percent}%;"></div>
-
-                        </div>
-
-                        <div class="flex items-center justify-between text-[11px] font-medium">
-
-                            <span class="text-slate-600">${prog.answered} / ${prog.total} madde kontrol edildi</span>
-
-                            <div class="flex items-center gap-2">
-
-                                ${prog.defects > 0 ? `<span class="text-rose-600 font-bold bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">${prog.defects} Uygunsuzluk</span>` : ''}
-
-                                ${prog.unanswered > 0 ? `<span class="text-amber-700 font-bold">${prog.unanswered} boş kaldı</span>` : `<span class="text-emerald-600 font-bold">Tamamlandı ✓</span>`}
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                `;
-
-            })()}
 
 
 
@@ -5612,19 +5558,7 @@ function renderSharedCompanyInfoSection() {
 
                 <span>1. Firma ve Rapor Bilgileri</span>
 
-                <div class="flex items-center gap-2">
-
-                    <button type="button" onclick="syncCompanyAndDevicesToAllReports()" class="px-2.5 py-1 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white font-bold text-[11px] rounded-lg flex items-center gap-1 shadow-2xs" title="Bu firma ve ölçüm aleti bilgilerini bu işteki tüm diğer raporlara otomatik kopyalar">
-
-                        <i class="fa-solid fa-arrows-rotate"></i>
-
-                        <span>Diğer Raporlara Dağıt</span>
-
-                    </button>
-
-                    <span class="text-[11px] text-slate-300 font-mono hidden sm:inline">${escapeHtml(ci.reportNo || insp.report_no || '')}</span>
-
-                </div>
+                <span class="text-[11px] text-slate-300 font-mono hidden sm:inline">${escapeHtml(ci.reportNo || insp.report_no || '')}</span>
 
             </div>
 
