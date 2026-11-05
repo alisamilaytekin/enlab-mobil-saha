@@ -1,536 +1,540 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#0f172a">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>Saha Not & Rapor</title>
-    <link rel="manifest" href="manifest.json">
-    <script src="vendor/tailwindcss.js"></script>
-    <link rel="stylesheet" href="vendor/fontawesome.min.css">
-    <style>
-        *, *::before, *::after {
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
-        html {
-            font-size: 13px;
-            -webkit-text-size-adjust: 100%;
-        }
-        html, body {
-            width: 100%;
-            height: 100%;
-            max-width: 100vw;
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            overscroll-behavior: none;
-            position: fixed;
-            inset: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-            background-color: #f1f5f9;
-            color: #0f172a;
-        }
-        #appShell {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
-        #pageContent {
-            flex: 1 1 0%;
-            width: 100%;
-            max-width: 100%;
-            overflow-y: auto;
-            overflow-x: hidden;
-            overscroll-behavior-y: contain;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        /* Official TKM / ENLAB Corporate A4 Report Styles (1:1 Print Output) */
-        .tkm-a4-page {
-            width: 210mm;
-            min-height: 296.5mm;
-            height: 296.5mm;
-            padding: 6.5mm 10.5mm 6mm 10.5mm;
-            box-sizing: border-box;
-            background: #ffffff;
-            color: #111111;
-            font-family: Calibri, 'Segoe UI', Arial, sans-serif;
-            font-size: 7.8pt;
-            line-height: 1.16;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            position: relative;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-        }
-        .tkm-page-body {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-        }
-        .tkm-block {
-            break-inside: avoid;
-            page-break-inside: avoid;
-            margin-bottom: 2px;
-        }
-        .tkm-preview-sheet {
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-            margin: 0 auto 20px auto;
-            border: 1px solid #cbd5e1;
-            transform-origin: top center;
-        }
-        .tkm-header {
-            display: grid;
-            grid-template-columns: 92px 1fr 78px;
-            align-items: center;
-            border-bottom: 1.8px solid #000000;
-            padding-bottom: 4px;
-            margin-bottom: 3px;
-            flex-shrink: 0;
-        }
-        .tkm-sec-title {
-            color: #c00000 !important;
-            font-size: 8.5pt;
-            font-weight: 700;
-            margin: 4px 0 2px 0;
-            letter-spacing: 0.1px;
-            break-after: avoid;
-            page-break-after: avoid;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-        }
-        .tkm-sub-bar {
-            background-color: #d3d3d3 !important;
-            color: #111111 !important;
-            font-size: 7.8pt;
-            font-weight: 700;
-            padding: 2.5px 6px;
-            margin: 3px 0 2px 0;
-            break-after: avoid;
-            page-break-after: avoid;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-        }
-        .tkm-table {
-            width: 100%;
-            border-collapse: collapse;
-            table-layout: fixed;
-            font-size: 7.3pt;
-            line-height: 1.15;
-            color: #111111;
-        }
-        .tkm-table th, .tkm-table td {
-            border: 1px solid #000000;
-            padding: 1.8px 4px;
-            vertical-align: middle;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-        }
-        .tkm-legend {
-            font-size: 6.9pt;
-            color: #111111;
-            margin: 1px 0 2px 0;
-        }
-        .tkm-footer {
-            margin-top: auto;
-            padding-top: 4px;
-            flex-shrink: 0;
-        }
-        .tkm-footer-disclaimer {
-            font-size: 6.4pt;
-            line-height: 1.18;
-            color: #222222;
-            text-align: justify;
-            padding-bottom: 3px;
-            border-bottom: 1px solid #222222;
-        }
-        .tkm-footer-meta {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 7.8pt;
-            color: #111111;
-            padding-top: 2px;
-        }
-
-        @page {
-            size: A4 portrait;
-            margin: 0mm;
-        }
-        @media print {
-            html, body {
-                position: static !important;
-                width: 210mm !important;
-                height: auto !important;
-                max-width: none !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                background: #ffffff !important;
-                color: #000000 !important;
-                overflow: visible !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-            }
-            #appShell, .no-print { display: none !important; }
-            .print-only { display: block !important; }
-            .tkm-a4-page {
-                margin: 0 !important;
-                box-shadow: none !important;
-                border: none !important;
-                transform: none !important;
-                zoom: 1 !important;
-                page-break-after: always;
-                break-after: page;
-            }
-            .tkm-a4-page:last-child {
-                page-break-after: auto;
-                break-after: auto;
-            }
-        }
-        .print-only { display: none; }
-        /* ==========================================================================
-           EMIL KOWALSKI CRAFT & IMPECCABLE DESIGN SYSTEM
-           ========================================================================== */
-        :root {
-            --spring-snappy: cubic-bezier(0.16, 1, 0.3, 1);
-            --spring-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
-            --spring-smooth: cubic-bezier(0.32, 0.72, 0, 1);
-        }
-
-        /* Tactile Touch Feedback & Signature Emil Kowalski Spring Physics */
-        button, a, [role="button"], .touch-action-btn {
-            user-select: none;
-            -webkit-user-select: none;
-            touch-action: manipulation;
-            transition: transform 0.14s var(--spring-snappy), opacity 0.12s ease, box-shadow 0.14s ease;
-            will-change: transform;
-        }
-        button:active, a:active, .touch-action-btn:active {
-            transform: scale(0.97) !important;
-            opacity: 0.92;
-        }
-
-        /* Impeccable Card Depth & Polish */
-        .card-craft-dark {
-            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 4px 14px -2px rgba(15, 23, 42, 0.45);
-            border-radius: 0.75rem;
-            transition: transform 0.18s var(--spring-snappy), box-shadow 0.18s ease;
-        }
-        .card-craft-white {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 6px 16px -4px rgba(15, 23, 42, 0.05), inset 0 1px 0 #ffffff;
-            border-radius: 0.75rem;
-            transition: transform 0.18s var(--spring-snappy), box-shadow 0.18s ease, border-color 0.18s ease;
-        }
-        .card-craft-white:active {
-            transform: scale(0.985);
-        }
-
-        /* Tabular Numerals for Electrical Measurements & Calculations */
-        .tabular-nums, input[inputmode="decimal"], input[type="number"], .font-mono {
-            font-variant-numeric: tabular-nums;
-            -webkit-font-feature-settings: "tnum";
-            font-feature-settings: "tnum";
-        }
-
-        /* Fluid Input Focus States (Linear / Raycast Style) */
-        input[type="text"], input[type="number"], select, textarea {
-            transition: border-color 0.15s ease, box-shadow 0.15s var(--spring-snappy), background-color 0.15s ease;
-        }
-        input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:focus {
-            outline: none !important;
-            border-color: #0284c7 !important;
-            box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.18) !important;
-        }
-
-        /* Vaul & Emil Kowalski Dialog & Sheet Physics */
-        @keyframes vaulBackdropFade {
-            from { opacity: 0; backdrop-filter: blur(0px); }
-            to { opacity: 1; backdrop-filter: blur(8px); }
-        }
-        @keyframes vaulSheetEnter {
-            0% { transform: translate3d(0, 28px, 0) scale(0.96); opacity: 0; }
-            100% { transform: translate3d(0, 0, 0) scale(1); opacity: 1; }
-        }
-        .modal-backdrop-animate {
-            animation: vaulBackdropFade 0.22s var(--spring-snappy) forwards;
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-        }
-        .modal-sheet-animate {
-            animation: vaulSheetEnter 0.26s var(--spring-snappy) forwards;
-            will-change: transform, opacity;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15);
-        }
-
-        /* Emil Kowalski Signature Sonner Toast Pill */
-        .sonner-toast-pill {
-            background: rgba(15, 23, 42, 0.94);
-            backdrop-filter: blur(20px) saturate(180%);
-            -webkit-backdrop-filter: blur(20px) saturate(180%);
-            border: 1px solid rgba(255, 255, 255, 0.14);
-            box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.22);
-            transform: translate3d(0, 80px, 0) scale(0.92);
-            opacity: 0;
-            visibility: hidden;
-            transition: transform 0.32s var(--spring-snappy), opacity 0.24s var(--spring-snappy), visibility 0.32s;
-            will-change: transform, opacity;
-        }
-        .sonner-toast-pill.sonner-visible {
-            transform: translate3d(0, 0, 0) scale(1);
-            opacity: 1;
-            visibility: visible;
-        }
-        @keyframes sonnerIconPop {
-            0% { transform: scale(0.5); }
-            60% { transform: scale(1.2); }
-            100% { transform: scale(1); }
-        }
-        .sonner-toast-icon-bounce {
-            animation: sonnerIconPop 0.3s var(--spring-bounce);
-        }
-
-        /* Buttons with Inner Light Highlights (Linear / Emil Craft) */
-        .btn-craft-primary {
-            background: linear-gradient(180deg, #0284c7 0%, #0369a1 100%) !important;
-            border: 1px solid #0284c7 !important;
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 2px 6px rgba(2, 132, 199, 0.35) !important;
-        }
-        .btn-craft-dark {
-            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%) !important;
-            border: 1px solid rgba(255, 255, 255, 0.12) !important;
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 2px 6px rgba(15, 23, 42, 0.4) !important;
-        }
-        .btn-craft-emerald {
-            background: linear-gradient(180deg, #059669 0%, #047857 100%) !important;
-            border: 1px solid #059669 !important;
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 2px 6px rgba(5, 150, 105, 0.35) !important;
-        }
-
-        /* Custom Sleek Scrollbars */
-        ::-webkit-scrollbar {
-            width: 5px;
-            height: 5px;
-        }
-        ::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.04);
-        }
-        ::-webkit-scrollbar-thumb {
-            background: rgba(100, 116, 139, 0.4);
-            border-radius: 999px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: rgba(100, 116, 139, 0.7);
-        }
-
-    </style>
-    <script>
-        // Global Error Boundary & Crash Shield (Early Protection)
-        window.__ENLAB_CRASH_LOGS = [];
-        window.onerror = function(message, source, lineno, colno, error) {
-            console.error('[ENLAB Shield] window.onerror caught:', message, error);
-            window.__ENLAB_CRASH_LOGS.push({ time: new Date().toLocaleTimeString(), message: message, source: source, lineno: lineno, colno: colno, stack: error ? error.stack : '' });
-            if (typeof window.showGlobalCrashShield === 'function') {
-                window.showGlobalCrashShield(message, error);
-            }
-            return false;
-        };
-        window.addEventListener('unhandledrejection', function(event) {
-            console.error('[ENLAB Shield] unhandledrejection caught:', event.reason);
-            var reasonMsg = event.reason ? (event.reason.message || String(event.reason)) : 'Bilinmeyen asenkron hata';
-            window.__ENLAB_CRASH_LOGS.push({ time: new Date().toLocaleTimeString(), message: reasonMsg, stack: event.reason && event.reason.stack });
-            if (typeof window.showGlobalCrashShield === 'function') {
-                window.showGlobalCrashShield(reasonMsg, event.reason);
-            }
-        });
-    </script>
-</head>
-<body>
-
-    <div id="appShell" class="no-print">
-        <!-- MINIMAL TOP BAR -->
-        <header class="bg-slate-900 text-white h-11 shrink-0 flex items-center justify-between px-3 py-1.5 border-b border-slate-800 shadow-sm">
-            <div onclick="navigateTo('home')" class="flex items-center gap-2 cursor-pointer min-w-0">
-                <div class="bg-amber-400 text-slate-950 w-6 h-6 rounded-md flex items-center justify-center font-black text-xs shrink-0">
-                    <i class="fa-solid fa-book-open"></i>
-                </div>
-                <span id="appHeaderBrandTitle" class="font-bold text-xs tracking-tight truncate">Offline Saha Rapor</span>
-            </div>
-
-            <div class="flex items-center gap-1.5 shrink-0">
-                <span id="lastSavedBadge" class="hidden text-[10px] text-emerald-400 font-medium"></span>
-                <div id="headerUserWidget" class="flex items-center">
-                    <!-- Populated dynamically: Active User Button or Login -->
-                </div>
-            </div>
-        </header>
-
-        <!-- SINGLE LOCKED SCROLL AREA -->
-        <main id="pageContent" class="p-2 sm:p-3">
-            <!-- Populated by app.js -->
-        </main>
-
-        <input type="file" id="quickCameraInput" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this)">
-    </div>
-
-    <!-- PRINTABLE A4 OFFICIAL REPORT CONTAINER -->
-    <div id="printableReportArea" class="print-only bg-white text-black"></div>
-
-    <!-- A4 PDF PREVIEW MODAL -->
-    <div id="a4PreviewModal" class="no-print fixed inset-0 bg-slate-950 z-50 hidden flex flex-col overflow-hidden">
-        <div class="bg-slate-900 border-b border-slate-800 px-3 py-2.5 flex items-center justify-between gap-2 shrink-0">
-            <button onclick="closeA4PreviewModal()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 text-slate-200 font-bold text-xs flex items-center gap-1.5">
-                <i class="fa-solid fa-arrow-left"></i>
-                <span>Geri</span>
-            </button>
-            <div class="flex items-center bg-slate-800 rounded-lg border border-slate-700 p-0.5 text-xs">
-                <button onclick="adjustA4PreviewZoom(-0.1)" class="px-2.5 py-1 text-slate-300 font-bold">-</button>
-                <button onclick="resetA4PreviewZoom()" class="px-2 py-1 text-sky-400 font-bold text-[11px]">Sığdır</button>
-                <button onclick="adjustA4PreviewZoom(0.1)" class="px-2.5 py-1 text-slate-300 font-bold">+</button>
-            </div>
-            <button onclick="triggerBrowserPrint()" class="px-3 py-1.5 rounded-lg bg-emerald-500 text-slate-950 font-black text-xs flex items-center gap-1.5">
-                <i class="fa-solid fa-file-pdf"></i>
-                <span>PDF Çıktı Al</span>
-            </button>
-        </div>
-        <div id="a4PreviewScrollContainer" class="flex-1 overflow-auto py-3 px-2 bg-slate-800 flex flex-col items-center">
-            <div id="a4PreviewPagesContainer" class="origin-top"></div>
-        </div>
-    </div>
-
-    <!-- SIMPLE MODAL (VAUL / EMIL KOWALSKI CRAFT) -->
-    <div id="appModal" class="no-print fixed inset-0 bg-slate-950/75 z-50 hidden flex items-center justify-center p-3 modal-backdrop-animate">
-        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200/90 max-w-lg w-full max-h-[88vh] flex flex-col overflow-hidden modal-sheet-animate">
-            <div class="px-4 py-3 bg-slate-900 text-white flex items-center justify-between shrink-0 border-b border-slate-800">
-                <h3 id="modalTitle" class="font-bold text-sm tracking-tight">İşlem</h3>
-                <button onclick="closeModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition active:scale-90"><i class="fa-solid fa-xmark text-lg"></i></button>
-            </div>
-            <div id="modalBody" class="p-4 overflow-y-auto space-y-3 text-sm"></div>
-            <div id="modalFooter" class="px-4 py-2.5 bg-slate-50 border-t border-slate-200/80 flex items-center justify-end gap-2 shrink-0"></div>
-        </div>
-    </div>
-
-    <!-- EMIL KOWALSKI CRAFT: SONNER TOAST SYSTEM -->
-    <div id="sonnerContainer" class="no-print fixed bottom-6 inset-x-0 flex justify-center items-center pointer-events-none z-50 px-4">
-        <div id="toast" class="sonner-toast-pill flex items-center gap-2.5 px-4 py-2.5 rounded-full pointer-events-auto">
-            <div id="toastIconWrapper" class="w-6 h-6 rounded-full flex items-center justify-center shrink-0 bg-emerald-500/20 text-emerald-400">
-                <i id="toastIcon" class="fa-solid fa-circle-check text-xs sonner-toast-icon-bounce"></i>
-            </div>
-            <span id="toastMsg" class="text-xs font-semibold text-slate-100 tracking-tight truncate max-w-[70vw]">Kaydedildi</span>
-        </div>
-    </div>
-
-    <script src="offline-data.js"></script>
-    <script src="offline-db.js"></script>
-    <script src="templates.js"></script>
-    <script src="app.js"></script>
-
-    <!-- GLOBAL CRASH SHIELD (BEYAZ EKRAN & ÇÖKME KALKANI) -->
-    <div id="globalCrashShield" class="no-print fixed inset-0 bg-slate-950/85 z-[100] hidden flex items-center justify-center p-3 modal-backdrop-animate">
-        <div class="bg-white rounded-2xl shadow-2xl border-2 border-rose-500 max-w-md w-full overflow-hidden modal-sheet-animate">
-            <div class="px-4 py-3 bg-gradient-to-r from-rose-600 to-rose-700 text-white flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                    <i class="fa-solid fa-shield-halved text-amber-300 text-lg"></i>
-                    <h3 class="font-bold text-sm">ENLAB Güvenlik Kalkanı Aktif</h3>
-                </div>
-                <button onclick="dismissCrashShield()" class="text-white/80 hover:text-white p-1">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
-            </div>
-            <div class="p-4 space-y-3 text-xs text-slate-700">
-                <div class="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-900 font-semibold flex items-start gap-2">
-                    <i class="fa-solid fa-circle-check text-emerald-600 text-base shrink-0 mt-0.5"></i>
-                    <div>
-                        <div class="font-bold">Verileriniz Güvende!</div>
-                        <div class="text-[11px] text-emerald-800 font-normal">Beklenmeyen bir durum algılandı, ancak girdiğiniz tüm rapor ve ölçüm verileri cihaz hafızasında güvenle saklanmaktadır.</div>
-                    </div>
-                </div>
-                <div id="crashShieldErrorMessage" class="p-2.5 bg-slate-100 rounded-lg font-mono text-[11px] text-rose-700 border border-slate-200 break-words max-h-24 overflow-y-auto">
-                    Hata detayı
-                </div>
-                <div class="grid grid-cols-2 gap-2 pt-1">
-                    <button onclick="exportEmergencyBackup()" class="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition">
-                        <i class="fa-solid fa-download"></i>
-                        <span>Acil Yedek Al (JSON)</span>
-                    </button>
-                    <button onclick="location.reload()" class="w-full py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition">
-                        <i class="fa-solid fa-rotate-right"></i>
-                        <span>Uygulamayı Yenile</span>
-                    </button>
-                </div>
-            </div>
-            <div class="px-4 py-2.5 bg-slate-50 border-t border-slate-200 text-center">
-                <button onclick="dismissCrashShield()" class="text-slate-500 hover:text-slate-800 font-semibold text-[11px]">
-                    Kalkanı Kapat ve Çalışmaya Devam Et →
-                </button>
-            </div>
-        </div>
-    </div>
-
-
-    <!-- PHOTO ANNOTATOR MODAL (KUSUR İŞARETLEME ARACI) -->
-    <div id="photoAnnotatorModal" class="no-print fixed inset-0 bg-slate-950 z-50 hidden flex flex-col overflow-hidden select-none modal-backdrop-animate">
-        <!-- Top Toolbar -->
-        <div class="bg-slate-900 border-b border-slate-800 px-3 py-2 flex items-center justify-between gap-2 shrink-0">
-            <button onclick="closePhotoAnnotatorModal()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 text-slate-200 font-bold text-xs flex items-center gap-1.5 active:scale-95">
-                <i class="fa-solid fa-xmark"></i>
-                <span>İptal</span>
-            </button>
-            <div class="flex items-center gap-1.5">
-                <button onclick="undoPhotoAnnotation()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 text-slate-200 font-bold text-xs flex items-center gap-1 active:scale-95" title="Geri Al">
-                    <i class="fa-solid fa-rotate-left"></i>
-                    <span class="hidden xs:inline">Geri Al</span>
-                </button>
-                <button onclick="clearPhotoAnnotation()" class="px-2 py-1.5 rounded-lg bg-slate-800 text-rose-300 font-bold text-xs active:scale-95" title="Temizle">
-                    <i class="fa-solid fa-trash-can"></i>
-                </button>
-            </div>
-            <button onclick="savePhotoAnnotation()" class="px-3.5 py-1.5 rounded-lg bg-emerald-600 active:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm active:scale-95">
-                <i class="fa-solid fa-check"></i>
-                <span>Kaydet</span>
-            </button>
-        </div>
-
-        <!-- Shape & Color Controls -->
-        <div class="bg-slate-800/95 border-b border-slate-700 px-3 py-1.5 flex items-center justify-between shrink-0 text-xs">
-            <div class="flex items-center gap-1.5">
-                <button id="toolBtnArrow" onclick="setAnnotatorTool('arrow')" class="px-2.5 py-1 rounded-lg bg-rose-600 text-white font-bold flex items-center gap-1 text-[11px] border border-rose-400">
-                    <i class="fa-solid fa-arrow-right"></i>
-                    <span>Ok</span>
-                </button>
-                <button id="toolBtnCircle" onclick="setAnnotatorTool('circle')" class="px-2.5 py-1 rounded-lg bg-slate-700 text-slate-300 font-bold flex items-center gap-1 text-[11px] border border-slate-600">
-                    <i class="fa-regular fa-circle"></i>
-                    <span>Halka</span>
-                </button>
-                <button id="toolBtnRect" onclick="setAnnotatorTool('rect')" class="px-2.5 py-1 rounded-lg bg-slate-700 text-slate-300 font-bold flex items-center gap-1 text-[11px] border border-slate-600">
-                    <i class="fa-regular fa-square"></i>
-                    <span>Kutu</span>
-                </button>
-            </div>
-            <div class="text-[11px] text-amber-300 font-medium flex items-center gap-1">
-                <i class="fa-solid fa-fingerprint"></i>
-                <span>Kusurun üzerine parmağınızla çizin</span>
-            </div>
-        </div>
-
-        <!-- Canvas Workspace -->
-        <div id="annotatorCanvasWrapper" class="flex-1 overflow-hidden bg-black flex items-center justify-center p-2 relative touch-none">
-            <canvas id="annotatorCanvas" class="max-w-full max-h-full object-contain border border-slate-700 rounded-md"></canvas>
-        </div>
-    </div>
-
-
-
-
-</body>
-</html>
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Hızlı Rapor - Saha Muayene & Test</title>
+    <link rel="manifest" href="manifest.json">
+    <script src="vendor/tailwindcss.js"></script>
+    <link rel="stylesheet" href="vendor/fontawesome.min.css">
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        html {
+            font-size: 13px;
+            -webkit-text-size-adjust: 100%;
+        }
+        html, body {
+            width: 100%;
+            height: 100%;
+            max-width: 100vw;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            overscroll-behavior: none;
+            position: fixed;
+            inset: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background-color: #f1f5f9;
+            color: #0f172a;
+        }
+        #appShell {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        #pageContent {
+            flex: 1 1 0%;
+            width: 100%;
+            max-width: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+            overscroll-behavior-y: contain;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Official TKM / ENLAB Corporate A4 Report Styles (1:1 Print Output) */
+        .tkm-a4-page {
+            width: 210mm;
+            min-height: 296.5mm;
+            height: 296.5mm;
+            padding: 6.5mm 10.5mm 6mm 10.5mm;
+            box-sizing: border-box;
+            background: #ffffff;
+            color: #111111;
+            font-family: Calibri, 'Segoe UI', Arial, sans-serif;
+            font-size: 7.8pt;
+            line-height: 1.16;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        .tkm-page-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+        }
+        .tkm-block {
+            break-inside: avoid;
+            page-break-inside: avoid;
+            margin-bottom: 2px;
+        }
+        .tkm-preview-sheet {
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+            margin: 0 auto 20px auto;
+            border: 1px solid #cbd5e1;
+            transform-origin: top center;
+        }
+        .tkm-header {
+            display: grid;
+            grid-template-columns: 92px 1fr 78px;
+            align-items: center;
+            border-bottom: 1.8px solid #000000;
+            padding-bottom: 4px;
+            margin-bottom: 3px;
+            flex-shrink: 0;
+        }
+        .tkm-sec-title {
+            color: #c00000 !important;
+            font-size: 8.5pt;
+            font-weight: 700;
+            margin: 4px 0 2px 0;
+            letter-spacing: 0.1px;
+            break-after: avoid;
+            page-break-after: avoid;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        .tkm-sub-bar {
+            background-color: #d3d3d3 !important;
+            color: #111111 !important;
+            font-size: 7.8pt;
+            font-weight: 700;
+            padding: 2.5px 6px;
+            margin: 3px 0 2px 0;
+            break-after: avoid;
+            page-break-after: avoid;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        .tkm-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            font-size: 7.3pt;
+            line-height: 1.15;
+            color: #111111;
+        }
+        .tkm-table th, .tkm-table td {
+            border: 1px solid #000000;
+            padding: 1.8px 4px;
+            vertical-align: middle;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        .tkm-legend {
+            font-size: 6.9pt;
+            color: #111111;
+            margin: 1px 0 2px 0;
+        }
+        .tkm-footer {
+            margin-top: auto;
+            padding-top: 4px;
+            flex-shrink: 0;
+        }
+        .tkm-footer-disclaimer {
+            font-size: 6.4pt;
+            line-height: 1.18;
+            color: #222222;
+            text-align: justify;
+            padding-bottom: 3px;
+            border-bottom: 1px solid #222222;
+        }
+        .tkm-footer-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 7.8pt;
+            color: #111111;
+            padding-top: 2px;
+        }
+
+        @page {
+            size: A4 portrait;
+            margin: 0mm;
+        }
+        @media print {
+            html, body {
+                position: static !important;
+                width: 210mm !important;
+                height: auto !important;
+                max-width: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #ffffff !important;
+                color: #000000 !important;
+                overflow: visible !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            #appShell, .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            .tkm-a4-page {
+                margin: 0 !important;
+                box-shadow: none !important;
+                border: none !important;
+                transform: none !important;
+                zoom: 1 !important;
+                page-break-after: always;
+                break-after: page;
+            }
+            .tkm-a4-page:last-child {
+                page-break-after: auto;
+                break-after: auto;
+            }
+        }
+        .print-only { display: none; }
+        /* ==========================================================================
+           EMIL KOWALSKI CRAFT & IMPECCABLE DESIGN SYSTEM
+           ========================================================================== */
+        :root {
+            --spring-snappy: cubic-bezier(0.16, 1, 0.3, 1);
+            --spring-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+            --spring-smooth: cubic-bezier(0.32, 0.72, 0, 1);
+        }
+
+        /* Tactile Touch Feedback & Signature Emil Kowalski Spring Physics */
+        button, a, [role="button"], .touch-action-btn {
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            transition: transform 0.14s var(--spring-snappy), opacity 0.12s ease, box-shadow 0.14s ease;
+            will-change: transform;
+        }
+        button:active, a:active, .touch-action-btn:active {
+            transform: scale(0.97) !important;
+            opacity: 0.92;
+        }
+
+        /* Impeccable Card Depth & Polish */
+        .card-craft-dark {
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 4px 14px -2px rgba(15, 23, 42, 0.45);
+            border-radius: 0.75rem;
+            transition: transform 0.18s var(--spring-snappy), box-shadow 0.18s ease;
+        }
+        .card-craft-white {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 6px 16px -4px rgba(15, 23, 42, 0.05), inset 0 1px 0 #ffffff;
+            border-radius: 0.75rem;
+            transition: transform 0.18s var(--spring-snappy), box-shadow 0.18s ease, border-color 0.18s ease;
+        }
+        .card-craft-white:active {
+            transform: scale(0.985);
+        }
+
+        /* Tabular Numerals for Electrical Measurements & Calculations */
+        .tabular-nums, input[inputmode="decimal"], input[type="number"], .font-mono {
+            font-variant-numeric: tabular-nums;
+            -webkit-font-feature-settings: "tnum";
+            font-feature-settings: "tnum";
+        }
+
+        /* Fluid Input Focus States (Linear / Raycast Style) */
+        input[type="text"], input[type="number"], select, textarea {
+            transition: border-color 0.15s ease, box-shadow 0.15s var(--spring-snappy), background-color 0.15s ease;
+        }
+        input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:focus {
+            outline: none !important;
+            border-color: #0284c7 !important;
+            box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.18) !important;
+        }
+
+        /* Vaul & Emil Kowalski Dialog & Sheet Physics */
+        @keyframes vaulBackdropFade {
+            from { opacity: 0; backdrop-filter: blur(0px); }
+            to { opacity: 1; backdrop-filter: blur(8px); }
+        }
+        @keyframes vaulSheetEnter {
+            0% { transform: translate3d(0, 28px, 0) scale(0.96); opacity: 0; }
+            100% { transform: translate3d(0, 0, 0) scale(1); opacity: 1; }
+        }
+        .modal-backdrop-animate {
+            animation: vaulBackdropFade 0.22s var(--spring-snappy) forwards;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        .modal-sheet-animate {
+            animation: vaulSheetEnter 0.26s var(--spring-snappy) forwards;
+            will-change: transform, opacity;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+        }
+
+        /* Emil Kowalski Signature Sonner Toast Pill */
+        .sonner-toast-pill {
+            background: rgba(15, 23, 42, 0.94);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+            transform: translate3d(0, 80px, 0) scale(0.92);
+            opacity: 0;
+            visibility: hidden;
+            transition: transform 0.32s var(--spring-snappy), opacity 0.24s var(--spring-snappy), visibility 0.32s;
+            will-change: transform, opacity;
+        }
+        .sonner-toast-pill.sonner-visible {
+            transform: translate3d(0, 0, 0) scale(1);
+            opacity: 1;
+            visibility: visible;
+        }
+        @keyframes sonnerIconPop {
+            0% { transform: scale(0.5); }
+            60% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        .sonner-toast-icon-bounce {
+            animation: sonnerIconPop 0.3s var(--spring-bounce);
+        }
+
+        /* Buttons with Inner Light Highlights (Linear / Emil Craft) */
+        .btn-craft-primary {
+            background: linear-gradient(180deg, #0284c7 0%, #0369a1 100%) !important;
+            border: 1px solid #0284c7 !important;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 2px 6px rgba(2, 132, 199, 0.35) !important;
+        }
+        .btn-craft-dark {
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%) !important;
+            border: 1px solid rgba(255, 255, 255, 0.12) !important;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 2px 6px rgba(15, 23, 42, 0.4) !important;
+        }
+        .btn-craft-emerald {
+            background: linear-gradient(180deg, #059669 0%, #047857 100%) !important;
+            border: 1px solid #059669 !important;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 2px 6px rgba(5, 150, 105, 0.35) !important;
+        }
+
+        /* Custom Sleek Scrollbars */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.04);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(100, 116, 139, 0.4);
+            border-radius: 999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(100, 116, 139, 0.7);
+        }
+
+    </style>
+    <script>
+        // Global Error Boundary & Crash Shield (Early Protection)
+        window.__ENLAB_CRASH_LOGS = [];
+        window.onerror = function(message, source, lineno, colno, error) {
+            console.error('[ENLAB Shield] window.onerror caught:', message, error);
+            window.__ENLAB_CRASH_LOGS.push({ time: new Date().toLocaleTimeString(), message: message, source: source, lineno: lineno, colno: colno, stack: error ? error.stack : '' });
+            if (typeof window.showGlobalCrashShield === 'function') {
+                window.showGlobalCrashShield(message, error);
+            }
+            return false;
+        };
+        window.addEventListener('unhandledrejection', function(event) {
+            console.error('[ENLAB Shield] unhandledrejection caught:', event.reason);
+            var reasonMsg = event.reason ? (event.reason.message || String(event.reason)) : 'Bilinmeyen asenkron hata';
+            window.__ENLAB_CRASH_LOGS.push({ time: new Date().toLocaleTimeString(), message: reasonMsg, stack: event.reason && event.reason.stack });
+            if (typeof window.showGlobalCrashShield === 'function') {
+                window.showGlobalCrashShield(reasonMsg, event.reason);
+            }
+        });
+    </script>
+</head>
+<body>
+
+    <div id="appShell" class="no-print">
+        <!-- MINIMAL TOP BAR -->
+        <header class="bg-slate-900 text-white h-11 shrink-0 flex items-center justify-between px-3 py-1.5 border-b border-slate-800 shadow-sm">
+            <div onclick="navigateTo('home')" class="flex items-center gap-2 cursor-pointer min-w-0" title="Hızlı Rapor Ana Sayfa">
+                <!-- DİNAMİK ŞİRKET LOGOSU / UYGULAMA SİMGESİ -->
+                <div id="appHeaderLogoWrapper" class="h-7 w-7 rounded-lg flex items-center justify-center shrink-0 overflow-hidden bg-gradient-to-br from-amber-400 to-amber-500 border border-amber-300 text-slate-950 font-black shadow-2xs">
+                    <i class="fa-solid fa-bolt-lightning text-xs"></i>
+                </div>
+                <div class="min-w-0 flex flex-col justify-center">
+                    <span id="appHeaderBrandTitle" class="font-black text-xs tracking-tight text-white truncate">Hızlı Rapor</span>
+                    <span id="appHeaderBrandSub" class="text-[9px] text-slate-400 font-medium leading-none truncate hidden xs:inline">Saha Kontrol</span>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-1.5 shrink-0">
+                <span id="lastSavedBadge" class="hidden text-[10px] text-emerald-400 font-medium"></span>
+                <div id="headerUserWidget" class="flex items-center">
+                    <!-- Populated dynamically: Active User Button or Login -->
+                </div>
+            </div>
+        </header>
+
+        <!-- SINGLE LOCKED SCROLL AREA -->
+        <main id="pageContent" class="p-2 sm:p-3">
+            <!-- Populated by app.js -->
+        </main>
+
+        <input type="file" id="quickCameraInput" accept="image/*" capture="environment" class="hidden" onchange="handlePhotoUpload(this)">
+    </div>
+
+    <!-- PRINTABLE A4 OFFICIAL REPORT CONTAINER -->
+    <div id="printableReportArea" class="print-only bg-white text-black"></div>
+
+    <!-- A4 PDF PREVIEW MODAL -->
+    <div id="a4PreviewModal" class="no-print fixed inset-0 bg-slate-950 z-50 hidden flex flex-col overflow-hidden">
+        <div class="bg-slate-900 border-b border-slate-800 px-3 py-2.5 flex items-center justify-between gap-2 shrink-0">
+            <button onclick="closeA4PreviewModal()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 text-slate-200 font-bold text-xs flex items-center gap-1.5">
+                <i class="fa-solid fa-arrow-left"></i>
+                <span>Geri</span>
+            </button>
+            <div class="flex items-center bg-slate-800 rounded-lg border border-slate-700 p-0.5 text-xs">
+                <button onclick="adjustA4PreviewZoom(-0.1)" class="px-2.5 py-1 text-slate-300 font-bold">-</button>
+                <button onclick="resetA4PreviewZoom()" class="px-2 py-1 text-sky-400 font-bold text-[11px]">Sığdır</button>
+                <button onclick="adjustA4PreviewZoom(0.1)" class="px-2.5 py-1 text-slate-300 font-bold">+</button>
+            </div>
+            <button onclick="triggerBrowserPrint()" class="px-3 py-1.5 rounded-lg bg-emerald-500 text-slate-950 font-black text-xs flex items-center gap-1.5">
+                <i class="fa-solid fa-file-pdf"></i>
+                <span>PDF Çıktı Al</span>
+            </button>
+        </div>
+        <div id="a4PreviewScrollContainer" class="flex-1 overflow-auto py-3 px-2 bg-slate-800 flex flex-col items-center">
+            <div id="a4PreviewPagesContainer" class="origin-top"></div>
+        </div>
+    </div>
+
+    <!-- SIMPLE MODAL (VAUL / EMIL KOWALSKI CRAFT) -->
+    <div id="appModal" class="no-print fixed inset-0 bg-slate-950/75 z-50 hidden flex items-center justify-center p-3 modal-backdrop-animate">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200/90 max-w-lg w-full max-h-[88vh] flex flex-col overflow-hidden modal-sheet-animate">
+            <div class="px-4 py-3 bg-slate-900 text-white flex items-center justify-between shrink-0 border-b border-slate-800">
+                <h3 id="modalTitle" class="font-bold text-sm tracking-tight">İşlem</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition active:scale-90"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div id="modalBody" class="p-4 overflow-y-auto space-y-3 text-sm"></div>
+            <div id="modalFooter" class="px-4 py-2.5 bg-slate-50 border-t border-slate-200/80 flex items-center justify-end gap-2 shrink-0"></div>
+        </div>
+    </div>
+
+    <!-- EMIL KOWALSKI CRAFT: SONNER TOAST SYSTEM -->
+    <div id="sonnerContainer" class="no-print fixed bottom-6 inset-x-0 flex justify-center items-center pointer-events-none z-50 px-4">
+        <div id="toast" class="sonner-toast-pill flex items-center gap-2.5 px-4 py-2.5 rounded-full pointer-events-auto">
+            <div id="toastIconWrapper" class="w-6 h-6 rounded-full flex items-center justify-center shrink-0 bg-emerald-500/20 text-emerald-400">
+                <i id="toastIcon" class="fa-solid fa-circle-check text-xs sonner-toast-icon-bounce"></i>
+            </div>
+            <span id="toastMsg" class="text-xs font-semibold text-slate-100 tracking-tight truncate max-w-[70vw]">Kaydedildi</span>
+        </div>
+    </div>
+
+    <script src="offline-data.js"></script>
+    <script src="offline-db.js"></script>
+    <script src="templates.js"></script>
+    <script src="app.js"></script>
+
+    <!-- GLOBAL CRASH SHIELD (BEYAZ EKRAN & ÇÖKME KALKANI) -->
+    <div id="globalCrashShield" class="no-print fixed inset-0 bg-slate-950/85 z-[100] hidden flex items-center justify-center p-3 modal-backdrop-animate">
+        <div class="bg-white rounded-2xl shadow-2xl border-2 border-rose-500 max-w-md w-full overflow-hidden modal-sheet-animate">
+            <div class="px-4 py-3 bg-gradient-to-r from-rose-600 to-rose-700 text-white flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-shield-halved text-amber-300 text-lg"></i>
+                    <h3 class="font-bold text-sm">ENLAB Güvenlik Kalkanı Aktif</h3>
+                </div>
+                <button onclick="dismissCrashShield()" class="text-white/80 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="p-4 space-y-3 text-xs text-slate-700">
+                <div class="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-900 font-semibold flex items-start gap-2">
+                    <i class="fa-solid fa-circle-check text-emerald-600 text-base shrink-0 mt-0.5"></i>
+                    <div>
+                        <div class="font-bold">Verileriniz Güvende!</div>
+                        <div class="text-[11px] text-emerald-800 font-normal">Beklenmeyen bir durum algılandı, ancak girdiğiniz tüm rapor ve ölçüm verileri cihaz hafızasında güvenle saklanmaktadır.</div>
+                    </div>
+                </div>
+                <div id="crashShieldErrorMessage" class="p-2.5 bg-slate-100 rounded-lg font-mono text-[11px] text-rose-700 border border-slate-200 break-words max-h-24 overflow-y-auto">
+                    Hata detayı
+                </div>
+                <div class="grid grid-cols-2 gap-2 pt-1">
+                    <button onclick="exportEmergencyBackup()" class="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition">
+                        <i class="fa-solid fa-download"></i>
+                        <span>Acil Yedek Al (JSON)</span>
+                    </button>
+                    <button onclick="location.reload()" class="w-full py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition">
+                        <i class="fa-solid fa-rotate-right"></i>
+                        <span>Uygulamayı Yenile</span>
+                    </button>
+                </div>
+            </div>
+            <div class="px-4 py-2.5 bg-slate-50 border-t border-slate-200 text-center">
+                <button onclick="dismissCrashShield()" class="text-slate-500 hover:text-slate-800 font-semibold text-[11px]">
+                    Kalkanı Kapat ve Çalışmaya Devam Et →
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- PHOTO ANNOTATOR MODAL (KUSUR İŞARETLEME ARACI) -->
+    <div id="photoAnnotatorModal" class="no-print fixed inset-0 bg-slate-950 z-50 hidden flex flex-col overflow-hidden select-none modal-backdrop-animate">
+        <!-- Top Toolbar -->
+        <div class="bg-slate-900 border-b border-slate-800 px-3 py-2 flex items-center justify-between gap-2 shrink-0">
+            <button onclick="closePhotoAnnotatorModal()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 text-slate-200 font-bold text-xs flex items-center gap-1.5 active:scale-95">
+                <i class="fa-solid fa-xmark"></i>
+                <span>İptal</span>
+            </button>
+            <div class="flex items-center gap-1.5">
+                <button onclick="undoPhotoAnnotation()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 text-slate-200 font-bold text-xs flex items-center gap-1 active:scale-95" title="Geri Al">
+                    <i class="fa-solid fa-rotate-left"></i>
+                    <span class="hidden xs:inline">Geri Al</span>
+                </button>
+                <button onclick="clearPhotoAnnotation()" class="px-2 py-1.5 rounded-lg bg-slate-800 text-rose-300 font-bold text-xs active:scale-95" title="Temizle">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
+            </div>
+            <button onclick="savePhotoAnnotation()" class="px-3.5 py-1.5 rounded-lg bg-emerald-600 active:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm active:scale-95">
+                <i class="fa-solid fa-check"></i>
+                <span>Kaydet</span>
+            </button>
+        </div>
+
+        <!-- Shape & Color Controls -->
+        <div class="bg-slate-800/95 border-b border-slate-700 px-3 py-1.5 flex items-center justify-between shrink-0 text-xs">
+            <div class="flex items-center gap-1.5">
+                <button id="toolBtnArrow" onclick="setAnnotatorTool('arrow')" class="px-2.5 py-1 rounded-lg bg-rose-600 text-white font-bold flex items-center gap-1 text-[11px] border border-rose-400">
+                    <i class="fa-solid fa-arrow-right"></i>
+                    <span>Ok</span>
+                </button>
+                <button id="toolBtnCircle" onclick="setAnnotatorTool('circle')" class="px-2.5 py-1 rounded-lg bg-slate-700 text-slate-300 font-bold flex items-center gap-1 text-[11px] border border-slate-600">
+                    <i class="fa-regular fa-circle"></i>
+                    <span>Halka</span>
+                </button>
+                <button id="toolBtnRect" onclick="setAnnotatorTool('rect')" class="px-2.5 py-1 rounded-lg bg-slate-700 text-slate-300 font-bold flex items-center gap-1 text-[11px] border border-slate-600">
+                    <i class="fa-regular fa-square"></i>
+                    <span>Kutu</span>
+                </button>
+            </div>
+            <div class="text-[11px] text-amber-300 font-medium flex items-center gap-1">
+                <i class="fa-solid fa-fingerprint"></i>
+                <span>Kusurun üzerine parmağınızla çizin</span>
+            </div>
+        </div>
+
+        <!-- Canvas Workspace -->
+        <div id="annotatorCanvasWrapper" class="flex-1 overflow-hidden bg-black flex items-center justify-center p-2 relative touch-none">
+            <canvas id="annotatorCanvas" class="max-w-full max-h-full object-contain border border-slate-700 rounded-md"></canvas>
+        </div>
+    </div>
+
+
+
+
+</body>
+</html>

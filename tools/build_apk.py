@@ -58,7 +58,7 @@ def write_zip_entry(zout, file_path, archive_path):
 
 def build(target_version=None):
     print("=" * 65)
-    print("ENLAB Mobil Saha - APK Derleme & İmzama Aracı")
+    print("Hızlı Rapor - APK Derleme & İmzama Aracı")
     print("=" * 65)
 
     if not os.path.exists(SRC_DIR):
@@ -70,7 +70,7 @@ def build(target_version=None):
 
     ver_info = get_current_version_info()
     current_ver = target_version or ver_info.get("version", "v0.1")
-    apk_filename = f"ENLAB_Mobil_Saha_{current_ver}.apk"
+    apk_filename = f"Hizli_Rapor_{current_ver}.apk"
 
     print(f"[*] Derlenen Versiyon : {current_ver}")
     print(f"[*] Çıktı Dosyası     : {apk_filename}\n")
