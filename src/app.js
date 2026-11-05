@@ -172,7 +172,7 @@ const CompanySettingsManager = {
 
                 const parsed = JSON.parse(raw);
 
-                if (parsed.companyShortName === 'TEKKOMER') parsed.companyShortName = 'ENLAB';
+                if (parsed.companyShortName === 'TEKKOMER' || parsed.companyShortName === 'ENLAB') parsed.companyShortName = 'Hızlı Rapor';
 
                 return { ...DEFAULT_COMPANY_BRANDING, ...parsed };
 
@@ -1095,7 +1095,7 @@ async function exportLocalBackup() {
 
         const jsonStr = JSON.stringify(backupObj, null, 2);
 
-        const fileName = `ENLAB_Saha_Yedek_${new Date().toISOString().slice(0, 10)}.json`;
+        const fileName = `Hizli_Rapor_Yedek_${new Date().toISOString().slice(0, 10)}.json`;
 
 
 
@@ -1143,7 +1143,7 @@ function openImportBackupModal() {
 
         `<div class="space-y-3 text-xs">
 
-            <p class="text-slate-600">Daha önce telefondan veya bilgisayardan aldığınız <strong>.json</strong> uzantılı ENLAB saha yedek dosyasını seçerek tüm işleri, notları ve raporları yükleyebilirsiniz:</p>
+            <p class="text-slate-600">Daha önce telefondan veya bilgisayardan aldığınız <strong>.json</strong> uzantılı Hızlı Rapor saha yedek dosyasını seçerek tüm işleri, notları ve raporları yükleyebilirsiniz:</p>
 
             <input type="file" accept=".json,application/json" onchange="handleBackupFileImport(this)" class="w-full border border-slate-300 rounded-lg p-2.5 bg-slate-50">
 
@@ -15931,7 +15931,7 @@ function exportEmergencyBackup() {
 
         const timeStamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
 
-        const fileName = `ENLAB_Saha_Yedek_${timeStamp}.json`;
+        const fileName = `Hizli_Rapor_Yedek_${timeStamp}.json`;
 
 
 
@@ -17955,9 +17955,9 @@ function renderAuthScreen(activeTab = 'login') {
 
                 </div>
 
-                <h1 class="font-black text-base tracking-tight">ENLAB Mobil Saha Sistemi</h1>
+                <h1 class="font-black text-base tracking-tight">Hızlı Rapor</h1>
 
-                <p class="text-xs text-slate-300 mt-0.5">Akredite Elektrik Periyodik Kontrol ve Raporlama</p>
+                <p class="text-xs text-slate-300 mt-0.5">Saha Muayene & Periyodik Kontrol Sistemi</p>
 
                 <div class="mt-2.5 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-400/30 text-[10px] font-bold">
 
