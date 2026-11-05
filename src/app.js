@@ -642,19 +642,19 @@ async function renderHome() {
     AppState.workOrdersCache = allJobs;
 
     container.innerHTML = `
-        <div class="max-w-2xl mx-auto space-y-3 pb-8">
+        <div class="max-w-2xl mx-auto space-y-2 pb-6">
             <!-- 1. İŞYERİ ARAMA VE YENİ BAŞLIK AÇMA (SADE & HIZLI SAHA ERİŞİMİ) -->
-            <div class="flex items-center gap-2 pt-1">
+            <div class="flex items-center gap-2 pt-0.5">
                 <input type="text" id="homeSearchInput" oninput="filterHomeJobs(this.value)" placeholder="Firma adı, şube veya not ara..."
-                    class="flex-1 bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-sky-500 shadow-2xs">
-                <button onclick="openQuickFieldJobModal()" class="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-bold text-xs sm:text-sm rounded-xl shrink-0 flex items-center gap-1.5 shadow-sm transition">
+                    class="flex-1 bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-sky-500 shadow-2xs">
+                <button onclick="openQuickFieldJobModal()" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-bold text-xs rounded-lg shrink-0 flex items-center gap-1.5 shadow-sm transition">
                     <i class="fa-solid fa-plus text-emerald-400"></i>
-                    <span>Yeni Başlık / Klasör</span>
+                    <span>Yeni Klasör</span>
                 </button>
             </div>
 
             <!-- 2. KLASÖRLER LİSTESİ -->
-            <div id="homeJobsList" class="space-y-2.5 pt-0.5">
+            <div id="homeJobsList" class="space-y-2 pt-0.5">
                 ${renderMinimalJobCards(allJobs)}
             </div>
         </div>
@@ -675,18 +675,18 @@ function renderMinimalJobCards(jobs) {
         const count = wo.actual_inspection_count ?? wo.inspection_count ?? 0;
         return `
             <div onclick="navigateTo('work-order-details', {id: '${wo.id}'})"
-                class="card-craft-white p-3.5 cursor-pointer flex items-center justify-between gap-2">
+                class="card-craft-white p-2.5 cursor-pointer flex items-center justify-between gap-2 transition hover:border-slate-300">
                 <div class="min-w-0 flex-1">
-                    <div class="font-bold text-slate-900 text-sm truncate">${wo.customer_name}</div>
-                    ${wo.customer_branch ? `<div class="text-[11px] text-slate-500 truncate mt-0.5">${wo.customer_branch}</div>` : ''}
-                    ${notePreview ? `<div class="text-xs text-amber-800 bg-amber-50 border border-amber-200/80 rounded-lg px-2.5 py-1 mt-2 truncate"><i class="fa-solid fa-note-sticky mr-1 text-amber-500"></i>${notePreview.replace(/\n/g, ' ')}</div>` : ''}
+                    <div class="font-bold text-slate-900 text-xs sm:text-sm truncate">${wo.customer_name}</div>
+                    ${wo.customer_branch ? `<div class="text-[10px] text-slate-500 truncate mt-0.5">${wo.customer_branch}</div>` : ''}
+                    ${notePreview ? `<div class="text-[11px] text-amber-800 bg-amber-50 border border-amber-200/80 rounded-md px-2 py-0.5 mt-1 truncate"><i class="fa-solid fa-note-sticky mr-1 text-amber-500"></i>${notePreview.replace(/\n/g, ' ')}</div>` : ''}
                 </div>
-                <div class="shrink-0 flex items-center gap-1.5">
-                    <span class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-bold text-xs">
+                <div class="shrink-0 flex items-center gap-1">
+                    <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-bold text-[10px]">
                         ${count} Rapor
                     </span>
-                    <button onclick="deleteWorkOrderHeading('${wo.id}', event, '${(wo.customer_name || 'İş Klasörü').replace(/'/g, "\\'")}')" class="p-2 text-slate-400 hover:text-rose-600 active:scale-90 rounded-lg transition" title="Klasörü Sil">
-                        <i class="fa-solid fa-trash-can text-xs"></i>
+                    <button onclick="deleteWorkOrderHeading('${wo.id}', event, '${(wo.customer_name || 'İş Klasörü').replace(/'/g, "\\'")}')" class="p-1.5 text-slate-400 hover:text-rose-600 active:scale-90 rounded-md transition" title="Klasörü Sil">
+                        <i class="fa-solid fa-trash-can text-[11px]"></i>
                     </button>
                 </div>
             </div>
@@ -1282,7 +1282,7 @@ async function renderWorkOrderDetails(workOrderId) {
     container.innerHTML = `
         <div class="max-w-2xl mx-auto space-y-3 pb-8">
             <!-- HEADER (EMIL KOWALSKI CRAFT) -->
-            <div class="card-craft-white p-3.5 flex items-center justify-between gap-2">
+            <div class="card-craft-white p-2.5 flex items-center justify-between gap-2">
                 <div class="flex items-center gap-2.5 min-w-0">
                     <button onclick="navigateTo('home')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 rounded-xl font-bold text-xs shrink-0 transition border border-slate-200">
                         <i class="fa-solid fa-arrow-left mr-1"></i>Geri
@@ -1295,7 +1295,7 @@ async function renderWorkOrderDetails(workOrderId) {
             </div>
 
             <!-- YÖNETİCİ & SAHA İSTATİSTİKLERİ KARTI -->
-            <div class="card-craft-white p-3.5 space-y-3">
+            <div class="card-craft-white p-2.5 space-y-2">
                 <div class="flex items-center justify-between">
                     <span class="font-bold text-xs text-slate-800 flex items-center gap-1.5">
                         <i class="fa-solid fa-chart-column text-sky-600"></i>
@@ -8822,7 +8822,7 @@ function updateHeaderUserWidget() {
         const isSettings = AppState.currentRoute === 'settings';
         el.innerHTML = `
             <button onclick="navigateTo('${isSettings ? 'home' : 'settings'}')"
-                class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 border border-slate-700 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+                class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 border border-slate-700 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
                 title="${isSettings ? 'Ana Sayfaya Dön' : 'Uygulama, Şirket ve Rapor Ayarları'}">
                 <i class="fa-solid ${isSettings ? 'fa-arrow-left text-sky-400' : 'fa-gear text-amber-400'}"></i>
                 <span>${isSettings ? 'Geri' : 'Ayarlar'}</span>
@@ -8830,7 +8830,7 @@ function updateHeaderUserWidget() {
         `;
     } else {
         el.innerHTML = `
-            <button onclick="renderAuthScreen('login')" class="px-2.5 py-1 rounded-lg bg-sky-600 hover:bg-sky-500 active:scale-95 text-white text-xs font-bold flex items-center gap-1 transition">
+            <button onclick="renderAuthScreen('login')" class="px-2 py-1 rounded-lg bg-sky-600 text-[11px] hover:bg-sky-500 active:scale-95 text-white text-xs font-bold flex items-center gap-1 transition">
                 <i class="fa-solid fa-right-to-bracket"></i>
                 <span>Giriş</span>
             </button>
@@ -9468,9 +9468,9 @@ async function renderSettingsPage() {
     const inspectionCount = (db.inspections || []).length;
 
     container.innerHTML = `
-        <div class="max-w-2xl mx-auto space-y-3.5 pb-12">
+        <div class="max-w-2xl mx-auto space-y-2.5 pb-8">
             <!-- 1. ÜST BAŞLIK VE GERİ BUTONU -->
-            <div class="card-craft-white p-3.5 flex items-center justify-between gap-2">
+            <div class="card-craft-white p-2.5 flex items-center justify-between gap-2">
                 <div class="flex items-center gap-2.5 min-w-0">
                     <button onclick="navigateTo('home')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 rounded-xl font-bold text-xs shrink-0 transition border border-slate-200">
                         <i class="fa-solid fa-arrow-left mr-1"></i>Ana Sayfa
@@ -9488,7 +9488,7 @@ async function renderSettingsPage() {
             </div>
 
             <!-- 2. MUAYENE PERSONELİ & PROFİL KARTI -->
-            <div class="card-craft-dark text-white p-4 space-y-3">
+            <div class="card-craft-dark text-white p-3 space-y-2.5">
                 <div class="flex items-center justify-between border-b border-slate-700/60 pb-2">
                     <div class="text-xs font-bold text-amber-400 flex items-center gap-1.5">
                         <i class="fa-solid fa-user-shield"></i>
@@ -9529,7 +9529,7 @@ async function renderSettingsPage() {
             </div>
 
             <!-- 3. ŞİRKET & KURUMSAL LOGO YÖNETİMİ (ÇOKLU ŞİRKET / WHITE-LABEL) -->
-            <div class="card-craft-white p-4 space-y-3.5">
+            <div class="card-craft-white p-3 space-y-2.5">
                 <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                     <div class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                         <i class="fa-solid fa-building text-sky-600"></i>
@@ -9560,7 +9560,7 @@ async function renderSettingsPage() {
             </div>
 
             <!-- 4. RAPOR KODLARI & TEST CİHAZI VARSAYILANLARI -->
-            <div class="card-craft-white p-4 space-y-3">
+            <div class="card-craft-white p-3 space-y-2.5">
                 <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                     <div class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                         <i class="fa-solid fa-file-invoice text-emerald-600"></i>
@@ -9587,7 +9587,7 @@ async function renderSettingsPage() {
             </div>
 
             <!-- 5. VERİ YEDEKLEME VE KURTARMA MERKEZİ (ANA SAYFADAN BURAYA TAŞINDI) -->
-            <div class="card-craft-white p-4 space-y-3.5">
+            <div class="card-craft-white p-3 space-y-2.5">
                 <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                     <div class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                         <i class="fa-solid fa-database text-amber-500"></i>
@@ -9627,7 +9627,7 @@ async function renderSettingsPage() {
             </div>
 
             <!-- 6. GÜVENLİK & SİLME KORUMASI BİLGİLENDİRMESİ -->
-            <div class="card-craft-white p-4 space-y-2">
+            <div class="card-craft-white p-3 space-y-1.5">
                 <div class="flex items-center gap-2 text-xs font-bold text-slate-800">
                     <i class="fa-solid fa-shield-halved text-rose-500"></i>
                     <span>Şifreli Silme Koruması</span>
