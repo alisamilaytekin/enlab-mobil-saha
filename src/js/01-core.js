@@ -485,8 +485,6 @@ function normalizeWorkOrder(w) {
 
         sgk_sicil_no: w.sgk_sicil_no || '',
 
-        tax_id: w.tax_id || '',
-
         assigned_to: w.inspectors || w.assigned_to || 'Ali Şamil Aytekin',
 
         planner_name: w.planner || '',

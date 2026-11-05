@@ -536,8 +536,6 @@ function normalizeWorkOrder(w) {
 
         sgk_sicil_no: w.sgk_sicil_no || '',
 
-        tax_id: w.tax_id || '',
-
         assigned_to: w.inspectors || w.assigned_to || 'Ali Şamil Aytekin',
 
         planner_name: w.planner || '',
@@ -1814,7 +1812,7 @@ function openQuickFieldJobModal() {
 
                 <div>
 
-                    <label class="block font-bold text-slate-700 mb-1">İSG-KATİP No</label>
+                    <label class="block font-bold text-slate-700 mb-1">İSG-KATİP Sözleşme ID</label>
 
                     <input type="text" id="qjIsgKatipNo" placeholder=""
 
@@ -1831,16 +1829,6 @@ function openQuickFieldJobModal() {
                         class="w-full border border-slate-300 focus:border-sky-500 rounded-lg px-2.5 py-1.5 text-xs font-medium">
 
                 </div>
-
-            </div>
-
-            <div>
-
-                <label class="block font-bold text-slate-700 mb-1">Vergi No / ID</label>
-
-                <input type="text" id="qjTaxId" placeholder=""
-
-                    class="w-full border border-slate-300 focus:border-sky-500 rounded-lg px-2.5 py-1.5 text-xs font-medium">
 
             </div>
 
@@ -1925,7 +1913,6 @@ async function submitQuickFieldJob(openFirstReportDirectly = false) {
     const address = (document.getElementById('qjAddress')?.value || '').trim();
     const isgKatipNo = (document.getElementById('qjIsgKatipNo')?.value || '').trim();
     const sgkSicilNo = (document.getElementById('qjSgkSicilNo')?.value || '').trim();
-    const taxId = (document.getElementById('qjTaxId')?.value || '').trim();
     const fieldNotes = (document.getElementById('qjFieldNotes')?.value || '').trim();
 
     const checkedTpls = Array.from(document.querySelectorAll('input[name="quickJobTpl"]:checked')).map(cb => cb.value);
@@ -1949,8 +1936,6 @@ async function submitQuickFieldJob(openFirstReportDirectly = false) {
             isg_katip_no: isgKatipNo,
 
             sgk_sicil_no: sgkSicilNo,
-
-            tax_id: taxId,
 
             field_notes: fieldNotes,
 
@@ -5653,8 +5638,6 @@ function ensureCompanyInfo() {
 
     if (!fd.companyInfo.sgkSicilNo) fd.companyInfo.sgkSicilNo = insp.sgk_sicil_no || wo.sgk_sicil_no || '';
 
-    if (!fd.companyInfo.taxId) fd.companyInfo.taxId = insp.tax_id || wo.tax_id || '';
-
     if (fd.companyInfo.equipmentName === undefined) fd.companyInfo.equipmentName = insp.equipment_name || '';
 
     if (fd.companyInfo.serialCode === undefined) fd.companyInfo.serialCode = insp.serial_no || '';
@@ -5759,7 +5742,7 @@ function renderSharedCompanyInfoSection() {
 
                 <div>
 
-                    <label class="block font-bold text-slate-700 mb-1">İSG-KATİP No</label>
+                    <label class="block font-bold text-slate-700 mb-1">İSG-KATİP Sözleşme ID</label>
 
                     <input type="text" value="${escapeHtml(ci.isgKatipNo || '')}" placeholder=""
 
@@ -5776,18 +5759,6 @@ function renderSharedCompanyInfoSection() {
                     <input type="text" value="${escapeHtml(ci.sgkSicilNo || '')}" placeholder=""
 
                         oninput="AppState.currentFormData.companyInfo.sgkSicilNo=this.value; triggerAutoSave();"
-
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
-
-                </div>
-
-                <div>
-
-                    <label class="block font-bold text-slate-700 mb-1">Vergi No / ID</label>
-
-                    <input type="text" value="${escapeHtml(ci.taxId || '')}" placeholder=""
-
-                        oninput="AppState.currentFormData.companyInfo.taxId=this.value; triggerAutoSave();"
 
                         class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
 

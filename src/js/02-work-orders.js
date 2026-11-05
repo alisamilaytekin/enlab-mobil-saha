@@ -70,7 +70,7 @@ function openQuickFieldJobModal() {
 
                 <div>
 
-                    <label class="block font-bold text-slate-700 mb-1">İSG-KATİP No</label>
+                    <label class="block font-bold text-slate-700 mb-1">İSG-KATİP Sözleşme ID</label>
 
                     <input type="text" id="qjIsgKatipNo" placeholder=""
 
@@ -87,16 +87,6 @@ function openQuickFieldJobModal() {
                         class="w-full border border-slate-300 focus:border-sky-500 rounded-lg px-2.5 py-1.5 text-xs font-medium">
 
                 </div>
-
-            </div>
-
-            <div>
-
-                <label class="block font-bold text-slate-700 mb-1">Vergi No / ID</label>
-
-                <input type="text" id="qjTaxId" placeholder=""
-
-                    class="w-full border border-slate-300 focus:border-sky-500 rounded-lg px-2.5 py-1.5 text-xs font-medium">
 
             </div>
 
@@ -181,7 +171,6 @@ async function submitQuickFieldJob(openFirstReportDirectly = false) {
     const address = (document.getElementById('qjAddress')?.value || '').trim();
     const isgKatipNo = (document.getElementById('qjIsgKatipNo')?.value || '').trim();
     const sgkSicilNo = (document.getElementById('qjSgkSicilNo')?.value || '').trim();
-    const taxId = (document.getElementById('qjTaxId')?.value || '').trim();
     const fieldNotes = (document.getElementById('qjFieldNotes')?.value || '').trim();
 
     const checkedTpls = Array.from(document.querySelectorAll('input[name="quickJobTpl"]:checked')).map(cb => cb.value);
@@ -205,8 +194,6 @@ async function submitQuickFieldJob(openFirstReportDirectly = false) {
             isg_katip_no: isgKatipNo,
 
             sgk_sicil_no: sgkSicilNo,
-
-            tax_id: taxId,
 
             field_notes: fieldNotes,
 

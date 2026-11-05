@@ -247,7 +247,6 @@
                     company_address: body.company_address || '',
                     isg_katip_no: body.isg_katip_no || '',
                     sgk_sicil_no: body.sgk_sicil_no || '',
-                    tax_id: body.tax_id || '',
                     proposal_no: body.proposal_no || code,
                     open_date: todayStr,
                     start_date: body.start_date || todayStr,
@@ -282,7 +281,6 @@
                             address: newWO.company_address,
                             isg_katip_no: newWO.isg_katip_no,
                             sgk_sicil_no: newWO.sgk_sicil_no,
-                            tax_id: newWO.tax_id,
                             equipment_name: body.equipment_name || (tplObj.name.includes('TOPRAKLAMA') ? 'Topraklama Tesisi' : (tplObj.name.includes('JENERATÖR') ? 'Jeneratör-1' : 'Ana Dağıtım Panosu (ADP)')),
                             accreditation: 'AK',
                             serial_no: body.default_serial || '',
@@ -302,7 +300,6 @@
                                     address: newWO.company_address,
                                     isgKatipNo: newWO.isg_katip_no,
                                     sgkSicilNo: newWO.sgk_sicil_no,
-                                    taxId: newWO.tax_id,
                                     reportNo: rNo,
                                     reportDate: todayStr
                                 }
@@ -402,7 +399,6 @@
                 if (!parsedInitialData.companyInfo.address) parsedInitialData.companyInfo.address = body.address || wo.company_address || '';
                 if (!parsedInitialData.companyInfo.isgKatipNo) parsedInitialData.companyInfo.isgKatipNo = wo.isg_katip_no || '';
                 if (!parsedInitialData.companyInfo.sgkSicilNo) parsedInitialData.companyInfo.sgkSicilNo = wo.sgk_sicil_no || '';
-                if (!parsedInitialData.companyInfo.taxId) parsedInitialData.companyInfo.taxId = wo.tax_id || '';
                 if (!parsedInitialData.companyInfo.reportNo) parsedInitialData.companyInfo.reportNo = reportNo;
                 if (!parsedInitialData.companyInfo.reportDate) parsedInitialData.companyInfo.reportDate = todayStr;
 
@@ -418,7 +414,6 @@
                     address: body.address || wo.company_address || '',
                     isg_katip_no: wo.isg_katip_no || '',
                     sgk_sicil_no: wo.sgk_sicil_no || '',
-                    tax_id: wo.tax_id || '',
                     equipment_name: body.equipment_name || 'Elektrik İç Tesisatı Gözle Kontrol ve Fonksiyon Testleri',
                     accreditation: body.accreditation || 'AK',
                     serial_no: body.serial_no || '',
