@@ -13462,15 +13462,27 @@ function closeA4PreviewModal() {
 
 function getPdfTheme() {
     try {
-        return localStorage.getItem('tkm_pdf_theme') || 'classic';
+        const saved = localStorage.getItem('tkm_pdf_theme') || 'classic';
+        const aliasMap = {
+            'navy': 'bureau_veritas',
+            'emerald': 'isg_emerald',
+            'monochrome': 'nordic_tech'
+        };
+        return aliasMap[saved] || saved;
     } catch (e) {
         return 'classic';
     }
 }
 
 function setPdfTheme(themeName) {
-    const validThemes = ['classic', 'navy', 'emerald', 'monochrome'];
-    const theme = validThemes.includes(themeName) ? themeName : 'classic';
+    const validThemes = ['classic', 'tuv_modern', 'bureau_veritas', 'nordic_tech', 'isg_emerald'];
+    const aliasMap = {
+        'navy': 'bureau_veritas',
+        'emerald': 'isg_emerald',
+        'monochrome': 'nordic_tech'
+    };
+    const resolvedTheme = aliasMap[themeName] || themeName;
+    const theme = validThemes.includes(resolvedTheme) ? resolvedTheme : 'classic';
     try {
         localStorage.setItem('tkm_pdf_theme', theme);
     } catch (e) {}
@@ -13496,7 +13508,6 @@ function setPdfTheme(themeName) {
         });
     }
 }
-
 
 
 
