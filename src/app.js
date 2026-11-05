@@ -2977,13 +2977,13 @@ function openRenameInspectionModal(inspectionId, currentName, workOrderId) {
 
     openModal(
 
-        '<i class="fa-solid fa-pen-to-square mr-2 text-sky-500"></i>Pano / Ekipman Adını Düzenle',
+        '<i class="fa-solid fa-pen-to-square mr-2 text-sky-500"></i>Ekipman Adını Düzenle',
 
         `<div class="space-y-3 text-xs">
 
             <div>
 
-                <label class="block font-bold text-slate-800 mb-1">Pano / Ekipman Adı <span class="text-rose-500">*</span></label>
+                <label class="block font-bold text-slate-800 mb-1">Ekipman Adı <span class="text-rose-500">*</span></label>
 
                 <input type="text" id="renameInspectionInput" value="${escapeHtml(currentName || '')}"
 
@@ -2991,7 +2991,7 @@ function openRenameInspectionModal(inspectionId, currentName, workOrderId) {
 
                     class="w-full border-2 border-slate-300 focus:border-sky-500 rounded-lg px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none">
 
-                <p class="text-[11px] text-slate-500 mt-1">Bu isim klasör listesinde ve resmi raporda pano/ekipman adı olarak gösterilir.</p>
+                <p class="text-[11px] text-slate-500 mt-1">Bu isim klasör listesinde ve resmi raporda ekipman adı olarak gösterilir.</p>
 
             </div>
 
@@ -3219,18 +3219,43 @@ window.setQuickInspEqName = function(val) {
 
         inp.focus();
 
+        const box = document.getElementById('quickInspBox');
+        if (box) box.style.display = 'none';
+
     }
 
 };
 
+function normalizeEquipmentSearchText(str) {
+    if (!str) return '';
+    return str
+        .replace(/İ/g, 'I')
+        .replace(/ı/g, 'I')
+        .replace(/i/g, 'I')
+        .replace(/Ğ/g, 'G')
+        .replace(/ğ/g, 'G')
+        .replace(/Ü/g, 'U')
+        .replace(/ü/g, 'U')
+        .replace(/Ş/g, 'S')
+        .replace(/ş/g, 'S')
+        .replace(/Ö/g, 'O')
+        .replace(/ö/g, 'O')
+        .replace(/Ç/g, 'C')
+        .replace(/ç/g, 'C')
+        .toUpperCase();
+}
 
+function getEquipmentSuggestions(query, limit = 10) {
+    const qRaw = (query || '').trim();
+    if (!qRaw) return [];
 
-
-function getMostUsedEquipmentNames(limit = 12) {
+    const normQ = normalizeEquipmentSearchText(qRaw);
     const counts = {};
     const defaultSuggestions = [
         'ADP', 'TDP-1', 'TDP-2', 'TDP-3', 'KOMPANZASYON',
-        'JENERATÖR', 'AYDINLATMA', 'YANGIN POMPASI', 'KAZAN DAİRESİ', 'ASANSÖR'
+        'JENERATÖR', 'AYDINLATMA', 'YANGIN POMPASI', 'KAZAN DAİRESİ', 'ASANSÖR',
+        'UPS', 'TRAFO', 'HAVALANDIRMA', 'MUTFAK PANOSU', 'ÇATI PANOSU',
+        'POMPA PANOSU', 'MCC', 'PLC PANOSU'
     ];
 
     let list = [];
@@ -3262,14 +3287,56 @@ function getMostUsedEquipmentNames(limit = 12) {
     });
 
     const sortedUsed = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
-    const result = [...sortedUsed];
+    const pool = [...sortedUsed];
     defaultSuggestions.forEach(d => {
-        if (!result.some(r => r.toUpperCase() === d.toUpperCase())) {
-            result.push(d);
+        if (!pool.some(r => r.toUpperCase() === d.toUpperCase())) {
+            pool.push(d);
         }
     });
 
-    return result.slice(0, limit);
+    const startsWith = [];
+    const contains = [];
+
+    pool.forEach(name => {
+        const normName = normalizeEquipmentSearchText(name);
+        if (normName.startsWith(normQ)) {
+            startsWith.push(name);
+        } else if (normName.includes(normQ)) {
+            contains.push(name);
+        }
+    });
+
+    startsWith.sort((a, b) => (counts[b] || 0) - (counts[a] || 0));
+    contains.sort((a, b) => (counts[b] || 0) - (counts[a] || 0));
+
+    const combined = [...startsWith, ...contains];
+    return combined.slice(0, limit);
+}
+
+window.updateEquipmentQuickSuggestions = function(query) {
+    const box = document.getElementById('quickInspBox');
+    const container = document.getElementById('quickInspChips');
+    if (!box || !container) return;
+
+    const suggestions = getEquipmentSuggestions(query, 10);
+    if (!suggestions || suggestions.length === 0) {
+        box.style.display = 'none';
+        container.innerHTML = '';
+        return;
+    }
+
+    container.innerHTML = suggestions.map(name => `
+        <button type="button" onclick="setQuickInspEqName('${escapeForJs(name)}')"
+            class="px-2 py-1 bg-white hover:bg-sky-50 hover:text-sky-700 hover:border-sky-300 border border-slate-200 rounded text-[11px] font-bold text-slate-700 transition active:scale-95 shadow-2xs">
+            ${escapeHtml(name)}
+        </button>
+    `).join('');
+
+    box.style.display = 'block';
+};
+
+function getMostUsedEquipmentNames(limit = 10) {
+    return getEquipmentSuggestions('', limit);
 }
 
 function openAddInspectionModal(workOrderId) {
@@ -3311,7 +3378,7 @@ function openAddInspectionModal(workOrderId) {
 
                 <div class="flex items-center justify-between mb-1">
 
-                    <label class="block font-bold text-slate-800">Pano / Ekipman Adı <span class="text-rose-500">*</span></label>
+                    <label class="block font-bold text-slate-800">Ekipman Adı <span class="text-rose-500">*</span></label>
 
                     <span class="text-[10px] text-rose-500 font-bold bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded">ZORUNLU</span>
 
@@ -3319,27 +3386,21 @@ function openAddInspectionModal(workOrderId) {
 
                 <input type="text" id="newInspEqName" value="" placeholder="Örn: ADP, TDP-1, Jeneratör-1..."
 
+                    oninput="updateEquipmentQuickSuggestions(this.value)"
+
                     class="w-full border-2 border-slate-300 focus:border-sky-500 rounded-lg px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none transition">
 
                 
 
-                <!-- Hızlı Seçim Çipleri (En çok kullanılandan sıralı) -->
-                <div class="mt-2 p-2 bg-slate-50 border border-slate-200 rounded-lg">
+                <!-- Hızlı Seçim Bölmesi (Başlangıçta kapalı, kullanıcı yazdıkça max 10 öneri gelir) -->
+                <div id="quickInspBox" style="display: none;" class="mt-2 p-2 bg-slate-50 border border-slate-200 rounded-lg">
                     <div class="text-[10px] text-slate-500 font-semibold mb-1 flex items-center justify-between">
                         <span class="flex items-center gap-1">
                             <i class="fa-solid fa-bolt text-amber-500"></i>
-                            <span>Hızlı Seçim (En Çok Kullanılanlar):</span>
+                            <span>Hızlı Seçim</span>
                         </span>
-                        <span class="text-[9px] text-slate-400">En çok kullanılandan sıralı</span>
                     </div>
-                    <div class="flex flex-wrap gap-1">
-                        ${getMostUsedEquipmentNames(12).map(name => `
-                            <button type="button" onclick="setQuickInspEqName('${escapeForJs(name)}')"
-                                class="px-2 py-1 bg-white hover:bg-sky-50 hover:text-sky-700 hover:border-sky-300 border border-slate-200 rounded text-[11px] font-bold text-slate-700 transition active:scale-95 shadow-2xs">
-                                ${escapeHtml(name)}
-                            </button>
-                        `).join('')}
-                    </div>
+                    <div id="quickInspChips" class="flex flex-wrap gap-1"></div>
                 </div>
 
             </div>
@@ -3406,7 +3467,7 @@ async function submitNewInspection(workOrderId) {
 
     if (!eqName) {
 
-        showToast('Lütfen pano veya ekipman adını giriniz (Örn: ADP, TDP-1)!', 'warning');
+        showToast('Lütfen ekipman adını giriniz (Örn: ADP, TDP-1)!', 'warning');
 
         if (eqNameInput) {
 
