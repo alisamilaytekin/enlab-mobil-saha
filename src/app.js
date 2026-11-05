@@ -587,10 +587,10 @@ async function navigateTo(route, params = {}) {
     if (!AuthManager.getCurrentUser() && route !== 'auth') {
         return renderAuthScreen();
     }
-    updateHeaderUserWidget();
 
     AppState.currentRoute = route;
     AppState.currentParams = params;
+    updateHeaderUserWidget();
 
     document.querySelectorAll('.enlab-nav-link, .enlab-subnav-link').forEach(el => el.classList.remove('active'));
     const activeNav = document.getElementById(`nav-${route}`);
@@ -663,6 +663,7 @@ async function renderHome() {
     if (typeof CompanySettingsManager !== 'undefined') {
         CompanySettingsManager.syncHeaderTitle();
     }
+    updateHeaderUserWidget();
 }
 
 function renderMinimalJobCards(jobs) {
@@ -8821,10 +8822,10 @@ function updateHeaderUserWidget() {
         const isSettings = AppState.currentRoute === 'settings';
         el.innerHTML = `
             <button onclick="navigateTo('${isSettings ? 'home' : 'settings'}')"
-                class="px-3 py-1.5 rounded-xl ${isSettings ? 'bg-sky-600 text-white shadow-sm' : 'bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200'} border border-slate-700 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+                class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 border border-slate-700 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
                 title="${isSettings ? 'Ana Sayfaya Dön' : 'Uygulama, Şirket ve Rapor Ayarları'}">
-                <i class="fa-solid ${isSettings ? 'fa-arrow-left text-white' : 'fa-gear text-amber-400'}"></i>
-                <span>${isSettings ? 'Ana Sayfa' : 'Ayarlar'}</span>
+                <i class="fa-solid ${isSettings ? 'fa-arrow-left text-sky-400' : 'fa-gear text-amber-400'}"></i>
+                <span>${isSettings ? 'Geri' : 'Ayarlar'}</span>
             </button>
         `;
     } else {
@@ -9644,6 +9645,7 @@ async function renderSettingsPage() {
     if (typeof CompanySettingsManager !== 'undefined') {
         CompanySettingsManager.syncHeaderTitle();
     }
+    updateHeaderUserWidget();
 }
 window.renderSettingsPage = renderSettingsPage;
 window.promptSecurityPasswordConfirmation = promptSecurityPasswordConfirmation;
