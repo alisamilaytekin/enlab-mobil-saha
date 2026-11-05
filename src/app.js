@@ -1,3 +1,60 @@
+// ============================================================================
+// HIZLI RAPOR - MODÜL 00: SİSTEM SABİTLERİ (CONSTANTS)
+// ============================================================================
+
+window.HIZLI_RAPOR_CONSTANTS = {
+    APP_NAME: 'Hızlı Rapor',
+    VERSION: '0.29',
+    
+    // Rapor ve Muayene Durumları
+    STATUS: {
+        TO_COMPLETE: 'Tamamlanacak',
+        TO_SIGN: 'İmzalanacak',
+        PENDING_APPROVAL: 'İmzalandı / Onay Bekliyor',
+        APPROVED: 'Onaylandı',
+        EDIT_REQUIRED: 'Düzenlenecek',
+        SENT: 'Rapor Gönderilmiş'
+    },
+    
+    // Değerlendirme Sonuçları
+    RESULTS: {
+        SUITABLE: 'UYGUN',
+        UNSUITABLE: 'UYGUN DEĞİL',
+        NOT_APPLICABLE: 'KAPSAM DIŞI',
+        NOT_INSPECTED: 'KONTROL EDİLMEDİ'
+    },
+    
+    // Şablon ID'leri
+    TEMPLATES: {
+        ELECTRICAL_2201: '2201',
+        GROUNDING_2202: '2202',
+        GENERATOR_2205: '2205',
+        LIGHTNING_2203: '2203',
+        TRANSFORMER_2204: '2204',
+        ILLUMINATION_2206: '2206',
+        THERMAL_2207: '2207',
+        BODY_PROTECTION_2208: '2208'
+    },
+    
+    // Veri Saklama Anahtarları
+    STORAGE: {
+        DB_V3: 'enlab_offline_db_v3_clean',
+        DB_V2: 'enlab_offline_db_v2',
+        CUSTOM_DEFECTS: 'enlab_item_custom_defects_v2',
+        DEFECT_LIBRARY: 'enlab_defects_library_v1',
+        USER_ACCOUNTS: 'enlab_user_accounts_v1',
+        CURRENT_USER: 'enlab_current_user_v1',
+        COMPANY_SETTINGS: 'enlab_company_branding_v1'
+    }
+};
+
+
+// ============================================================================
+// HIZLI RAPOR - 01-CORE.JS
+// Açıklama: Çekirdek Sistem, AppState, Auth, Navigasyon, Modal ve Toastlar
+// Satır Aralığı: 1 - 1685 (1685 satır)
+// ============================================================================
+
 
 
 function calculateInspectionProgress(insp, fd) {
@@ -1683,6 +1740,14 @@ function filterHomeJobs(query) {
 
 
 
+
+
+// ============================================================================
+// HIZLI RAPOR - 02-WORK-ORDERS.JS
+// Açıklama: İşyeri / Saha Klasörleri, İş Listesi ve Klasör Detayları
+// Satır Aralığı: 1686 - 3274 (1589 satır)
+// ============================================================================
+
 function openQuickFieldJobModal() {
 
     const templates = window.ENLAB_REPORT_TEMPLATES || [];
@@ -3271,6 +3336,14 @@ window.setQuickInspEqName = function(val) {
     }
 
 };
+
+
+
+// ============================================================================
+// HIZLI RAPOR - 03-INSPECTIONS.JS
+// Açıklama: Ekipman Ekleme, Akıllı Öneri Algoritması ve Muayene İşlemleri
+// Satır Aralığı: 3275 - 5202 (1928 satır)
+// ============================================================================
 
 function normalizeEquipmentSearchText(str) {
     if (!str) return '';
@@ -5200,6 +5273,14 @@ async function submitCalendarEvent() {
 
 
 
+
+
+// ============================================================================
+// HIZLI RAPOR - 04-EDITOR-COMMON.JS
+// Açıklama: Rapor Editörü Ana Gövde, Ortak Firma ve Ölçüm Aletleri
+// Satır Aralığı: 5203 - 5946 (744 satır)
+// ============================================================================
+
 async function renderInspectionEditor(inspectionId, overrideTemplateId = null) {
 
     let insp = null;
@@ -5943,6 +6024,14 @@ function switchEditorTemplate(newTemplateId) {
 }
 
 
+
+
+
+// ============================================================================
+// HIZLI RAPOR - 05-EDITOR-ELECTRICAL.JS
+// Açıklama: Elektrik İç Tesisat (TKM-FR.318) Muayene Editörü ve Tabloları
+// Satır Aralığı: 5947 - 6872 (926 satır)
+// ============================================================================
 
 function renderElectrical2201Editor() {
 
@@ -6869,6 +6958,14 @@ function normalizeSpecializedRowsArray(rows, cols) {
 }
 
 
+
+
+
+// ============================================================================
+// HIZLI RAPOR - 06-EDITOR-SPECIALIZED.JS
+// Açıklama: Özel Teknik Şablonlar Editörü, Fotoğraf Yükleme ve Galeri
+// Satır Aralığı: 6873 - 8134 (1262 satır)
+// ============================================================================
 
 function renderSpecializedTemplateEditor() {
 
@@ -8131,6 +8228,14 @@ const DefectLibraryManager = {
 let currentPickerSelectedIds = new Set();
 
 
+
+
+
+// ============================================================================
+// HIZLI RAPOR - 07-DEFECTS-LIBRARY.JS
+// Açıklama: Kusur Kütüphanesi, Kusur Seçiciler ve Değerlendirme Bölümü
+// Satır Aralığı: 8135 - 9664 (1530 satır)
+// ============================================================================
 
 function openNonConformityPickerModal() {
 
@@ -9662,6 +9767,14 @@ function selectLinyeSuggestion(pIdx, chosenTitle) {
 
 
 
+
+
+// ============================================================================
+// HIZLI RAPOR - 08-EDITOR-GROUNDING.JS
+// Açıklama: Alçak Gerilim Topraklama (TKM-FR.319) Ölçüm Noktaları ve Hesaplamaları
+// Satır Aralığı: 9665 - 11120 (1456 satır)
+// ============================================================================
+
 function renderGrounding2202Editor() {
 
     const insp = AppState.currentInspection;
@@ -11117,6 +11230,14 @@ const GENERATOR_CHECKLIST = [
 ];
 
 
+
+
+
+// ============================================================================
+// HIZLI RAPOR - 09-EDITOR-GENERATOR.JS
+// Açıklama: Jeneratör Periyodik Kontrol (TKM-FR.320) Editörü ve Ölçümleri
+// Satır Aralığı: 11121 - 13006 (1886 satır)
+// ============================================================================
 
 function renderGenerator2205Editor() {
 
@@ -13003,6 +13124,14 @@ async function saveCurrentInspection(manualToast = false) {
 // ============================================================================
 
 
+
+
+
+// ============================================================================
+// HIZLI RAPOR - 10-PDF-ENGINE.JS
+// Açıklama: TÜRKAK & Bakanlık Resmi A4 PDF Çıktı ve Rapor Yazdırma Motoru
+// Satır Aralığı: 13007 - 15980 (2974 satır)
+// ============================================================================
 
 function formatSymbolForPrint(val) {
 
@@ -15977,6 +16106,14 @@ function printOfficialReport(directPrint = false) {
 // ============================================================================
 
 
+
+
+
+// ============================================================================
+// HIZLI RAPOR - 11-PAGES-AND-AUTH.JS
+// Açıklama: Kullanıcı Hesapları, Şirket Ayarları, Yedekleme ve Yardımcı Sayfalar
+// Satır Aralığı: 15981 - 19624 (3644 satır)
+// ============================================================================
 
 function exportEmergencyBackup() {
 

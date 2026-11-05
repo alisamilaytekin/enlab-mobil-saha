@@ -85,6 +85,16 @@ def build(target_version=None):
         try: os.remove(old_candidate)
         except Exception: pass
 
+    # 0. JS Modullerini Otomatik Paketle (src/js -> src/app.js)
+    bundle_script = os.path.join(TOOLS_DIR, 'bundle.py')
+    if os.path.exists(bundle_script):
+        print("[0/3] src/js modulleri paketleniyor (tools/bundle.py)...")
+        res = subprocess.run([sys.executable, bundle_script], capture_output=True, text=True, encoding='utf-8')
+        if res.returncode != 0:
+            print(f"[!] HATA: Modul paketleme basarisiz:\n{res.stderr or res.stdout}")
+            return False
+        print("  -> Moduller basariyla 'src/app.js' olarak paketlendi.\n")
+
     print("[1/3] Dosyalar Android standartlarında (STORED/DEFLATED) paketleniyor...")
     file_count = 0
     with zipfile.ZipFile(temp_apk, 'w') as zout:
