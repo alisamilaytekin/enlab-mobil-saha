@@ -49,30 +49,43 @@ function calculateInspectionProgress(insp, fd) {
 // COMPANY BRANDING & WHITE-LABEL CUSTOMIZATION ENGINE
 // ============================================================================
 const DEFAULT_COMPANY_BRANDING = {
-    companyFullName: 'TEKNİK KONTROL MERKEZİ BELGELENDİRME A.Ş.',
-    companyShortName: 'TEKKOMER',
+    companyFullName: 'Mühendislik Muayene ve Periyodik Kontrol Hizmetleri',
+    companyShortName: 'ENLAB',
     companyAddress: 'İstanbul / Türkiye',
-    companyPhone: 'T: +90 (216) 526 61 41  F: +90 (216) 526 61 40',
-    companyEmail: 'info@tkmkontrol.com',
-    companyWeb: 'www.tkmkontrol.com',
+    companyPhone: '',
+    companyEmail: '',
+    companyWeb: '',
     customCompanyLogo: null,
     customTurkakLogo: null,
     showTurkakLogo: true,
     accreditationNo: 'AB-0227-M',
     accreditationStandard: 'TS EN ISO/IEC 17020',
-    reportNoPrefix: 'TKM-',
-    defaultRevisionInfo: 'REV.00 / YT: 01.09.2025',
+    reportNoPrefix: 'ENL-',
+    defaultRevisionInfo: 'REV.00',
     footerDisclaimer: 'Muayene sonuçları sadece talep edilen hizmet veya muayene edilen ürün/parti veya proses ile ilgili olup, başka hizmet veya muayene edilmeyen ürün/ parti veya proses için geçerli değildir. Muayene raporları {COMPANY_NAME} ve müşterinin onayı olmaksızın kısmi olarak veya tamamen kopya edilip çoğaltılamaz. İmzasız raporlar geçersizdir. Bu rapor elektronik ortamda bir nüsha olarak hazırlanmıştır.'
 };
 
 const CompanySettingsManager = {
-    STORAGE_KEY: 'enlab_company_branding_v2',
+    STORAGE_KEY: 'enlab_company_branding_v3',
 
     getSettings() {
         try {
-            const raw = localStorage.getItem(this.STORAGE_KEY);
-            if (raw) {
+            let raw = localStorage.getItem(this.STORAGE_KEY);
+            if (!raw) {
+                // Check legacy v2 storage and migrate
+                const legacy = localStorage.getItem('enlab_company_branding_v2');
+                if (legacy) {
+                    const parsed = JSON.parse(legacy);
+                    if (parsed.companyShortName === 'TEKKOMER') parsed.companyShortName = 'ENLAB';
+                    if (parsed.companyFullName && parsed.companyFullName.includes('TEKNİK KONTROL MERKEZİ')) {
+                        parsed.companyFullName = DEFAULT_COMPANY_BRANDING.companyFullName;
+                    }
+                    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(parsed));
+                    return { ...DEFAULT_COMPANY_BRANDING, ...parsed };
+                }
+            } else {
                 const parsed = JSON.parse(raw);
+                if (parsed.companyShortName === 'TEKKOMER') parsed.companyShortName = 'ENLAB';
                 return { ...DEFAULT_COMPANY_BRANDING, ...parsed };
             }
         } catch (e) {
@@ -97,8 +110,9 @@ const CompanySettingsManager = {
     resetToDefault() {
         try {
             localStorage.removeItem(this.STORAGE_KEY);
+            localStorage.removeItem('enlab_company_branding_v2');
             this.syncHeaderTitle();
-            return { success: true, message: 'Varsayılan TEKKOMER ayarlarına sıfırlandı.' };
+            return { success: true, message: 'Varsayılan şirket ve rapor ayarlarına sıfırlandı.' };
         } catch (e) {
             return { success: false, message: e.message };
         }
@@ -132,11 +146,12 @@ const CompanySettingsManager = {
 
     syncHeaderTitle() {
         const s = this.getSettings();
+        const brandName = (s.companyShortName && s.companyShortName !== 'TEKKOMER') ? s.companyShortName : 'Saha';
         const el = document.getElementById('appHeaderBrandTitle');
         if (el) {
-            el.innerText = `${s.companyShortName || 'Saha'} Rapor Kayıt`;
+            el.innerText = `${brandName} Rapor`;
         }
-        document.title = `${s.companyShortName || 'Saha'} Mobil Rapor`;
+        document.title = `${brandName} Mobil Saha`;
     }
 };
 
@@ -591,6 +606,7 @@ async function navigateTo(route, params = {}) {
 
     switch (route) {
         case 'home': return renderHome();
+        case 'settings': return renderSettingsPage();
         case 'field-notebook': return renderFieldNotebookPage();
         case 'all-work-orders': return renderWorkOrdersPage('all', params.tab || 'open');
         case 'my-work-orders': return renderWorkOrdersPage('my', params.tab || 'open');
@@ -625,71 +641,9 @@ async function renderHome() {
     const allJobs = (Array.isArray(rawWOs) ? rawWOs : []).map(normalizeWorkOrder);
     AppState.workOrdersCache = allJobs;
 
-    const curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || null;
-    const branding = (typeof CompanySettingsManager !== 'undefined') ? CompanySettingsManager.getSettings() : DEFAULT_COMPANY_BRANDING;
-    const logoSrc = (typeof CompanySettingsManager !== 'undefined') ? CompanySettingsManager.getLogoSrc() : 'assets/tekkomer_logo.png';
-
     container.innerHTML = `
         <div class="max-w-2xl mx-auto space-y-3 pb-8">
-            <!-- 1. AKTİF MUAYENE PERSONELİ & HESAP DEĞİŞTİRME PANELİ (EMIL KOWALSKI CRAFT ELEVATION) -->
-            <div class="card-craft-dark text-white p-4 space-y-3">
-                <div class="flex items-center gap-3">
-                    <div class="w-12 h-12 rounded-2xl bg-amber-400 text-slate-950 font-black text-lg flex items-center justify-center shrink-0 shadow-sm">
-                        <i class="fa-solid fa-user-tie"></i>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <span class="font-bold text-base text-white leading-tight">${curUser ? escapeHtml(curUser.fullName) : 'Muayene Personeli Girişi Yapılmadı'}</span>
-                            <span class="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">Aktif Personel</span>
-                        </div>
-                        <div class="text-xs text-slate-300 mt-1">
-                            ${curUser ? `${escapeHtml(curUser.title || 'Elektrik Mühendisi')} · Sicil: <span class="font-mono font-bold text-amber-300">${escapeHtml(curUser.ministryRegNo || curUser.username)}</span>` : 'Raporlara imza atacak personeli seçin'}
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="grid grid-cols-2 gap-2 pt-1 border-t border-slate-700/60">
-                    <button onclick="openUserProfileModal()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-sky-300 border border-slate-600/80 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-xs">
-                        <i class="fa-solid fa-user-pen text-amber-400"></i>
-                        <span>Profilimi Düzenle</span>
-                    </button>
-                    <button onclick="AuthManager.logout()" class="w-full py-2 bg-rose-600/90 hover:bg-rose-600 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-sm">
-                        <i class="fa-solid fa-arrow-right-from-bracket"></i>
-                        <span>Kullanıcı Değiştir</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- 2. ŞİRKET, LOGO & RAPOR KODLARI AYARLARI (IMPECCABLE CRAFT ELEVATION) -->
-            <div class="card-craft-white p-4 space-y-3">
-                <div class="flex items-start gap-3.5">
-                    <div class="w-13 h-13 rounded-xl bg-slate-50 border border-slate-200 p-1 flex items-center justify-center shrink-0 shadow-2xs">
-                        <img src="${logoSrc}" alt="Logo" class="max-w-full max-h-full object-contain">
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <div class="font-bold text-xs sm:text-sm text-slate-900 leading-snug">
-                            ${escapeHtml(branding.companyFullName)}
-                        </div>
-                        <div class="text-xs text-slate-500 flex items-center gap-2 mt-1 flex-wrap">
-                            <span>Kurumsal Logo & Rapor Kodları</span>
-                            ${branding.showTurkakLogo ? '<span class="text-emerald-700 font-bold flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 text-[10px]"><i class="fa-solid fa-certificate text-[10px]"></i> Akredite TÜRKAK</span>' : '<span class="text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full text-[10px]">Özel Şablon</span>'}
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="grid grid-cols-5 gap-2 pt-1 border-t border-slate-100">
-                    <button onclick="openCompanySettingsModal()" class="col-span-4 py-2 btn-craft-primary active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition">
-                        <i class="fa-solid fa-sliders"></i>
-                        <span>Şirket, Logo & Rapor Ayarları</span>
-                    </button>
-                    <button onclick="openBackupManagerModal()" class="col-span-1 py-2 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 transition flex items-center justify-center gap-1" title="Veri Yedekleme ve Kurtarma">
-                        <i class="fa-solid fa-database text-slate-600"></i>
-                        <span class="hidden sm:inline">Yedek</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- 3. İŞYERİ ARAMA VE YENİ BAŞLIK AÇMA -->
+            <!-- 1. İŞYERİ ARAMA VE YENİ BAŞLIK AÇMA (SADE & HIZLI SAHA ERİŞİMİ) -->
             <div class="flex items-center gap-2 pt-1">
                 <input type="text" id="homeSearchInput" oninput="filterHomeJobs(this.value)" placeholder="Firma adı, şube veya not ara..."
                     class="flex-1 bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none focus:border-sky-500 shadow-2xs">
@@ -699,7 +653,7 @@ async function renderHome() {
                 </button>
             </div>
 
-            <!-- 4. LİSTE -->
+            <!-- 2. KLASÖRLER LİSTESİ -->
             <div id="homeJobsList" class="space-y-2.5 pt-0.5">
                 ${renderMinimalJobCards(allJobs)}
             </div>
@@ -730,7 +684,7 @@ function renderMinimalJobCards(jobs) {
                     <span class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-bold text-xs">
                         ${count} Rapor
                     </span>
-                    <button onclick="deleteWorkOrderHeading('${wo.id}', event)" class="p-2 text-slate-400 active:text-rose-600 rounded-lg" title="Başlığı Sil">
+                    <button onclick="deleteWorkOrderHeading('${wo.id}', event, '${(wo.customer_name || 'İş Klasörü').replace(/'/g, "\\'")}')" class="p-2 text-slate-400 hover:text-rose-600 active:scale-90 rounded-lg transition" title="Klasörü Sil">
                         <i class="fa-solid fa-trash-can text-xs"></i>
                     </button>
                 </div>
@@ -739,12 +693,94 @@ function renderMinimalJobCards(jobs) {
     }).join('');
 }
 
-async function deleteWorkOrderHeading(woId, event) {
+// ============================================================================
+// GÜVENLİK & ŞİFRELİ SİLME DOĞRULAMA SİSTEMİ
+// ============================================================================
+function promptSecurityPasswordConfirmation({ title, entityName, message, onConfirmed }) {
+    const curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || { fullName: 'Yetkili Personel', password: '123' };
+    const modalTitle = `<i class="fa-solid fa-triangle-exclamation text-rose-500 mr-2"></i>${title || 'Silme Onayı'}`;
+    const modalBody = `
+        <div class="space-y-3 text-xs">
+            <div class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-900 leading-relaxed">
+                <strong>DİKKAT:</strong> <strong>"${entityName || 'Kayıt'}"</strong> kalıcı olarak silinecektir. ${message || 'Bu işlem geri alınamaz.'}
+            </div>
+            <div class="space-y-1.5 pt-1">
+                <label class="block font-bold text-slate-700">
+                    Silme işlemini onaylamak için <strong>${curUser.fullName}</strong> hesap şifrenizi girin:
+                </label>
+                <div class="relative">
+                    <input type="password" id="secConfirmPasswordInput" placeholder="Kullanıcı şifreniz (varsayılan: 123)"
+                        class="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-mono pr-10 focus:outline-none focus:border-rose-500 bg-white"
+                        onkeydown="if(event.key==='Enter') executeSecurityPasswordCheck()">
+                    <button type="button" onclick="togglePasswordVisibility('secConfirmPasswordInput')"
+                        class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 p-1">
+                        <i class="fa-solid fa-eye text-xs"></i>
+                    </button>
+                </div>
+                <div class="text-[10px] text-slate-400">Şifrenizi "Ayarlar > Profilimi Düzenle" menüsünden değiştirebilirsiniz.</div>
+            </div>
+        </div>
+    `;
+    const modalFooter = `
+        <button onclick="closeModal()" class="px-3.5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs rounded-xl active:scale-95 transition">İptal</button>
+        <button onclick="executeSecurityPasswordCheck()" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl active:scale-95 shadow-sm transition">
+            <i class="fa-solid fa-trash-can mr-1.5"></i>Onayla ve Sil
+        </button>
+    `;
+    window._pendingSecurityCallback = onConfirmed;
+    window._pendingSecurityExpectedPass = String(curUser.password || '123').trim();
+    openModal(modalTitle, modalBody, modalFooter);
+
+    setTimeout(() => {
+        const inp = document.getElementById('secConfirmPasswordInput');
+        if (inp) inp.focus();
+    }, 150);
+}
+
+function executeSecurityPasswordCheck() {
+    const inp = document.getElementById('secConfirmPasswordInput');
+    const entered = inp ? inp.value.trim() : '';
+    const expected = window._pendingSecurityExpectedPass || '123';
+
+    if (!entered) {
+        showToast('Lütfen silme onay şifrenizi girin!', 'error');
+        if (inp) inp.focus();
+        return;
+    }
+
+    if (entered !== expected) {
+        showToast('Hatalı şifre! Silme işlemi iptal edildi.', 'error');
+        if (inp) {
+            inp.classList.add('border-rose-500', 'bg-rose-50');
+            inp.value = '';
+            inp.focus();
+        }
+        return;
+    }
+
+    const callback = window._pendingSecurityCallback;
+    window._pendingSecurityCallback = null;
+    window._pendingSecurityExpectedPass = null;
+    closeModal();
+
+    if (typeof callback === 'function') {
+        callback();
+    }
+}
+
+async function deleteWorkOrderHeading(woId, event, folderName) {
     if (event) event.stopPropagation();
-    if (!confirm('Bu başlığı ve içindeki raporları silmek istediğinize emin misiniz?')) return;
-    await fetch(`/api/work-orders/${woId}`, { method: 'DELETE' });
-    showToast('Başlık silindi');
-    navigateTo('home');
+    promptSecurityPasswordConfirmation({
+        title: 'İş Klasörünü Sil',
+        entityName: folderName || 'İş Klasörü',
+        message: 'Bu klasör ve içindeki tüm muayene raporları kalıcı olarak silinecektir.',
+        onConfirmed: async () => {
+            await fetch(`/api/work-orders/${woId}`, { method: 'DELETE' });
+            showToast('İş klasörü ve raporlar silindi');
+            await loadInitData();
+            navigateTo('home');
+        }
+    });
 }
 
 function filterHomeJobs(query) {
@@ -1175,11 +1211,11 @@ function openNewWorkOrderModal() {
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="block font-semibold text-slate-700 mb-1">İş Emri Kodu</label>
-                    <input type="text" id="newWoNo" value="TKM-${new Date().toISOString().slice(2,10).replace(/-/g,'')}-${Math.floor(100+Math.random()*900)}" class="w-full border border-slate-300 rounded-lg px-3 py-2 font-mono">
+                    <input type="text" id="newWoNo" value="${(typeof CompanySettingsManager !== 'undefined' ? CompanySettingsManager.getSettings().reportNoPrefix : 'ENL-') || 'ENL-'}${new Date().toISOString().slice(2,10).replace(/-/g,'')}-${Math.floor(100+Math.random()*900)}" class="w-full border border-slate-300 rounded-lg px-3 py-2 font-mono">
                 </div>
                 <div>
                     <label class="block font-semibold text-slate-700 mb-1">Teklif No</label>
-                    <input type="text" id="newWoProposal" value="TKM-TKL-2026-${Math.floor(100+Math.random()*900)}" class="w-full border border-slate-300 rounded-lg px-3 py-2 font-mono">
+                    <input type="text" id="newWoProposal" value="${(typeof CompanySettingsManager !== 'undefined' ? CompanySettingsManager.getSettings().reportNoPrefix : 'ENL-') || 'ENL-'}TKL-2026-${Math.floor(100+Math.random()*900)}" class="w-full border border-slate-300 rounded-lg px-3 py-2 font-mono">
                 </div>
             </div>
             <div>
@@ -1255,9 +1291,6 @@ async function renderWorkOrderDetails(workOrderId) {
                         ${wo.customer_branch ? `<div class="text-[11px] text-slate-500 truncate">${wo.customer_branch}</div>` : ''}
                     </div>
                 </div>
-                <button onclick="deleteWorkOrderHeading('${wo.id}', event)" class="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-700 rounded-xl font-bold text-xs shrink-0 transition border border-rose-200">
-                    <i class="fa-solid fa-trash-can mr-1"></i>Sil
-                </button>
             </div>
 
             <!-- YÖNETİCİ & SAHA İSTATİSTİKLERİ KARTI -->
@@ -1267,7 +1300,6 @@ async function renderWorkOrderDetails(workOrderId) {
                         <i class="fa-solid fa-chart-column text-sky-600"></i>
                         <span>İş Özeti & Durum Göstergesi</span>
                     </span>
-                    <span class="text-[11px] text-slate-500 font-mono">📅 1 Yıl Geçerli</span>
                 </div>
                 <div class="grid grid-cols-3 gap-2 text-center">
                     <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
@@ -1353,7 +1385,7 @@ function renderWoInspectionRows(list, workOrderId) {
                             class="p-1.5 text-slate-400 hover:text-sky-600 rounded-lg hover:bg-slate-100 transition" title="Rapor İsmini Değiştir">
                             <i class="fa-solid fa-pen-to-square text-xs text-sky-600"></i>
                         </button>
-                        <button onclick="event.stopPropagation(); deleteInspectionItem('${item.id}', '${workOrderId}')"
+                        <button onclick="event.stopPropagation(); deleteInspectionItem('${item.id}', '${workOrderId}', '${(item.equipment_name || 'Muayene Raporu').replace(/'/g, "\\'")}')"
                             class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition" title="Raporu Sil">
                             <i class="fa-solid fa-trash-can text-xs text-rose-500"></i>
                         </button>
@@ -1594,12 +1626,22 @@ async function duplicateInspection(inspectionId, workOrderId) {
     }
 }
 
-async function deleteInspectionItem(inspectionId, workOrderId) {
-    if (!confirm('Bu muayene kaydını silmek istediğinize emin misiniz?')) return;
-    await fetch(`/api/inspections/${inspectionId}`, { method: 'DELETE' });
-    showToast('Muayene silindi', 'warning');
-    await loadInitData();
-    if (workOrderId) renderWorkOrderDetails(workOrderId, 'inspections');
+async function deleteInspectionItem(inspectionId, workOrderId, inspectionTitle) {
+    promptSecurityPasswordConfirmation({
+        title: 'Muayene Raporunu Sil',
+        entityName: inspectionTitle || 'Muayene Raporu',
+        message: 'Bu muayene kaydı ve bağlı tüm ölçüm verileri kalıcı olarak silinecektir.',
+        onConfirmed: async () => {
+            await fetch(`/api/inspections/${inspectionId}`, { method: 'DELETE' });
+            showToast('Muayene silindi', 'warning');
+            await loadInitData();
+            if (workOrderId && AppState.currentRoute === 'work-order-details') {
+                renderWorkOrderDetails(workOrderId, 'inspections');
+            } else {
+                navigateTo(AppState.currentRoute, AppState.currentParams);
+            }
+        }
+    });
 }
 
 async function signAndApproveInspection(inspectionId, workOrderId) {
@@ -8776,11 +8818,13 @@ function updateHeaderUserWidget() {
     if (!el) return;
     const cur = AuthManager.getCurrentUser();
     if (cur) {
-        const shortName = cur.fullName.split(' ')[0] || cur.fullName;
+        const isSettings = AppState.currentRoute === 'settings';
         el.innerHTML = `
-            <button onclick="openUserProfileModal()" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 border border-slate-700 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer" title="Muayene Personeli Profili">
-                <i class="fa-solid fa-user-tie text-amber-400"></i>
-                <span class="max-w-[95px] truncate">${escapeHtml(shortName)}</span>
+            <button onclick="navigateTo('${isSettings ? 'home' : 'settings'}')"
+                class="px-3 py-1.5 rounded-xl ${isSettings ? 'bg-sky-600 text-white shadow-sm' : 'bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200'} border border-slate-700 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+                title="${isSettings ? 'Ana Sayfaya Dön' : 'Uygulama, Şirket ve Rapor Ayarları'}">
+                <i class="fa-solid ${isSettings ? 'fa-arrow-left text-white' : 'fa-gear text-amber-400'}"></i>
+                <span>${isSettings ? 'Ana Sayfa' : 'Ayarlar'}</span>
             </button>
         `;
     } else {
@@ -9163,7 +9207,7 @@ function openCompanySettingsModal() {
                             <input type="file" accept="image/*" class="hidden" onchange="handleBrandLogoSelected(this, 'company')">
                         </label>
                         <button type="button" onclick="revertBrandLogo('company')" class="block text-[11px] text-slate-500 hover:text-rose-600 font-semibold underline">
-                            Varsayılan TKM Logosuna Dön
+                            Varsayılan Logoya Dön
                         </button>
                         <div class="text-[10px] text-slate-400">Önerilen: Şeffaf arka planlı kare veya yatay logo</div>
                     </div>
@@ -9310,7 +9354,7 @@ function revertBrandLogo(type) {
         window._pendingBrandLogos.clearedCompanyLogo = true;
         const preview = document.getElementById('previewCompanyLogo');
         if (preview) preview.src = 'assets/tekkomer_logo.png';
-        showToast('Varsayılan TEKKOMER logosu ayarlandı');
+        showToast('Varsayılan şirket logosu ayarlandı');
     } else if (type === 'turkak') {
         window._pendingBrandLogos.turkakLogo = null;
         window._pendingBrandLogos.clearedTurkakLogo = true;
@@ -9374,7 +9418,7 @@ function saveCompanySettingsSubmit() {
 }
 
 function resetCompanySettingsSubmit() {
-    if (!confirm('Tüm şirket, logo ve rapor kodlarını varsayılan TEKKOMER ayarlarına geri yüklemek istediğinize emin misiniz?')) return;
+    if (!confirm('Tüm şirket, logo ve rapor kodlarını varsayılan ayarlara sıfırlamak istediğinize emin misiniz?')) return;
     CompanySettingsManager.resetToDefault();
     closeModal();
     showToast('Tüm ayarlar varsayılana sıfırlandı.');
@@ -9404,3 +9448,203 @@ window.setAllGroundingPointsExpanded = setAllGroundingPointsExpanded;
 window.setGroundingPointBreakerPreset = setGroundingPointBreakerPreset;
 window.undoDeleteGroundingPointRow = undoDeleteGroundingPointRow;
 
+
+// ============================================================================
+// MERKEZİ AYARLAR SEKME SAYFASI (Çevrimdışı Çoklu Şirket, Profil, Rapor Kodları & Yedek)
+// ============================================================================
+async function renderSettingsPage() {
+    const container = document.getElementById('pageContent');
+    if (!container) return;
+    container.scrollTop = 0;
+
+    const curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || null;
+    const branding = (typeof CompanySettingsManager !== 'undefined') ? CompanySettingsManager.getSettings() : DEFAULT_COMPANY_BRANDING;
+    const logoSrc = (typeof CompanySettingsManager !== 'undefined') ? CompanySettingsManager.getLogoSrc() : 'assets/tekkomer_logo.png';
+
+    OfflineDB.init();
+    const db = OfflineDB.state || {};
+    const workOrderCount = (db.workOrders || []).length;
+    const inspectionCount = (db.inspections || []).length;
+
+    container.innerHTML = `
+        <div class="max-w-2xl mx-auto space-y-3.5 pb-12">
+            <!-- 1. ÜST BAŞLIK VE GERİ BUTONU -->
+            <div class="card-craft-white p-3.5 flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <button onclick="navigateTo('home')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 rounded-xl font-bold text-xs shrink-0 transition border border-slate-200">
+                        <i class="fa-solid fa-arrow-left mr-1"></i>Ana Sayfa
+                    </button>
+                    <div class="min-w-0">
+                        <h1 class="font-bold text-slate-900 text-sm sm:text-base truncate flex items-center gap-2">
+                            <i class="fa-solid fa-sliders text-sky-600"></i>
+                            <span>Uygulama & Şirket Ayarları</span>
+                        </h1>
+                    </div>
+                </div>
+                <span class="text-[10px] bg-sky-50 text-sky-700 border border-sky-200 px-2 py-0.5 rounded-full font-bold shrink-0">
+                    %100 Çevrimdışı
+                </span>
+            </div>
+
+            <!-- 2. MUAYENE PERSONELİ & PROFİL KARTI -->
+            <div class="card-craft-dark text-white p-4 space-y-3">
+                <div class="flex items-center justify-between border-b border-slate-700/60 pb-2">
+                    <div class="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                        <i class="fa-solid fa-user-shield"></i>
+                        <span>Muayene Personeli & E-İmza Profili</span>
+                    </div>
+                    <span class="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
+                        Aktif Personel
+                    </span>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-2xl bg-amber-400 text-slate-950 font-black text-lg flex items-center justify-center shrink-0 shadow-sm">
+                        <i class="fa-solid fa-user-tie"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-bold text-base text-white truncate">
+                            ${curUser ? escapeHtml(curUser.fullName) : 'Muayene Personeli Tanımsız'}
+                        </div>
+                        <div class="text-xs text-slate-300 mt-0.5 truncate">
+                            ${curUser ? `${escapeHtml(curUser.title || 'Elektrik Mühendisi')} · Oda Sicil: <span class="text-amber-300 font-mono font-bold">${escapeHtml(curUser.emoNo || '-')}</span>` : ''}
+                        </div>
+                        <div class="text-[11px] text-slate-400 mt-0.5 truncate">
+                            ${curUser && curUser.ministryRegNo ? `Bakanlık Sicil: ${escapeHtml(curUser.ministryRegNo)}` : 'Raporlara imza atacak personel'}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 pt-1 border-t border-slate-700/60">
+                    <button onclick="openUserProfileModal()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-sky-300 border border-slate-600/80 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-xs">
+                        <i class="fa-solid fa-user-pen text-amber-400"></i>
+                        <span>Profilimi Düzenle</span>
+                    </button>
+                    <button onclick="AuthManager.logout()" class="w-full py-2.5 bg-rose-600/90 hover:bg-rose-600 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-sm">
+                        <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                        <span>Kullanıcı Değiştir</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 3. ŞİRKET & KURUMSAL LOGO YÖNETİMİ (ÇOKLU ŞİRKET / WHITE-LABEL) -->
+            <div class="card-craft-white p-4 space-y-3.5">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <div class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        <i class="fa-solid fa-building text-sky-600"></i>
+                        <span>Şirket & Marka Bilgileri (Çoklu Şirket)</span>
+                    </div>
+                    <span class="text-[10px] text-slate-400">PDF Rapor Başlığı</span>
+                </div>
+
+                <div class="flex items-start gap-3.5 bg-slate-50 border border-slate-200/80 p-3 rounded-xl">
+                    <div class="w-14 h-14 rounded-xl bg-white border border-slate-200 p-1 flex items-center justify-center shrink-0 shadow-2xs overflow-hidden">
+                        <img src="${logoSrc}" alt="Şirket Logosu" class="max-w-full max-h-full object-contain">
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-bold text-xs text-slate-900 leading-snug truncate">
+                            ${escapeHtml(branding.companyFullName)}
+                        </div>
+                        <div class="text-xs text-slate-500 mt-1 flex items-center gap-2 flex-wrap">
+                            <span>Kısa Ad: <strong class="text-slate-700">${escapeHtml(branding.companyShortName)}</strong></span>
+                            ${branding.showTurkakLogo ? '<span class="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 text-[10px]"><i class="fa-solid fa-certificate text-[10px]"></i> Akredite</span>' : '<span class="text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full text-[10px]">Özel Şablon</span>'}
+                        </div>
+                    </div>
+                </div>
+
+                <button onclick="openCompanySettingsModal()" class="w-full py-2.5 btn-craft-primary active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition">
+                    <i class="fa-solid fa-pen-nib"></i>
+                    <span>Şirket Adı, Logo ve Akreditasyonu Düzenle</span>
+                </button>
+            </div>
+
+            <!-- 4. RAPOR KODLARI & TEST CİHAZI VARSAYILANLARI -->
+            <div class="card-craft-white p-4 space-y-3">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <div class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        <i class="fa-solid fa-file-invoice text-emerald-600"></i>
+                        <span>Rapor Kodları & Test Cihazları</span>
+                    </div>
+                    <span class="text-[10px] text-slate-400">Otomatik Doldurma</span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                        <div class="text-[10px] text-slate-500 font-bold">Rapor No Ön Eki</div>
+                        <div class="font-mono font-bold text-slate-800 text-sm mt-0.5">${escapeHtml(branding.reportNoPrefix || 'ENL-')}</div>
+                    </div>
+                    <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                        <div class="text-[10px] text-slate-500 font-bold">Revizyon Formatı</div>
+                        <div class="font-mono font-bold text-slate-800 text-xs mt-0.5 truncate">${escapeHtml(branding.defaultRevisionInfo || 'REV.00')}</div>
+                    </div>
+                </div>
+
+                <button onclick="openUserSettingsModal()" class="w-full py-2 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 flex items-center justify-center gap-1.5 transition">
+                    <i class="fa-solid fa-screwdriver-wrench text-slate-600"></i>
+                    <span>Varsayılan Test Cihazlarını Düzenle</span>
+                </button>
+            </div>
+
+            <!-- 5. VERİ YEDEKLEME VE KURTARMA MERKEZİ (ANA SAYFADAN BURAYA TAŞINDI) -->
+            <div class="card-craft-white p-4 space-y-3.5">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <div class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        <i class="fa-solid fa-database text-amber-500"></i>
+                        <span>Veri Yedekleme ve Kurtarma Merkezi</span>
+                    </div>
+                    <span class="text-[10px] text-emerald-600 font-bold">%100 Yerel Veri</span>
+                </div>
+
+                <p class="text-xs text-slate-600 leading-relaxed">
+                    Tüm saha işleriniz, raporlarınız ve ölçüm hafızanız cihazınızda saklanır. Cihaz değişimi veya güvenlik için tek tıkla tam yedek alabilir veya geri yükleyebilirsiniz.
+                </p>
+
+                <!-- Sayaçlar -->
+                <div class="grid grid-cols-2 gap-2 text-center">
+                    <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                        <div class="text-base font-black text-slate-800">${workOrderCount}</div>
+                        <div class="text-xs font-bold text-slate-700">İş Klasörü</div>
+                    </div>
+                    <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                        <div class="text-base font-black text-sky-700">${inspectionCount}</div>
+                        <div class="text-xs font-bold text-slate-700">Rapor</div>
+                    </div>
+                </div>
+
+                <!-- Aksiyonlar -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                    <button onclick="exportEmergencyBackup()" class="py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition">
+                        <i class="fa-solid fa-file-arrow-down"></i>
+                        <span>Tam Yedek İndir (JSON)</span>
+                    </button>
+                    <label class="py-2.5 bg-slate-800 hover:bg-slate-900 active:scale-95 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer">
+                        <i class="fa-solid fa-file-arrow-up text-sky-400"></i>
+                        <span>Yedekten Geri Yükle</span>
+                        <input type="file" accept=".json,application/json" class="hidden" onchange="importBackupFromFile(this)">
+                    </label>
+                </div>
+            </div>
+
+            <!-- 6. GÜVENLİK & SİLME KORUMASI BİLGİLENDİRMESİ -->
+            <div class="card-craft-white p-4 space-y-2">
+                <div class="flex items-center gap-2 text-xs font-bold text-slate-800">
+                    <i class="fa-solid fa-shield-halved text-rose-500"></i>
+                    <span>Şifreli Silme Koruması</span>
+                </div>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                    Saha raporlarının ve iş klasörlerinin kazara silinmesini önlemek amacıyla, tüm silme işlemlerinde aktif personel şifreniz (varsayılan: <strong>123</strong>) istenmektedir.
+                </p>
+                <div class="text-[11px] text-slate-500 pt-1">
+                    Şifrenizi yukarıdaki <strong>"Profilimi Düzenle"</strong> butonundan dilediğiniz zaman güncelleyebilirsiniz.
+                </div>
+            </div>
+        </div>
+    `;
+
+    if (typeof CompanySettingsManager !== 'undefined') {
+        CompanySettingsManager.syncHeaderTitle();
+    }
+}
+window.renderSettingsPage = renderSettingsPage;
+window.promptSecurityPasswordConfirmation = promptSecurityPasswordConfirmation;
+window.executeSecurityPasswordCheck = executeSecurityPasswordCheck;

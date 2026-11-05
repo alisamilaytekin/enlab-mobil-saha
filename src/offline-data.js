@@ -2566,7 +2566,7 @@ window.OFFLINE_SEED_DATA = {
       "brand": "Electronic",
       "model": "Karbon Fiber Kompozit",
       "serialNo": "TKM-CFC-0004",
-      "company": "Tekkomer",
+      "company": "",
       "calDate": "04.10.2026",
       "remainingText": "5 Ay 1 Gün ",
       "isCurrent": true
@@ -2579,7 +2579,7 @@ window.OFFLINE_SEED_DATA = {
       "brand": "Electronic",
       "model": "Karbon Fiber Kompozit",
       "serialNo": "TKM-CFC-0003",
-      "company": "Tekkomer",
+      "company": "",
       "calDate": "04.10.2026",
       "remainingText": "5 Ay 1 Gün ",
       "isCurrent": true
@@ -2592,7 +2592,7 @@ window.OFFLINE_SEED_DATA = {
       "brand": "Electronic",
       "model": "Karbon Fiber Kompozit",
       "serialNo": "TKM-CFC-0002",
-      "company": "Tekkomer",
+      "company": "",
       "calDate": "04.10.2026",
       "remainingText": "5 Ay 1 Gün ",
       "isCurrent": true
@@ -2605,7 +2605,7 @@ window.OFFLINE_SEED_DATA = {
       "brand": "Electronic",
       "model": "Karbon Fiber Kompozit",
       "serialNo": "TKM-CFC-0001",
-      "company": "Tekkomer",
+      "company": "",
       "calDate": "04.10.2026",
       "remainingText": "5 Ay 1 Gün ",
       "isCurrent": true
@@ -2709,7 +2709,7 @@ window.OFFLINE_SEED_DATA = {
       "brand": "Electronic",
       "model": "Karbon Fiber Kompozit",
       "serialNo": "TKM-CFC-0004",
-      "company": "Tekkomer",
+      "company": "",
       "calDate": "04.04.2026",
       "remainingText": "Süresi Doldu",
       "isCurrent": false
@@ -2722,7 +2722,7 @@ window.OFFLINE_SEED_DATA = {
       "brand": "Electronic",
       "model": "Karbon Fiber Kompozit",
       "serialNo": "TKM-CFC-0003",
-      "company": "Tekkomer",
+      "company": "",
       "calDate": "04.04.2026",
       "remainingText": "Süresi Doldu",
       "isCurrent": false
@@ -2735,7 +2735,7 @@ window.OFFLINE_SEED_DATA = {
       "brand": "Electronic",
       "model": "Karbon Fiber Kompozit",
       "serialNo": "TKM-CFC-0002",
-      "company": "Tekkomer",
+      "company": "",
       "calDate": "04.04.2026",
       "remainingText": "Süresi Doldu",
       "isCurrent": false
@@ -2748,7 +2748,7 @@ window.OFFLINE_SEED_DATA = {
       "brand": "Electronic",
       "model": "Karbon Fiber Kompozit",
       "serialNo": "TKM-CFC-0001",
-      "company": "Tekkomer",
+      "company": "",
       "calDate": "04.04.2026",
       "remainingText": "Süresi Doldu",
       "isCurrent": false
@@ -2761,7 +2761,7 @@ window.OFFLINE_SEED_DATA = {
       "brand": "Electronic",
       "model": "Karbon Fiber Kompozit",
       "serialNo": "TKM-CFC-0008",
-      "company": "Tekkomer",
+      "company": "",
       "calDate": "20.01.2026",
       "remainingText": "Süresi Doldu",
       "isCurrent": false
