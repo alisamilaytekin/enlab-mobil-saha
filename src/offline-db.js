@@ -245,6 +245,9 @@
                     company_name: body.company_name || 'YENİ İŞ / FİRMA KAYDI',
                     company_branch: body.company_branch || '',
                     company_address: body.company_address || '',
+                    isg_katip_no: body.isg_katip_no || '',
+                    sgk_sicil_no: body.sgk_sicil_no || '',
+                    tax_id: body.tax_id || '',
                     proposal_no: body.proposal_no || code,
                     open_date: todayStr,
                     start_date: body.start_date || todayStr,
@@ -277,6 +280,9 @@
                             company_name: newWO.company_name,
                             company_branch: newWO.company_branch,
                             address: newWO.company_address,
+                            isg_katip_no: newWO.isg_katip_no,
+                            sgk_sicil_no: newWO.sgk_sicil_no,
+                            tax_id: newWO.tax_id,
                             equipment_name: body.equipment_name || (tplObj.name.includes('TOPRAKLAMA') ? 'Topraklama Tesisi' : (tplObj.name.includes('JENERATÖR') ? 'Jeneratör-1' : 'Ana Dağıtım Panosu (ADP)')),
                             accreditation: 'AK',
                             serial_no: body.default_serial || '',
@@ -290,7 +296,16 @@
                             report_date: todayStr,
                             is_mine: 1,
                             data_json: JSON.stringify({
-                                generalNotes: newWO.field_notes || ''
+                                generalNotes: newWO.field_notes || '',
+                                companyInfo: {
+                                    firmName: newWO.company_name,
+                                    address: newWO.company_address,
+                                    isgKatipNo: newWO.isg_katip_no,
+                                    sgkSicilNo: newWO.sgk_sicil_no,
+                                    taxId: newWO.tax_id,
+                                    reportNo: rNo,
+                                    reportDate: todayStr
+                                }
                             })
                         });
                         createdInspectionIds.push(inspId);
@@ -377,6 +392,20 @@
                 }
                 const newId = Date.now();
                 const todayStr = new Date().toLocaleDateString('tr-TR');
+                let parsedInitialData = {};
+                try {
+                    parsedInitialData = typeof initialData === 'string' ? JSON.parse(initialData || '{}') : (initialData || {});
+                } catch (e) { parsedInitialData = {}; }
+
+                if (!parsedInitialData.companyInfo) parsedInitialData.companyInfo = {};
+                if (!parsedInitialData.companyInfo.firmName) parsedInitialData.companyInfo.firmName = body.company_name || wo.company_name || '';
+                if (!parsedInitialData.companyInfo.address) parsedInitialData.companyInfo.address = body.address || wo.company_address || '';
+                if (!parsedInitialData.companyInfo.isgKatipNo) parsedInitialData.companyInfo.isgKatipNo = wo.isg_katip_no || '';
+                if (!parsedInitialData.companyInfo.sgkSicilNo) parsedInitialData.companyInfo.sgkSicilNo = wo.sgk_sicil_no || '';
+                if (!parsedInitialData.companyInfo.taxId) parsedInitialData.companyInfo.taxId = wo.tax_id || '';
+                if (!parsedInitialData.companyInfo.reportNo) parsedInitialData.companyInfo.reportNo = reportNo;
+                if (!parsedInitialData.companyInfo.reportDate) parsedInitialData.companyInfo.reportDate = todayStr;
+
                 const newInsp = {
                     id: newId,
                     work_order_id: Number(woId),
@@ -387,6 +416,9 @@
                     company_name: body.company_name || wo.company_name || '',
                     company_branch: body.company_branch || wo.company_branch || '',
                     address: body.address || wo.company_address || '',
+                    isg_katip_no: wo.isg_katip_no || '',
+                    sgk_sicil_no: wo.sgk_sicil_no || '',
+                    tax_id: wo.tax_id || '',
                     equipment_name: body.equipment_name || 'Elektrik İç Tesisatı Gözle Kontrol ve Fonksiyon Testleri',
                     accreditation: body.accreditation || 'AK',
                     serial_no: body.serial_no || '',
@@ -399,7 +431,7 @@
                     end_date: todayStr,
                     report_date: body.report_date || todayStr,
                     is_mine: 1,
-                    data_json: typeof initialData === 'string' ? initialData : JSON.stringify(initialData)
+                    data_json: JSON.stringify(parsedInitialData)
                 };
                 db.inspections.unshift(newInsp);
                 if (wo) {

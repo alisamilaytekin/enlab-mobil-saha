@@ -475,6 +475,12 @@ function normalizeWorkOrder(w) {
 
         customer_address: [w.company_branch, w.company_address || w.customer_address].filter(Boolean).join(' - ') || '',
 
+        isg_katip_no: w.isg_katip_no || '',
+
+        sgk_sicil_no: w.sgk_sicil_no || '',
+
+        tax_id: w.tax_id || '',
+
         assigned_to: w.inspectors || w.assigned_to || 'Ali Şamil Aytekin',
 
         planner_name: w.planner || '',
@@ -1717,29 +1723,61 @@ function openQuickFieldJobModal() {
 
         'Yeni İşyeri / Saha Klasörü Aç',
 
-        `<div class="space-y-3 text-xs">
+        `<div class="space-y-2.5 text-xs">
 
             <div>
 
-                <label class="block font-bold text-slate-800 mb-1">İşyeri / Firma Adı *</label>
+                <label class="block font-bold text-slate-800 mb-1">İşyeri / Firma Adı <span class="text-rose-500">*</span></label>
 
                 <input type="text" id="qjCompanyName" placeholder=""
 
-                    class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-bold text-slate-900 focus:border-sky-500 focus:outline-none">
+                    class="w-full border border-slate-300 focus:border-sky-500 rounded-lg px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none">
 
             </div>
 
             <div>
 
-                <label class="block font-bold text-slate-700 mb-1">Adres / Şube (İsteğe Bağlı)</label>
+                <label class="block font-bold text-slate-700 mb-1">Periyodik Kontrol Adresi</label>
 
                 <input type="text" id="qjAddress" placeholder=""
 
-                    class="w-full border border-slate-300 rounded-lg px-3 py-2">
+                    class="w-full border border-slate-300 focus:border-sky-500 rounded-lg px-3 py-2 text-xs">
 
             </div>
 
-            
+            <div class="grid grid-cols-2 gap-2">
+
+                <div>
+
+                    <label class="block font-bold text-slate-700 mb-1">İSG-KATİP No</label>
+
+                    <input type="text" id="qjIsgKatipNo" placeholder=""
+
+                        class="w-full border border-slate-300 focus:border-sky-500 rounded-lg px-2.5 py-1.5 text-xs font-medium">
+
+                </div>
+
+                <div>
+
+                    <label class="block font-bold text-slate-700 mb-1">SGK Sicil No</label>
+
+                    <input type="text" id="qjSgkSicilNo" placeholder=""
+
+                        class="w-full border border-slate-300 focus:border-sky-500 rounded-lg px-2.5 py-1.5 text-xs font-medium">
+
+                </div>
+
+            </div>
+
+            <div>
+
+                <label class="block font-bold text-slate-700 mb-1">Vergi No / ID</label>
+
+                <input type="text" id="qjTaxId" placeholder=""
+
+                    class="w-full border border-slate-300 focus:border-sky-500 rounded-lg px-2.5 py-1.5 text-xs font-medium">
+
+            </div>
 
             <div>
 
@@ -1757,7 +1795,7 @@ function openQuickFieldJobModal() {
 
                 </div>
 
-                <div id="qjTemplatesGrid" class="space-y-2 p-2 border border-slate-200 rounded-xl bg-slate-50">
+                <div id="qjTemplatesGrid" class="space-y-1.5 p-2 border border-slate-200 rounded-xl bg-slate-50 max-h-44 overflow-y-auto">
 
                     ${tplCheckboxes}
 
@@ -1820,7 +1858,9 @@ async function submitQuickFieldJob(openFirstReportDirectly = false) {
 
 
     const address = (document.getElementById('qjAddress')?.value || '').trim();
-
+    const isgKatipNo = (document.getElementById('qjIsgKatipNo')?.value || '').trim();
+    const sgkSicilNo = (document.getElementById('qjSgkSicilNo')?.value || '').trim();
+    const taxId = (document.getElementById('qjTaxId')?.value || '').trim();
     const fieldNotes = (document.getElementById('qjFieldNotes')?.value || '').trim();
 
     const checkedTpls = Array.from(document.querySelectorAll('input[name="quickJobTpl"]:checked')).map(cb => cb.value);
@@ -1840,6 +1880,12 @@ async function submitQuickFieldJob(openFirstReportDirectly = false) {
             company_branch: address,
 
             company_address: address,
+
+            isg_katip_no: isgKatipNo,
+
+            sgk_sicil_no: sgkSicilNo,
+
+            tax_id: taxId,
 
             field_notes: fieldNotes,
 
@@ -5516,19 +5562,23 @@ function ensureCompanyInfo() {
 
     if (!fd.companyInfo) fd.companyInfo = {};
 
-    if (fd.companyInfo.firmName === undefined) fd.companyInfo.firmName = insp.customer_name || '';
+    const wo = (window.OfflineDB?.state?.workOrders || []).find(w => String(w.id) === String(insp.work_order_id)) || AppState.currentWorkOrder || {};
 
-    if (fd.companyInfo.address === undefined) fd.companyInfo.address = insp.address || '';
+    if (!fd.companyInfo.firmName) fd.companyInfo.firmName = insp.customer_name || insp.company_name || wo.company_name || '';
+
+    if (!fd.companyInfo.address) fd.companyInfo.address = insp.address || wo.company_address || '';
+
+    if (!fd.companyInfo.isgKatipNo) fd.companyInfo.isgKatipNo = insp.isg_katip_no || wo.isg_katip_no || '';
+
+    if (!fd.companyInfo.sgkSicilNo) fd.companyInfo.sgkSicilNo = insp.sgk_sicil_no || wo.sgk_sicil_no || '';
+
+    if (!fd.companyInfo.taxId) fd.companyInfo.taxId = insp.tax_id || wo.tax_id || '';
 
     if (fd.companyInfo.equipmentName === undefined) fd.companyInfo.equipmentName = insp.equipment_name || '';
 
     if (fd.companyInfo.serialCode === undefined) fd.companyInfo.serialCode = insp.serial_no || '';
 
     if (fd.companyInfo.startEndTime === undefined) fd.companyInfo.startEndTime = '';
-
-    if (fd.companyInfo.isgKatipNo === undefined) fd.companyInfo.isgKatipNo = '';
-
-    if (fd.companyInfo.sgkSicilNo === undefined) fd.companyInfo.sgkSicilNo = '';
 
     if (fd.companyInfo.reportNo === undefined) fd.companyInfo.reportNo = insp.report_no || '';
 
@@ -5645,6 +5695,18 @@ function renderSharedCompanyInfoSection() {
                     <input type="text" value="${escapeHtml(ci.sgkSicilNo || '')}" placeholder=""
 
                         oninput="AppState.currentFormData.companyInfo.sgkSicilNo=this.value; triggerAutoSave();"
+
+                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
+
+                </div>
+
+                <div>
+
+                    <label class="block font-bold text-slate-700 mb-1">Vergi No / ID</label>
+
+                    <input type="text" value="${escapeHtml(ci.taxId || '')}" placeholder=""
+
+                        oninput="AppState.currentFormData.companyInfo.taxId=this.value; triggerAutoSave();"
 
                         class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
 
