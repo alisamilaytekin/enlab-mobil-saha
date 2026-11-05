@@ -3246,71 +3246,68 @@ function normalizeEquipmentSearchText(str) {
 }
 
 function getEquipmentSuggestions(query, limit = 10) {
-    const qRaw = (query || '').trim();
-    if (!qRaw) return [];
+    const qRaw = (query || '').trimStart();
+    if (!qRaw.trim()) return [];
 
     const normQ = normalizeEquipmentSearchText(qRaw);
     const counts = {};
-    const defaultSuggestions = [
-        'ADP', 'TDP-1', 'TDP-2', 'TDP-3', 'KOMPANZASYON',
-        'JENERATÖR', 'AYDINLATMA', 'YANGIN POMPASI', 'KAZAN DAİRESİ', 'ASANSÖR',
-        'UPS', 'TRAFO', 'HAVALANDIRMA', 'MUTFAK PANOSU', 'ÇATI PANOSU',
-        'POMPA PANOSU', 'MCC', 'PLC PANOSU'
-    ];
 
     let list = [];
     try {
         if (window.OfflineDB && window.OfflineDB.state && Array.isArray(window.OfflineDB.state.inspections)) {
-            list = window.OfflineDB.state.inspections;
+            list = list.concat(window.OfflineDB.state.inspections);
         }
     } catch (e) {}
 
-    if (!list.length && Array.isArray(AppState.inspectionsCache)) {
-        list = AppState.inspectionsCache;
+    if (window.AppState && Array.isArray(AppState.inspectionsCache)) {
+        list = list.concat(AppState.inspectionsCache);
     }
 
+    ['enlab_offline_db_v3_clean', 'enlab_offline_db_v2'].forEach(key => {
+        try {
+            const raw = localStorage.getItem(key);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (Array.isArray(parsed.inspections)) {
+                    list = list.concat(parsed.inspections);
+                }
+            }
+        } catch (e) {}
+    });
+
     try {
-        const raw = localStorage.getItem('enlab_offline_db_v2');
-        if (raw) {
-            const parsed = JSON.parse(raw);
-            if (Array.isArray(parsed.inspections)) {
-                list = parsed.inspections;
+        for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (k && k.startsWith('enlab_insp_')) {
+                const val = JSON.parse(localStorage.getItem(k));
+                if (val && val.equipment_name) {
+                    list.push({ equipment_name: val.equipment_name });
+                }
             }
         }
     } catch (e) {}
 
     list.forEach(i => {
+        if (!i) return;
         const name = (i.equipment_name || '').trim();
         if (name && !name.toLowerCase().includes('isimsiz') && !name.toLowerCase().includes('rapor tasla')) {
             counts[name] = (counts[name] || 0) + 1;
         }
     });
 
-    const sortedUsed = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
-    const pool = [...sortedUsed];
-    defaultSuggestions.forEach(d => {
-        if (!pool.some(r => r.toUpperCase() === d.toUpperCase())) {
-            pool.push(d);
-        }
-    });
-
-    const startsWith = [];
-    const contains = [];
-
-    pool.forEach(name => {
+    // Sadece kullanıcının daha önce girdiği veriler taranır (varsayılan statik liste yok)
+    // Sadece aranan harfle BAŞLAYANLAR listelenir (içinde geçenler hariç)
+    const matching = [];
+    Object.keys(counts).forEach(name => {
         const normName = normalizeEquipmentSearchText(name);
         if (normName.startsWith(normQ)) {
-            startsWith.push(name);
-        } else if (normName.includes(normQ)) {
-            contains.push(name);
+            matching.push(name);
         }
     });
 
-    startsWith.sort((a, b) => (counts[b] || 0) - (counts[a] || 0));
-    contains.sort((a, b) => (counts[b] || 0) - (counts[a] || 0));
+    matching.sort((a, b) => (counts[b] || 0) - (counts[a] || 0));
 
-    const combined = [...startsWith, ...contains];
-    return combined.slice(0, limit);
+    return matching.slice(0, limit);
 }
 
 window.updateEquipmentQuickSuggestions = function(query) {
