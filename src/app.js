@@ -1723,7 +1723,7 @@ function openQuickFieldJobModal() {
 
                 <label class="block font-bold text-slate-800 mb-1">İşyeri / Firma Adı *</label>
 
-                <input type="text" id="qjCompanyName" placeholder="Örn: Teknosa Manisa Soma"
+                <input type="text" id="qjCompanyName" placeholder=""
 
                     class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-bold text-slate-900 focus:border-sky-500 focus:outline-none">
 
@@ -1733,21 +1733,13 @@ function openQuickFieldJobModal() {
 
                 <label class="block font-bold text-slate-700 mb-1">Adres / Şube (İsteğe Bağlı)</label>
 
-                <input type="text" id="qjAddress" placeholder="Örn: Kurtuluş Mah. Fatih Cad. No:3 Soma"
+                <input type="text" id="qjAddress" placeholder=""
 
                     class="w-full border border-slate-300 rounded-lg px-3 py-2">
 
             </div>
 
-            <div>
-
-                <label class="block font-bold text-slate-700 mb-1">Notlar (İsteğe Bağlı)</label>
-
-                <textarea id="qjFieldNotes" rows="2" placeholder="Kısa saha notunuz..."
-
-                    class="w-full border border-slate-300 rounded-lg p-2.5 text-slate-800 focus:border-sky-500 focus:outline-none"></textarea>
-
-            </div>
+            
 
             <div>
 
@@ -2523,7 +2515,7 @@ function openNewWorkOrderModal() {
 
                 <label class="block font-semibold text-slate-700 mb-1">Müşteri Firma Ünvanı</label>
 
-                <input type="text" id="newWoCustomer" placeholder="Örn: TEKNOSA İÇ VE DIŞ TİCARET A.Ş." class="w-full border border-slate-300 rounded-lg px-3 py-2">
+                <input type="text" id="newWoCustomer" placeholder="" class="w-full border border-slate-300 rounded-lg px-3 py-2">
 
             </div>
 
@@ -2533,7 +2525,7 @@ function openNewWorkOrderModal() {
 
                     <label class="block font-semibold text-slate-700 mb-1">Şube / Tesis Adı</label>
 
-                    <input type="text" id="newWoBranch" placeholder="Örn: Manisa Soma Şubesi" class="w-full border border-slate-300 rounded-lg px-3 py-2">
+                    <input type="text" id="newWoBranch" placeholder="" class="w-full border border-slate-300 rounded-lg px-3 py-2">
 
                 </div>
 
@@ -3233,6 +3225,53 @@ window.setQuickInspEqName = function(val) {
 
 
 
+
+function getMostUsedEquipmentNames(limit = 12) {
+    const counts = {};
+    const defaultSuggestions = [
+        'ADP', 'TDP-1', 'TDP-2', 'TDP-3', 'KOMPANZASYON',
+        'JENERATÖR', 'AYDINLATMA', 'YANGIN POMPASI', 'KAZAN DAİRESİ', 'ASANSÖR'
+    ];
+
+    let list = [];
+    try {
+        if (window.OfflineDB && window.OfflineDB.state && Array.isArray(window.OfflineDB.state.inspections)) {
+            list = window.OfflineDB.state.inspections;
+        }
+    } catch (e) {}
+
+    if (!list.length && Array.isArray(AppState.inspectionsCache)) {
+        list = AppState.inspectionsCache;
+    }
+
+    try {
+        const raw = localStorage.getItem('enlab_offline_db_v2');
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed.inspections)) {
+                list = parsed.inspections;
+            }
+        }
+    } catch (e) {}
+
+    list.forEach(i => {
+        const name = (i.equipment_name || '').trim();
+        if (name && !name.toLowerCase().includes('isimsiz') && !name.toLowerCase().includes('rapor tasla')) {
+            counts[name] = (counts[name] || 0) + 1;
+        }
+    });
+
+    const sortedUsed = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+    const result = [...sortedUsed];
+    defaultSuggestions.forEach(d => {
+        if (!result.some(r => r.toUpperCase() === d.toUpperCase())) {
+            result.push(d);
+        }
+    });
+
+    return result.slice(0, limit);
+}
+
 function openAddInspectionModal(workOrderId) {
 
     const optionsHtml = (window.ENLAB_REPORT_TEMPLATES || []).map(t => {
@@ -3250,8 +3289,7 @@ function openAddInspectionModal(workOrderId) {
 
 
     openModal(
-
-        '<i class="fa-solid fa-plus-circle mr-1.5 text-sky-500"></i>Yeni Pano / Ekipman Raporu Ekle',
+        'Yeni Ekipman Ekle',
 
         `<div class="space-y-3 text-xs">
 
@@ -3285,38 +3323,23 @@ function openAddInspectionModal(workOrderId) {
 
                 
 
-                <!-- Hızlı Seçim Çipleri (Tek dokunuşla ekleme) -->
-
+                <!-- Hızlı Seçim Çipleri (En çok kullanılandan sıralı) -->
                 <div class="mt-2 p-2 bg-slate-50 border border-slate-200 rounded-lg">
-
-                    <div class="text-[10px] text-slate-500 font-semibold mb-1 flex items-center gap-1">
-
-                        <i class="fa-solid fa-bolt text-amber-500"></i>
-
-                        <span>Hızlı Pano Seçimi (Dokun ve Doldur):</span>
-
+                    <div class="text-[10px] text-slate-500 font-semibold mb-1 flex items-center justify-between">
+                        <span class="flex items-center gap-1">
+                            <i class="fa-solid fa-bolt text-amber-500"></i>
+                            <span>Hızlı Seçim (En Çok Kullanılanlar):</span>
+                        </span>
+                        <span class="text-[9px] text-slate-400">En çok kullanılandan sıralı</span>
                     </div>
-
                     <div class="flex flex-wrap gap-1">
-
-                        <button type="button" onclick="setQuickInspEqName('ADP')" class="px-2 py-1 bg-white hover:bg-sky-50 hover:text-sky-700 hover:border-sky-300 border border-slate-200 rounded text-[11px] font-bold text-slate-700 transition active:scale-95 shadow-2xs">ADP</button>
-
-                        <button type="button" onclick="setQuickInspEqName('TDP-1')" class="px-2 py-1 bg-white hover:bg-sky-50 hover:text-sky-700 hover:border-sky-300 border border-slate-200 rounded text-[11px] font-bold text-slate-700 transition active:scale-95 shadow-2xs">TDP-1</button>
-
-                        <button type="button" onclick="setQuickInspEqName('TDP-2')" class="px-2 py-1 bg-white hover:bg-sky-50 hover:text-sky-700 hover:border-sky-300 border border-slate-200 rounded text-[11px] font-bold text-slate-700 transition active:scale-95 shadow-2xs">TDP-2</button>
-
-                        <button type="button" onclick="setQuickInspEqName('TDP-3')" class="px-2 py-1 bg-white hover:bg-sky-50 hover:text-sky-700 hover:border-sky-300 border border-slate-200 rounded text-[11px] font-bold text-slate-700 transition active:scale-95 shadow-2xs">TDP-3</button>
-
-                        <button type="button" onclick="setQuickInspEqName('KOMPANZASYON')" class="px-2 py-1 bg-white hover:bg-sky-50 hover:text-sky-700 hover:border-sky-300 border border-slate-200 rounded text-[11px] font-bold text-slate-700 transition active:scale-95 shadow-2xs">KOMPANZASYON</button>
-
-                        <button type="button" onclick="setQuickInspEqName('JENERATÖR')" class="px-2 py-1 bg-white hover:bg-sky-50 hover:text-sky-700 hover:border-sky-300 border border-slate-200 rounded text-[11px] font-bold text-slate-700 transition active:scale-95 shadow-2xs">JENERATÖR</button>
-
-                        <button type="button" onclick="setQuickInspEqName('AYDINLATMA')" class="px-2 py-1 bg-white hover:bg-sky-50 hover:text-sky-700 hover:border-sky-300 border border-slate-200 rounded text-[11px] font-bold text-slate-700 transition active:scale-95 shadow-2xs">AYDINLATMA</button>
-
-                        <button type="button" onclick="setQuickInspEqName('YANGIN POMPASI')" class="px-2 py-1 bg-white hover:bg-sky-50 hover:text-sky-700 hover:border-sky-300 border border-slate-200 rounded text-[11px] font-bold text-slate-700 transition active:scale-95 shadow-2xs">YANGIN POMPASI</button>
-
+                        ${getMostUsedEquipmentNames(12).map(name => `
+                            <button type="button" onclick="setQuickInspEqName('${escapeForJs(name)}')"
+                                class="px-2 py-1 bg-white hover:bg-sky-50 hover:text-sky-700 hover:border-sky-300 border border-slate-200 rounded text-[11px] font-bold text-slate-700 transition active:scale-95 shadow-2xs">
+                                ${escapeHtml(name)}
+                            </button>
+                        `).join('')}
                     </div>
-
                 </div>
 
             </div>
