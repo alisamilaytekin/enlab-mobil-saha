@@ -13428,8 +13428,12 @@ function paginateBlocksIntoA4Pages(blocksHtmlArray, reportMainTitle, formCode, r
     const packedPages = [];
 
     for (let i = 0; i < blocksHtmlArray.length; i++) {
-
         const blockHtml = blocksHtmlArray[i];
+        const isForceBreak = typeof blockHtml === 'string' && blockHtml.includes('tkm-force-page-break');
+        if (isForceBreak && bodyEl.children.length > 0) {
+            packedPages.push(bodyEl.innerHTML);
+            bodyEl.innerHTML = '';
+        }
 
         const blockEl = document.createElement('div');
 
@@ -14062,8 +14066,8 @@ function printOfficialReport(directPrint = false) {
         // Block 6: 5. TEST VE KONTROLLER Title + 5.1. PANO ADI/EKİPMAN TANIMLAMASI
 
         blocks.push(`
-
-            <div class="tkm-sec-title" style="text-align:center;font-size:7.5pt;background:#e2e8f0;color:#0f172a;letter-spacing:0.5px;padding:2px 4px;margin-bottom:2px;">TEST VE KONTROLLER</div>
+            <div class="tkm-force-page-break" style="display:none;"></div>
+            <div class="tkm-sec-title" style="text-align:left;font-size:8.4pt;color:#111111;font-weight:700;letter-spacing:0.2px;padding:2px 0;margin:2px 0;">TEST VE KONTROLLER</div>
             <div class="tkm-sec-title">5. KONTROL KRİTERLERİ VE TESTLER</div>
 
             <div class="tkm-sub-bar">5.1. ${area2.topics[0].name}</div>
@@ -14270,7 +14274,7 @@ function printOfficialReport(directPrint = false) {
                     <tbody>
                         <tr>
                             <td style="min-height:24px;height:24px;vertical-align:middle;text-align:center;color:#64748b;font-style:italic;font-size:7.2pt;">
-                                Bu periyodik kontrolde ekipman fotoğrafı kaydedilmemiştir.
+                                
                             </td>
                         </tr>
                     </tbody>
