@@ -495,7 +495,7 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
 
             <input type="text" value="${String(val || '').replace(/"/g, '&quot;')}"
 
-                oninput="handleAnswerChange('${qKey}', this.value)"
+                oninput="handleAnswerInput('${qKey}', this.value)"
 
                 placeholder=""
 

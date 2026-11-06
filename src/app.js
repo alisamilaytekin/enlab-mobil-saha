@@ -5395,10 +5395,19 @@ async function renderInspectionEditor(inspectionId, overrideTemplateId = null) {
 
 
 function paintInspectionEditorUI() {
-
     const container = document.getElementById('pageContent');
-
     const insp = AppState.currentInspection;
+    if (!container || !insp) return;
+
+    // Scroll ve odak koruma (kullanıcının en üste atılmasını ve odak kaybını önler)
+    const prevScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+    const activeEl = document.activeElement;
+    const activeId = activeEl && activeEl.id ? activeEl.id : null;
+    let selStart = null, selEnd = null;
+    if (activeEl && ('selectionStart' in activeEl)) {
+        selStart = activeEl.selectionStart;
+        selEnd = activeEl.selectionEnd;
+    }
 
     
 
@@ -5589,7 +5598,26 @@ function paintInspectionEditorUI() {
         </div>
 
     `;
+    // Scroll pozisyonunu derhal eski yerine döndür
+    if (prevScrollY > 0) {
+        window.scrollTo({ top: prevScrollY, behavior: 'instant' });
+        requestAnimationFrame(() => {
+            window.scrollTo({ top: prevScrollY, behavior: 'instant' });
+        });
+    }
 
+    // Odaklanılmış eleman varsa odağı ve imleç konumunu geri yükle
+    if (activeId) {
+        const el = document.getElementById(activeId);
+        if (el) {
+            try {
+                el.focus();
+                if (selStart !== null && selEnd !== null && ('setSelectionRange' in el)) {
+                    el.setSelectionRange(selStart, selEnd);
+                }
+            } catch (e) {}
+        }
+    }
 }
 
 
@@ -6495,7 +6523,7 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
 
             <input type="text" value="${String(val || '').replace(/"/g, '&quot;')}"
 
-                oninput="handleAnswerChange('${qKey}', this.value)"
+                oninput="handleAnswerInput('${qKey}', this.value)"
 
                 placeholder=""
 
@@ -12653,53 +12681,68 @@ function syncAllDefectsToDefectNotes() {
 
 
 
-function handleAnswerChange(qKey, value, questionTitle = '') {
-
+function handleAnswerInput(qKey, value) {
     const fd = AppState.currentFormData;
+    if (!fd) return;
+    if (!fd.answers) fd.answers = {};
+    fd.answers[qKey] = value;
+    triggerAutoSave();
+}
+window.handleAnswerInput = handleAnswerInput;
 
+function handleAnswerChange(qKey, value, questionTitle = '', isDirectInput = false) {
+    const fd = AppState.currentFormData;
+    if (!fd) return;
+    if (!fd.answers) fd.answers = {};
     fd.answers[qKey] = value;
 
-
-
-    if (value === 'Uygun Değil' || value === 'Kısmen Uygun') {
-
-        fd.overallResult = 'UYGUN DEĞİL';
-
+    if (isDirectInput) {
         triggerAutoSave();
-
-        paintInspectionEditorUI();
-
-        if (questionTitle) {
-
-            setTimeout(() => openItemDefectPickerModal(qKey, questionTitle, 'answer'), 50);
-
-        }
-
-    } else {
-
-        if (fd.itemDefectSelections && fd.itemDefectSelections[qKey]) {
-
-            delete fd.itemDefectSelections[qKey];
-
-            syncAllDefectsToDefectNotes();
-
-        }
-
-        triggerAutoSave();
-
-        paintInspectionEditorUI();
-
+        return;
     }
 
+    // Direct text entry guard: if not standard choice, only save without re-rendering DOM
+    const standardStatuses = ['Uygun', 'Uygun Değil', 'Kısmen Uygun', 'Uygulaması Yok', 'Görülemedi', 'Muaf', 'Kapsam Dışı', ''];
+    if (!standardStatuses.includes(value)) {
+        triggerAutoSave();
+        return;
+    }
+
+    if (value === 'Uygun Değil' || value === 'Kısmen Uygun') {
+        fd.overallResult = 'UYGUN DEĞİL';
+        triggerAutoSave();
+        paintInspectionEditorUI();
+        if (questionTitle) {
+            setTimeout(() => openItemDefectPickerModal(qKey, questionTitle, 'answer'), 50);
+        }
+    } else {
+        if (fd.itemDefectSelections && fd.itemDefectSelections[qKey]) {
+            delete fd.itemDefectSelections[qKey];
+            syncAllDefectsToDefectNotes();
+        }
+        triggerAutoSave();
+        paintInspectionEditorUI();
+    }
 }
 
 
 
-function handleSpecializedCheckChange(cKey, value, checkTitle = '') {
-
+function handleSpecializedCheckChange(cKey, value, checkTitle = '', isDirectInput = false) {
     const fd = AppState.currentFormData;
-
+    if (!fd) return;
+    if (!fd.specializedChecks) fd.specializedChecks = {};
     fd.specializedChecks[cKey] = value;
+
+    if (isDirectInput) {
+        triggerAutoSave();
+        return;
+    }
+
+    const standardStatuses = ['Uygun', 'Uygun Değil', 'Kısmen Uygun', 'Uygulaması Yok', 'Görülemedi', 'Muaf', 'Kapsam Dışı', ''];
+    if (!standardStatuses.includes(value)) {
+        triggerAutoSave();
+        return;
+    }
 
 
 

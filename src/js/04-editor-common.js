@@ -133,10 +133,19 @@ async function renderInspectionEditor(inspectionId, overrideTemplateId = null) {
 
 
 function paintInspectionEditorUI() {
-
     const container = document.getElementById('pageContent');
-
     const insp = AppState.currentInspection;
+    if (!container || !insp) return;
+
+    // Scroll ve odak koruma (kullanıcının en üste atılmasını ve odak kaybını önler)
+    const prevScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+    const activeEl = document.activeElement;
+    const activeId = activeEl && activeEl.id ? activeEl.id : null;
+    let selStart = null, selEnd = null;
+    if (activeEl && ('selectionStart' in activeEl)) {
+        selStart = activeEl.selectionStart;
+        selEnd = activeEl.selectionEnd;
+    }
 
     
 
@@ -327,7 +336,26 @@ function paintInspectionEditorUI() {
         </div>
 
     `;
+    // Scroll pozisyonunu derhal eski yerine döndür
+    if (prevScrollY > 0) {
+        window.scrollTo({ top: prevScrollY, behavior: 'instant' });
+        requestAnimationFrame(() => {
+            window.scrollTo({ top: prevScrollY, behavior: 'instant' });
+        });
+    }
 
+    // Odaklanılmış eleman varsa odağı ve imleç konumunu geri yükle
+    if (activeId) {
+        const el = document.getElementById(activeId);
+        if (el) {
+            try {
+                el.focus();
+                if (selStart !== null && selEnd !== null && ('setSelectionRange' in el)) {
+                    el.setSelectionRange(selStart, selEnd);
+                }
+            } catch (e) {}
+        }
+    }
 }
 
 

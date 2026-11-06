@@ -1558,53 +1558,68 @@ function syncAllDefectsToDefectNotes() {
 
 
 
-function handleAnswerChange(qKey, value, questionTitle = '') {
-
+function handleAnswerInput(qKey, value) {
     const fd = AppState.currentFormData;
+    if (!fd) return;
+    if (!fd.answers) fd.answers = {};
+    fd.answers[qKey] = value;
+    triggerAutoSave();
+}
+window.handleAnswerInput = handleAnswerInput;
 
+function handleAnswerChange(qKey, value, questionTitle = '', isDirectInput = false) {
+    const fd = AppState.currentFormData;
+    if (!fd) return;
+    if (!fd.answers) fd.answers = {};
     fd.answers[qKey] = value;
 
-
-
-    if (value === 'Uygun Değil' || value === 'Kısmen Uygun') {
-
-        fd.overallResult = 'UYGUN DEĞİL';
-
+    if (isDirectInput) {
         triggerAutoSave();
-
-        paintInspectionEditorUI();
-
-        if (questionTitle) {
-
-            setTimeout(() => openItemDefectPickerModal(qKey, questionTitle, 'answer'), 50);
-
-        }
-
-    } else {
-
-        if (fd.itemDefectSelections && fd.itemDefectSelections[qKey]) {
-
-            delete fd.itemDefectSelections[qKey];
-
-            syncAllDefectsToDefectNotes();
-
-        }
-
-        triggerAutoSave();
-
-        paintInspectionEditorUI();
-
+        return;
     }
 
+    // Direct text entry guard: if not standard choice, only save without re-rendering DOM
+    const standardStatuses = ['Uygun', 'Uygun Değil', 'Kısmen Uygun', 'Uygulaması Yok', 'Görülemedi', 'Muaf', 'Kapsam Dışı', ''];
+    if (!standardStatuses.includes(value)) {
+        triggerAutoSave();
+        return;
+    }
+
+    if (value === 'Uygun Değil' || value === 'Kısmen Uygun') {
+        fd.overallResult = 'UYGUN DEĞİL';
+        triggerAutoSave();
+        paintInspectionEditorUI();
+        if (questionTitle) {
+            setTimeout(() => openItemDefectPickerModal(qKey, questionTitle, 'answer'), 50);
+        }
+    } else {
+        if (fd.itemDefectSelections && fd.itemDefectSelections[qKey]) {
+            delete fd.itemDefectSelections[qKey];
+            syncAllDefectsToDefectNotes();
+        }
+        triggerAutoSave();
+        paintInspectionEditorUI();
+    }
 }
 
 
 
-function handleSpecializedCheckChange(cKey, value, checkTitle = '') {
-
+function handleSpecializedCheckChange(cKey, value, checkTitle = '', isDirectInput = false) {
     const fd = AppState.currentFormData;
-
+    if (!fd) return;
+    if (!fd.specializedChecks) fd.specializedChecks = {};
     fd.specializedChecks[cKey] = value;
+
+    if (isDirectInput) {
+        triggerAutoSave();
+        return;
+    }
+
+    const standardStatuses = ['Uygun', 'Uygun Değil', 'Kısmen Uygun', 'Uygulaması Yok', 'Görülemedi', 'Muaf', 'Kapsam Dışı', ''];
+    if (!standardStatuses.includes(value)) {
+        triggerAutoSave();
+        return;
+    }
 
 
 
