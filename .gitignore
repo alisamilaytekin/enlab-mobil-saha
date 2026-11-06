@@ -2,6 +2,11 @@
 __pycache__/
 *.pyc
 
-# Geçici derleme dosyaları
+# Android derleme ve APK paketleri (Git hızlandırması için)
+*.apk
+dist/*.apk
 dist/unsigned_temp.apk
 dist/*.idsig
+
+# Geçici dosyalar
+scratch/
