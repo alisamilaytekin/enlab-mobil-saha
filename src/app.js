@@ -13202,7 +13202,7 @@ function buildTkmOnaySection(insp, sectionNumber = '10', customTitle = null) {
             </tbody>
 
         </table>
-        <div style="font-size:6.8pt;color:#475569;margin-top:2px;text-align:left;font-style:italic;">
+        <div style="font-size:6.8pt;color:#333333;margin-top:2px;text-align:left;font-style:italic;">
             Bu rapor elektronik ortamda 1 (bir) nüsha olarak hazırlanmıştır.
         </div>
     `;
@@ -13278,13 +13278,61 @@ function applyA4PreviewZoom() {
 
 function adjustA4PreviewZoom(delta) {
 
-    AppState.a4Zoom = Math.max(0.35, Math.min(1.4, (AppState.a4Zoom || 1) + delta));
+    AppState.a4Zoom = Math.max(0.35, Math.min(2.5, (AppState.a4Zoom || 1) + delta));
 
     applyA4PreviewZoom();
 
 }
 
 
+
+
+// --- PINCH-TO-ZOOM & MULTI-TOUCH GESTURE ENGINE FOR A4 PDF PREVIEW ---
+let _pinchState = {
+    active: false,
+    startDist: 0,
+    startZoom: 1
+};
+
+function initA4PinchZoom() {
+    const scrollContainer = document.getElementById('a4PreviewScrollContainer');
+    const pagesContainer = document.getElementById('a4PreviewPagesContainer');
+    if (!scrollContainer || !pagesContainer || scrollContainer._pinchInitialized) return;
+
+    scrollContainer._pinchInitialized = true;
+
+    scrollContainer.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) {
+            _pinchState.active = true;
+            _pinchState.startDist = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+            _pinchState.startZoom = AppState.a4Zoom || 1;
+        }
+    }, { passive: true });
+
+    scrollContainer.addEventListener('touchmove', (e) => {
+        if (_pinchState.active && e.touches.length === 2) {
+            const currentDist = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+            if (_pinchState.startDist > 0) {
+                const factor = currentDist / _pinchState.startDist;
+                const newZoom = Math.max(0.35, Math.min(2.5, _pinchState.startZoom * factor));
+                AppState.a4Zoom = Math.round(newZoom * 100) / 100;
+                applyA4PreviewZoom();
+            }
+        }
+    }, { passive: true });
+
+    scrollContainer.addEventListener('touchend', (e) => {
+        if (e.touches.length < 2) {
+            _pinchState.active = false;
+        }
+    }, { passive: true });
+}
 
 function resetA4PreviewZoom() {
 
@@ -13546,7 +13594,7 @@ function renderPdfPhotoBlocks(photosList, secTitle = 'FOTOĞRAFLAR') {
                             </div>
                             <!-- Fotoğraf Altı: Açıklama / Not -->
                             ${caption ? `
-                                <div style="font-size:7pt;color:#1e293b;border-top:1px solid #eee;padding-top:3px;margin-top:3px;min-height:14px;line-height:1.2;font-style:italic;">
+                                <div style="font-size:7pt;color:#222222;border-top:1px solid #eee;padding-top:3px;margin-top:3px;min-height:14px;line-height:1.2;font-style:italic;">
                                     ${escapeHtml(caption)}
                                 </div>
                             ` : ''}
@@ -13848,12 +13896,12 @@ function printOfficialReport(directPrint = false) {
         // Block 1: 1. FİRMA BİLGİLERİ
         blocks.push(`
             <div style="display:flex;justify-content:flex-end;margin-bottom:3px;">
-                <table style="border:1px solid #94a3b8;font-size:6.7pt;border-collapse:collapse;background:#f8fafc;">
+                <table style="border:1px solid #000000;font-size:6.7pt;border-collapse:collapse;background:#ffffff;">
                     <tr>
-                        <td style="padding:1.5px 6px;font-weight:700;border:1px solid #cbd5e1;background:#f1f5f9;">Doküman Kodu</td>
-                        <td style="padding:1.5px 6px;border:1px solid #cbd5e1;font-weight:600;">ZPKR02</td>
-                        <td style="padding:1.5px 6px;font-weight:700;border:1px solid #cbd5e1;background:#f1f5f9;">Yürürlük Tarihi</td>
-                        <td style="padding:1.5px 6px;border:1px solid #cbd5e1;">01.09.2025</td>
+                        <td style="padding:1.5px 6px;font-weight:700;border:1px solid #000000;background:#f4f4f4;">Doküman Kodu</td>
+                        <td style="padding:1.5px 6px;border:1px solid #000000;font-weight:600;">ZPKR02</td>
+                        <td style="padding:1.5px 6px;font-weight:700;border:1px solid #000000;background:#f4f4f4;">Yürürlük Tarihi</td>
+                        <td style="padding:1.5px 6px;border:1px solid #000000;">01.09.2025</td>
                     </tr>
                 </table>
             </div>
@@ -14085,7 +14133,7 @@ function printOfficialReport(directPrint = false) {
             let blockHtml = renderCompleteVisualTopicBlock(`5.${idx + 2}. ${t.name}`, t.questions);
             if (idx === visualTopics.length - 1) {
                 blockHtml += `
-                    <div style="font-size:6.8pt;color:#475569;font-style:italic;margin-top:2px;padding:2px 4px;">
+                    <div style="font-size:6.8pt;color:#333333;font-style:italic;margin-top:2px;padding:2px 4px;">
                         Pano/Ekipman sayısı fazla olan tesislerde birden fazla form kullanılmalıdır.
                     </div>
                 `;
@@ -14136,7 +14184,7 @@ function printOfficialReport(directPrint = false) {
                 const chunkTitle = start === 0 ? subTitle : `${subTitle} (Devamı)`;
                 const isFinalChunk = (start + chunkSize >= allRows.length);
                 const footNoteHtml = (isLastSec6Topic && isFinalChunk) ? `
-                    <div style="font-size:6.8pt;color:#475569;font-style:italic;margin-top:2px;padding:2px 4px;">
+                    <div style="font-size:6.8pt;color:#333333;font-style:italic;margin-top:2px;padding:2px 4px;">
                         Nokta sayısı fazla olan tesislerde birden fazla form kullanılabilir. Ya da formun sadece 6. Bölümü çoğaltılabilir.
                     </div>
                 ` : '';
@@ -14179,7 +14227,7 @@ function printOfficialReport(directPrint = false) {
                     </tr>
                 </tbody>
             </table>
-            <div style="font-size:6.8pt;color:#334155;font-weight:600;padding:2.5px 6px;margin-top:2px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:2px;line-height:1.25;">
+            <div style="font-size:6.8pt;color:#222222;font-weight:600;padding:2.5px 6px;margin-top:2px;background:#ffffff;border:1px solid #000000;border-radius:2px;line-height:1.25;">
                 Kusur derecesi “*” hafif kusurlu ve “**” ağır kusurlu anlamında kullanılmaktadır. Değerlendirme “Uygun”, “Uygun Değil” ve “Uygulanamaz” olarak yapılmıştır.
             </div>
         `);
@@ -14224,7 +14272,7 @@ function printOfficialReport(directPrint = false) {
                     </div>
                     <!-- Fotoğraf Altı: Kullanıcı Açıklaması / Tespit (Varsa) -->
                     ${caption ? `
-                        <div style="font-size:7pt;color:#1e293b;margin-top:3px;padding:2px 4px;text-align:center;font-style:italic;line-height:1.25;background:#f8fafc;border-top:1px solid #e2e8f0;">
+                        <div style="font-size:7pt;color:#222222;margin-top:3px;padding:2px 4px;text-align:center;font-style:italic;line-height:1.25;background:#ffffff;border-top:1px solid #e2e8f0;">
                             ${escapeHtml(caption)}
                         </div>
                     ` : ''}
@@ -14273,7 +14321,7 @@ function printOfficialReport(directPrint = false) {
                 <table class="tkm-table" style="table-layout:fixed;background:#ffffff;">
                     <tbody>
                         <tr>
-                            <td style="min-height:24px;height:24px;vertical-align:middle;text-align:center;color:#64748b;font-style:italic;font-size:7.2pt;">
+                            <td style="min-height:24px;height:24px;vertical-align:middle;text-align:center;color:#333333;font-style:italic;font-size:7.2pt;">
                                 
                             </td>
                         </tr>
@@ -15966,6 +16014,7 @@ function printOfficialReport(directPrint = false) {
         previewModal.classList.remove('hidden');
 
         resetA4PreviewZoom();
+    initA4PinchZoom();
 
     } else {
 
