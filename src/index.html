@@ -6,7 +6,7 @@
 
     <meta charset="UTF-8">
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 
     <meta name="theme-color" content="#0f172a">
 
@@ -146,9 +146,8 @@
 
         .tkm-preview-sheet {
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-            margin: 0 auto 20px auto;
-            border: 1px solid #cbd5e1;
-            transform-origin: top center;
+            margin: 0 0 20px 0;
+            border: 1px solid #000000;
         }
 
         /* TEKKOMER Resmi Üst Kartuş (Header) */
@@ -745,10 +744,8 @@
 
         </div>
 
-        <div id="a4PreviewScrollContainer" class="flex-1 overflow-auto bg-slate-900" style="touch-action: pan-x pan-y pinch-zoom; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;">
-            <div id="a4ZoomWrapper" style="display: block; transform-origin: top left; transition: none; margin: 16px auto;">
-                <div id="a4PreviewPagesContainer" style="display: block; width: 794px; transform-origin: top left; margin: 0; padding: 0;"></div>
-            </div>
+        <div id="a4PreviewScrollContainer" class="flex-1 relative overflow-hidden bg-slate-900 select-none" style="touch-action: none; width: 100%; height: 100%;">
+            <div id="a4PreviewPagesContainer" style="position: absolute; left: 0; top: 0; width: 794px; transform-origin: 0 0; will-change: transform; user-select: none; -webkit-user-select: none;"></div>
         </div>
 
     </div>

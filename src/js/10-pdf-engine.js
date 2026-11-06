@@ -261,132 +261,212 @@ AppState.a4Zoom = 1;
 
 
 
-function applyA4PreviewZoom() {
-    const container = document.getElementById('a4PreviewPagesContainer');
-    const wrapper = document.getElementById('a4ZoomWrapper');
+// --- AKROBAT / STANDART PDF PANZOOM MOTORU ---
+let pdfViewerState = {
+    zoom: 1,
+    panX: 16,
+    panY: 16,
+    minZoom: 0.35,
+    maxZoom: 3.0
+};
+
+function clampPdfBounds() {
     const scrollContainer = document.getElementById('a4PreviewScrollContainer');
-    if (!container) return;
+    const pagesContainer = document.getElementById('a4PreviewPagesContainer');
+    if (!scrollContainer || !pagesContainer) return;
 
-    const z = AppState.a4Zoom || 1;
-    const baseW = 794; // A4 genisligi (px)
+    const viewportW = scrollContainer.clientWidth || window.innerWidth;
+    const viewportH = scrollContainer.clientHeight || window.innerHeight;
+    const baseW = 794;
+    const pages = pagesContainer.querySelectorAll('.tkm-a4-page');
+    const pageCount = pages.length || 1;
+    const baseH = pageCount * 1142;
 
-    container.style.width = `${baseW}px`;
-    container.style.transformOrigin = 'top left';
-    container.style.transform = `scale(${z})`;
+    const scaledW = baseW * pdfViewerState.zoom;
+    const scaledH = baseH * pdfViewerState.zoom;
 
-    // Her sayfa 1122px + 20px marjin
-    const pageCount = container.querySelectorAll('.tkm-a4-page').length || 1;
-    const unscaledH = container.scrollHeight || (pageCount * 1142);
-
-    const scaledW = Math.round(baseW * z);
-    const scaledH = Math.round(unscaledH * z);
-
-    if (wrapper) {
-        wrapper.style.width = `${scaledW}px`;
-        wrapper.style.height = `${scaledH}px`;
-
-        const vw = scrollContainer ? scrollContainer.clientWidth : window.innerWidth;
-        if (scaledW + 32 < vw) {
-            // Ekrana sigiyorsa ortala
-            wrapper.style.margin = '16px auto';
-        } else {
-            // Sigmiyorsa tam 16px ic bosluk ver - boylece sol ve sag tam sinirda durur
-            wrapper.style.margin = '16px';
-        }
+    // YATAY SINIRLAR (SOL VE SAĞ LİMİTLER)
+    if (scaledW <= viewportW) {
+        // Ekrana tam sığıyorsa ortala
+        pdfViewerState.panX = Math.round((viewportW - scaledW) / 2);
+    } else {
+        // Genişse: En sola gittiğinde panX = 16 (sol kenar net görünür)
+        // En sağa gittiğinde panX = viewportW - scaledW - 16 (sağ kenar net görünür)
+        const maxPanX = 16;
+        const minPanX = viewportW - scaledW - 16;
+        pdfViewerState.panX = Math.min(maxPanX, Math.max(minPanX, pdfViewerState.panX));
     }
+
+    // DÜŞEY SINIRLAR (YUKARI VE AŞAĞI LİMİTLER)
+    if (scaledH <= viewportH) {
+        pdfViewerState.panY = Math.max(16, Math.round((viewportH - scaledH) / 2));
+    } else {
+        // Uzunsa: En yukarı gittiğinde panY = 16 (1. sayfanın başlığı net görünür)
+        // En aşağı gittiğinde panY = viewportH - scaledH - 16 (son sayfanın altı net görünür)
+        const maxPanY = 16;
+        const minPanY = viewportH - scaledH - 16;
+        pdfViewerState.panY = Math.min(maxPanY, Math.max(minPanY, pdfViewerState.panY));
+    }
+}
+
+function renderPdfTransform(animate = false) {
+    const pagesContainer = document.getElementById('a4PreviewPagesContainer');
+    if (!pagesContainer) return;
+    clampPdfBounds();
+    if (animate) {
+        pagesContainer.style.transition = 'transform 0.18s cubic-bezier(0.2, 0, 0, 1)';
+    } else {
+        pagesContainer.style.transition = 'none';
+    }
+    pagesContainer.style.transform = `translate3d(${Math.round(pdfViewerState.panX)}px, ${Math.round(pdfViewerState.panY)}px, 0) scale(${pdfViewerState.zoom})`;
+}
+
+function applyA4PreviewZoom() {
+    renderPdfTransform(false);
 }
 
 function adjustA4PreviewZoom(delta) {
     const scrollContainer = document.getElementById('a4PreviewScrollContainer');
-    const oldZ = AppState.a4Zoom || 1;
-    const newZ = Math.max(0.35, Math.min(2.8, oldZ + delta));
-    AppState.a4Zoom = Math.round(newZ * 100) / 100;
+    const vw = (scrollContainer && scrollContainer.clientWidth) || window.innerWidth;
+    const vh = (scrollContainer && scrollContainer.clientHeight) || window.innerHeight;
+    const focalX = vw / 2;
+    const focalY = vh / 2;
+
+    const oldZ = pdfViewerState.zoom;
+    const newZ = Math.max(pdfViewerState.minZoom, Math.min(pdfViewerState.maxZoom, Math.round((oldZ + delta) * 100) / 100));
     
-    // Zoom butonlariyla merkezden yakinlastirma
-    if (scrollContainer) {
-        const cx = scrollContainer.clientWidth / 2;
-        const cy = scrollContainer.clientHeight / 2;
-        const ratio = AppState.a4Zoom / oldZ;
-        scrollContainer.scrollLeft = (scrollContainer.scrollLeft + cx) * ratio - cx;
-        scrollContainer.scrollTop = (scrollContainer.scrollTop + cy) * ratio - cy;
-    }
-    applyA4PreviewZoom();
+    pdfViewerState.panX = focalX - (focalX - pdfViewerState.panX) * (newZ / oldZ);
+    pdfViewerState.panY = focalY - (focalY - pdfViewerState.panY) * (newZ / oldZ);
+    pdfViewerState.zoom = newZ;
+    AppState.a4Zoom = newZ;
+
+    renderPdfTransform(true);
 }
 
-// --- PINCH-TO-ZOOM & MULTI-TOUCH GESTURE ENGINE (AKROBAT / STANDART PDF MOTORU) ---
-let _pinchState = {
-    active: false,
+let _touchState = {
+    mode: 'none',
+    startX: 0,
+    startY: 0,
+    startPanX: 0,
+    startPanY: 0,
     startDist: 0,
     startZoom: 1,
-    startScrollX: 0,
-    startScrollY: 0,
     focalX: 0,
-    focalY: 0
+    focalY: 0,
+    lastTapTime: 0
 };
 
 function initA4PinchZoom() {
     const scrollContainer = document.getElementById('a4PreviewScrollContainer');
     if (!scrollContainer || scrollContainer._pinchInitialized) return;
-
     scrollContainer._pinchInitialized = true;
 
     scrollContainer.addEventListener('touchstart', (e) => {
-        if (e.touches.length === 2) {
+        if (e.touches.length === 1) {
+            _touchState.mode = 'pan';
+            _touchState.startX = e.touches[0].clientX;
+            _touchState.startY = e.touches[0].clientY;
+            _touchState.startPanX = pdfViewerState.panX;
+            _touchState.startPanY = pdfViewerState.panY;
+
+            // Çift Dokunma (Double Tap) ile Yakınlaştırma / Sığdırma
+            const now = Date.now();
+            if (now - _touchState.lastTapTime < 320) {
+                const rect = scrollContainer.getBoundingClientRect();
+                const tapX = e.touches[0].clientX - rect.left;
+                const tapY = e.touches[0].clientY - rect.top;
+                const vw = scrollContainer.clientWidth || window.innerWidth;
+                const fitZoom = Math.max(0.35, Math.min(1.0, (vw - 32) / 794));
+
+                if (pdfViewerState.zoom > fitZoom * 1.25) {
+                    resetA4PreviewZoom();
+                } else {
+                    const targetZoom = 1.65;
+                    pdfViewerState.panX = tapX - (tapX - pdfViewerState.panX) * (targetZoom / pdfViewerState.zoom);
+                    pdfViewerState.panY = tapY - (tapY - pdfViewerState.panY) * (targetZoom / pdfViewerState.zoom);
+                    pdfViewerState.zoom = targetZoom;
+                    AppState.a4Zoom = targetZoom;
+                    renderPdfTransform(true);
+                }
+                _touchState.mode = 'none';
+            }
+            _touchState.lastTapTime = now;
+
+        } else if (e.touches.length === 2) {
+            _touchState.mode = 'pinch';
             const t1 = e.touches[0];
             const t2 = e.touches[1];
             const rect = scrollContainer.getBoundingClientRect();
-            _pinchState.active = true;
-            _pinchState.startDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
-            _pinchState.startZoom = AppState.a4Zoom || 1;
-            _pinchState.startScrollX = scrollContainer.scrollLeft;
-            _pinchState.startScrollY = scrollContainer.scrollTop;
-            _pinchState.focalX = ((t1.clientX + t2.clientX) / 2) - rect.left;
-            _pinchState.focalY = ((t1.clientY + t2.clientY) / 2) - rect.top;
+            _touchState.startDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+            _touchState.startZoom = pdfViewerState.zoom;
+            _touchState.startPanX = pdfViewerState.panX;
+            _touchState.startPanY = pdfViewerState.panY;
+            _touchState.focalX = ((t1.clientX + t2.clientX) / 2) - rect.left;
+            _touchState.focalY = ((t1.clientY + t2.clientY) / 2) - rect.top;
         }
-    }, { passive: true });
+    }, { passive: false });
 
     scrollContainer.addEventListener('touchmove', (e) => {
-        if (_pinchState.active && e.touches.length === 2) {
+        if (_touchState.mode === 'pan' && e.touches.length === 1) {
+            e.preventDefault();
+            const dx = e.touches[0].clientX - _touchState.startX;
+            const dy = e.touches[0].clientY - _touchState.startY;
+            pdfViewerState.panX = _touchState.startPanX + dx;
+            pdfViewerState.panY = _touchState.startPanY + dy;
+            renderPdfTransform(false);
+
+        } else if (_touchState.mode === 'pinch' && e.touches.length === 2) {
+            e.preventDefault();
             const t1 = e.touches[0];
             const t2 = e.touches[1];
-            const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
-            if (_pinchState.startDist > 0) {
-                const factor = currentDist / _pinchState.startDist;
-                const newZoom = Math.max(0.35, Math.min(2.8, _pinchState.startZoom * factor));
-                const roundedZoom = Math.round(newZoom * 100) / 100;
+            const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+            if (_touchState.startDist > 0) {
+                const factor = dist / _touchState.startDist;
+                const newZoom = Math.max(pdfViewerState.minZoom, Math.min(pdfViewerState.maxZoom, _touchState.startZoom * factor));
                 
-                AppState.a4Zoom = roundedZoom;
-                applyA4PreviewZoom();
-
-                // Odak noktasini iki parmagin altinda sabit tut
-                const zoomRatio = roundedZoom / _pinchState.startZoom;
-                scrollContainer.scrollLeft = (_pinchState.startScrollX + _pinchState.focalX) * zoomRatio - _pinchState.focalX;
-                scrollContainer.scrollTop = (_pinchState.startScrollY + _pinchState.focalY) * zoomRatio - _pinchState.focalY;
+                pdfViewerState.panX = _touchState.focalX - (_touchState.focalX - _touchState.startPanX) * (newZoom / _touchState.startZoom);
+                pdfViewerState.panY = _touchState.focalY - (_touchState.focalY - _touchState.startPanY) * (newZoom / _touchState.startZoom);
+                pdfViewerState.zoom = Math.round(newZoom * 100) / 100;
+                AppState.a4Zoom = pdfViewerState.zoom;
+                renderPdfTransform(false);
             }
         }
-    }, { passive: true });
+    }, { passive: false });
 
     scrollContainer.addEventListener('touchend', (e) => {
-        if (e.touches.length < 2) {
-            _pinchState.active = false;
+        if (e.touches.length === 0) {
+            _touchState.mode = 'none';
+            renderPdfTransform(true);
+        } else if (e.touches.length === 1) {
+            _touchState.mode = 'pan';
+            _touchState.startX = e.touches[0].clientX;
+            _touchState.startY = e.touches[0].clientY;
+            _touchState.startPanX = pdfViewerState.panX;
+            _touchState.startPanY = pdfViewerState.panY;
         }
     }, { passive: true });
+
+    scrollContainer.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        if (e.ctrlKey) {
+            adjustA4PreviewZoom(e.deltaY < 0 ? 0.15 : -0.15);
+        } else {
+            pdfViewerState.panY -= e.deltaY;
+            pdfViewerState.panX -= (e.deltaX || 0);
+            renderPdfTransform(false);
+        }
+    }, { passive: false });
 }
 
 function resetA4PreviewZoom() {
     const scrollContainer = document.getElementById('a4PreviewScrollContainer');
     const vw = (scrollContainer && scrollContainer.clientWidth) || window.innerWidth || 1024;
-    if (vw < 820) {
-        // 794px genisligindeki sayfayi ekran kenarinda 32px pay birakarak tam sigdir
-        AppState.a4Zoom = Math.max(0.35, Math.min(1.0, (vw - 32) / 794));
-    } else {
-        AppState.a4Zoom = 1;
-    }
-    applyA4PreviewZoom();
-    if (scrollContainer) {
-        scrollContainer.scrollLeft = 0;
-        scrollContainer.scrollTop = 0;
-    }
+    const fitZoom = Math.max(0.35, Math.min(1.0, (vw - 32) / 794));
+    pdfViewerState.zoom = Math.round(fitZoom * 100) / 100;
+    pdfViewerState.panX = 16;
+    pdfViewerState.panY = 16;
+    AppState.a4Zoom = pdfViewerState.zoom;
+    renderPdfTransform(true);
 }
 
 function closeA4PreviewModal() {
