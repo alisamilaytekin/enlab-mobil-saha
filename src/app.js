@@ -13031,7 +13031,7 @@ function buildTkmPageHeader(reportMainTitle) {
                 <div style="font-size:7.8pt;color:#222222;line-height:1.25;margin-bottom:3px;">
                     info@tkmkontrol.com &nbsp;&nbsp; www.tkmkontrol.com
                 </div>
-                <div style="font-size:11pt;font-weight:700;color:#222222;line-height:1.15;text-transform:uppercase;">
+                <div style="font-size:11pt;font-weight:700;color:#7c3aed;line-height:1.15;text-transform:uppercase;">
                     ${reportMainTitle}
                 </div>
                 <div style="font-size:9.5pt;font-weight:400;color:#333333;margin-top:2px;letter-spacing:0.3px;">
