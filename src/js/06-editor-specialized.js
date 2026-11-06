@@ -992,12 +992,15 @@ function renderPhotoSectionUI() {
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
 
                     ${photos.map((ph, idx) => {
-                        const insp = (typeof AppState !== 'undefined' && AppState.currentInspection) || {};
-                        const defaultRepNo = insp.report_no || '-';
-                        const curTitle = ph.title || (ph.caption && (ph.caption.includes('Pano') || ph.caption.includes('Termal') || ph.caption.startsWith('Fotoğraf ')) ? ph.caption : (idx === 0 ? (insp.equipment_name || 'Ana Dağıtım Panosu') : (idx === 1 ? 'Termal Kamera Görüntüsü' : `Fotoğraf ${idx + 1}`)));
-                        const curCaption = (ph.description && ph.description.trim()) ? ph.description.trim() : ((ph.caption && ph.caption !== curTitle && !ph.caption.startsWith('Fotoğraf ')) ? ph.caption : '');
-                        const curDate = ph.date || new Date().toLocaleDateString('tr-TR');
-                        const curRepNo = ph.reportNo || defaultRepNo;
+                        const photoNum = idx + 1;
+                        let curCaption = (ph.description || ph.caption || '').trim();
+                        const lower = curCaption.toLowerCase();
+                        if (lower === `fotoğraf ${photoNum}`.toLowerCase() ||
+                            lower.includes('ana dağıtım') ||
+                            lower === 'adp' ||
+                            lower.includes('termal kamera')) {
+                            curCaption = '';
+                        }
 
                         return `
                         <div class="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden flex flex-col shadow-2xs">
@@ -1006,29 +1009,17 @@ function renderPhotoSectionUI() {
                                 <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs font-bold gap-1">
                                     <i class="fa-solid fa-magnifying-glass-plus"></i> Büyüt
                                 </div>
-                                <span class="absolute top-1.5 left-1.5 px-2 py-0.5 bg-black/70 text-white rounded text-[10px] font-bold">
-                                    #${idx + 1}
+                                <span class="absolute top-1.5 left-1.5 px-2.5 py-0.5 bg-black/75 text-white rounded text-xs font-bold tracking-wide">
+                                    Fotoğraf ${photoNum}
                                 </span>
                             </div>
                             <div class="p-2.5 space-y-2 flex-1 flex flex-col justify-between">
-                                <div class="space-y-2">
-                                    <div>
-                                        <div class="flex items-center justify-between mb-1">
-                                            <label class="text-[11px] font-bold text-slate-800">Pano / Başlık (Fotonun Üstüne)</label>
-                                            <span class="text-[10px] text-slate-500 font-mono">📅 ${curDate} | 📑 ${curRepNo}</span>
-                                        </div>
-                                        <input type="text" id="photoTitleInput_${idx}" value="${(typeof escapeHtml !== 'undefined' ? escapeHtml(curTitle) : curTitle)}"
-                                            placeholder="Örn: Ana Dağıtım Panosu, Termal Kamera Görüntüsü..."
-                                            oninput="updatePhotoTitle(${idx}, this.value)"
-                                            class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-800 bg-white focus:border-sky-500 focus:outline-none">
-                                    </div>
-                                    <div>
-                                        <label class="block text-[11px] font-bold text-slate-800 mb-1">Fotoğraf Açıklaması (Fotonun Altına)</label>
-                                        <input type="text" id="photoCaptionInput_${idx}" value="${(typeof escapeHtml !== 'undefined' ? escapeHtml(curCaption) : curCaption)}"
-                                            placeholder="Fotoğraf hakkında açıklama / tespit giriniz..."
-                                            oninput="updatePhotoCaption(${idx}, this.value)"
-                                            class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 bg-white focus:border-sky-500 focus:outline-none">
-                                    </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-800 mb-1">Fotoğraf ${photoNum} Açıklaması (Fotonun Altına)</label>
+                                    <input type="text" id="photoCaptionInput_${idx}" value="${(typeof escapeHtml !== 'undefined' ? escapeHtml(curCaption) : curCaption)}"
+                                        placeholder="Fotoğraf hakkında açıklama / tespit giriniz..."
+                                        oninput="updatePhotoCaption(${idx}, this.value)"
+                                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 bg-white focus:border-sky-500 focus:outline-none">
                                 </div>
                                 <div class="flex items-center justify-between pt-2 border-t border-slate-200 text-[11px]">
                                     <div class="flex items-center gap-2.5">
