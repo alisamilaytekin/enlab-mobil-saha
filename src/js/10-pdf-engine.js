@@ -815,7 +815,7 @@ function printOfficialReport(directPrint = false) {
 
                             <th></th>
 
-                            <th style="text-align:center;font-weight:700;">Soru / Kriter</th>
+                            <th style="text-align:left;padding-left:6px;font-weight:700;">Soru / Kriter</th>
 
                             <th style="text-align:center;font-weight:700;">1</th>
 
@@ -1229,13 +1229,13 @@ function printOfficialReport(directPrint = false) {
                     <tr>
                         <td style="width:50%;text-align:center;padding:3.5px;vertical-align:top;">
                             <div style="font-weight:700;font-size:7.4pt;margin-bottom:2px;">${escapeHtml(insp.equipment_name || 'Ana Dağıtım Panosu')}</div>
-                            <div style="height:136px;border:1px dashed #777;display:flex;align-items:center;justify-content:center;background:#fafafa;">
+                            <div style="height:136px;border:1px dashed #777;display:flex;align-items:center;justify-content:center;background:#ffffff;">
                                 ${panoImgHtml}
                             </div>
                         </td>
                         <td style="width:50%;text-align:center;padding:3.5px;vertical-align:top;">
                             <div style="font-weight:700;font-size:7.4pt;margin-bottom:2px;">Termal Kamera Görüntüsü</div>
-                            <div style="height:136px;border:1px dashed #777;display:flex;align-items:center;justify-content:center;background:#fafafa;">
+                            <div style="height:136px;border:1px dashed #777;display:flex;align-items:center;justify-content:center;background:#ffffff;">
                                 ${thermalImgHtml}
                             </div>
                         </td>
@@ -1298,11 +1298,11 @@ function printOfficialReport(directPrint = false) {
                                 C3 – İyileştirme önerilir.
                             </div>
 
-                            <div style="margin-top:2.5px;font-size:7.3pt;">
+                            <div style="margin-top:2.5px;font-size:7.4pt;font-weight:700;color:${isSuitable ? '#047857' : '#c00000'};line-height:1.25;">
                                 Periyodik kontrol tarihi itibari ile yukarıda teknik özellikleri belirtilen Elektrik Tesisatının fonksiyon testleri muayenesi sonrasında mevcut şartlar altında<br>
-                                <div style="font-size:8.4pt;font-weight:700;margin-top:2px;color:${isSuitable ? '#047857' : '#c00000'};">
+                                <span style="font-size:8.5pt;">
                                     ${conclusionText}
-                                </div>
+                                </span>
                             </div>
                         </td>
                     </tr>
@@ -1885,12 +1885,9 @@ function printOfficialReport(directPrint = false) {
 
                             <div><strong>Not-11:</strong> Pano gövde–kapak köprüsü olmadığından yetersizdir. (Ağır kusur)</div>
 
-                            <div style="margin-top:4px;font-size:7.4pt;font-weight:700;">
-
+                            <div style="margin-top:4px;font-size:7.4pt;font-weight:700;color:${isGroundingSuitable ? '#047857' : '#c00000'};line-height:1.25;">
                                 Periyodik kontrol tarihi itibariyle yukarıda teknik özellikleri belirtilen AG Topraklama Tesisatı muayenesi sonrasında mevcut şartlar altında kullanımı 1 yıl süreyle;<br>
-
-                                <span style="font-size:8pt;color:${isGroundingSuitable ? '#047857' : '#b91c1c'};">${isGroundingSuitable ? 'UYGUNDUR.' : 'UYGUN DEĞİLDİR.'}</span>
-
+                                <span style="font-size:8.4pt;">${isGroundingSuitable ? 'UYGUNDUR.' : 'UYGUN DEĞİLDİR.'}</span>
                             </div>
 
                         </td>
@@ -2599,16 +2596,11 @@ function printOfficialReport(directPrint = false) {
 
                     <tr>
 
-                        <td style="padding:6px 8px;text-align:left;font-size:7.4pt;">
-
+                        <td style="padding:6px 8px;text-align:left;font-size:7.4pt;font-weight:700;color:${isGenSuitable ? '#047857' : '#c00000'};line-height:1.25;">
                             Periyodik kontrol tarihi itibariyle yukarıda teknik özellikleri belirtilen jeneratör muayenesi sonrasında mevcut şartlar altında<br>
-
-                            <span style="font-weight:700;font-size:8.2pt;color:${isGenSuitable ? '#047857' : '#b91c1c'};">
-
+                            <span style="font-size:8.4pt;">
                                 ${isGenSuitable ? 'KULLANILMASI UYGUNDUR.' : 'KULLANILMASI UYGUN DEĞİLDİR.'}
-
                             </span>
-
                         </td>
 
                     </tr>
@@ -2831,7 +2823,7 @@ function printOfficialReport(directPrint = false) {
 
                     <colgroup><col style="width:28px;"><col><col style="width:42px;"></colgroup>
 
-                    <thead><tr><th></th><th style="text-align:center;font-weight:700;">Soru / Kriter</th><th style="text-align:center;font-weight:700;">1</th></tr></thead>
+                    <thead><tr><th></th><th style="text-align:left;padding-left:6px;font-weight:700;">Soru / Kriter</th><th style="text-align:center;font-weight:700;">1</th></tr></thead>
 
                     <tbody>${cHtml}</tbody>
 
@@ -2885,16 +2877,11 @@ function printOfficialReport(directPrint = false) {
 
                         <tr>
 
-                            <td style="padding:5px 6px;font-weight:700;">
-
+                            <td style="padding:5px 6px;font-weight:700;font-size:7.4pt;color:${fd.overallResult === 'UYGUN DEĞİL' ? '#c00000' : '#047857'};line-height:1.25;">
                                 Periyodik kontrol tarihi itibari ile yukarıda teknik özellikleri belirtilen ekipmanın muayenesi sonrasında mevcut şartlar altında<br>
-
-                                <span style="font-size:8.2pt;color:${fd.overallResult === 'UYGUN DEĞİL' ? '#b91c1c' : '#047857'};">
-
+                                <span style="font-size:8.4pt;">
                                     KULLANIMI ${fd.overallResult === 'UYGUN DEĞİL' ? 'UYGUN DEĞİLDİR.' : 'UYGUNDUR.'}
-
                                 </span>
-
                             </td>
 
                         </tr>
