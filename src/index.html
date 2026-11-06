@@ -103,11 +103,10 @@
 
 
         /* ==========================================================================
-           ULUSLARARASI AKREDİTE RAPOR TEMALARI (INTERNATIONAL AUDIT TEMPLATES)
-           Standartlar: TÜRKAK, TÜV SÜD, Bureau Veritas, DNV GL, ISO/IEC 17020
+           TEKKOMER RESMİ TÜRKAK AKREDİTE A4 RAPOR TASARIMI (TKM-FR.318)
+           Bakanlık & TÜRKAK ISO/IEC 17020 Akreditasyon Standart Formatı
            ========================================================================== */
 
-        /* TEMEL A4 SAYFA YAPISI & ÇAPRAZ PLATFORM TÜRKÇE FONT MOTORU */
         .tkm-a4-page {
             width: 210mm;
             min-height: 296.5mm;
@@ -116,10 +115,10 @@
             box-sizing: border-box;
             background: #ffffff;
             color: #111111;
-            /* Evrensel Çapraz Platform Sistem Font Yığını (Android: Roboto, iOS/Mac: SF Pro/Helvetica, Win: Segoe UI) */
+            /* Evrensel Çapraz Platform Sistem Font Yığını (Android: Roboto, iOS: SF Pro/Helvetica, Win: Segoe UI) */
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
-            font-size: 7.8pt;
-            line-height: 1.16;
+            font-size: 7.6pt;
+            line-height: 1.15;
             text-rendering: optimizeLegibility;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
@@ -152,467 +151,102 @@
             transform-origin: top center;
         }
 
-        /* --------------------------------------------------------------------------
-           TEMA 1: TÜRKAK & ÇSGB RESMİ STANDART (GELENEKSEL MATBU KAMU ŞABLONU)
-           -------------------------------------------------------------------------- */
-        :root, [data-pdf-theme="classic"], .tkm-a4-page[data-pdf-theme="classic"] {
-            --tkm-theme-primary: #b91c1c;
-            --tkm-theme-subbar-bg: #e2e8f0;
-            --tkm-theme-subbar-border: #b91c1c;
-            --tkm-theme-subbar-text: #0f172a;
-        }
-        .tkm-a4-page[data-pdf-theme="classic"] .tkm-header,
-        [data-pdf-theme="classic"] .tkm-header {
+        /* TEKKOMER Resmi Üst Kartuş (Header) */
+        .tkm-header {
             display: grid;
-            grid-template-columns: 92px 1fr 78px;
+            grid-template-columns: 88px 1fr 78px;
             align-items: center;
-            border-bottom: 2px solid #000000;
+            border-bottom: 1.8px solid #000000;
             padding-bottom: 4px;
             margin-bottom: 3px;
             flex-shrink: 0;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
         }
-        .tkm-a4-page[data-pdf-theme="classic"] .tkm-sec-title,
-        [data-pdf-theme="classic"] .tkm-sec-title {
-            color: #b91c1c !important;
-            font-size: 8.5pt;
+
+        /* TEKKOMER Resmi Kırmızı Bölüm Başlıkları */
+        .tkm-sec-title {
+            color: #c00000 !important;
+            font-size: 8.4pt;
             font-weight: 700;
             margin: 4px 0 2px 0;
             letter-spacing: 0.1px;
             break-after: avoid;
             page-break-after: avoid;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
         }
-        .tkm-a4-page[data-pdf-theme="classic"] .tkm-sub-bar,
-        [data-pdf-theme="classic"] .tkm-sub-bar {
-            background-color: #e2e8f0 !important;
-            color: #0f172a !important;
-            border-left: 3.5px solid #b91c1c !important;
-            font-size: 7.8pt;
+
+        /* TEKKOMER Resmi Matbu Gri Alt Başlık Şeridi */
+        .tkm-sub-bar {
+            background-color: #d3d3d3 !important;
+            color: #111111 !important;
+            border: 1px solid #777777 !important;
+            font-size: 7.6pt;
             font-weight: 700;
-            padding: 2.5px 6px;
+            padding: 2.2px 6px;
             margin: 3px 0 2px 0;
             break-after: avoid;
             page-break-after: avoid;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
         }
-        .tkm-a4-page[data-pdf-theme="classic"] .tkm-table,
-        [data-pdf-theme="classic"] .tkm-table {
+
+        /* TEKKOMER Resmi Matbu Izgara Tablo */
+        .tkm-table {
+            width: 100%;
             border-collapse: collapse;
-        }
-        .tkm-a4-page[data-pdf-theme="classic"] .tkm-table th,
-        [data-pdf-theme="classic"] .tkm-table th {
+            table-layout: fixed;
+            font-size: 7.2pt;
+            line-height: 1.14;
+            color: #111111;
             border: 1px solid #000000;
+        }
+
+        .tkm-table th, .tkm-table td {
+            border: 1px solid #000000;
+            padding: 1.8px 3.5px;
+            vertical-align: middle;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .tkm-table th {
             background-color: #f1f5f9;
             color: #000000;
             font-weight: 700;
         }
-        .tkm-a4-page[data-pdf-theme="classic"] .tkm-table td,
-        [data-pdf-theme="classic"] .tkm-table td {
-            border: 1px solid #000000;
-        }
-
-        /* --------------------------------------------------------------------------
-           TEMA 2: TÜV SÜD & DEKRA MODERN MÜHENDİSLİK (SWISS TECHNICAL CLEAN GRID)
-           -------------------------------------------------------------------------- */
-        [data-pdf-theme="tuv_modern"], .tkm-a4-page[data-pdf-theme="tuv_modern"] {
-            --tkm-theme-primary: #0284c7;
-            --tkm-theme-subbar-bg: #f0f9ff;
-            --tkm-theme-subbar-border: #0284c7;
-            --tkm-theme-subbar-text: #0369a1;
-            border-top: 4px solid #0284c7 !important;
-        }
-        .tkm-a4-page[data-pdf-theme="tuv_modern"] .tkm-header,
-        [data-pdf-theme="tuv_modern"] .tkm-header {
-            display: grid;
-            grid-template-columns: 92px 1fr 78px;
-            align-items: center;
-            border-bottom: 2px solid #0284c7;
-            background: linear-gradient(to right, #ffffff, #f0f9ff);
-            padding: 4px 6px 5px 6px;
-            border-radius: 4px 4px 0 0;
-            margin-bottom: 4px;
-            flex-shrink: 0;
-        }
-        .tkm-a4-page[data-pdf-theme="tuv_modern"] .tkm-sec-title,
-        [data-pdf-theme="tuv_modern"] .tkm-sec-title {
-            color: #0f172a !important;
-            font-size: 8.8pt;
-            font-weight: 800;
-            margin: 5px 0 2px 0;
-            letter-spacing: 0.3px;
-            display: flex;
-            align-items: center;
-            border-bottom: 1.5px solid #e2e8f0;
-            padding-bottom: 2px;
-            break-after: avoid;
-            page-break-after: avoid;
-        }
-        .tkm-a4-page[data-pdf-theme="tuv_modern"] .tkm-sec-title::before,
-        [data-pdf-theme="tuv_modern"] .tkm-sec-title::before {
-            content: "■";
-            color: #0284c7;
-            font-size: 8pt;
-            margin-right: 5px;
-        }
-        .tkm-a4-page[data-pdf-theme="tuv_modern"] .tkm-sub-bar,
-        [data-pdf-theme="tuv_modern"] .tkm-sub-bar {
-            background-color: #f0f9ff !important;
-            color: #0369a1 !important;
-            border-left: 4px solid #0284c7 !important;
-            border-bottom: 1px solid #e0f2fe !important;
-            font-size: 7.6pt;
-            font-weight: 700;
-            padding: 2.5px 7px;
-            margin: 3px 0 2px 0;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-            break-after: avoid;
-            page-break-after: avoid;
-        }
-        .tkm-a4-page[data-pdf-theme="tuv_modern"] .tkm-table,
-        [data-pdf-theme="tuv_modern"] .tkm-table {
-            border-collapse: collapse;
-            border-top: 1.5px solid #0284c7;
-            border-bottom: 1.5px solid #0284c7;
-        }
-        .tkm-a4-page[data-pdf-theme="tuv_modern"] .tkm-table th,
-        [data-pdf-theme="tuv_modern"] .tkm-table th {
-            background-color: #0f172a !important;
-            color: #ffffff !important;
-            font-weight: 700;
-            border: 1px solid #1e293b;
-            padding: 2.5px 4px;
-            text-transform: uppercase;
-            letter-spacing: 0.2px;
-            font-size: 7.2pt;
-        }
-        .tkm-a4-page[data-pdf-theme="tuv_modern"] .tkm-table td,
-        [data-pdf-theme="tuv_modern"] .tkm-table td {
-            border: 1px solid #e2e8f0;
-            padding: 2px 4px;
-        }
-        .tkm-a4-page[data-pdf-theme="tuv_modern"] .tkm-table tr:nth-child(even) td,
-        [data-pdf-theme="tuv_modern"] .tkm-table tr:nth-child(even) td {
-            background-color: #f8fafc;
-        }
-        .tkm-a4-page[data-pdf-theme="tuv_modern"] .tkm-footer,
-        [data-pdf-theme="tuv_modern"] .tkm-footer {
-            border-top: 1px solid #0284c7;
-            padding-top: 3px;
-        }
-
-        /* --------------------------------------------------------------------------
-           TEMA 3: BUREAU VERITAS & SGS KURUMSAL DENETİM (EXECUTIVE NAVY / GOLD)
-           -------------------------------------------------------------------------- */
-        [data-pdf-theme="bureau_veritas"], .tkm-a4-page[data-pdf-theme="bureau_veritas"] {
-            --tkm-theme-primary: #1e3a8a;
-            --tkm-theme-subbar-bg: #1e3a8a;
-            --tkm-theme-subbar-border: #d97706;
-            --tkm-theme-subbar-text: #ffffff;
-            border-top: 5px solid #1e3a8a !important;
-        }
-        .tkm-a4-page[data-pdf-theme="bureau_veritas"] .tkm-header,
-        [data-pdf-theme="bureau_veritas"] .tkm-header {
-            display: grid;
-            grid-template-columns: 92px 1fr 78px;
-            align-items: center;
-            background-color: #f8fafc;
-            border: 1px solid #cbd5e1;
-            border-top: 2px solid #1e3a8a;
-            border-bottom: 2px solid #d97706;
-            padding: 5px 8px;
-            margin-bottom: 4px;
-            flex-shrink: 0;
-        }
-        .tkm-a4-page[data-pdf-theme="bureau_veritas"] .tkm-sec-title,
-        [data-pdf-theme="bureau_veritas"] .tkm-sec-title {
-            color: #1e3a8a !important;
-            font-size: 8.8pt;
-            font-weight: 800;
-            margin: 5px 0 2px 0;
-            letter-spacing: 0.35px;
-            text-transform: uppercase;
-            border-bottom: 2px solid #1e3a8a;
-            padding-bottom: 2px;
-            break-after: avoid;
-            page-break-after: avoid;
-        }
-        .tkm-a4-page[data-pdf-theme="bureau_veritas"] .tkm-sub-bar,
-        [data-pdf-theme="bureau_veritas"] .tkm-sub-bar {
-            background-color: #1e3a8a !important;
-            color: #ffffff !important;
-            border-left: 4.5px solid #d97706 !important;
-            font-size: 7.6pt;
-            font-weight: 700;
-            padding: 2.8px 8px;
-            margin: 3px 0 2px 0;
-            letter-spacing: 0.3px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.08);
-            break-after: avoid;
-            page-break-after: avoid;
-        }
-        .tkm-a4-page[data-pdf-theme="bureau_veritas"] .tkm-table,
-        [data-pdf-theme="bureau_veritas"] .tkm-table {
-            border-collapse: collapse;
-            border: 1.5px solid #1e3a8a;
-        }
-        .tkm-a4-page[data-pdf-theme="bureau_veritas"] .tkm-table th,
-        [data-pdf-theme="bureau_veritas"] .tkm-table th {
-            background-color: #1e3a8a !important;
-            color: #ffffff !important;
-            font-weight: 700;
-            border: 1px solid #1e40af;
-            padding: 2.8px 5px;
-            font-size: 7.3pt;
-            letter-spacing: 0.2px;
-        }
-        .tkm-a4-page[data-pdf-theme="bureau_veritas"] .tkm-table td,
-        [data-pdf-theme="bureau_veritas"] .tkm-table td {
-            border: 1px solid #cbd5e1;
-            padding: 2px 4px;
-        }
-        .tkm-a4-page[data-pdf-theme="bureau_veritas"] .tkm-table tr td:first-child,
-        [data-pdf-theme="bureau_veritas"] .tkm-table tr td:first-child {
-            background-color: #f8fafc;
-            font-weight: 600;
-        }
-        .tkm-a4-page[data-pdf-theme="bureau_veritas"] .tkm-footer,
-        [data-pdf-theme="bureau_veritas"] .tkm-footer {
-            border-top: 1.5px solid #1e3a8a;
-            padding-top: 3px;
-        }
-
-        /* --------------------------------------------------------------------------
-           TEMA 4: DNV & NORDIC MINIMALIST (MODERN DİJİTAL & HAVADAR MİZANPAJ)
-           -------------------------------------------------------------------------- */
-        [data-pdf-theme="nordic_tech"], .tkm-a4-page[data-pdf-theme="nordic_tech"] {
-            --tkm-theme-primary: #0f172a;
-            --tkm-theme-subbar-bg: transparent;
-            --tkm-theme-subbar-border: #64748b;
-            --tkm-theme-subbar-text: #334155;
-            border: 1px solid #f1f5f9;
-        }
-        .tkm-a4-page[data-pdf-theme="nordic_tech"] .tkm-header,
-        [data-pdf-theme="nordic_tech"] .tkm-header {
-            display: grid;
-            grid-template-columns: 92px 1fr 78px;
-            align-items: center;
-            border-bottom: 1px solid #e2e8f0;
-            padding-bottom: 5px;
-            margin-bottom: 4px;
-            flex-shrink: 0;
-        }
-        .tkm-a4-page[data-pdf-theme="nordic_tech"] .tkm-sec-title,
-        [data-pdf-theme="nordic_tech"] .tkm-sec-title {
-            color: #0f172a !important;
-            font-size: 8.5pt;
-            font-weight: 800;
-            margin: 5px 0 2px 0;
-            letter-spacing: 0.2px;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            break-after: avoid;
-            page-break-after: avoid;
-        }
-        .tkm-a4-page[data-pdf-theme="nordic_tech"] .tkm-sec-title::before,
-        [data-pdf-theme="nordic_tech"] .tkm-sec-title::before {
-            content: "●";
-            color: #059669;
-            font-size: 6.5pt;
-        }
-        .tkm-a4-page[data-pdf-theme="nordic_tech"] .tkm-sub-bar,
-        [data-pdf-theme="nordic_tech"] .tkm-sub-bar {
-            background-color: transparent !important;
-            color: #334155 !important;
-            border-left: 3px solid #64748b !important;
-            border-bottom: 1px solid #f1f5f9 !important;
-            font-size: 7.5pt;
-            font-weight: 700;
-            padding: 2px 6px;
-            margin: 4px 0 2px 0;
-            break-after: avoid;
-            page-break-after: avoid;
-        }
-        .tkm-a4-page[data-pdf-theme="nordic_tech"] .tkm-table,
-        [data-pdf-theme="nordic_tech"] .tkm-table {
-            border-collapse: collapse;
-            border-top: 1.5px solid #0f172a;
-            border-bottom: 1.5px solid #0f172a;
-        }
-        .tkm-a4-page[data-pdf-theme="nordic_tech"] .tkm-table th,
-        [data-pdf-theme="nordic_tech"] .tkm-table th {
-            background-color: #f8fafc !important;
-            color: #475569 !important;
-            font-weight: 700;
-            border: none;
-            border-bottom: 1px solid #cbd5e1;
-            padding: 2.8px 4px;
-            font-size: 7.2pt;
-        }
-        .tkm-a4-page[data-pdf-theme="nordic_tech"] .tkm-table td,
-        [data-pdf-theme="nordic_tech"] .tkm-table td {
-            border: none;
-            border-bottom: 1px solid #f1f5f9;
-            padding: 2.2px 4px;
-        }
-        .tkm-a4-page[data-pdf-theme="nordic_tech"] .tkm-footer,
-        [data-pdf-theme="nordic_tech"] .tkm-footer {
-            border-top: 1px solid #e2e8f0;
-            padding-top: 3px;
-        }
-
-        /* --------------------------------------------------------------------------
-           TEMA 5: İSG & TESİS GÜVENLİĞİ (ZÜMRÜT YEŞİLİ GÜVENLİK STANDARDI)
-           -------------------------------------------------------------------------- */
-        [data-pdf-theme="isg_emerald"], .tkm-a4-page[data-pdf-theme="isg_emerald"] {
-            --tkm-theme-primary: #065f46;
-            --tkm-theme-subbar-bg: #ecfdf5;
-            --tkm-theme-subbar-border: #059669;
-            --tkm-theme-subbar-text: #064e3b;
-            border-top: 4px solid #065f46 !important;
-        }
-        .tkm-a4-page[data-pdf-theme="isg_emerald"] .tkm-header,
-        [data-pdf-theme="isg_emerald"] .tkm-header {
-            display: grid;
-            grid-template-columns: 92px 1fr 78px;
-            align-items: center;
-            border-bottom: 2px solid #065f46;
-            background: linear-gradient(to right, #ffffff, #f0fdf4);
-            padding: 4px 6px 5px 6px;
-            margin-bottom: 4px;
-            flex-shrink: 0;
-        }
-        .tkm-a4-page[data-pdf-theme="isg_emerald"] .tkm-sec-title,
-        [data-pdf-theme="isg_emerald"] .tkm-sec-title {
-            color: #065f46 !important;
-            font-size: 8.6pt;
-            font-weight: 800;
-            margin: 5px 0 2px 0;
-            letter-spacing: 0.2px;
-            border-bottom: 1.5px solid #a7f3d0;
-            padding-bottom: 2px;
-            break-after: avoid;
-            page-break-after: avoid;
-        }
-        .tkm-a4-page[data-pdf-theme="isg_emerald"] .tkm-sub-bar,
-        [data-pdf-theme="isg_emerald"] .tkm-sub-bar {
-            background-color: #ecfdf5 !important;
-            color: #064e3b !important;
-            border-left: 4px solid #059669 !important;
-            font-size: 7.6pt;
-            font-weight: 700;
-            padding: 2.5px 7px;
-            margin: 3px 0 2px 0;
-            break-after: avoid;
-            page-break-after: avoid;
-        }
-        .tkm-a4-page[data-pdf-theme="isg_emerald"] .tkm-table,
-        [data-pdf-theme="isg_emerald"] .tkm-table {
-            border-collapse: collapse;
-            border: 1.5px solid #065f46;
-        }
-        .tkm-a4-page[data-pdf-theme="isg_emerald"] .tkm-table th,
-        [data-pdf-theme="isg_emerald"] .tkm-table th {
-            background-color: #065f46 !important;
-            color: #ffffff !important;
-            font-weight: 700;
-            border: 1px solid #047857;
-            padding: 2.5px 4px;
-            font-size: 7.2pt;
-        }
-        .tkm-a4-page[data-pdf-theme="isg_emerald"] .tkm-table td,
-        [data-pdf-theme="isg_emerald"] .tkm-table td {
-            border: 1px solid #a7f3d0;
-            padding: 2px 4px;
-        }
-        .tkm-a4-page[data-pdf-theme="isg_emerald"] .tkm-footer,
-        [data-pdf-theme="isg_emerald"] .tkm-footer {
-            border-top: 1.5px solid #065f46;
-            padding-top: 3px;
-        }
-
-        .tkm-table {
-
-            width: 100%;
-
-            border-collapse: collapse;
-
-            table-layout: fixed;
-
-            font-size: 7.3pt;
-
-            line-height: 1.15;
-
-            color: #111111;
-
-        }
-
-        .tkm-table th, .tkm-table td {
-
-            border: 1px solid #000000;
-
-            padding: 1.8px 4px;
-
-            vertical-align: middle;
-
-            word-wrap: break-word;
-
-            overflow-wrap: break-word;
-
-        }
 
         .tkm-legend {
-
-            font-size: 6.9pt;
-
+            font-size: 6.8pt;
             color: #111111;
-
             margin: 1px 0 2px 0;
-
         }
 
+        /* TEKKOMER Resmi Altbilgi (Footer) */
         .tkm-footer {
-
             margin-top: auto;
-
-            padding-top: 4px;
-
+            padding-top: 3px;
             flex-shrink: 0;
-
         }
 
         .tkm-footer-disclaimer {
-
-            font-size: 6.4pt;
-
-            line-height: 1.18;
-
+            font-size: 6.3pt;
+            line-height: 1.16;
             color: #222222;
-
             text-align: justify;
-
-            padding-bottom: 3px;
-
+            padding-bottom: 2.5px;
             border-bottom: 1px solid #222222;
-
         }
 
         .tkm-footer-meta {
-
             display: flex;
-
             justify-content: space-between;
-
             align-items: center;
-
-            font-size: 7.8pt;
-
+            font-size: 7.6pt;
             color: #111111;
-
             padding-top: 2px;
-
         }
-
-
 
         @page {
 
@@ -1085,16 +719,9 @@
                     <i class="fa-solid fa-arrow-left"></i>
                     <span>Geri</span>
                 </button>
-                <div class="flex items-center gap-1.5 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1">
-                    <i class="fa-solid fa-palette text-amber-400 text-xs"></i>
-                    <span class="text-[11px] text-slate-300 font-medium hidden sm:inline">Tema:</span>
-                    <select id="pdfThemeSelect" onchange="setPdfTheme(this.value)" class="bg-transparent text-slate-200 text-xs font-bold focus:outline-none cursor-pointer">
-                        <option value="classic" class="bg-slate-900 text-white">TÜRKAK & ÇSGB Resmi Standart (Klasik Matbu)</option>
-                        <option value="tuv_modern" class="bg-slate-900 text-white">TÜV SÜD & DEKRA Modern Mühendislik (Swiss Clean Grid)</option>
-                        <option value="bureau_veritas" class="bg-slate-900 text-white">Bureau Veritas & SGS Kurumsal (Executive Navy / Gold)</option>
-                        <option value="nordic_tech" class="bg-slate-900 text-white">DNV & Nordic Minimalist (Modern Digital Audit)</option>
-                        <option value="isg_emerald" class="bg-slate-900 text-white">İSG & Tesis Güvenliği (Zümrüt Yeşili Standart)</option>
-                    </select>
+                <div class="flex items-center gap-1.5 bg-rose-950/40 border border-rose-800/60 rounded-lg px-2.5 py-1">
+                    <span class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                    <span class="text-[11px] text-rose-200 font-bold">TEKKOMER Resmi Format (TKM-FR.318)</span>
                 </div>
             </div>
 

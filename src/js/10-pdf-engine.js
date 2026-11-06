@@ -21,73 +21,39 @@ function formatSymbolForPrint(val) {
 
 
 function buildTkmPageHeader(reportMainTitle) {
-
     const branding = (typeof CompanySettingsManager !== 'undefined') ? CompanySettingsManager.getSettings() : DEFAULT_COMPANY_BRANDING;
-
     const logoSrc = (typeof CompanySettingsManager !== 'undefined') ? CompanySettingsManager.getLogoSrc() : 'assets/tekkomer_logo.png';
-
     const showTurkak = branding.showTurkakLogo !== false;
-
     const turkakLogoSrc = (typeof CompanySettingsManager !== 'undefined') ? CompanySettingsManager.getTurkakLogoSrc() : 'assets/turkak_logo.jpg';
-
     const accNo = branding.accreditationNo || 'AB-0227-M';
 
-
-
     return `
-
         <div class="tkm-header">
-
             <div style="display:flex;justify-content:center;align-items:center;">
-
-                <img src="${logoSrc}" alt="${escapeHtml(branding.companyShortName || 'Logo')}" style="width:82px;height:82px;object-fit:contain;display:block;">
-
+                <img src="${logoSrc}" alt="TEKKOMER Logo" style="width:82px;height:82px;object-fit:contain;display:block;">
             </div>
-
             <div style="text-align:center;padding:0 6px;">
-
-                <div style="font-size:12pt;font-weight:700;color:#222222;letter-spacing:0.2px;margin-bottom:2px;line-height:1.2;">
-
+                <div style="font-size:11.8pt;font-weight:700;color:#222222;letter-spacing:0.2px;margin-bottom:2px;line-height:1.2;">
                     ${escapeHtml(branding.companyFullName || 'TEKNİK KONTROL MERKEZİ BELGELENDİRME A.Ş.')}
-
                 </div>
-
-                <div style="font-size:8pt;color:#222222;line-height:1.25;">
-
-                    ${escapeHtml(branding.companyPhone || '')}
-
+                <div style="font-size:7.8pt;color:#222222;line-height:1.25;">
+                    T: +90 (216) 526 61 41 &nbsp;&nbsp; F: +90 (216) 526 61 40
                 </div>
-
-                <div style="font-size:8pt;color:#222222;line-height:1.25;margin-bottom:3px;">
-
-                    ${escapeHtml(branding.companyEmail || '')} ${escapeHtml(branding.companyWeb || '')}
-
+                <div style="font-size:7.8pt;color:#222222;line-height:1.25;margin-bottom:3px;">
+                    info@tkmkontrol.com &nbsp;&nbsp; www.tkmkontrol.com
                 </div>
-
-                <div style="font-size:11.6pt;font-weight:700;color:#222222;line-height:1.15;text-transform:uppercase;">
-
+                <div style="font-size:11pt;font-weight:700;color:#222222;line-height:1.15;text-transform:uppercase;">
                     ${reportMainTitle}
-
                 </div>
-
-                <div style="font-size:9.8pt;font-weight:400;color:#333333;margin-top:2px;letter-spacing:0.3px;">
-
+                <div style="font-size:9.5pt;font-weight:400;color:#333333;margin-top:2px;letter-spacing:0.3px;">
                     PERİYODİK KONTROL RAPORU
-
                 </div>
-
             </div>
-
             <div style="display:flex;justify-content:center;align-items:center;">
-
                 ${showTurkak ? `<img src="${turkakLogoSrc}" alt="Akreditasyon ${escapeHtml(accNo)}" style="width:72px;height:105px;object-fit:contain;display:block;">` : `<div style="width:72px;"></div>`}
-
             </div>
-
         </div>
-
     `;
-
 }
 
 
@@ -1229,145 +1195,123 @@ function printOfficialReport(directPrint = false) {
 
 
 
-        // Block for 7. KUSUR AÇIKLAMALARI & 8. NOTLAR
-
+        // Block for 7. KUSUR AÇIKLAMALARI
         blocks.push(`
-
             <div class="tkm-sec-title">7. KUSUR AÇIKLAMALARI</div>
-
             <table class="tkm-table">
-
                 <tbody>
-
                     <tr>
-
-                        <td style="min-height:18px;height:18px;vertical-align:top;text-align:left;">${(fd.defectNotes || '').replace(/\n/g, '<br>')}</td>
-
+                        <td style="min-height:20px;height:20px;vertical-align:top;text-align:left;padding:3px 6px;">
+                            ${(fd.defectNotes || 'Kusur tespiti bulunmamaktadır.').replace(/\n/g, '<br>')}
+                        </td>
                     </tr>
-
                 </tbody>
-
             </table>
-
-            <div class="tkm-sec-title">8. NOTLAR</div>
-
-            <table class="tkm-table">
-
-                <tbody>
-
-                    <tr>
-
-                        <td style="min-height:18px;height:18px;vertical-align:top;text-align:left;">${(fd.generalNotes || '').replace(/\n/g, '<br>')}</td>
-
-                    </tr>
-
-                </tbody>
-
-            </table>
-
         `);
 
+        // Block for 8. EKİPMAN FOTOĞRAFLARI (Tekkomer Standart: Pano ve Termal Kamera Görüntüsü)
+        const photoList = fd.photos || [];
+        const panoPhoto = photoList[0] || null;
+        const thermalPhoto = photoList[1] || null;
 
+        const panoImgHtml = panoPhoto 
+            ? `<img src="${panoPhoto.data || panoPhoto.url || panoPhoto}" alt="Pano Fotoğrafı" style="max-height:130px;max-width:100%;object-fit:contain;display:inline-block;">`
+            : `<div style="font-size:7.2pt;color:#888;">[ Fotoğraf Eklenmedi ]</div>`;
 
-        // Block for 9. SONUÇ VE KANAAT
-
-        const conclusionText = fd.overallResult === 'UYGUN DEĞİL' ? 'KULLANIMI UYGUN DEĞİLDİR.' : 'KULLANIMI UYGUNDUR.';
+        const thermalImgHtml = thermalPhoto
+            ? `<img src="${thermalPhoto.data || thermalPhoto.url || thermalPhoto}" alt="Termal Kamera Görüntüsü" style="max-height:130px;max-width:100%;object-fit:contain;display:inline-block;">`
+            : `<div style="font-size:7.2pt;color:#888;">[ Termal Görüntü Eklenmedi ]</div>`;
 
         blocks.push(`
-
-            <div class="tkm-sec-title">9. SONUÇ VE KANAAT</div>
-
-            <table class="tkm-table">
-
+            <div class="tkm-sec-title">8. EKİPMAN FOTOĞRAFLARI</div>
+            <table class="tkm-table" style="table-layout:fixed;">
                 <tbody>
-
                     <tr>
+                        <td style="width:50%;text-align:center;padding:3.5px;vertical-align:top;">
+                            <div style="font-weight:700;font-size:7.4pt;margin-bottom:2px;">${escapeHtml(insp.equipment_name || 'Ana Dağıtım Panosu')}</div>
+                            <div style="height:136px;border:1px dashed #777;display:flex;align-items:center;justify-content:center;background:#fafafa;">
+                                ${panoImgHtml}
+                            </div>
+                        </td>
+                        <td style="width:50%;text-align:center;padding:3.5px;vertical-align:top;">
+                            <div style="font-weight:700;font-size:7.4pt;margin-bottom:2px;">Termal Kamera Görüntüsü</div>
+                            <div style="height:136px;border:1px dashed #777;display:flex;align-items:center;justify-content:center;background:#fafafa;">
+                                ${thermalImgHtml}
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        `);
 
+        // Block for 9. NOTLAR
+        blocks.push(`
+            <div class="tkm-sec-title">9. NOTLAR</div>
+            <table class="tkm-table">
+                <tbody>
+                    <tr>
+                        <td style="min-height:22px;height:22px;vertical-align:top;text-align:left;padding:3.5px 6px;font-size:7.2pt;line-height:1.2;">
+                            ${escapeHtml(fd.generalNotes || "Proje Bilgileri: Tesisin elektrik tesisat projeleri ve tek hat şeması yerinde incelenmiş olup kontroller bu doğrultuda gerçekleştirilmiştir.").replace(/\n/g, '<br>')}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        `);
+
+        // Block for 10. SONUÇ VE KANAAT (Tam Orijinal TEKKOMER Metni)
+        const isSuitable = fd.overallResult !== 'UYGUN DEĞİL';
+        const conclusionText = isSuitable 
+            ? 'KULLANILMASI UYGUNDUR.' 
+            : 'KULLANILMASI UYGUN DEĞİLDİR. C1 – Tehlike mevcut. Yaralanma riski. Derhal düzeltici eylem gerekli.';
+
+        blocks.push(`
+            <div class="tkm-sec-title">10. SONUÇ VE KANAAT</div>
+            <table class="tkm-table">
+                <tbody>
+                    <tr>
                         <td style="font-size:6.6pt;line-height:1.15;padding:3.5px 6px;text-align:left;">
-
-                            <div>Ağır kusur tanımları:</div>
-
-                            <div>Gözle Kontrol Bölümü</div>
-
+                            <div style="font-weight:700;">Ağır kusur tanımları:</div>
+                            <div style="font-weight:700;margin-top:1px;">Gözle Kontrol Bölümü</div>
                             <div>1. Faza erişim engeli IP2X koruma sınıfını sağlamıyorsa,</div>
-
                             <div>2. Kablo ek noktaları yalıtımlı değilse, pano içinde ucu açıkta iletken varsa,</div>
-
                             <div>3. Pano elemanları bağlantı noktalarında kontak gevşekliği (seri ark) tespit edilmişse,</div>
-
                             <div>4. PVC izoleli kablolarda ve pano elemanlarının dokunulabilen metal olmayan yüzeylerinde aşırı ısınma tespit edilmişse.</div>
 
-                            <div style="margin-top:2px;">Fonksiyon Testleri Bölümü</div>
-
+                            <div style="font-weight:700;margin-top:2px;">Fonksiyon Testleri Bölümü</div>
                             <div>1. Hesaplanan 3 fazlı kısa devre akımı, pano içinde bulunan herhangi bir aşırı akım koruma cihazı etiketinde yazan kısa devre kesme kapasitesinden (Icu) fazla ise,</div>
-
                             <div>2. Aşırı akım koruma elemanı değerleri linye kesiti ile uyumsuz ise,</div>
-
                             <div>3. El ulaşma mesafesindeki metal bölümler, ekipmanın toprak barası veya toprak ucuyla eş potansiyel değilse,</div>
-
                             <div>4. RCD performans testi sonuçları yetersiz ise,</div>
-
                             <div>5. Kablo şalter koordinasyonunun aşağıdaki uygunsuzluğu;<br>Devre Tasarım Akımı (Ib), Devre Kesici Akımı (In) ve Kablo Akım Taşıma Kapasitesi (Iz) için Ib&lt;In&lt;Iz sağlanmadıysa,</div>
-
                             <div>6. Zemin yalıtımının aşağıdaki uygunsuzlukları;<br>b) El ulaşma mesafesinde bulunan zemin izolasyonu uygun boyutta değilse, (EİTY Md. 33d)<br>c) Zemin izolasyon direnci 50 kΩ’dan büyük değilse, (EİTY Md. 48)</div>
-
                             <div>7. N/PEN iletkeni kesitinin ve kullanım yerinin aşağıdaki uygunsuzlukları;<br>a) N/PEN kesiti ile faz iletkeni kesiti eşit değilse. (EİTY Md 57b3-ii-1)<br>İstisna: N/PEN kesitinin faz iletkeninin kesitinden küçük olması durumunda (örneğin 3x70+35 mm2 gibi) faz iletkenlerini koruyan devre kesici anma akımının, N/PEN iletkeni kesitine göre (örnekteki 35mm2’ye göre) belirlenmesi kuralı ihlal edildiyse (EİTY Md 57b3-ii-2)<br>b) PEN iletkeni kesiti &gt;10 mm2 değilse (EİTY Md 36)<br>c) PEN iletkeni yangın tehlikesi olan yerlerden geçirilmemesi kuralı ihlal edildiyse (EİTY Md 64)<br>d) PEN iletkeni Exproof tehlikeli bölge sınırları içinden geçirilmemesi kuralı ihlal edildiyse (IEC 60079-14)</div>
-
                             <div>8. PE koruma iletkeni kesitinin aşağıdaki uygunsuzluğu;<br>Koruma iletkeni kesiti ETTY Md. 9e1i’de verilen formülle yapılan hesap sonucuna ve ETTY Çizelge 8’de verilen tabloya uygun değilse,</div>
-
                             <div>9. PD potansiyel dengeleme iletkeni kesitinin aşağıdaki uygunsuzluğu;<br>6 mm2 &lt; PD &lt; 25 mm2 değilse,</div>
-
-                            <div>10. Tamamlayıcı potansiyel dengeleme: PD &gt; 4mm² değilse.<br>Ağır kusur olarak değerlendirilir.</div>
+                            <div>10. Tamamlayıcı potansiyel dengeleme: PD &gt; 4mm² değilse.</div>
+                            <div style="font-weight:700;margin-top:1px;">Ağır kusur olarak değerlendirilir.</div>
 
                             <div style="margin-top:2px;">
-
                                 Bu rapor “Alçak Gerilim Topraklama Tesisatı Kontrol Raporu” ile birlikte geçerlidir.<br>
-
                                 TS HD 60364 standardına göre kullanımı uygun olmayan tesisatlar aşağıdaki şekilde işaretlenir:<br>
-
                                 C1 – Tehlike mevcut. Yaralanma riski. Derhal düzeltici eylem gerekli.<br>
-
                                 C2 – Potansiyel olarak tehlikeli – acil düzeltici eylem gerekli.<br>
-
                                 C3 – İyileştirme önerilir.
-
                             </div>
 
-                            <div style="margin-top:2px;font-size:7.4pt;font-weight:700;">
-
+                            <div style="margin-top:2.5px;font-size:7.3pt;">
                                 Periyodik kontrol tarihi itibari ile yukarıda teknik özellikleri belirtilen Elektrik Tesisatının fonksiyon testleri muayenesi sonrasında mevcut şartlar altında<br>
-
-                                <span style="font-size:8.2pt;color:${fd.overallResult === 'UYGUN DEĞİL' ? '#b91c1c' : '#047857'};">${conclusionText}</span>
-
+                                <div style="font-size:8.4pt;font-weight:700;margin-top:2px;color:${isSuitable ? '#047857' : '#c00000'};">
+                                    ${conclusionText}
+                                </div>
                             </div>
-
                         </td>
-
                     </tr>
-
                 </tbody>
-
             </table>
-
         `);
 
-
-
-        // Photos Block (if attached)
-
-        if (fd.photos && fd.photos.length) {
-
-            blocks.push(...renderPdfPhotoBlocks(fd.photos, 'FOTOĞRAFLAR'));
-
-        }
-
-
-
-        // Block for 10. ONAY
-
-        blocks.push(buildTkmOnaySection(insp, '10'));
-
-
+        // Block for 11. ONAY (Tekkomer Standart)
+        blocks.push(buildTkmOnaySection(insp, '11'));
 
         // Dynamically pack blocks into A4 pages using real DOM measurement!
 
