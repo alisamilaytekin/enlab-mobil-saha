@@ -7492,90 +7492,7 @@ function compressImage(file, maxDimension = 1280, quality = 0.78) {
 
 
 
-                // --- 2.1 AKREDİTE SAHA KANIT DAMGASI (WATERMARK) ---
-
-                try {
-
-                    const insp = AppState.currentInspection;
-
-                    const now = new Date();
-
-                    const pad = (n) => String(n).padStart(2, '0');
-
-                    const dateStr = `${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
-
-                    const compName = (insp?.customer_name || 'ENLAB Denetim').slice(0, 32);
-
-                    const repNo = insp?.report_no || 'TKM-RAPOR';
-
-                    const equipName = (insp?.equipment_name || 'Saha Periyodik Kontrol').slice(0, 36);
-
-
-
-                    const fontSize = Math.max(15, Math.round(width / 44));
-
-                    const padPx = Math.round(fontSize * 0.75);
-
-                    const barH = fontSize * 2.5 + padPx * 2;
-
-
-
-                    // Semi-transparent slate-950 bottom banner
-
-                    ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
-
-                    ctx.fillRect(0, height - barH, width, barH);
-
-
-
-                    // Amber top accent line
-
-                    ctx.fillStyle = '#f59e0b';
-
-                    ctx.fillRect(0, height - barH, width, Math.max(3, Math.round(width / 360)));
-
-
-
-                    ctx.textBaseline = 'top';
-
-                    ctx.textAlign = 'left';
-
-
-
-                    // Line 1: Date & Report No
-
-                    ctx.font = `bold ${fontSize}px sans-serif`;
-
-                    ctx.fillStyle = '#38bdf8'; // Sky blue
-
-                    ctx.fillText(`📅 ${dateStr}`, padPx, height - barH + padPx);
-
-
-
-                    ctx.fillStyle = '#fbbf24'; // Amber
-
-                    ctx.fillText(`📑 Rapor: ${repNo}`, padPx + Math.round(width * 0.42), height - barH + padPx);
-
-
-
-                    // Line 2: Company & Equipment
-
-                    ctx.font = `600 ${Math.round(fontSize * 0.88)}px sans-serif`;
-
-                    ctx.fillStyle = '#ffffff';
-
-                    const compBrand = (typeof CompanySettingsManager !== 'undefined' && CompanySettingsManager.getCompanyShortName()) || 'TEKKOMER';
-
-                    ctx.fillText(`🏢 [${compBrand}] ${compName}  |  ⚡ ${equipName}`, padPx, height - barH + padPx + fontSize * 1.3);
-
-                } catch (wmErr) {
-
-                    console.warn('Watermark hatası (yoksayıldı):', wmErr);
-
-                }
-
-
-
+                // Fotoğraf görseli saf ve temiz tutulur (filigran çizilmez)
                 const dataUrl = canvas.toDataURL('image/jpeg', quality);
 
 
@@ -7635,19 +7552,21 @@ async function handlePhotoUpload(input) {
             const dataUrl = await compressImage(file, 1280, 0.78);
 
             const photoNum = fd.photos.length + 1;
+            const insp = (typeof AppState !== 'undefined' && AppState.currentInspection) || {};
+            const now = new Date();
+            const pad = (n) => String(n).padStart(2, '0');
+            const dateStr = `${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()}`;
+            const defaultTitle = photoNum === 1 ? (insp.equipment_name || 'Ana Dağıtım Panosu') : (photoNum === 2 ? 'Termal Kamera Görüntüsü' : `Fotoğraf ${photoNum}`);
 
             fd.photos.push({
-
                 id: 'ph_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
-
                 dataUrl: dataUrl,
-
-                caption: `Fotoğraf ${photoNum}`,
-
-                date: new Date().toLocaleDateString('tr-TR')
-
+                title: defaultTitle,
+                caption: '',
+                description: '',
+                date: dateStr,
+                reportNo: insp.report_no || ''
             });
-
         }
 
         triggerAutoSave();
@@ -7694,17 +7613,23 @@ function removeReportPhoto(idx) {
 
 
 
-function updatePhotoCaption(idx, caption) {
-
+function updatePhotoTitle(idx, title) {
     const fd = AppState.currentFormData;
-
     if (!fd.photos || !fd.photos[idx]) return;
-
-    fd.photos[idx].caption = caption;
-
+    fd.photos[idx].title = title;
     triggerAutoSave();
-
 }
+
+function updatePhotoCaption(idx, caption) {
+    const fd = AppState.currentFormData;
+    if (!fd.photos || !fd.photos[idx]) return;
+    fd.photos[idx].caption = caption;
+    fd.photos[idx].description = caption;
+    triggerAutoSave();
+}
+
+window.updatePhotoTitle = updatePhotoTitle;
+window.updatePhotoCaption = updatePhotoCaption;
 
 
 
@@ -8000,79 +7925,61 @@ function renderPhotoSectionUI() {
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
 
-                    ${photos.map((ph, idx) => `
+                    ${photos.map((ph, idx) => {
+                        const insp = (typeof AppState !== 'undefined' && AppState.currentInspection) || {};
+                        const defaultRepNo = insp.report_no || '-';
+                        const curTitle = ph.title || (ph.caption && (ph.caption.includes('Pano') || ph.caption.includes('Termal') || ph.caption.startsWith('Fotoğraf ')) ? ph.caption : (idx === 0 ? (insp.equipment_name || 'Ana Dağıtım Panosu') : (idx === 1 ? 'Termal Kamera Görüntüsü' : `Fotoğraf ${idx + 1}`)));
+                        const curCaption = (ph.description && ph.description.trim()) ? ph.description.trim() : ((ph.caption && ph.caption !== curTitle && !ph.caption.startsWith('Fotoğraf ')) ? ph.caption : '');
+                        const curDate = ph.date || new Date().toLocaleDateString('tr-TR');
+                        const curRepNo = ph.reportNo || defaultRepNo;
 
+                        return `
                         <div class="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden flex flex-col shadow-2xs">
-
                             <div class="relative bg-black h-36 flex items-center justify-center cursor-pointer group" onclick="openPhotoPreviewModal(${idx})">
-
                                 <img src="${ph.dataUrl}" class="max-h-full max-w-full object-contain">
-
                                 <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs font-bold gap-1">
-
                                     <i class="fa-solid fa-magnifying-glass-plus"></i> Büyüt
-
                                 </div>
-
                                 <span class="absolute top-1.5 left-1.5 px-2 py-0.5 bg-black/70 text-white rounded text-[10px] font-bold">
-
                                     #${idx + 1}
-
                                 </span>
-
                             </div>
-
-                            <div class="p-2 space-y-1.5 flex-1 flex flex-col justify-between">
-
-                                <div>
-
-                                    <label class="block text-xs font-bold text-slate-700 mb-1">Fotoğraf Açıklaması / Başlık</label>
-
-                                    <div class="flex items-center gap-1.5">
-
-                                        <input type="text" id="photoCaptionInput_${idx}" value="${ph.caption || ''}"
-
-                                            placeholder="Fotoğraf açıklaması..."
-
+                            <div class="p-2.5 space-y-2 flex-1 flex flex-col justify-between">
+                                <div class="space-y-2">
+                                    <div>
+                                        <div class="flex items-center justify-between mb-1">
+                                            <label class="text-[11px] font-bold text-slate-800">Pano / Başlık (Fotonun Üstüne)</label>
+                                            <span class="text-[10px] text-slate-500 font-mono">📅 ${curDate} | 📑 ${curRepNo}</span>
+                                        </div>
+                                        <input type="text" id="photoTitleInput_${idx}" value="${(typeof escapeHtml !== 'undefined' ? escapeHtml(curTitle) : curTitle)}"
+                                            placeholder="Örn: Ana Dağıtım Panosu, Termal Kamera Görüntüsü..."
+                                            oninput="updatePhotoTitle(${idx}, this.value)"
+                                            class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-800 bg-white focus:border-sky-500 focus:outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] font-bold text-slate-800 mb-1">Fotoğraf Açıklaması (Fotonun Altına)</label>
+                                        <input type="text" id="photoCaptionInput_${idx}" value="${(typeof escapeHtml !== 'undefined' ? escapeHtml(curCaption) : curCaption)}"
+                                            placeholder="Fotoğraf hakkında açıklama / tespit giriniz..."
                                             oninput="updatePhotoCaption(${idx}, this.value)"
-
-                                            class="w-full border border-slate-300 rounded-lg px-2 py-1 text-xs font-medium bg-white">
-
+                                            class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 bg-white focus:border-sky-500 focus:outline-none">
                                     </div>
-
                                 </div>
-
-                                <div class="flex items-center justify-between pt-1 border-t border-slate-200 text-[11px]">
-
+                                <div class="flex items-center justify-between pt-2 border-t border-slate-200 text-[11px]">
                                     <div class="flex items-center gap-2.5">
-
                                         <button onclick="openPhotoAnnotatorModal(${idx})" class="text-rose-600 hover:text-rose-700 font-bold flex items-center gap-1 active:scale-95" title="Fotoğraf üzerine kırmızı ok veya halka çizin">
-
                                             <i class="fa-solid fa-pen-ruler"></i> Kusuru İşaretle
-
                                         </button>
-
                                         <button onclick="savePhotoToGallery(${idx})" class="text-emerald-700 hover:text-emerald-800 font-bold flex items-center gap-1 active:scale-95">
-
                                             <i class="fa-solid fa-floppy-disk"></i> Galeri
-
                                         </button>
-
                                     </div>
-
                                     <button onclick="removeReportPhoto(${idx})" class="text-slate-400 hover:text-rose-600 font-bold flex items-center gap-1 active:scale-95">
-
-                                        <i class="fa-solid fa-trash-can"></i> Sil
-
+                                        <i class="fa-regular fa-trash-can"></i> Sil
                                     </button>
-
                                 </div>
-
                             </div>
-
                         </div>
-
-                    `).join('')}
+                    `;}).join('')}
 
                 </div>
 
@@ -13596,66 +13503,101 @@ function paginateBlocksIntoA4Pages(blocksHtmlArray, reportMainTitle, formCode, r
 
 
 function renderPdfPhotoBlocks(photosList, secTitle = 'FOTOĞRAFLAR') {
-
     if (!photosList || photosList.length === 0) return [];
+    const validPhotos = photosList.filter(p => {
+        if (!p) return false;
+        if (typeof p === 'string') return p.length > 10;
+        return Boolean(p.dataUrl || p.data || p.url);
+    });
+    if (validPhotos.length === 0) return [];
 
     const photoBlocks = [];
-
     const chunkSize = 2; // 2 photos side-by-side matching official TKM reports
+    const insp = (typeof AppState !== 'undefined' && AppState.currentInspection) || {};
 
-    for (let i = 0; i < photosList.length; i += chunkSize) {
+    const getSrc = (item) => {
+        if (!item) return '';
+        if (typeof item === 'string') return item;
+        return item.dataUrl || item.data || item.url || '';
+    };
+    const getTitle = (item, defaultTitle) => {
+        if (!item) return defaultTitle;
+        if (item.title && item.title.trim()) return item.title.trim();
+        if (item.caption && (item.caption.includes('Pano') || item.caption.includes('Termal') || item.caption.startsWith('Fotoğraf '))) {
+            return item.caption.trim();
+        }
+        return defaultTitle;
+    };
+    const getCaption = (item) => {
+        if (!item) return '';
+        if (item.description && item.description.trim()) return item.description.trim();
+        if (item.caption && item.caption.trim()) {
+            const c = item.caption.trim();
+            if (c.startsWith('Fotoğraf ') && c.length < 12) return '';
+            if (item.title && c === item.title.trim()) return '';
+            return c;
+        }
+        return '';
+    };
+    const getDate = (item) => {
+        if (item && item.date) return item.date;
+        if (insp.inspection_date) {
+            try {
+                const d = new Date(insp.inspection_date);
+                if (!isNaN(d.getTime())) {
+                    const pad = (n) => String(n).padStart(2, '0');
+                    return `${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}`;
+                }
+            } catch (e) {}
+        }
+        const now = new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()}`;
+    };
+    const getRepNo = (item) => item?.reportNo || insp.report_no || 'TKM-RAPOR';
 
-        const pair = photosList.slice(i, i + chunkSize);
-
+    for (let i = 0; i < validPhotos.length; i += chunkSize) {
+        const pair = validPhotos.slice(i, i + chunkSize);
         const isFirst = (i === 0);
-
         let blockHtml = '';
-
         if (isFirst) {
-
             blockHtml += `<div class="tkm-sec-title">${secTitle}</div>`;
-
         }
 
         blockHtml += `
-
             <div style="display:flex;gap:8px;margin-bottom:6px;width:100%;box-sizing:border-box;">
+                ${pair.map((ph, pIdx) => {
+                    const src = getSrc(ph);
+                    const title = getTitle(ph, (i === 0 && pIdx === 0 ? (insp.equipment_name || 'Ana Dağıtım Panosu') : `Fotoğraf ${i + pIdx + 1}`));
+                    const caption = getCaption(ph);
+                    const dateStr = getDate(ph);
+                    const repNo = getRepNo(ph);
 
-                ${pair.map((ph, pIdx) => `
-
-                    <div style="flex:1;border:1px solid #111;padding:4px;text-align:center;box-sizing:border-box;background:#fff;">
-
-                        <div style="height:175px;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:4px;">
-
-                            <img src="${ph.dataUrl || ph.data || ph.url || ph}" style="max-height:170px;max-width:100%;object-fit:contain;display:block;margin:0 auto;">
-
+                    return `
+                        <div style="flex:1;border:1px solid #111;padding:5px 6px;text-align:center;box-sizing:border-box;background:#fff;">
+                            <!-- Fotoğraf Üstü: Pano Başlığı ve Tarih / Rapor ID Bilgileri -->
+                            <div style="font-weight:700;font-size:7.5pt;margin-bottom:1px;color:#111;">${escapeHtml(title)}</div>
+                            <div style="font-size:6.7pt;color:#555;margin-bottom:4px;font-weight:500;">Tarih: ${escapeHtml(dateStr)} | Rapor No: ${escapeHtml(repNo)}</div>
+                            <!-- Fotoğraf Görseli -->
+                            <div style="height:155px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#fff;">
+                                <img src="${src}" alt="${escapeHtml(title)}" style="max-height:150px;max-width:100%;object-fit:contain;display:block;margin:0 auto;">
+                            </div>
+                            <!-- Fotoğraf Altı: Açıklama / Not -->
+                            ${caption ? `
+                                <div style="font-size:7pt;color:#1e293b;border-top:1px solid #eee;padding-top:3px;margin-top:3px;min-height:14px;line-height:1.2;font-style:italic;">
+                                    ${escapeHtml(caption)}
+                                </div>
+                            ` : ''}
                         </div>
-
-                        <div style="font-size:7pt;font-weight:700;color:#111;border-top:1px solid #eee;padding-top:3px;min-height:14px;line-height:1.2;">
-
-                            Fotoğraf ${i + pIdx + 1} - ${ph.caption || 'Ekipman Görünümü'}
-
-                        </div>
-
-                    </div>
-
-                `).join('')}
-
+                    `;
+                }).join('')}
                 ${pair.length === 1 ? `<div style="flex:1;visibility:hidden;"></div>` : ''}
-
             </div>
-
         `;
-
         photoBlocks.push(blockHtml);
-
     }
-
     return photoBlocks;
-
 }
-
-
 
 function printOfficialReport(directPrint = false) {
 
@@ -14323,51 +14265,93 @@ function printOfficialReport(directPrint = false) {
 
         if (hasPhotos) {
             let photoRowsHtml = '';
+
+            const getSrc = (item) => {
+                if (!item) return '';
+                if (typeof item === 'string') return item;
+                return item.dataUrl || item.data || item.url || '';
+            };
+            const getTitle = (item, defaultTitle) => {
+                if (!item) return defaultTitle;
+                if (item.title && item.title.trim()) return item.title.trim();
+                if (item.caption && (item.caption.includes('Pano') || item.caption.includes('Termal') || item.caption.startsWith('Fotoğraf '))) {
+                    return item.caption.trim();
+                }
+                return defaultTitle;
+            };
+            const getCaption = (item) => {
+                if (!item) return '';
+                if (item.description && item.description.trim()) return item.description.trim();
+                if (item.caption && item.caption.trim()) {
+                    const c = item.caption.trim();
+                    if (c.startsWith('Fotoğraf ') && c.length < 12) return '';
+                    if (item.title && c === item.title.trim()) return '';
+                    return c;
+                }
+                return '';
+            };
+            const getDate = (item) => {
+                if (item && item.date) return item.date;
+                if (insp.inspection_date) {
+                    try {
+                        const d = new Date(insp.inspection_date);
+                        if (!isNaN(d.getTime())) {
+                            const pad = (n) => String(n).padStart(2, '0');
+                            return `${pad(d.getDate())}.${pad(d.getMonth()+1)}.${d.getFullYear()}`;
+                        }
+                    } catch (e) {}
+                }
+                const now = new Date();
+                const pad = (n) => String(n).padStart(2, '0');
+                return `${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()}`;
+            };
+            const getRepNo = (item) => item?.reportNo || insp.report_no || 'TKM-RAPOR';
+
+            const renderPhotoCell = (src, title, dateStr, repNo, caption, widthPct) => `
+                <td style="${widthPct ? `width:${widthPct};` : ''}text-align:center;padding:5px 6px;vertical-align:top;background:#ffffff;">
+                    <!-- Fotoğraf Üstü: Pano Başlığı ve Tarih / Rapor ID Bilgileri -->
+                    <div style="font-weight:700;font-size:7.5pt;margin-bottom:1px;color:#111;">${escapeHtml(title)}</div>
+                    <div style="font-size:6.7pt;color:#555;margin-bottom:4px;font-weight:500;">Tarih: ${escapeHtml(dateStr)} | Rapor No: ${escapeHtml(repNo)}</div>
+                    <!-- Fotoğraf Görseli (Damgasız, Saf ve Temiz) -->
+                    <div style="display:flex;align-items:center;justify-content:center;height:145px;overflow:hidden;background:#ffffff;border:1px solid #e2e8f0;">
+                        <img src="${src}" alt="${escapeHtml(title)}" style="max-height:145px;max-width:100%;object-fit:contain;display:block;margin:0 auto;">
+                    </div>
+                    <!-- Fotoğraf Altı: Kullanıcı Açıklaması / Tespit -->
+                    ${caption ? `
+                        <div style="font-size:7pt;color:#1e293b;margin-top:3px;padding:2px 4px;text-align:center;font-style:italic;line-height:1.25;background:#f8fafc;border-top:1px solid #e2e8f0;">
+                            ${escapeHtml(caption)}
+                        </div>
+                    ` : ''}
+                </td>
+            `;
+
             for (let i = 0; i < validPhotos.length; i += 2) {
                 const p1 = validPhotos[i];
                 const p2 = validPhotos[i + 1] || null;
 
-                const getSrc = (item) => {
-                    if (!item) return '';
-                    if (typeof item === 'string') return item;
-                    return item.dataUrl || item.data || item.url || '';
-                };
-                const getTitle = (item, defaultTitle) => {
-                    if (!item) return defaultTitle;
-                    return item.caption || item.title || defaultTitle;
-                };
-
                 const src1 = getSrc(p1);
                 const title1 = getTitle(p1, (i === 0 ? (insp.equipment_name || 'Ana Dağıtım Panosu') : `Fotoğraf ${i + 1}`));
+                const caption1 = getCaption(p1);
+                const date1 = getDate(p1);
+                const repNo1 = getRepNo(p1);
 
                 if (p2) {
                     const src2 = getSrc(p2);
                     const title2 = getTitle(p2, (i === 0 ? 'Termal Kamera Görüntüsü' : `Fotoğraf ${i + 2}`));
+                    const caption2 = getCaption(p2);
+                    const date2 = getDate(p2);
+                    const repNo2 = getRepNo(p2);
+
                     photoRowsHtml += `
                         <tr>
-                            <td style="width:50%;text-align:center;padding:4px;vertical-align:top;background:#ffffff;">
-                                <div style="font-weight:700;font-size:7.4pt;margin-bottom:3px;color:#111;">${escapeHtml(title1)}</div>
-                                <div style="display:flex;align-items:center;justify-content:center;height:145px;overflow:hidden;">
-                                    <img src="${src1}" alt="${escapeHtml(title1)}" style="max-height:145px;max-width:100%;object-fit:contain;display:block;margin:0 auto;">
-                                </div>
-                            </td>
-                            <td style="width:50%;text-align:center;padding:4px;vertical-align:top;background:#ffffff;">
-                                <div style="font-weight:700;font-size:7.4pt;margin-bottom:3px;color:#111;">${escapeHtml(title2)}</div>
-                                <div style="display:flex;align-items:center;justify-content:center;height:145px;overflow:hidden;">
-                                    <img src="${src2}" alt="${escapeHtml(title2)}" style="max-height:145px;max-width:100%;object-fit:contain;display:block;margin:0 auto;">
-                                </div>
-                            </td>
+                            ${renderPhotoCell(src1, title1, date1, repNo1, caption1, '50%')}
+                            ${renderPhotoCell(src2, title2, date2, repNo2, caption2, '50%')}
                         </tr>
                     `;
                 } else {
                     photoRowsHtml += `
                         <tr>
-                            <td colspan="2" style="text-align:center;padding:4px;vertical-align:top;background:#ffffff;">
-                                <div style="font-weight:700;font-size:7.4pt;margin-bottom:3px;color:#111;">${escapeHtml(title1)}</div>
-                                <div style="display:flex;align-items:center;justify-content:center;height:165px;overflow:hidden;">
-                                    <img src="${src1}" alt="${escapeHtml(title1)}" style="max-height:165px;max-width:100%;object-fit:contain;display:block;margin:0 auto;">
-                                </div>
-                            </td>
+                            ${renderPhotoCell(src1, title1, date1, repNo1, caption1, null)}
                         </tr>
                     `;
                 }
