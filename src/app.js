@@ -13252,89 +13252,105 @@ AppState.a4Zoom = 1;
 
 function applyA4PreviewZoom() {
     const container = document.getElementById('a4PreviewPagesContainer');
+    const wrapper = document.getElementById('a4ZoomWrapper');
     const scrollContainer = document.getElementById('a4PreviewScrollContainer');
     if (!container) return;
 
     const z = AppState.a4Zoom || 1;
-    container.style.transformOrigin = 'top center';
+    const baseW = 794; // A4 genisligi (px)
 
-    // A4 width is 210mm (~794px at 96dpi)
-    const baseW = 794;
-    const scaledW = Math.round(baseW * z);
-
-    container.style.transform = `scale(${z})`;
-    
-    // Scale container wrapper so parent scrollbars naturally reflect exact scaled width & height
     container.style.width = `${baseW}px`;
-    
-    if (scrollContainer) {
-        const vw = scrollContainer.clientWidth || window.innerWidth;
-        if (scaledW > vw) {
-            // Give horizontal margin so user can pan freely to the far left and far right
-            const extra = Math.round((scaledW - baseW) / 2);
-            container.style.marginLeft = `${extra + 16}px`;
-            container.style.marginRight = `${extra + 16}px`;
+    container.style.transformOrigin = 'top left';
+    container.style.transform = `scale(${z})`;
+
+    // Her sayfa 1122px + 20px marjin
+    const pageCount = container.querySelectorAll('.tkm-a4-page').length || 1;
+    const unscaledH = container.scrollHeight || (pageCount * 1142);
+
+    const scaledW = Math.round(baseW * z);
+    const scaledH = Math.round(unscaledH * z);
+
+    if (wrapper) {
+        wrapper.style.width = `${scaledW}px`;
+        wrapper.style.height = `${scaledH}px`;
+
+        const vw = scrollContainer ? scrollContainer.clientWidth : window.innerWidth;
+        if (scaledW + 32 < vw) {
+            // Ekrana sigiyorsa ortala
+            wrapper.style.margin = '16px auto';
         } else {
-            container.style.marginLeft = 'auto';
-            container.style.marginRight = 'auto';
+            // Sigmiyorsa tam 16px ic bosluk ver - boylece sol ve sag tam sinirda durur
+            wrapper.style.margin = '16px';
         }
-        
-        // Exact vertical height compensation so there is no endless bottom blank space
-        const origH = container.scrollHeight || (container.children.length * 1122);
-        const diffH = Math.round((z - 1) * origH);
-        container.style.marginBottom = `${Math.max(20, diffH + 20)}px`;
     }
 }
 
-
-
 function adjustA4PreviewZoom(delta) {
-
-    AppState.a4Zoom = Math.max(0.35, Math.min(2.5, (AppState.a4Zoom || 1) + delta));
-
+    const scrollContainer = document.getElementById('a4PreviewScrollContainer');
+    const oldZ = AppState.a4Zoom || 1;
+    const newZ = Math.max(0.35, Math.min(2.8, oldZ + delta));
+    AppState.a4Zoom = Math.round(newZ * 100) / 100;
+    
+    // Zoom butonlariyla merkezden yakinlastirma
+    if (scrollContainer) {
+        const cx = scrollContainer.clientWidth / 2;
+        const cy = scrollContainer.clientHeight / 2;
+        const ratio = AppState.a4Zoom / oldZ;
+        scrollContainer.scrollLeft = (scrollContainer.scrollLeft + cx) * ratio - cx;
+        scrollContainer.scrollTop = (scrollContainer.scrollTop + cy) * ratio - cy;
+    }
     applyA4PreviewZoom();
-
 }
 
-
-
-
-// --- PINCH-TO-ZOOM & MULTI-TOUCH GESTURE ENGINE FOR A4 PDF PREVIEW ---
+// --- PINCH-TO-ZOOM & MULTI-TOUCH GESTURE ENGINE (AKROBAT / STANDART PDF MOTORU) ---
 let _pinchState = {
     active: false,
     startDist: 0,
-    startZoom: 1
+    startZoom: 1,
+    startScrollX: 0,
+    startScrollY: 0,
+    focalX: 0,
+    focalY: 0
 };
 
 function initA4PinchZoom() {
     const scrollContainer = document.getElementById('a4PreviewScrollContainer');
-    const pagesContainer = document.getElementById('a4PreviewPagesContainer');
-    if (!scrollContainer || !pagesContainer || scrollContainer._pinchInitialized) return;
+    if (!scrollContainer || scrollContainer._pinchInitialized) return;
 
     scrollContainer._pinchInitialized = true;
 
     scrollContainer.addEventListener('touchstart', (e) => {
         if (e.touches.length === 2) {
+            const t1 = e.touches[0];
+            const t2 = e.touches[1];
+            const rect = scrollContainer.getBoundingClientRect();
             _pinchState.active = true;
-            _pinchState.startDist = Math.hypot(
-                e.touches[0].clientX - e.touches[1].clientX,
-                e.touches[0].clientY - e.touches[1].clientY
-            );
+            _pinchState.startDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
             _pinchState.startZoom = AppState.a4Zoom || 1;
+            _pinchState.startScrollX = scrollContainer.scrollLeft;
+            _pinchState.startScrollY = scrollContainer.scrollTop;
+            _pinchState.focalX = ((t1.clientX + t2.clientX) / 2) - rect.left;
+            _pinchState.focalY = ((t1.clientY + t2.clientY) / 2) - rect.top;
         }
     }, { passive: true });
 
     scrollContainer.addEventListener('touchmove', (e) => {
         if (_pinchState.active && e.touches.length === 2) {
-            const currentDist = Math.hypot(
-                e.touches[0].clientX - e.touches[1].clientX,
-                e.touches[0].clientY - e.touches[1].clientY
-            );
+            const t1 = e.touches[0];
+            const t2 = e.touches[1];
+            const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
             if (_pinchState.startDist > 0) {
                 const factor = currentDist / _pinchState.startDist;
-                const newZoom = Math.max(0.35, Math.min(2.5, _pinchState.startZoom * factor));
-                AppState.a4Zoom = Math.round(newZoom * 100) / 100;
+                const newZoom = Math.max(0.35, Math.min(2.8, _pinchState.startZoom * factor));
+                const roundedZoom = Math.round(newZoom * 100) / 100;
+                
+                AppState.a4Zoom = roundedZoom;
                 applyA4PreviewZoom();
+
+                // Odak noktasini iki parmagin altinda sabit tut
+                const zoomRatio = roundedZoom / _pinchState.startZoom;
+                scrollContainer.scrollLeft = (_pinchState.startScrollX + _pinchState.focalX) * zoomRatio - _pinchState.focalX;
+                scrollContainer.scrollTop = (_pinchState.startScrollY + _pinchState.focalY) * zoomRatio - _pinchState.focalY;
             }
         }
     }, { passive: true });
@@ -13347,26 +13363,20 @@ function initA4PinchZoom() {
 }
 
 function resetA4PreviewZoom() {
-
-    const vw = window.innerWidth || 1024;
-
+    const scrollContainer = document.getElementById('a4PreviewScrollContainer');
+    const vw = (scrollContainer && scrollContainer.clientWidth) || window.innerWidth || 1024;
     if (vw < 820) {
-
-        // Fit 210mm (~794px) neatly into mobile viewport width
-
-        AppState.a4Zoom = Math.max(0.42, Math.min(0.95, (vw - 20) / 800));
-
+        // 794px genisligindeki sayfayi ekran kenarinda 32px pay birakarak tam sigdir
+        AppState.a4Zoom = Math.max(0.35, Math.min(1.0, (vw - 32) / 794));
     } else {
-
         AppState.a4Zoom = 1;
-
     }
-
     applyA4PreviewZoom();
-
+    if (scrollContainer) {
+        scrollContainer.scrollLeft = 0;
+        scrollContainer.scrollTop = 0;
+    }
 }
-
-
 
 function closeA4PreviewModal() {
 
