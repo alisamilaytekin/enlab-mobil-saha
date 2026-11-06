@@ -18,6 +18,16 @@ function formatSymbolForPrint(val) {
 
 }
 
+function formatSymbolBadge(sym) {
+    if (!sym) return '';
+    let cls = 'tkm-badge-default';
+    if (sym === '✓') cls = 'tkm-badge-ok';
+    else if (sym === 'X' || sym === '✕') cls = 'tkm-badge-bad';
+    else if (sym === 'N' || sym === 'G') cls = 'tkm-badge-neutral';
+    return `<span class="tkm-sym-badge ${cls}">${sym}</span>`;
+}
+
+
 
 
 function buildTkmPageHeader(reportMainTitle) {
@@ -505,34 +515,33 @@ function closeA4PreviewModal() {
 function getPdfTheme() {
     try {
         const saved = localStorage.getItem('tkm_pdf_theme') || 'classic';
-        const aliasMap = {
-            'navy': 'bureau_veritas',
-            'emerald': 'isg_emerald',
-            'monochrome': 'nordic_tech'
-        };
-        return aliasMap[saved] || saved;
+        return saved === 'modern' ? 'modern' : 'classic';
     } catch (e) {
         return 'classic';
     }
 }
 
+function updateThemeToggleUI(theme) {
+    const btnClassic = document.getElementById('themeToggleClassic');
+    const btnModern = document.getElementById('themeToggleModern');
+    if (btnClassic && btnModern) {
+        if (theme === 'modern') {
+            btnModern.className = 'px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all bg-sky-600 text-white shadow-xs';
+            btnClassic.className = 'px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all text-slate-400 hover:text-white';
+        } else {
+            btnClassic.className = 'px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all bg-rose-600 text-white shadow-xs';
+            btnModern.className = 'px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all text-slate-400 hover:text-white';
+        }
+    }
+}
+
 function setPdfTheme(themeName) {
-    const validThemes = ['classic', 'tuv_modern', 'bureau_veritas', 'nordic_tech', 'isg_emerald'];
-    const aliasMap = {
-        'navy': 'bureau_veritas',
-        'emerald': 'isg_emerald',
-        'monochrome': 'nordic_tech'
-    };
-    const resolvedTheme = aliasMap[themeName] || themeName;
-    const theme = validThemes.includes(resolvedTheme) ? resolvedTheme : 'classic';
+    const theme = (themeName === 'modern') ? 'modern' : 'classic';
     try {
         localStorage.setItem('tkm_pdf_theme', theme);
     } catch (e) {}
 
-    const select = document.getElementById('pdfThemeSelect');
-    if (select && select.value !== theme) {
-        select.value = theme;
-    }
+    updateThemeToggleUI(theme);
 
     const previewContainer = document.getElementById('a4PreviewPagesContainer');
     if (previewContainer) {
@@ -549,7 +558,16 @@ function setPdfTheme(themeName) {
             el.setAttribute('data-pdf-theme', theme);
         });
     }
+
+    // Re-render report so pagination and layout (like 2-column visual checks vs 1-column) re-calculate cleanly!
+    if (typeof printOfficialReport === 'function') {
+        printOfficialReport(false);
+    }
 }
+window.getPdfTheme = getPdfTheme;
+window.setPdfTheme = setPdfTheme;
+window.updateThemeToggleUI = updateThemeToggleUI;
+
 
 
 
@@ -571,9 +589,10 @@ function paginateBlocksIntoA4Pages(blocksHtmlArray, reportMainTitle, formCode, r
 
 
 
+    const activeTheme = getPdfTheme();
     const probePage = document.createElement('div');
-
     probePage.className = 'tkm-a4-page';
+    probePage.setAttribute('data-pdf-theme', activeTheme);
 
     probePage.innerHTML = `
 
@@ -958,69 +977,100 @@ function printOfficialReport(directPrint = false) {
         const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
         const renderCompleteVisualTopicBlock = (subNumberTitle, questions) => {
+            const currentTheme = getPdfTheme();
+            if (currentTheme === 'modern') {
+                // Dual column (2-sütun) layout matching Ministry format!
+                const mid = Math.ceil(questions.length / 2);
+                let rowsHtml = '';
+                for (let i = 0; i < mid; i++) {
+                    const qL = questions[i];
+                    const letterL = letters[i] || (i + 1);
+                    const symL = formatSymbolForPrint(fd.answers[`q_${qL.guid}`] || '');
+                    const badgeL = formatSymbolBadge(symL);
 
-            const rowsHtml = questions.map((q, idx) => {
+                    const rightIdx = i + mid;
+                    const qR = rightIdx < questions.length ? questions[rightIdx] : null;
+                    const letterR = qR ? (letters[rightIdx] || (rightIdx + 1)) : '';
+                    const symR = qR ? formatSymbolForPrint(fd.answers[`q_${qR.guid}`] || '') : '';
+                    const badgeR = qR ? formatSymbolBadge(symR) : '';
 
-                const letter = letters[idx] || (idx + 1);
-
-                const sym = formatSymbolForPrint(fd.answers[`q_${q.guid}`] || '');
+                    rowsHtml += `
+                        <tr>
+                            <td style="text-align:center;font-weight:700;width:24px;">${letterL}</td>
+                            <td style="text-align:left;padding-left:4px;font-size:6.9pt;">${qL.question}</td>
+                            <td style="text-align:center;width:34px;">${badgeL}</td>
+                            ${qR ? `
+                                <td style="text-align:center;font-weight:700;width:24px;border-left:1.5px solid #cbd5e1;">${letterR}</td>
+                                <td style="text-align:left;padding-left:4px;font-size:6.9pt;">${qR.question}</td>
+                                <td style="text-align:center;width:34px;">${badgeR}</td>
+                            ` : `
+                                <td style="border-left:1.5px solid #cbd5e1;"></td>
+                                <td></td>
+                                <td></td>
+                            `}
+                        </tr>
+                    `;
+                }
 
                 return `
-
-                    <tr>
-
-                        <td style="text-align:center;font-weight:700;">${letter}</td>
-
-                        <td style="text-align:left;padding-left:6px;">${q.question}</td>
-
-                        <td style="text-align:center;">${sym}</td>
-
-                    </tr>
-
+                    <div class="tkm-sub-bar">${subNumberTitle}</div>
+                    <table class="tkm-table tkm-table-twocol">
+                        <colgroup>
+                            <col style="width:24px;">
+                            <col style="width:42%;">
+                            <col style="width:34px;">
+                            <col style="width:24px;">
+                            <col style="width:42%;">
+                            <col style="width:34px;">
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th style="text-align:left;padding-left:4px;font-weight:700;">Soru / Kriter</th>
+                                <th style="text-align:center;font-weight:700;">1</th>
+                                <th style="border-left:1.5px solid #cbd5e1;"></th>
+                                <th style="text-align:left;padding-left:4px;font-weight:700;">Soru / Kriter</th>
+                                <th style="text-align:center;font-weight:700;">1</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rowsHtml}</tbody>
+                    </table>
+                    <div class="tkm-legend">✓: Uygun; X: Uygun Değil; N: Uygulaması Yok; G: Görülemedi</div>
                 `;
+            }
 
+            // CLASSIC THEME (100% UNCHANGED)
+            const rowsHtml = questions.map((q, idx) => {
+                const letter = letters[idx] || (idx + 1);
+                const sym = formatSymbolForPrint(fd.answers[`q_${q.guid}`] || '');
+                return `
+                    <tr>
+                        <td style="text-align:center;font-weight:700;">${letter}</td>
+                        <td style="text-align:left;padding-left:6px;">${q.question}</td>
+                        <td style="text-align:center;">${sym}</td>
+                    </tr>
+                `;
             }).join('');
 
-
-
             return `
-
                 <div class="tkm-sub-bar">${subNumberTitle}</div>
-
                 <table class="tkm-table">
-
                     <colgroup>
-
                         <col style="width:28px;">
-
                         <col>
-
                         <col style="width:42px;">
-
                     </colgroup>
-
                     <thead>
-
                         <tr>
-
                             <th></th>
-
                             <th style="text-align:left;padding-left:6px;font-weight:700;">Soru / Kriter</th>
-
                             <th style="text-align:center;font-weight:700;">1</th>
-
                         </tr>
-
                     </thead>
-
                     <tbody>${rowsHtml}</tbody>
-
                 </table>
-
                 <div class="tkm-legend">✓: Uygun; X: Uygun Değil; N: Uygulaması Yok; G: Görülemedi</div>
-
             `;
-
         };
 
 
@@ -1522,7 +1572,7 @@ function printOfficialReport(directPrint = false) {
                                 C3 – İyileştirme önerilir.
                             </div>
 
-                            <div style="margin-top:2.5px;font-size:7.4pt;font-weight:700;color:${isSuitable ? '#047857' : '#c00000'};line-height:1.25;">
+                            <div class="tkm-conclusion-box ${isSuitable ? 'tkm-result-box-ok' : 'tkm-result-box-bad'}" style="margin-top:2.5px;font-size:7.4pt;font-weight:700;color:${isSuitable ? '#047857' : '#c00000'};line-height:1.25;">
                                 Periyodik kontrol tarihi itibari ile yukarıda teknik özellikleri belirtilen Elektrik Tesisatının fonksiyon testleri muayenesi sonrasında mevcut şartlar altında<br>
                                 <span style="font-size:8.5pt;">
                                     ${conclusionText}
@@ -3128,6 +3178,8 @@ function printOfficialReport(directPrint = false) {
 
 
     const activePdfTheme = getPdfTheme();
+    updateThemeToggleUI(activePdfTheme);
+
     const themeSelect = document.getElementById('pdfThemeSelect');
     if (themeSelect) themeSelect.value = activePdfTheme;
 
