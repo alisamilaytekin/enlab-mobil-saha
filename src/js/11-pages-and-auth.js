@@ -877,23 +877,14 @@ function openTabNavSheet() {
     let tabs = [];
 
     if (String(insp.template_id) === '2201') {
-
         tabs = [
-
-            { label: '1. Firma & Rapor Bilgileri', id: 0 },
-
-            { label: '2. Ölçüm Aletleri (4. Bölüm)', id: 1 },
-
-            { label: '3. Gözle Kontrol (Kriterler)', id: 2 },
-
-            { label: '4. Fonksiyon & Ölçüm Tabloları', id: 3 },
-
-            { label: `5. Fotoğraflar (${(AppState.currentFormData.photos || []).length})`, id: 4 },
-
-            { label: '6. Sonuç, Kanaat & Onay', id: 5 },
-
-            { label: 'Tüm Sayfayı Göster', id: -1 }
-
+            { label: '1-2. Firma & Ekipman', id: 0 },
+            { label: '3-4. Cihazlar & Aletler', id: 1 },
+            { label: '5. Gözle Kontrol', id: 2 },
+            { label: '6. Fonksiyon Testleri', id: 3 },
+            { label: `8. Fotoğraflar (${(AppState.currentFormData.photos || []).length})`, id: 4 },
+            { label: '7-11. Kusur, Not & Onay', id: 5 },
+            { label: 'Tüm Bölümler (1-11)', id: -1 }
         ];
 
     } else if (String(insp.template_id) === '2202') {

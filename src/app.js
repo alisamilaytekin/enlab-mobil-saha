@@ -6031,21 +6031,13 @@ function renderElectrical2201Editor() {
 
 
     const tabs = [
-
-        { label: '1. Firma & Tesisat', id: 0 },
-
-        { label: '2. Cihazlar', id: 1 },
-
-        { label: '3. Gözle Kontrol', id: 2 },
-
-        { label: '4. Fonksiyon & Ölçüm', id: 3 },
-
-        { label: `5. Fotoğraflar (${(fd.photos || []).length})`, id: 4 },
-
-        { label: '6. Sonuç & Onay', id: 5 },
-
-        { label: 'Tümü', id: -1 }
-
+        { label: '1-2. Firma & Ekipman', id: 0 },
+        { label: '3-4. Cihazlar & Aletler', id: 1 },
+        { label: '5. Gözle Kontrol', id: 2 },
+        { label: '6. Fonksiyon Testleri', id: 3 },
+        { label: `8. Fotoğraflar (${(fd.photos || []).length})`, id: 4 },
+        { label: '7-11. Kusur, Not & Onay', id: 5 },
+        { label: 'Tüm Bölümler (1-11)', id: -1 }
     ];
 
 
@@ -6126,9 +6118,8 @@ function renderElectrical2201Editor() {
 
             ${area0Html}
 
-            ${section4Html}
-
             ${area1Html}
+            ${section4Html}
 
             ${area2Html}
 
@@ -7863,7 +7854,7 @@ function renderPhotoSectionUI() {
 
                     <i class="fa-solid fa-camera text-sky-600 text-sm"></i>
 
-                    <span class="font-bold text-slate-900">Rapor Fotoğrafları (${photos.length})</span>
+                    <span class="font-bold text-slate-900">8. EKİPMAN FOTOĞRAFLARI (${photos.length})</span>
 
                 </div>
 
@@ -8588,7 +8579,7 @@ function renderEvaluationAndFooterSection() {
 
             <div class="flex items-center justify-between border-b border-slate-100 pb-2">
 
-                <span class="font-black text-xs text-slate-800 uppercase tracking-wide">6. Sonuç & Onay Değerlendirmesi</span>
+                <span class="font-black text-xs text-slate-800 uppercase tracking-wide">KUSUR, NOT, SONUÇ VE ONAY (BÖLÜM 7 - 9 - 10 - 11)</span>
 
                 <div class="flex items-center gap-1.5">
 
@@ -8626,7 +8617,7 @@ function renderEvaluationAndFooterSection() {
 
                     <div class="flex items-center gap-2">
 
-                        <label class="block font-bold text-slate-800">Kusur Açıklamaları / Uygunsuzluklar</label>
+                        <label class="block font-bold text-slate-800">7. KUSUR AÇIKLAMALARI / UYGUNSUZLUKLAR</label>
 
 
 
@@ -8660,13 +8651,13 @@ function renderEvaluationAndFooterSection() {
 
             <div>
 
-                <label class="block font-bold text-slate-800 mb-1">Genel Notlar / Öneriler</label>
+                <label class="block font-bold text-slate-800 mb-1">9. NOTLAR (Proje Bilgileri & Saha Notları)</label>
 
                 <textarea rows="2"
 
                     oninput="AppState.currentFormData.generalNotes=this.value; triggerAutoSave();"
 
-                    placeholder="İsteğe bağlı ek notlar..."
+                    placeholder="9. NOTLAR: Tesisin proje sorumlusu/çizen bilgileri veya genel saha notlarını buraya yazabilirsiniz (Boş bırakılırsa standart proje bilgisi metni basılır)..."
 
                     class="w-full border border-slate-300 rounded-xl p-2.5 text-slate-700 focus:border-sky-500 focus:outline-none">${fd.generalNotes || ''}</textarea>
 
@@ -8678,7 +8669,7 @@ function renderEvaluationAndFooterSection() {
 
                 <div>
 
-                    <label class="block font-bold text-slate-800 mb-1">Sonuç (Uygunluk Durumu)</label>
+                    <label class="block font-bold text-slate-800 mb-1">10. SONUÇ VE KANAAT</label>
 
                     <select onchange="AppState.currentFormData.overallResult=this.value; if(AppState.currentInspection) AppState.currentInspection.result_status=this.value; triggerAutoSave(); paintInspectionEditorUI();"
 
@@ -13104,7 +13095,7 @@ function buildTkmPageFooter(formCode, reportNo, pageNum, totalPages) {
 
 
 
-function buildTkmOnaySection(insp, sectionNumber = '10') {
+function buildTkmOnaySection(insp, sectionNumber = '10', customTitle = null) {
 
     const qrSrc = (window.TKM_EMBEDDED_ASSETS && window.TKM_EMBEDDED_ASSETS.qrDefault) || 'assets/qr_default.jpg';
 
@@ -13136,7 +13127,7 @@ function buildTkmOnaySection(insp, sectionNumber = '10') {
 
     return `
 
-        <div class="tkm-sec-title">${sectionNumber}. ONAY</div>
+        <div class="tkm-sec-title">${customTitle || `${sectionNumber}. ONAY`}</div>
 
         <table class="tkm-table">
 
@@ -13211,9 +13202,10 @@ function buildTkmOnaySection(insp, sectionNumber = '10') {
             </tbody>
 
         </table>
-
+        <div style="font-size:6.8pt;color:#475569;margin-top:2px;text-align:left;font-style:italic;">
+            Bu rapor elektronik ortamda 1 (bir) nüsha olarak hazırlanmıştır.
+        </div>
     `;
-
 }
 
 
@@ -13850,9 +13842,17 @@ function printOfficialReport(directPrint = false) {
 
 
         // Block 1: 1. FİRMA BİLGİLERİ
-
         blocks.push(`
-
+            <div style="display:flex;justify-content:flex-end;margin-bottom:3px;">
+                <table style="border:1px solid #94a3b8;font-size:6.7pt;border-collapse:collapse;background:#f8fafc;">
+                    <tr>
+                        <td style="padding:1.5px 6px;font-weight:700;border:1px solid #cbd5e1;background:#f1f5f9;">Doküman Kodu</td>
+                        <td style="padding:1.5px 6px;border:1px solid #cbd5e1;font-weight:600;">ZPKR02</td>
+                        <td style="padding:1.5px 6px;font-weight:700;border:1px solid #cbd5e1;background:#f1f5f9;">Yürürlük Tarihi</td>
+                        <td style="padding:1.5px 6px;border:1px solid #cbd5e1;">01.09.2025</td>
+                    </tr>
+                </table>
+            </div>
             <div class="tkm-sec-title">1. FİRMA BİLGİLERİ</div>
 
             <table class="tkm-table">
@@ -13893,7 +13893,7 @@ function printOfficialReport(directPrint = false) {
 
                         <td>${ci.isgKatipNo}</td>
 
-                        <td style="font-weight:700;">SGK Sicil No</td>
+                        <td style="font-weight:700;">SGK Sicil Numarası</td>
 
                         <td>${ci.sgkSicilNo}</td>
 
@@ -13941,15 +13941,11 @@ function printOfficialReport(directPrint = false) {
 
                         <td colspan="3" style="line-height:1.22;">
 
-                            • RG, 04.11.1984 - 18565 Elektrik İç Tesisleri Yönetmeliği<br>
-
-                            • RG, 21.08.2001 - 24500 Elektrik Tesislerinde Topraklamalar Yönetmeliği<br>
-
-                            • RG, 25.04.2013 - 28628 İş Ekipmanları Kullanımında Sağlık Güvenlik Şartları Yönetmeliği<br>
-
                             • TS HD 60364-4-43 Alçak Gerilim Elektrik Tesisatları- Bölüm 4: Güvenlik İçin Koruma Grup 43 - Aşırı Akıma Karşı Koruma<br>
-
-                            • TS HD 60364-6 Alçak Gerilim Elektrik Tesisatları – Bölüm 6: Doğrulama
+                            • TS HD 60364-6 Alçak Gerilim Elektrik Tesisatları – Bölüm 6: Doğrulama<br>
+                            • İş Ekipmanlarının Kullanımında Sağlık ve Güvenlik Şartları Yönetmeliği<br>
+                            • Elektrik İç Tesisleri Yönetmeliği<br>
+                            • Elektrik Tesislerinde Topraklamalar Yönetmeliği
 
                         </td>
 
@@ -13969,7 +13965,7 @@ function printOfficialReport(directPrint = false) {
 
             <div class="tkm-sec-title">2. EKİPMAN BİLGİLERİ</div>
 
-            <div class="tkm-sub-bar">2.1. DETAY BİLGİLERİ</div>
+            <div class="tkm-sub-bar">2.1. DETAY BİLGİLER</div>
 
             ${renderOrderedGridTable(area0.topics[0].questions, 3)}
 
@@ -14009,13 +14005,10 @@ function printOfficialReport(directPrint = false) {
 
                         <th style="text-align:center;font-weight:700;">Cihaz Adı</th>
 
-                        <th style="text-align:center;font-weight:700;">Seri No</th>
-
+                        <th style="text-align:center;font-weight:700;">Seri Numarası</th>
                         <th style="text-align:center;font-weight:700;">Kalibrasyon Tarihi</th>
-
                         <th style="text-align:center;font-weight:700;">Kalibrasyon Geçerlilik Tarihi</th>
-
-                        <th style="text-align:center;font-weight:700;">Sertifika No</th>
+                        <th style="text-align:center;font-weight:700;">Kalibrasyon Numarası</th>
 
                     </tr>
 
@@ -14049,13 +14042,10 @@ function printOfficialReport(directPrint = false) {
 
                         <th style="text-align:center;font-weight:700;">Cihaz Adı</th>
 
-                        <th style="text-align:center;font-weight:700;">Seri No</th>
-
+                        <th style="text-align:center;font-weight:700;">Seri Numarası</th>
                         <th style="text-align:center;font-weight:700;">Kalibrasyon Tarihi</th>
-
                         <th style="text-align:center;font-weight:700;">Kalibrasyon Geçerlilik Tarihi</th>
-
-                        <th style="text-align:center;font-weight:700;">Sertifika No</th>
+                        <th style="text-align:center;font-weight:700;">Kalibrasyon Numarası</th>
 
                     </tr>
 
@@ -14073,7 +14063,8 @@ function printOfficialReport(directPrint = false) {
 
         blocks.push(`
 
-            <div class="tkm-sec-title">5. TEST VE KONTROLLER - GÖZLE KONTROL KRİTERLERİ VE TESTLER</div>
+            <div class="tkm-sec-title" style="text-align:center;font-size:7.5pt;background:#e2e8f0;color:#0f172a;letter-spacing:0.5px;padding:2px 4px;margin-bottom:2px;">TEST VE KONTROLLER</div>
+            <div class="tkm-sec-title">5. KONTROL KRİTERLERİ VE TESTLER</div>
 
             <div class="tkm-sub-bar">5.1. ${area2.topics[0].name}</div>
 
@@ -14085,123 +14076,92 @@ function printOfficialReport(directPrint = false) {
 
         // Blocks for 5.2 through 5.8 (Each has its COMPLETE gray title bar + Soru/Kriter header + all rows + legend!)
 
-        area2.topics.slice(1).forEach((t, idx) => {
-
-            blocks.push(renderCompleteVisualTopicBlock(`5.${idx + 2}. ${t.name}`, t.questions));
-
+        const visualTopics = area2.topics.slice(1);
+        visualTopics.forEach((t, idx) => {
+            let blockHtml = renderCompleteVisualTopicBlock(`5.${idx + 2}. ${t.name}`, t.questions);
+            if (idx === visualTopics.length - 1) {
+                blockHtml += `
+                    <div style="font-size:6.8pt;color:#475569;font-style:italic;margin-top:2px;padding:2px 4px;">
+                        Pano/Ekipman sayısı fazla olan tesislerde birden fazla form kullanılmalıdır.
+                    </div>
+                `;
+            }
+            blocks.push(blockHtml);
         });
 
 
 
-        // Block for 6. TEST VE KONTROLLER Title + 6.1 + 6.2
-
+        // Block for 6. FONKSİYON KONTROL KRİTERLERİ VE TESTLER
+        // Bakanlık Formatı (ZPKR02):
+        // 6. FONKSİYON KONTROL KRİTERLERİ VE TESTLER
+        //   - Ölçüm ve Doğrulama Metodu
+        //   - 6.1. AŞIRI AKIM CİHAZI / İLETKEN UYGUNLUĞU - GERİLİM KONTROLÜ - AŞIRI GERİM CİHAZLARI (DKD) KONTROLÜ - RCD TESTLERİ
+        //          (Pano Özet Bilgileri + Linye Tablosu)
+        //   - 6.2. POTANSİYEL DENGELEME İLETKENLERİ KONTROLÜ
+        //   - 6.3. ZEMİN İZOLASYONUNUN KONTROLÜ
         blocks.push(`
-
-            <div class="tkm-sec-title">6. TEST VE KONTROLLER - FONKSİYON KONTROL KRİTERLERİ VE TESTLER</div>
-
-            <div class="tkm-sub-bar">6.1. ${area3.topics[0].name}</div>
-
+            <div class="tkm-sec-title">6. FONKSİYON KONTROL KRİTERLERİ VE TESTLER</div>
+            <div class="tkm-sub-bar">Ölçüm ve Doğrulama Metodu</div>
             ${renderOrderedGridTable(area3.topics[0].questions, 1)}
-
-            <div class="tkm-sub-bar">6.2. ${area3.topics[1].name}</div>
-
-            ${renderOrderedGridTable(area3.topics[1].questions, 1)}
-
-        `);
-
-
-
-        // Block for 6.3
-
-        blocks.push(`
-
-            <div class="tkm-sub-bar">6.3. ${area3.topics[2].name}</div>
-
+            <div class="tkm-sub-bar">6.1. ${area3.topics[2].name}</div>
+            <div style="margin-bottom:2px;">
+                ${renderOrderedGridTable(area3.topics[1].questions, 1)}
+            </div>
             ${renderOrderedGridTable(area3.topics[2].questions, 4)}
-
         `);
 
-
-
-        // Helper to push multi-row tables (6.4, 6.5, 6.6) in chunks of up to 8 rows with repeated full header if multi-chunk
-
-        const pushMultiRowTopicBlocks = (topic, tKey, subTitle) => {
-
+        // Helper to push multi-row tables (6.1 Linye, 6.2 Potansiyel Dengeleme, 6.3 Zemin İzolasyonu)
+        const pushMultiRowTopicBlocks = (topic, tKey, subTitle, isLastSec6Topic = false) => {
             const allRows = (fd.tableRows[tKey] && fd.tableRows[tKey].length)
-
                 ? fd.tableRows[tKey]
-
                 : [createDefaultTopicRow(area3, topic, 1)];
-
             const chunkSize = 8;
-
             const ths = topic.questions.map(q => {
-
                 const hdr = getShortTopicQuestionLabel(3, topic.index, q.question);
-
                 return `<th style="text-align:center;font-weight:700;font-size:6.8pt;line-height:1.12;padding:2px;">${hdr}</th>`;
-
             }).join('');
 
-
-
             for (let start = 0; start < allRows.length; start += chunkSize) {
-
                 const slice = allRows.slice(start, start + chunkSize);
-
                 const trs = slice.map((r, idx) => `
-
                     <tr>
-
                         <td style="text-align:center;">${start + idx + 1}</td>
-
                         ${topic.questions.map(q => `<td style="text-align:center;font-size:7.1pt;">${q.type === 'YesNo' ? formatSymbolForPrint(r[q.guid] || '') : (r[q.guid] ?? '')}</td>`).join('')}
-
                     </tr>
-
                 `).join('');
-
                 const chunkTitle = start === 0 ? subTitle : `${subTitle} (Devamı)`;
+                const isFinalChunk = (start + chunkSize >= allRows.length);
+                const footNoteHtml = (isLastSec6Topic && isFinalChunk) ? `
+                    <div style="font-size:6.8pt;color:#475569;font-style:italic;margin-top:2px;padding:2px 4px;">
+                        Nokta sayısı fazla olan tesislerde birden fazla form kullanılabilir. Ya da formun sadece 6. Bölümü çoğaltılabilir.
+                    </div>
+                ` : '';
 
                 blocks.push(`
-
                     <div class="tkm-sub-bar">${chunkTitle}</div>
-
                     <table class="tkm-table">
-
                         <thead>
-
                             <tr>
-
                                 <th style="width:24px;text-align:center;font-weight:700;font-size:7pt;">No</th>
-
                                 ${ths}
-
                             </tr>
-
                         </thead>
-
                         <tbody>${trs}</tbody>
-
                     </table>
-
                     <div class="tkm-legend">✓: Uygun; X: Uygun Değil; N: Uygulaması Yok; G: Görülemedi</div>
-
+                    ${footNoteHtml}
                 `);
-
             }
-
         };
 
+        // 6.1 Linye Ölçüm ve Test Tablosu
+        pushMultiRowTopicBlocks(area3.topics[3], 'topic_3_3', '6.1. Linye Ölçüm ve Test Tablosu');
 
+        // 6.2 Potansiyel Dengeleme İletkenleri Kontrolü (Bakanlık 6.2)
+        pushMultiRowTopicBlocks(area3.topics[4], 'topic_3_4', '6.2. ' + area3.topics[4].name);
 
-        pushMultiRowTopicBlocks(area3.topics[3], 'topic_3_3', '6.4. ' + area3.topics[3].name);
-
-        pushMultiRowTopicBlocks(area3.topics[4], 'topic_3_4', '6.5. ' + area3.topics[4].name);
-
-        pushMultiRowTopicBlocks(area3.topics[5], 'topic_3_5', '6.6. ' + area3.topics[5].name);
-
-
+        // 6.3 Zemin İzolasyonunun Kontrolü (Bakanlık 6.3)
+        pushMultiRowTopicBlocks(area3.topics[5], 'topic_3_5', '6.3. ' + area3.topics[5].name, true);
 
         // Block for 7. KUSUR AÇIKLAMALARI
         blocks.push(`
@@ -14209,27 +14169,25 @@ function printOfficialReport(directPrint = false) {
             <table class="tkm-table">
                 <tbody>
                     <tr>
-                        <td style="min-height:20px;height:20px;vertical-align:top;text-align:left;padding:3px 6px;">
+                        <td style="min-height:22px;height:24px;vertical-align:top;text-align:left;padding:3.5px 6px;">
                             ${(fd.defectNotes || 'Kusur tespiti bulunmamaktadır.').replace(/\n/g, '<br>')}
                         </td>
                     </tr>
                 </tbody>
             </table>
+            <div style="font-size:6.8pt;color:#334155;font-weight:600;padding:2.5px 6px;margin-top:2px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:2px;line-height:1.25;">
+                Kusur derecesi “*” hafif kusurlu ve “**” ağır kusurlu anlamında kullanılmaktadır. Değerlendirme “Uygun”, “Uygun Değil” ve “Uygulanamaz” olarak yapılmıştır.
+            </div>
         `);
 
-        // Fotoğraflar (Yalnızca sahada kullanıcı fotoğraf eklediyse basılır; yoksa başlık ve kutu KESİNLİKLE çıkmaz!)
+        // Block 8: 8. EKİPMAN FOTOĞRAFLARI (Bakanlık Formatı: SABİT 8. BÖLÜM - Asla silinmez / kaydırılmaz)
         const validPhotos = (fd.photos || []).filter(p => {
             if (!p) return false;
             if (typeof p === 'string') return p.length > 10;
             return Boolean(p.dataUrl || p.data || p.url);
         });
-        const hasPhotos = validPhotos.length > 0;
 
-        const secNumNotes = hasPhotos ? '9' : '8';
-        const secNumSonuc = hasPhotos ? '10' : '9';
-        const secNumOnay  = hasPhotos ? '11' : '10';
-
-        if (hasPhotos) {
+        if (validPhotos.length > 0) {
             let photoRowsHtml = '';
 
             const getSrc = (item) => {
@@ -14256,7 +14214,7 @@ function printOfficialReport(directPrint = false) {
                 <td style="${widthPct ? `width:${widthPct};` : ''}text-align:center;padding:5px 6px;vertical-align:top;background:#ffffff;">
                     <!-- Fotoğraf Üstü: Sadece Fotoğraf 1, 2, 3... -->
                     <div style="font-weight:700;font-size:7.5pt;margin-bottom:4px;color:#111;">Fotoğraf ${photoNum}</div>
-                    <!-- Fotoğraf Görseli (Damgasız, Saf ve Temiz) -->
+                    <!-- Fotoğraf Görseli -->
                     <div style="display:flex;align-items:center;justify-content:center;height:145px;overflow:hidden;background:#ffffff;border:1px solid #e2e8f0;">
                         <img src="${src}" alt="Fotoğraf ${photoNum}" style="max-height:145px;max-width:100%;object-fit:contain;display:block;margin:0 auto;">
                     </div>
@@ -14305,11 +14263,24 @@ function printOfficialReport(directPrint = false) {
                     </tbody>
                 </table>
             `);
+        } else {
+            blocks.push(`
+                <div class="tkm-sec-title">8. EKİPMAN FOTOĞRAFLARI</div>
+                <table class="tkm-table" style="table-layout:fixed;background:#ffffff;">
+                    <tbody>
+                        <tr>
+                            <td style="min-height:24px;height:24px;vertical-align:middle;text-align:center;color:#64748b;font-style:italic;font-size:7.2pt;">
+                                Bu periyodik kontrolde ekipman fotoğrafı kaydedilmemiştir.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            `);
         }
 
-        // Block for NOTLAR
+        // Block 9: 9. NOTLAR (Bakanlık Formatı: SABİT 9. BÖLÜM)
         blocks.push(`
-            <div class="tkm-sec-title">${secNumNotes}. NOTLAR</div>
+            <div class="tkm-sec-title">9. NOTLAR</div>
             <table class="tkm-table">
                 <tbody>
                     <tr>
@@ -14321,14 +14292,14 @@ function printOfficialReport(directPrint = false) {
             </table>
         `);
 
-        // Block for SONUÇ VE KANAAT (Tam Orijinal TEKKOMER Metni)
+        // Block 10: 10. SONUÇ VE KANAAT (Bakanlık Formatı: SABİT 10. BÖLÜM)
         const isSuitable = fd.overallResult !== 'UYGUN DEĞİL';
         const conclusionText = isSuitable 
             ? 'KULLANILMASI UYGUNDUR.' 
             : 'KULLANILMASI UYGUN DEĞİLDİR. C1 – Tehlike mevcut. Yaralanma riski. Derhal düzeltici eylem gerekli.';
 
         blocks.push(`
-            <div class="tkm-sec-title">${secNumSonuc}. SONUÇ VE KANAAT</div>
+            <div class="tkm-sec-title">10. SONUÇ VE KANAAT</div>
             <table class="tkm-table">
                 <tbody>
                     <tr>
@@ -14373,8 +14344,8 @@ function printOfficialReport(directPrint = false) {
             </table>
         `);
 
-        // Block for ONAY (Tekkomer Standart)
-        blocks.push(buildTkmOnaySection(insp, secNumOnay));
+        // Block 11: 11. PERİYODİK KONTROLLERİ YAPMAYA YETKİLİ KİŞİ BİLGİLERİ ve ONAY (Bakanlık Resmi Başlığı)
+        blocks.push(buildTkmOnaySection(insp, '11', '11. PERİYODİK KONTROLLERİ YAPMAYA YETKİLİ KİŞİ BİLGİLERİ ve ONAY'));
 
         // Dynamically pack blocks into A4 pages using real DOM measurement!
 
@@ -15081,13 +15052,10 @@ function printOfficialReport(directPrint = false) {
 
                         <th style="text-align:center;font-weight:700;">Cihaz Adı</th>
 
-                        <th style="text-align:center;font-weight:700;">Seri No</th>
-
+                        <th style="text-align:center;font-weight:700;">Seri Numarası</th>
                         <th style="text-align:center;font-weight:700;">Kalibrasyon Tarihi</th>
-
                         <th style="text-align:center;font-weight:700;">Kalibrasyon Geçerlilik Tarihi</th>
-
-                        <th style="text-align:center;font-weight:700;">Sertifika No</th>
+                        <th style="text-align:center;font-weight:700;">Kalibrasyon Numarası</th>
 
                     </tr>
 
@@ -16896,23 +16864,14 @@ function openTabNavSheet() {
     let tabs = [];
 
     if (String(insp.template_id) === '2201') {
-
         tabs = [
-
-            { label: '1. Firma & Rapor Bilgileri', id: 0 },
-
-            { label: '2. Ölçüm Aletleri (4. Bölüm)', id: 1 },
-
-            { label: '3. Gözle Kontrol (Kriterler)', id: 2 },
-
-            { label: '4. Fonksiyon & Ölçüm Tabloları', id: 3 },
-
-            { label: `5. Fotoğraflar (${(AppState.currentFormData.photos || []).length})`, id: 4 },
-
-            { label: '6. Sonuç, Kanaat & Onay', id: 5 },
-
-            { label: 'Tüm Sayfayı Göster', id: -1 }
-
+            { label: '1-2. Firma & Ekipman', id: 0 },
+            { label: '3-4. Cihazlar & Aletler', id: 1 },
+            { label: '5. Gözle Kontrol', id: 2 },
+            { label: '6. Fonksiyon Testleri', id: 3 },
+            { label: `8. Fotoğraflar (${(AppState.currentFormData.photos || []).length})`, id: 4 },
+            { label: '7-11. Kusur, Not & Onay', id: 5 },
+            { label: 'Tüm Bölümler (1-11)', id: -1 }
         ];
 
     } else if (String(insp.template_id) === '2202') {

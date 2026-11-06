@@ -486,7 +486,7 @@ function renderEvaluationAndFooterSection() {
 
             <div class="flex items-center justify-between border-b border-slate-100 pb-2">
 
-                <span class="font-black text-xs text-slate-800 uppercase tracking-wide">6. Sonuç & Onay Değerlendirmesi</span>
+                <span class="font-black text-xs text-slate-800 uppercase tracking-wide">KUSUR, NOT, SONUÇ VE ONAY (BÖLÜM 7 - 9 - 10 - 11)</span>
 
                 <div class="flex items-center gap-1.5">
 
@@ -524,7 +524,7 @@ function renderEvaluationAndFooterSection() {
 
                     <div class="flex items-center gap-2">
 
-                        <label class="block font-bold text-slate-800">Kusur Açıklamaları / Uygunsuzluklar</label>
+                        <label class="block font-bold text-slate-800">7. KUSUR AÇIKLAMALARI / UYGUNSUZLUKLAR</label>
 
 
 
@@ -558,13 +558,13 @@ function renderEvaluationAndFooterSection() {
 
             <div>
 
-                <label class="block font-bold text-slate-800 mb-1">Genel Notlar / Öneriler</label>
+                <label class="block font-bold text-slate-800 mb-1">9. NOTLAR (Proje Bilgileri & Saha Notları)</label>
 
                 <textarea rows="2"
 
                     oninput="AppState.currentFormData.generalNotes=this.value; triggerAutoSave();"
 
-                    placeholder="İsteğe bağlı ek notlar..."
+                    placeholder="9. NOTLAR: Tesisin proje sorumlusu/çizen bilgileri veya genel saha notlarını buraya yazabilirsiniz (Boş bırakılırsa standart proje bilgisi metni basılır)..."
 
                     class="w-full border border-slate-300 rounded-xl p-2.5 text-slate-700 focus:border-sky-500 focus:outline-none">${fd.generalNotes || ''}</textarea>
 
@@ -576,7 +576,7 @@ function renderEvaluationAndFooterSection() {
 
                 <div>
 
-                    <label class="block font-bold text-slate-800 mb-1">Sonuç (Uygunluk Durumu)</label>
+                    <label class="block font-bold text-slate-800 mb-1">10. SONUÇ VE KANAAT</label>
 
                     <select onchange="AppState.currentFormData.overallResult=this.value; if(AppState.currentInspection) AppState.currentInspection.result_status=this.value; triggerAutoSave(); paintInspectionEditorUI();"
 

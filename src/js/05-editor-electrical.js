@@ -31,21 +31,13 @@ function renderElectrical2201Editor() {
 
 
     const tabs = [
-
-        { label: '1. Firma & Tesisat', id: 0 },
-
-        { label: '2. Cihazlar', id: 1 },
-
-        { label: '3. Gözle Kontrol', id: 2 },
-
-        { label: '4. Fonksiyon & Ölçüm', id: 3 },
-
-        { label: `5. Fotoğraflar (${(fd.photos || []).length})`, id: 4 },
-
-        { label: '6. Sonuç & Onay', id: 5 },
-
-        { label: 'Tümü', id: -1 }
-
+        { label: '1-2. Firma & Ekipman', id: 0 },
+        { label: '3-4. Cihazlar & Aletler', id: 1 },
+        { label: '5. Gözle Kontrol', id: 2 },
+        { label: '6. Fonksiyon Testleri', id: 3 },
+        { label: `8. Fotoğraflar (${(fd.photos || []).length})`, id: 4 },
+        { label: '7-11. Kusur, Not & Onay', id: 5 },
+        { label: 'Tüm Bölümler (1-11)', id: -1 }
     ];
 
 
@@ -126,9 +118,8 @@ function renderElectrical2201Editor() {
 
             ${area0Html}
 
-            ${section4Html}
-
             ${area1Html}
+            ${section4Html}
 
             ${area2Html}
 

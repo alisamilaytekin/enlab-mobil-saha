@@ -929,7 +929,7 @@ function renderPhotoSectionUI() {
 
                     <i class="fa-solid fa-camera text-sky-600 text-sm"></i>
 
-                    <span class="font-bold text-slate-900">Rapor Fotoğrafları (${photos.length})</span>
+                    <span class="font-bold text-slate-900">8. EKİPMAN FOTOĞRAFLARI (${photos.length})</span>
 
                 </div>
 
