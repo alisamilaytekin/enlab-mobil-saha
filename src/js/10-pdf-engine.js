@@ -262,27 +262,39 @@ AppState.a4Zoom = 1;
 
 
 function applyA4PreviewZoom() {
-
     const container = document.getElementById('a4PreviewPagesContainer');
-
+    const scrollContainer = document.getElementById('a4PreviewScrollContainer');
     if (!container) return;
 
     const z = AppState.a4Zoom || 1;
+    container.style.transformOrigin = 'top center';
 
-    if (Math.abs(z - 1) < 0.02) {
+    // A4 width is 210mm (~794px at 96dpi)
+    const baseW = 794;
+    const scaledW = Math.round(baseW * z);
 
-        container.style.transform = 'none';
-
-        container.style.marginBottom = '0';
-
-    } else {
-
-        container.style.transform = `scale(${z})`;
-
-        container.style.transformOrigin = 'top center';
-
+    container.style.transform = `scale(${z})`;
+    
+    // Scale container wrapper so parent scrollbars naturally reflect exact scaled width & height
+    container.style.width = `${baseW}px`;
+    
+    if (scrollContainer) {
+        const vw = scrollContainer.clientWidth || window.innerWidth;
+        if (scaledW > vw) {
+            // Give horizontal margin so user can pan freely to the far left and far right
+            const extra = Math.round((scaledW - baseW) / 2);
+            container.style.marginLeft = `${extra + 16}px`;
+            container.style.marginRight = `${extra + 16}px`;
+        } else {
+            container.style.marginLeft = 'auto';
+            container.style.marginRight = 'auto';
+        }
+        
+        // Exact vertical height compensation so there is no endless bottom blank space
+        const origH = container.scrollHeight || (container.children.length * 1122);
+        const diffH = Math.round((z - 1) * origH);
+        container.style.marginBottom = `${Math.max(20, diffH + 20)}px`;
     }
-
 }
 
 
