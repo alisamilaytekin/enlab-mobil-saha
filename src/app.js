@@ -13627,7 +13627,7 @@ function renderPdfPhotoBlocks(photosList, secTitle = 'FOTOĞRAFLAR') {
 
                         <div style="height:175px;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:4px;">
 
-                            <img src="${ph.dataUrl}" style="max-height:170px;max-width:100%;object-fit:contain;display:block;margin:0 auto;">
+                            <img src="${ph.dataUrl || ph.data || ph.url || ph}" style="max-height:170px;max-width:100%;object-fit:contain;display:block;margin:0 auto;">
 
                         </div>
 
@@ -14309,9 +14309,13 @@ function printOfficialReport(directPrint = false) {
             </table>
         `);
 
-        // Fotoğraflar (Yalnızca sahada gerçek fotoğraf eklendiyse basılır; yoksa boş kutu ÇIKMAZ!)
-        const photoList = (fd.photos || []).filter(p => p && (p.data || p.url || (typeof p === 'string' && p.length > 5)));
-        const hasPhotos = photoList.length > 0;
+        // Fotoğraflar (Yalnızca sahada kullanıcı fotoğraf eklediyse basılır; yoksa başlık ve kutu KESİNLİKLE çıkmaz!)
+        const validPhotos = (fd.photos || []).filter(p => {
+            if (!p) return false;
+            if (typeof p === 'string') return p.length > 10;
+            return Boolean(p.dataUrl || p.data || p.url);
+        });
+        const hasPhotos = validPhotos.length > 0;
 
         const secNumNotes = hasPhotos ? '9' : '8';
         const secNumSonuc = hasPhotos ? '10' : '9';
@@ -14319,43 +14323,59 @@ function printOfficialReport(directPrint = false) {
 
         if (hasPhotos) {
             let photoRowsHtml = '';
-            if (photoList.length === 1) {
-                const ph = photoList[0];
-                const src = ph.data || ph.url || ph;
-                const title = ph.title || ph.caption || insp.equipment_name || 'Ana Dağıtım Panosu';
-                photoRowsHtml = `
-                    <tr>
-                        <td style="text-align:center;padding:4px;vertical-align:middle;">
-                            <div style="font-weight:700;font-size:7.4pt;margin-bottom:3px;">${escapeHtml(title)}</div>
-                            <img src="${src}" alt="Ekipman Fotoğrafı" style="max-height:165px;max-width:100%;object-fit:contain;display:inline-block;">
-                        </td>
-                    </tr>
-                `;
-            } else {
-                const p1 = photoList[0];
-                const p2 = photoList[1];
-                const src1 = p1.data || p1.url || p1;
-                const src2 = p2.data || p2.url || p2;
-                const title1 = p1.title || p1.caption || insp.equipment_name || 'Ana Dağıtım Panosu';
-                const title2 = p2.title || p2.caption || 'Termal Kamera Görüntüsü';
+            for (let i = 0; i < validPhotos.length; i += 2) {
+                const p1 = validPhotos[i];
+                const p2 = validPhotos[i + 1] || null;
 
-                photoRowsHtml = `
-                    <tr>
-                        <td style="width:50%;text-align:center;padding:4px;vertical-align:top;">
-                            <div style="font-weight:700;font-size:7.4pt;margin-bottom:3px;">${escapeHtml(title1)}</div>
-                            <img src="${src1}" alt="${escapeHtml(title1)}" style="max-height:145px;max-width:100%;object-fit:contain;display:inline-block;">
-                        </td>
-                        <td style="width:50%;text-align:center;padding:4px;vertical-align:top;">
-                            <div style="font-weight:700;font-size:7.4pt;margin-bottom:3px;">${escapeHtml(title2)}</div>
-                            <img src="${src2}" alt="${escapeHtml(title2)}" style="max-height:145px;max-width:100%;object-fit:contain;display:inline-block;">
-                        </td>
-                    </tr>
-                `;
+                const getSrc = (item) => {
+                    if (!item) return '';
+                    if (typeof item === 'string') return item;
+                    return item.dataUrl || item.data || item.url || '';
+                };
+                const getTitle = (item, defaultTitle) => {
+                    if (!item) return defaultTitle;
+                    return item.caption || item.title || defaultTitle;
+                };
+
+                const src1 = getSrc(p1);
+                const title1 = getTitle(p1, (i === 0 ? (insp.equipment_name || 'Ana Dağıtım Panosu') : `Fotoğraf ${i + 1}`));
+
+                if (p2) {
+                    const src2 = getSrc(p2);
+                    const title2 = getTitle(p2, (i === 0 ? 'Termal Kamera Görüntüsü' : `Fotoğraf ${i + 2}`));
+                    photoRowsHtml += `
+                        <tr>
+                            <td style="width:50%;text-align:center;padding:4px;vertical-align:top;background:#ffffff;">
+                                <div style="font-weight:700;font-size:7.4pt;margin-bottom:3px;color:#111;">${escapeHtml(title1)}</div>
+                                <div style="display:flex;align-items:center;justify-content:center;height:145px;overflow:hidden;">
+                                    <img src="${src1}" alt="${escapeHtml(title1)}" style="max-height:145px;max-width:100%;object-fit:contain;display:block;margin:0 auto;">
+                                </div>
+                            </td>
+                            <td style="width:50%;text-align:center;padding:4px;vertical-align:top;background:#ffffff;">
+                                <div style="font-weight:700;font-size:7.4pt;margin-bottom:3px;color:#111;">${escapeHtml(title2)}</div>
+                                <div style="display:flex;align-items:center;justify-content:center;height:145px;overflow:hidden;">
+                                    <img src="${src2}" alt="${escapeHtml(title2)}" style="max-height:145px;max-width:100%;object-fit:contain;display:block;margin:0 auto;">
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    photoRowsHtml += `
+                        <tr>
+                            <td colspan="2" style="text-align:center;padding:4px;vertical-align:top;background:#ffffff;">
+                                <div style="font-weight:700;font-size:7.4pt;margin-bottom:3px;color:#111;">${escapeHtml(title1)}</div>
+                                <div style="display:flex;align-items:center;justify-content:center;height:165px;overflow:hidden;">
+                                    <img src="${src1}" alt="${escapeHtml(title1)}" style="max-height:165px;max-width:100%;object-fit:contain;display:block;margin:0 auto;">
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }
             }
 
             blocks.push(`
                 <div class="tkm-sec-title">8. EKİPMAN FOTOĞRAFLARI</div>
-                <table class="tkm-table" style="table-layout:fixed;">
+                <table class="tkm-table" style="table-layout:fixed;background:#ffffff;">
                     <tbody>
                         ${photoRowsHtml}
                     </tbody>
