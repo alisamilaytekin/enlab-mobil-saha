@@ -1209,44 +1209,63 @@ function printOfficialReport(directPrint = false) {
             </table>
         `);
 
-        // Block for 8. EKİPMAN FOTOĞRAFLARI (Tekkomer Standart: Pano ve Termal Kamera Görüntüsü)
-        const photoList = fd.photos || [];
-        const panoPhoto = photoList[0] || null;
-        const thermalPhoto = photoList[1] || null;
+        // Fotoğraflar (Yalnızca sahada gerçek fotoğraf eklendiyse basılır; yoksa boş kutu ÇIKMAZ!)
+        const photoList = (fd.photos || []).filter(p => p && (p.data || p.url || (typeof p === 'string' && p.length > 5)));
+        const hasPhotos = photoList.length > 0;
 
-        const panoImgHtml = panoPhoto 
-            ? `<img src="${panoPhoto.data || panoPhoto.url || panoPhoto}" alt="Pano Fotoğrafı" style="max-height:130px;max-width:100%;object-fit:contain;display:inline-block;">`
-            : `<div style="font-size:7.2pt;color:#888;">[ Fotoğraf Eklenmedi ]</div>`;
+        const secNumNotes = hasPhotos ? '9' : '8';
+        const secNumSonuc = hasPhotos ? '10' : '9';
+        const secNumOnay  = hasPhotos ? '11' : '10';
 
-        const thermalImgHtml = thermalPhoto
-            ? `<img src="${thermalPhoto.data || thermalPhoto.url || thermalPhoto}" alt="Termal Kamera Görüntüsü" style="max-height:130px;max-width:100%;object-fit:contain;display:inline-block;">`
-            : `<div style="font-size:7.2pt;color:#888;">[ Termal Görüntü Eklenmedi ]</div>`;
-
-        blocks.push(`
-            <div class="tkm-sec-title">8. EKİPMAN FOTOĞRAFLARI</div>
-            <table class="tkm-table" style="table-layout:fixed;">
-                <tbody>
+        if (hasPhotos) {
+            let photoRowsHtml = '';
+            if (photoList.length === 1) {
+                const ph = photoList[0];
+                const src = ph.data || ph.url || ph;
+                const title = ph.title || ph.caption || insp.equipment_name || 'Ana Dağıtım Panosu';
+                photoRowsHtml = `
                     <tr>
-                        <td style="width:50%;text-align:center;padding:3.5px;vertical-align:top;">
-                            <div style="font-weight:700;font-size:7.4pt;margin-bottom:2px;">${escapeHtml(insp.equipment_name || 'Ana Dağıtım Panosu')}</div>
-                            <div style="height:136px;border:1px dashed #777;display:flex;align-items:center;justify-content:center;background:#ffffff;">
-                                ${panoImgHtml}
-                            </div>
-                        </td>
-                        <td style="width:50%;text-align:center;padding:3.5px;vertical-align:top;">
-                            <div style="font-weight:700;font-size:7.4pt;margin-bottom:2px;">Termal Kamera Görüntüsü</div>
-                            <div style="height:136px;border:1px dashed #777;display:flex;align-items:center;justify-content:center;background:#ffffff;">
-                                ${thermalImgHtml}
-                            </div>
+                        <td style="text-align:center;padding:4px;vertical-align:middle;">
+                            <div style="font-weight:700;font-size:7.4pt;margin-bottom:3px;">${escapeHtml(title)}</div>
+                            <img src="${src}" alt="Ekipman Fotoğrafı" style="max-height:165px;max-width:100%;object-fit:contain;display:inline-block;">
                         </td>
                     </tr>
-                </tbody>
-            </table>
-        `);
+                `;
+            } else {
+                const p1 = photoList[0];
+                const p2 = photoList[1];
+                const src1 = p1.data || p1.url || p1;
+                const src2 = p2.data || p2.url || p2;
+                const title1 = p1.title || p1.caption || insp.equipment_name || 'Ana Dağıtım Panosu';
+                const title2 = p2.title || p2.caption || 'Termal Kamera Görüntüsü';
 
-        // Block for 9. NOTLAR
+                photoRowsHtml = `
+                    <tr>
+                        <td style="width:50%;text-align:center;padding:4px;vertical-align:top;">
+                            <div style="font-weight:700;font-size:7.4pt;margin-bottom:3px;">${escapeHtml(title1)}</div>
+                            <img src="${src1}" alt="${escapeHtml(title1)}" style="max-height:145px;max-width:100%;object-fit:contain;display:inline-block;">
+                        </td>
+                        <td style="width:50%;text-align:center;padding:4px;vertical-align:top;">
+                            <div style="font-weight:700;font-size:7.4pt;margin-bottom:3px;">${escapeHtml(title2)}</div>
+                            <img src="${src2}" alt="${escapeHtml(title2)}" style="max-height:145px;max-width:100%;object-fit:contain;display:inline-block;">
+                        </td>
+                    </tr>
+                `;
+            }
+
+            blocks.push(`
+                <div class="tkm-sec-title">8. EKİPMAN FOTOĞRAFLARI</div>
+                <table class="tkm-table" style="table-layout:fixed;">
+                    <tbody>
+                        ${photoRowsHtml}
+                    </tbody>
+                </table>
+            `);
+        }
+
+        // Block for NOTLAR
         blocks.push(`
-            <div class="tkm-sec-title">9. NOTLAR</div>
+            <div class="tkm-sec-title">${secNumNotes}. NOTLAR</div>
             <table class="tkm-table">
                 <tbody>
                     <tr>
@@ -1258,14 +1277,14 @@ function printOfficialReport(directPrint = false) {
             </table>
         `);
 
-        // Block for 10. SONUÇ VE KANAAT (Tam Orijinal TEKKOMER Metni)
+        // Block for SONUÇ VE KANAAT (Tam Orijinal TEKKOMER Metni)
         const isSuitable = fd.overallResult !== 'UYGUN DEĞİL';
         const conclusionText = isSuitable 
             ? 'KULLANILMASI UYGUNDUR.' 
             : 'KULLANILMASI UYGUN DEĞİLDİR. C1 – Tehlike mevcut. Yaralanma riski. Derhal düzeltici eylem gerekli.';
 
         blocks.push(`
-            <div class="tkm-sec-title">10. SONUÇ VE KANAAT</div>
+            <div class="tkm-sec-title">${secNumSonuc}. SONUÇ VE KANAAT</div>
             <table class="tkm-table">
                 <tbody>
                     <tr>
@@ -1310,8 +1329,8 @@ function printOfficialReport(directPrint = false) {
             </table>
         `);
 
-        // Block for 11. ONAY (Tekkomer Standart)
-        blocks.push(buildTkmOnaySection(insp, '11'));
+        // Block for ONAY (Tekkomer Standart)
+        blocks.push(buildTkmOnaySection(insp, secNumOnay));
 
         // Dynamically pack blocks into A4 pages using real DOM measurement!
 
