@@ -3,8 +3,6 @@ __pycache__/
 *.pyc
 
 # Android derleme ve APK paketleri (Git hızlandırması için)
-*.apk
-dist/*.apk
 dist/unsigned_temp.apk
 dist/*.idsig
 
