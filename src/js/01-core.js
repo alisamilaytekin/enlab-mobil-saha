@@ -799,6 +799,17 @@ let lastHomeBackPressTime = 0;
 
 window.handleAndroidBackButton = function () {
 
+    const emailModal = document.getElementById('reportEmailModal');
+
+    if (emailModal && !emailModal.classList.contains('hidden')) {
+
+        if (typeof closeReportEmailModal === 'function') closeReportEmailModal();
+        else emailModal.classList.add('hidden');
+
+        return 'HANDLED';
+
+    }
+
     const a4Modal = document.getElementById('a4PreviewModal');
 
     if (a4Modal && !a4Modal.classList.contains('hidden')) {

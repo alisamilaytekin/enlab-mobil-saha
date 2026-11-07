@@ -850,6 +850,17 @@ let lastHomeBackPressTime = 0;
 
 window.handleAndroidBackButton = function () {
 
+    const emailModal = document.getElementById('reportEmailModal');
+
+    if (emailModal && !emailModal.classList.contains('hidden')) {
+
+        if (typeof closeReportEmailModal === 'function') closeReportEmailModal();
+        else emailModal.classList.add('hidden');
+
+        return 'HANDLED';
+
+    }
+
     const a4Modal = document.getElementById('a4PreviewModal');
 
     if (a4Modal && !a4Modal.classList.contains('hidden')) {
@@ -13273,7 +13284,9 @@ function triggerBrowserPrint() {
 
     const jobTitle = `${reportNo}_${customer}`;
 
-
+    if (typeof showToast === 'function') {
+        showToast('PDF Yazdırma / Kaydetme ekranı açılıyor... Açılan ekranda üstten "PDF Olarak Kaydet"i seçebilirsiniz.', 4500);
+    }
 
     // Native Android WebView PrintManager support (100% Offline A4 PDF export)
 
@@ -13296,6 +13309,148 @@ function triggerBrowserPrint() {
     window.print();
 
 }
+
+function openReportEmailModal() {
+    const insp = AppState.currentInspection || {};
+    const fd = AppState.currentFormData || {};
+    const ci = fd.companyInfo || {};
+
+    const reportNo = insp.report_no || ci.reportNo || 'TKM-RAPOR';
+    const customer = insp.customer_name || ci.firmName || 'Müşteri';
+    const equipment = insp.equipment_name || 'Elektrik Tesisatı / Ekipman';
+    const reportDate = insp.inspection_date || ci.reportDate || new Date().toLocaleDateString('tr-TR');
+    const nextDate = fd.nextInspectionDate || ci.nextControlDate || '-';
+    const recipientEmail = insp.customer_email || ci.email || '';
+
+    // Overall result text
+    let resultStatus = 'KULLANILMASI UYGUNDUR';
+    if (fd.overallResult === 'UYGUN DEĞİL' || (fd.defects && Object.values(fd.defects).some(d => d && (d.severity === 'C1' || d.code === 'C1')))) {
+        resultStatus = 'KULLANILMASI UYGUN DEĞİLDİR (Kusur Mevcut)';
+    }
+
+    const modal = document.getElementById('reportEmailModal');
+    if (!modal) return;
+
+    const recipientInput = document.getElementById('reportEmailRecipient');
+    const subjectInput = document.getElementById('reportEmailSubject');
+    const bodyInput = document.getElementById('reportEmailBody');
+
+    if (recipientInput) recipientInput.value = recipientEmail;
+    if (subjectInput) {
+        subjectInput.value = `[PERİYODİK KONTROL RAPORU] ${reportNo} - ${customer}`;
+    }
+    if (bodyInput) {
+        bodyInput.value = 
+`Sayın Yetkili,
+
+${customer} firmasında gerçekleştirilen ${equipment} periyodik kontrol denetimi tamamlanmıştır.
+
+DENETİM & RAPOR ÖZETİ
+--------------------------------------------------
+• Rapor Numarası        : ${reportNo}
+• Denetlenen Ekipman    : ${equipment}
+• Kontrol Tarihi        : ${reportDate}
+• Gelecek Kontrol Tarihi: ${nextDate}
+• Denetim Sonucu        : ${resultStatus}
+--------------------------------------------------
+
+Raporun resmi A4 PDF formatındaki nüshası bilgilerinize sunulmuştur.
+
+İyi çalışmalar dileriz.
+ENLAB / TEKKOMER Muayene Kuruluşu`;
+    }
+
+    modal.classList.remove('hidden');
+}
+
+function closeReportEmailModal() {
+    const modal = document.getElementById('reportEmailModal');
+    if (modal) modal.classList.add('hidden');
+}
+
+function sendReportEmailDirect() {
+    const recipient = (document.getElementById('reportEmailRecipient')?.value || '').trim();
+    const subject = document.getElementById('reportEmailSubject')?.value || 'Periyodik Kontrol Raporu';
+    const body = document.getElementById('reportEmailBody')?.value || '';
+
+    const mailtoUrl = `mailto:${encodeURIComponent(recipient)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    
+    try {
+        window.location.href = mailtoUrl;
+        if (typeof showToast === 'function') {
+            showToast('E-posta uygulaması açılıyor...', 3000);
+        }
+        setTimeout(() => closeReportEmailModal(), 600);
+    } catch (err) {
+        console.error('Mailto link error:', err);
+        if (typeof showToast === 'function') {
+            showToast('E-posta uygulaması başlatılamadı. Metni panoya kopyalayabilirsiniz.', 3500);
+        }
+    }
+}
+
+function shareReportViaWebShare() {
+    const subject = document.getElementById('reportEmailSubject')?.value || 'Periyodik Kontrol Raporu';
+    const body = document.getElementById('reportEmailBody')?.value || '';
+
+    if (navigator.share) {
+        navigator.share({
+            title: subject,
+            text: body
+        }).then(() => {
+            if (typeof showToast === 'function') showToast('Paylaşım tamamlandı!');
+            closeReportEmailModal();
+        }).catch((err) => {
+            if (err && err.name !== 'AbortError') {
+                console.warn('WebShare error:', err);
+                copyReportEmailText();
+            }
+        });
+    } else {
+        copyReportEmailText();
+    }
+}
+
+function copyReportEmailText() {
+    const body = document.getElementById('reportEmailBody')?.value || '';
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(body).then(() => {
+            if (typeof showToast === 'function') {
+                showToast('Rapor metni panoya kopyalandı! Dilediğiniz uygulamaya yapıştırabilirsiniz.', 3500);
+            }
+        }).catch(() => {
+            fallbackCopyText(body);
+        });
+    } else {
+        fallbackCopyText(body);
+    }
+}
+
+function fallbackCopyText(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+        document.execCommand('copy');
+        if (typeof showToast === 'function') {
+            showToast('Rapor metni panoya kopyalandı!', 3000);
+        }
+    } catch (e) {
+        if (typeof showToast === 'function') {
+            showToast('Lütfen metni seçip kopyalayınız.', 3000);
+        }
+    }
+    if (ta.parentNode) document.body.removeChild(ta);
+}
+
+window.openReportEmailModal = openReportEmailModal;
+window.closeReportEmailModal = closeReportEmailModal;
+window.sendReportEmailDirect = sendReportEmailDirect;
+window.shareReportViaWebShare = shareReportViaWebShare;
+window.copyReportEmailText = copyReportEmailText;
 
 
 
@@ -16233,8 +16388,12 @@ function printOfficialReport(directPrint = false) {
     const previewContainer = document.getElementById('a4PreviewPagesContainer');
     const previewModal = document.getElementById('a4PreviewModal');
     const previewTitle = document.getElementById('a4PreviewTitle');
+    const previewSubtitle = document.getElementById('a4PreviewSubtitle');
     if (previewTitle) {
-        previewTitle.textContent = `${reportNo} · ${insp.equipment_name || 'Periyodik Kontrol Raporu'} (${pagesArray.length} Sayfa A4)`;
+        previewTitle.textContent = `${reportNo || 'Rapor'} · ${insp.customer_name || 'Müşteri'}`;
+    }
+    if (previewSubtitle) {
+        previewSubtitle.textContent = `${insp.equipment_name || 'Periyodik Kontrol'} (${pagesArray.length} Sayfa A4)`;
     }
     if (previewContainer) {
         previewContainer.setAttribute('data-pdf-theme', activePdfTheme);
