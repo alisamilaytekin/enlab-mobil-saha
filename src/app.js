@@ -13820,6 +13820,8 @@ function printOfficialReport(directPrint = false) {
 
     if (!insp || !printArea) return;
 
+    const activePdfTheme = getPdfTheme();
+
 
 
     const is2201 = String(insp.template_id) === '2201' && AppState.electricalTemplate && AppState.electricalTemplate.areas;
@@ -14021,7 +14023,7 @@ function printOfficialReport(directPrint = false) {
         const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
         const renderCompleteVisualTopicBlock = (subNumberTitle, questions) => {
-            const currentTheme = getPdfTheme();
+            const currentTheme = activePdfTheme;
             if (isRamsTheme(currentTheme)) {
                 // Dual column (2-sütun) layout matching Ministry format!
                 const mid = Math.ceil(questions.length / 2);
@@ -16218,7 +16220,6 @@ function printOfficialReport(directPrint = false) {
 
 
 
-    const activePdfTheme = getPdfTheme();
     updateThemeSelectorUI(activePdfTheme);
 
     const themeSelect = document.getElementById('pdfThemeSelect');
