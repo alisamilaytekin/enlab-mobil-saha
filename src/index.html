@@ -595,12 +595,15 @@
 
     
         /* ==========================================================================
-           DIETER RAMS & 60-30-10 MODERN KURUMSAL MUHENDISLIK TEMASI (data-pdf-theme="modern")
+           DIETER RAMS & 60-30-10 KURUMSAL FORM TEMALARI
            60% Zemin: #FFFFFF & #F8FAFC
-           30% Kurumsal Omurga: #1F3A5F (Lacivert) & #5B6573 (Notr Arduvaz Gri)
-           10% Durum Semantigi: #14573A (Uygun) / #7A1812 (C1) / #5C3D00 (C2) / #143E70 (C3)
+           %30 Omurga: Kurumsal Renk Tonu & Nötr Arduvaz Gri
+           %10 Semantik: Uygun (#14573A) / C1 Tehlike (#7A1812) / C2 Acil (#5C3D00)
            ========================================================================== */
 
+        /* Ortak Rams Temel Kuralları */
+        [data-pdf-theme^="rams_"].tkm-a4-page,
+        [data-pdf-theme^="rams_"] .tkm-a4-page,
         [data-pdf-theme="modern"].tkm-a4-page,
         [data-pdf-theme="modern"] .tkm-a4-page {
             background: #ffffff !important;
@@ -611,59 +614,16 @@
             letter-spacing: -0.01em;
         }
 
-        /* Modern Ust Kartus (Header) - Lacivert Cizgi & Kurumsal Tipografi */
-        [data-pdf-theme="modern"] .tkm-header {
-            border-bottom: 2px solid #1f3a5f !important;
-            padding-bottom: 5px;
-            margin-bottom: 4px;
-        }
-
-        [data-pdf-theme="modern"] .tkm-header-title {
-            color: #1f3a5f !important;
-            font-weight: 800 !important;
-            letter-spacing: 0.25px;
-            line-height: 1.22;
-        }
-
-        [data-pdf-theme="modern"] .tkm-header-acc {
-            color: #1f3a5f !important;
-            font-weight: 700;
-        }
-
-        /* Bolum Basliklari - Kirmizi yerine Kurumsal Lacivert #1F3A5F ve Sol Vurgu Bandi */
-        [data-pdf-theme="modern"] .tkm-sec-title {
-            color: #1f3a5f !important;
-            font-size: 8.5pt !important;
-            font-weight: 800 !important;
-            letter-spacing: 0.2px !important;
-            text-transform: uppercase !important;
-            border-left: 3.5px solid #1f3a5f !important;
-            padding-left: 6px !important;
-            margin: 5px 0 2.5px 0 !important;
-        }
-
-        /* Alt Baslik Seritleri - Yumusak Lacivert-Gri Zemin (#EAEFF5) */
-        [data-pdf-theme="modern"] .tkm-sub-bar {
-            background: #eaeff5 !important;
-            color: #1f3a5f !important;
-            border: 1px solid #cbd5e1 !important;
-            font-size: 7.5pt !important;
-            font-weight: 700 !important;
-            padding: 2.2px 6px !important;
-            margin: 2.5px 0 2px 0 !important;
-            border-radius: 2px;
-        }
-
-        /* Tablolar - Ince Acik Gri Cerceve (#CBD5E1 / #E2E8F0) */
+        [data-pdf-theme^="rams_"] .tkm-table,
         [data-pdf-theme="modern"] .tkm-table {
             border: 1px solid #cbd5e1 !important;
             font-size: 7.2pt !important;
             line-height: 1.2 !important;
         }
 
+        [data-pdf-theme^="rams_"] .tkm-table th,
         [data-pdf-theme="modern"] .tkm-table th {
             background-color: #f1f5f9 !important;
-            color: #1f3a5f !important;
             border: 1px solid #cbd5e1 !important;
             font-weight: 700 !important;
             font-size: 6.9pt !important;
@@ -672,18 +632,20 @@
             padding: 2.2px 3.5px !important;
         }
 
+        [data-pdf-theme^="rams_"] .tkm-table td,
         [data-pdf-theme="modern"] .tkm-table td {
             border: 1px solid #e2e8f0 !important;
             color: #0f172a !important;
             padding: 2px 3.5px !important;
         }
 
-        /* Zebra Cizgisi (Daha az murekkep, goz yormayan satirlar) */
+        [data-pdf-theme^="rams_"] .tkm-table tbody tr:nth-child(even) td,
         [data-pdf-theme="modern"] .tkm-table tbody tr:nth-child(even) td {
             background-color: #f8fafc !important;
         }
 
-        /* Etiket vs Deger Mikro-Hiyerarsisi */
+        /* Etiket vs Değer Mikro-Hiyerarşisi */
+        [data-pdf-theme^="rams_"] .tkm-label-cell,
         [data-pdf-theme="modern"] .tkm-label-cell {
             color: #5b6573 !important;
             font-size: 7.1pt !important;
@@ -691,18 +653,62 @@
             background-color: #f8fafc !important;
         }
 
+        [data-pdf-theme^="rams_"] .tkm-val-cell,
         [data-pdf-theme="modern"] .tkm-val-cell {
             color: #0f172a !important;
             font-size: 7.5pt !important;
             font-weight: 700 !important;
         }
 
-        /* Cift Sutunlu Gozle Kontrol Tablosu */
+        /* Çift Sütunlu Gözle Kontrol Tablosu */
+        [data-pdf-theme^="rams_"] .tkm-table-twocol td,
         [data-pdf-theme="modern"] .tkm-table-twocol td {
             padding: 1.8px 3px !important;
         }
 
-        /* Durum Semantik Rozetleri (Renk Teorisi %10) */
+        /* Sonuç & Karar Kutusu (Bölüm 10) */
+        [data-pdf-theme^="rams_"] .tkm-result-box-ok,
+        [data-pdf-theme="modern"] .tkm-result-box-ok {
+            background: #e8f5ee !important;
+            border: 1.5px solid #14573a !important;
+            border-radius: 4px !important;
+            padding: 5px 8px !important;
+            color: #14573a !important;
+        }
+
+        [data-pdf-theme^="rams_"] .tkm-result-box-bad,
+        [data-pdf-theme="modern"] .tkm-result-box-bad {
+            background: #fdecea !important;
+            border: 1.5px solid #7a1812 !important;
+            border-radius: 4px !important;
+            padding: 5px 8px !important;
+            color: #7a1812 !important;
+        }
+
+        [data-pdf-theme^="rams_"] .tkm-defect-notes-box,
+        [data-pdf-theme="modern"] .tkm-defect-notes-box,
+        [data-pdf-theme^="rams_"] .tkm-general-notes-box,
+        [data-pdf-theme="modern"] .tkm-general-notes-box {
+            border: 1px solid #cbd5e1 !important;
+            background: #ffffff !important;
+            border-radius: 2px !important;
+        }
+
+        [data-pdf-theme^="rams_"] .tkm-footer-disclaimer,
+        [data-pdf-theme="modern"] .tkm-footer-disclaimer {
+            font-size: 7.2pt !important;
+            line-height: 1.24 !important;
+            color: #475569 !important;
+            border-bottom: 1px solid #cbd5e1 !important;
+        }
+
+        [data-pdf-theme^="rams_"] .tkm-legend,
+        [data-pdf-theme="modern"] .tkm-legend {
+            color: #64748b !important;
+            font-size: 6.8pt !important;
+        }
+
+        /* Sembol Rozetleri (10% Semantik) */
         .tkm-sym-badge {
             display: inline-block;
             min-width: 17px;
@@ -713,6 +719,7 @@
             line-height: 1.1;
         }
 
+        [data-pdf-theme^="rams_"] .tkm-badge-ok,
         [data-pdf-theme="modern"] .tkm-badge-ok {
             color: #14573a !important;
             background-color: #e8f5ee !important;
@@ -720,6 +727,7 @@
             font-weight: 800 !important;
         }
 
+        [data-pdf-theme^="rams_"] .tkm-badge-bad,
         [data-pdf-theme="modern"] .tkm-badge-bad {
             color: #7a1812 !important;
             background-color: #fdecea !important;
@@ -727,6 +735,7 @@
             font-weight: 800 !important;
         }
 
+        [data-pdf-theme^="rams_"] .tkm-badge-neutral,
         [data-pdf-theme="modern"] .tkm-badge-neutral {
             color: #475569 !important;
             background-color: #f1f5f9 !important;
@@ -734,7 +743,7 @@
             font-weight: 600 !important;
         }
 
-        /* Klasik Temada Rozetler Duz Matbu Metin Kalir */
+        /* Klasik Temada Rozetler Düz Matbu Metin Kalır */
         [data-pdf-theme="classic"] .tkm-sym-badge {
             background: transparent !important;
             border: none !important;
@@ -743,51 +752,144 @@
             padding: 0 !important;
         }
 
-        /* Kusur ve Genel Not Kutulari */
-        [data-pdf-theme="modern"] .tkm-defect-notes-box,
-        [data-pdf-theme="modern"] .tkm-general-notes-box {
-            border: 1px solid #cbd5e1 !important;
-            background: #ffffff !important;
-            border-radius: 2px !important;
+        /* -------------------------------------------------------------
+           TEMA 1: RAMS KURUMSAL LACİVERT (#1F3A5F)
+           ------------------------------------------------------------- */
+        [data-pdf-theme="rams_navy"] .tkm-header,
+        [data-pdf-theme="modern"] .tkm-header {
+            border-bottom: 2px solid #1f3a5f !important;
         }
-
-        /* Sonuc & Karar Kutusu (Bolum 10) */
-        [data-pdf-theme="modern"] .tkm-result-box-ok {
-            background: #e8f5ee !important;
-            border: 1.5px solid #14573a !important;
-            border-radius: 4px !important;
-            padding: 5px 8px !important;
-            color: #14573a !important;
-        }
-
-        [data-pdf-theme="modern"] .tkm-result-box-bad {
-            background: #fdecea !important;
-            border: 1.5px solid #7a1812 !important;
-            border-radius: 4px !important;
-            padding: 5px 8px !important;
-            color: #7a1812 !important;
-        }
-
-        /* Alt Bilgi (Footer) - Temiz & Okunur 7.4pt */
-        [data-pdf-theme="modern"] .tkm-footer-disclaimer {
-            font-size: 7.2pt !important;
-            line-height: 1.24 !important;
-            color: #475569 !important;
-            border-bottom: 1px solid #cbd5e1 !important;
-        }
-
-        [data-pdf-theme="modern"] .tkm-footer-meta {
-            font-size: 7.6pt !important;
+        [data-pdf-theme="rams_navy"] .tkm-header-title,
+        [data-pdf-theme="modern"] .tkm-header-title {
             color: #1f3a5f !important;
-            font-weight: 600 !important;
+            font-weight: 800 !important;
+        }
+        [data-pdf-theme="rams_navy"] .tkm-header-acc,
+        [data-pdf-theme="modern"] .tkm-header-acc {
+            color: #1f3a5f !important;
+        }
+        [data-pdf-theme="rams_navy"] .tkm-sec-title,
+        [data-pdf-theme="modern"] .tkm-sec-title {
+            color: #1f3a5f !important;
+            font-size: 8.5pt !important;
+            font-weight: 800 !important;
+            border-left: 3.5px solid #1f3a5f !important;
+            padding-left: 6px !important;
+        }
+        [data-pdf-theme="rams_navy"] .tkm-sub-bar,
+        [data-pdf-theme="modern"] .tkm-sub-bar {
+            background: #eaeff5 !important;
+            color: #1f3a5f !important;
+            border: 1px solid #cbd5e1 !important;
+        }
+        [data-pdf-theme="rams_navy"] .tkm-table th,
+        [data-pdf-theme="modern"] .tkm-table th {
+            color: #1f3a5f !important;
+        }
+        [data-pdf-theme="rams_navy"] .tkm-footer-meta,
+        [data-pdf-theme="modern"] .tkm-footer-meta {
+            color: #1f3a5f !important;
         }
 
-        [data-pdf-theme="modern"] .tkm-legend {
-            color: #64748b !important;
-            font-size: 6.8pt !important;
+        /* -------------------------------------------------------------
+           TEMA 2: RAMS İSG ZÜMRÜT (#064E3B / #047857)
+           ------------------------------------------------------------- */
+        [data-pdf-theme="rams_emerald"] .tkm-header {
+            border-bottom: 2px solid #064e3b !important;
+        }
+        [data-pdf-theme="rams_emerald"] .tkm-header-title {
+            color: #064e3b !important;
+            font-weight: 800 !important;
+        }
+        [data-pdf-theme="rams_emerald"] .tkm-header-acc {
+            color: #064e3b !important;
+        }
+        [data-pdf-theme="rams_emerald"] .tkm-sec-title {
+            color: #064e3b !important;
+            font-size: 8.5pt !important;
+            font-weight: 800 !important;
+            border-left: 3.5px solid #047857 !important;
+            padding-left: 6px !important;
+        }
+        [data-pdf-theme="rams_emerald"] .tkm-sub-bar {
+            background: #e6f4ea !important;
+            color: #064e3b !important;
+            border: 1px solid #a7d7b5 !important;
+        }
+        [data-pdf-theme="rams_emerald"] .tkm-table th {
+            background-color: #f0fdf4 !important;
+            color: #064e3b !important;
+        }
+        [data-pdf-theme="rams_emerald"] .tkm-footer-meta {
+            color: #064e3b !important;
         }
 
-</style>
+        /* -------------------------------------------------------------
+           TEMA 3: RAMS NORDIC GRAFİT & SLATE (#0F172A / #334155)
+           ------------------------------------------------------------- */
+        [data-pdf-theme="rams_nordic"] .tkm-header {
+            border-bottom: 2px solid #0f172a !important;
+        }
+        [data-pdf-theme="rams_nordic"] .tkm-header-title {
+            color: #0f172a !important;
+            font-weight: 800 !important;
+        }
+        [data-pdf-theme="rams_nordic"] .tkm-header-acc {
+            color: #0f172a !important;
+        }
+        [data-pdf-theme="rams_nordic"] .tkm-sec-title {
+            color: #0f172a !important;
+            font-size: 8.5pt !important;
+            font-weight: 800 !important;
+            border-left: 3.5px solid #0f172a !important;
+            padding-left: 6px !important;
+        }
+        [data-pdf-theme="rams_nordic"] .tkm-sub-bar {
+            background: #f1f5f9 !important;
+            color: #0f172a !important;
+            border: 1px solid #94a3b8 !important;
+        }
+        [data-pdf-theme="rams_nordic"] .tkm-table th {
+            background-color: #f8fafc !important;
+            color: #0f172a !important;
+        }
+        [data-pdf-theme="rams_nordic"] .tkm-footer-meta {
+            color: #0f172a !important;
+        }
+
+        /* -------------------------------------------------------------
+           TEMA 4: RAMS ENDÜSTRİYEL KOBALT (#1E3A8A)
+           ------------------------------------------------------------- */
+        [data-pdf-theme="rams_tuv"] .tkm-header {
+            border-bottom: 2px solid #1e3a8a !important;
+        }
+        [data-pdf-theme="rams_tuv"] .tkm-header-title {
+            color: #1e3a8a !important;
+            font-weight: 800 !important;
+        }
+        [data-pdf-theme="rams_tuv"] .tkm-header-acc {
+            color: #1e3a8a !important;
+        }
+        [data-pdf-theme="rams_tuv"] .tkm-sec-title {
+            color: #1e3a8a !important;
+            font-size: 8.5pt !important;
+            font-weight: 800 !important;
+            border-left: 3.5px solid #2563eb !important;
+            padding-left: 6px !important;
+        }
+        [data-pdf-theme="rams_tuv"] .tkm-sub-bar {
+            background: #eff6ff !important;
+            color: #1e3a8a !important;
+            border: 1px solid #93c5fd !important;
+        }
+        [data-pdf-theme="rams_tuv"] .tkm-table th {
+            background-color: #f0f7ff !important;
+            color: #1e3a8a !important;
+        }
+        [data-pdf-theme="rams_tuv"] .tkm-footer-meta {
+            color: #1e3a8a !important;
+        }
+    </style>
 
     <script>
 
@@ -912,15 +1014,16 @@
                     <i class="fa-solid fa-arrow-left"></i>
                     <span>Geri</span>
                 </button>
-                <div class="flex items-center bg-slate-950 p-0.5 rounded-xl border border-slate-800 text-xs select-none">
-                    <button id="themeToggleClassic" type="button" onclick="setPdfTheme('classic')"
-                        class="px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all bg-rose-600 text-white shadow-xs">
-                        🏛️ Klasik Format
-                    </button>
-                    <button id="themeToggleModern" type="button" onclick="setPdfTheme('modern')"
-                        class="px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all text-slate-400 hover:text-white">
-                        ✨ Modern (Rams)
-                    </button>
+                <div class="flex items-center gap-1.5 bg-slate-950 px-2 py-1 rounded-xl border border-slate-800 text-xs select-none">
+                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider hidden sm:inline">Form:</span>
+                    <select id="pdfThemeSelect" onchange="setPdfTheme(this.value)"
+                        class="bg-slate-900 text-slate-100 font-bold text-xs rounded-lg px-2 py-1 border border-slate-700 focus:outline-none focus:border-sky-500 cursor-pointer">
+                        <option value="classic">🏛️ TEKKOMER Standart Format (Varsayılan)</option>
+                        <option value="rams_navy">🔷 Rams - Kurumsal Lacivert (#1F3A5F)</option>
+                        <option value="rams_emerald">🌿 Rams - İSG Zümrüt Yeşili (#064E3B)</option>
+                        <option value="rams_nordic">🖤 Rams - Nordic Grafit & Slate (#0F172A)</option>
+                        <option value="rams_tuv">💎 Rams - Endüstriyel Kobalt (#1E3A8A)</option>
+                    </select>
                 </div>
             </div>
 

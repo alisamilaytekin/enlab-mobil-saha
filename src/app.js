@@ -13544,36 +13544,53 @@ function closeA4PreviewModal() {
 
 }
 
+function isRamsTheme(theme) {
+    if (!theme) return false;
+    return theme === 'modern' || theme.startsWith('rams_');
+}
+window.isRamsTheme = isRamsTheme;
+
 function getPdfTheme() {
     try {
         const saved = localStorage.getItem('tkm_pdf_theme') || 'classic';
-        return saved === 'modern' ? 'modern' : 'classic';
+        const aliasMap = {
+            'modern': 'rams_navy',
+            'bureau_veritas': 'rams_navy',
+            'isg_emerald': 'rams_emerald',
+            'nordic_tech': 'rams_nordic',
+            'tuv_modern': 'rams_tuv'
+        };
+        return aliasMap[saved] || saved;
     } catch (e) {
         return 'classic';
     }
 }
 
-function updateThemeToggleUI(theme) {
-    const btnClassic = document.getElementById('themeToggleClassic');
-    const btnModern = document.getElementById('themeToggleModern');
-    if (btnClassic && btnModern) {
-        if (theme === 'modern') {
-            btnModern.className = 'px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all bg-sky-600 text-white shadow-xs';
-            btnClassic.className = 'px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all text-slate-400 hover:text-white';
-        } else {
-            btnClassic.className = 'px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all bg-rose-600 text-white shadow-xs';
-            btnModern.className = 'px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all text-slate-400 hover:text-white';
-        }
+function updateThemeSelectorUI(theme) {
+    const sel = document.getElementById('pdfThemeSelect');
+    if (sel && sel.value !== theme) {
+        sel.value = theme;
     }
 }
+window.updateThemeSelectorUI = updateThemeSelectorUI;
+window.updateThemeToggleUI = updateThemeSelectorUI;
 
 function setPdfTheme(themeName) {
-    const theme = (themeName === 'modern') ? 'modern' : 'classic';
+    const validThemes = ['classic', 'rams_navy', 'rams_emerald', 'rams_nordic', 'rams_tuv'];
+    const aliasMap = {
+        'modern': 'rams_navy',
+        'bureau_veritas': 'rams_navy',
+        'isg_emerald': 'rams_emerald',
+        'nordic_tech': 'rams_nordic',
+        'tuv_modern': 'rams_tuv'
+    };
+    const resolvedTheme = aliasMap[themeName] || themeName;
+    const theme = validThemes.includes(resolvedTheme) ? resolvedTheme : 'classic';
     try {
         localStorage.setItem('tkm_pdf_theme', theme);
     } catch (e) {}
 
-    updateThemeToggleUI(theme);
+    updateThemeSelectorUI(theme);
 
     const previewContainer = document.getElementById('a4PreviewPagesContainer');
     if (previewContainer) {
@@ -13598,11 +13615,6 @@ function setPdfTheme(themeName) {
 }
 window.getPdfTheme = getPdfTheme;
 window.setPdfTheme = setPdfTheme;
-window.updateThemeToggleUI = updateThemeToggleUI;
-
-
-
-
 function paginateBlocksIntoA4Pages(blocksHtmlArray, reportMainTitle, formCode, reportNo) {
 
     // Create an off-screen A4 measurement sandbox so browser layout engine measures exact pixel heights
@@ -14010,7 +14022,7 @@ function printOfficialReport(directPrint = false) {
 
         const renderCompleteVisualTopicBlock = (subNumberTitle, questions) => {
             const currentTheme = getPdfTheme();
-            if (currentTheme === 'modern') {
+            if (isRamsTheme(currentTheme)) {
                 // Dual column (2-sütun) layout matching Ministry format!
                 const mid = Math.ceil(questions.length / 2);
                 let rowsHtml = '';
@@ -14364,14 +14376,11 @@ function printOfficialReport(directPrint = false) {
 
 
         // Block for 6. FONKSİYON KONTROL KRİTERLERİ VE TESTLER
-        // Bakanlık Formatı (ZPKR02):
-        // 6. FONKSİYON KONTROL KRİTERLERİ VE TESTLER
-        //   - Ölçüm ve Doğrulama Metodu
-        //   - 6.1. AŞIRI AKIM CİHAZI / İLETKEN UYGUNLUĞU - GERİLİM KONTROLÜ - AŞIRI GERİM CİHAZLARI (DKD) KONTROLÜ - RCD TESTLERİ
-        //          (Pano Özet Bilgileri + Linye Tablosu)
-        //   - 6.2. POTANSİYEL DENGELEME İLETKENLERİ KONTROLÜ
-        //   - 6.3. ZEMİN İZOLASYONUNUN KONTROLÜ
+        // Rams formatında 6. Başlık 3. sayfadan başlar!
+        const sec6Break = isRamsTheme(activePdfTheme) ? '<div class="tkm-force-page-break" style="display:none;"></div>' : '';
+
         blocks.push(`
+            ${sec6Break}
             <div class="tkm-sec-title">6. FONKSİYON KONTROL KRİTERLERİ VE TESTLER</div>
             <div class="tkm-sub-bar">Ölçüm ve Doğrulama Metodu</div>
             ${renderOrderedGridTable(area3.topics[0].questions, 1)}
@@ -16210,7 +16219,7 @@ function printOfficialReport(directPrint = false) {
 
 
     const activePdfTheme = getPdfTheme();
-    updateThemeToggleUI(activePdfTheme);
+    updateThemeSelectorUI(activePdfTheme);
 
     const themeSelect = document.getElementById('pdfThemeSelect');
     if (themeSelect) themeSelect.value = activePdfTheme;
