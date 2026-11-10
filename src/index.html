@@ -1093,9 +1093,25 @@
 
                 <!-- Recipient Email -->
                 <div>
-                    <label class="block text-[11px] font-bold text-slate-300 mb-1">Alıcı E-posta Adresi (İsteğe Bağlı)</label>
-                    <input type="email" id="reportEmailRecipient" placeholder="ornek@firma.com, isg@firma.com"
+                    <label class="block text-[11px] font-bold text-slate-300 mb-1">
+                        <i class="fa-solid fa-user-tie text-sky-400 mr-1"></i>Yetkili E-posta Adresi (Alıcı)
+                    </label>
+                    <input type="email" id="reportEmailRecipient" placeholder="yetkili@firma.com"
+                        oninput="onReportEmailRecipientChange(this.value)"
                         class="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-sky-500 text-xs">
+                </div>
+
+                <!-- Multi-Report Selection Checklist -->
+                <div id="reportEmailMultiSection" class="hidden space-y-1.5">
+                    <div class="flex items-center justify-between">
+                        <label class="block text-[11px] font-bold text-slate-300">
+                            <i class="fa-solid fa-layer-group text-amber-400 mr-1"></i>Gönderilecek Raporlar (Çoklu Seçim)
+                        </label>
+                        <button type="button" onclick="toggleAllEmailReports(true)" class="text-[10px] font-bold text-sky-400 hover:text-sky-300">
+                            Tümünü Seç
+                        </button>
+                    </div>
+                    <div id="reportEmailMultiList" class="max-h-36 overflow-y-auto space-y-1 p-2 rounded-xl bg-slate-950 border border-slate-800"></div>
                 </div>
 
                 <!-- Subject -->

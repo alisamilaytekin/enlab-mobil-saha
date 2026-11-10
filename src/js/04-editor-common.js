@@ -404,6 +404,8 @@ function ensureCompanyInfo() {
 
     if (!fd.companyInfo.sgkSicilNo) fd.companyInfo.sgkSicilNo = insp.sgk_sicil_no || wo.sgk_sicil_no || '';
 
+    if (!fd.companyInfo.contactEmail) fd.companyInfo.contactEmail = insp.contact_email || insp.customer_email || wo.contact_email || '';
+
     if (fd.companyInfo.equipmentName === undefined) fd.companyInfo.equipmentName = insp.equipment_name || '';
 
     if (fd.companyInfo.serialCode === undefined) fd.companyInfo.serialCode = insp.serial_no || '';
@@ -539,6 +541,18 @@ function renderSharedCompanyInfoSection() {
                         oninput="AppState.currentFormData.companyInfo.reportNo=this.value; AppState.currentInspection.report_no=this.value; triggerAutoSave();"
 
                         class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono bg-white">
+
+                </div>
+
+                <div class="sm:col-span-2">
+
+                    <label class="block font-bold text-slate-700 mb-1"><i class="fa-solid fa-envelope text-sky-600 mr-1"></i>Yetkili E-posta Adresi <span class="text-[10px] text-slate-400 font-normal">(Rapor Gönderimi İçin)</span></label>
+
+                    <input type="email" value="${escapeHtml(ci.contactEmail || '')}" placeholder="yetkili@firma.com"
+
+                        oninput="AppState.currentFormData.companyInfo.contactEmail=this.value; AppState.currentInspection.contact_email=this.value; if(AppState.currentInspection.work_order_id && typeof saveWorkOrderEmailRealtime==='function'){saveWorkOrderEmailRealtime(AppState.currentInspection.work_order_id, this.value);} triggerAutoSave();"
+
+                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
 
                 </div>
 

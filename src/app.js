@@ -536,6 +536,8 @@ function normalizeWorkOrder(w) {
 
         sgk_sicil_no: w.sgk_sicil_no || '',
 
+        contact_email: w.contact_email || w.customer_email || '',
+
         assigned_to: w.inspectors || w.assigned_to || 'Ali Şamil Aytekin',
 
         planner_name: w.planner || '',
@@ -1173,6 +1175,9 @@ async function exportLocalBackup() {
 
         if (window.AndroidBridge && typeof window.AndroidBridge.shareJsonBackup === 'function') {
 
+            if (typeof window.AndroidBridge.saveDatabase === 'function') {
+                window.AndroidBridge.saveDatabase(jsonStr);
+            }
             window.AndroidBridge.shareJsonBackup(fileName, jsonStr);
 
             showToast('Saha yedeği hazırlandı!');
@@ -1845,6 +1850,16 @@ function openQuickFieldJobModal() {
 
             <div>
 
+                <label class="block font-bold text-slate-700 mb-1"><i class="fa-solid fa-envelope text-sky-600 mr-1"></i>Yetkili E-posta Adresi <span class="text-[10px] text-slate-400 font-normal">(Rapor Gönderimi İçin)</span></label>
+
+                <input type="email" id="qjContactEmail" placeholder="yetkili@firma.com"
+
+                    class="w-full border border-slate-300 focus:border-sky-500 rounded-lg px-3 py-1.5 text-xs">
+
+            </div>
+
+            <div>
+
                 <div class="flex items-center justify-between gap-2 mb-1.5">
 
                     <label class="font-bold text-slate-800 flex items-center gap-1.5">
@@ -1924,6 +1939,8 @@ async function submitQuickFieldJob(openFirstReportDirectly = false) {
     const address = (document.getElementById('qjAddress')?.value || '').trim();
     const isgKatipNo = (document.getElementById('qjIsgKatipNo')?.value || '').trim();
     const sgkSicilNo = (document.getElementById('qjSgkSicilNo')?.value || '').trim();
+    const contactEmail = (document.getElementById('qjContactEmail')?.value || '').trim();
+    if (contactEmail) { try { localStorage.setItem('enlab_last_recipient_email', contactEmail); } catch (e) {} }
     const fieldNotes = (document.getElementById('qjFieldNotes')?.value || '').trim();
 
     const checkedTpls = Array.from(document.querySelectorAll('input[name="quickJobTpl"]:checked')).map(cb => cb.value);
@@ -1947,6 +1964,8 @@ async function submitQuickFieldJob(openFirstReportDirectly = false) {
             isg_katip_no: isgKatipNo,
 
             sgk_sicil_no: sgkSicilNo,
+
+            contact_email: contactEmail,
 
             field_notes: fieldNotes,
 
@@ -2345,6 +2364,31 @@ function saveWorkOrderNotesRealtime(woId, notesText) {
 }
 
 
+
+let woEmailSaveTimer = null;
+function saveWorkOrderEmailRealtime(woId, emailText) {
+    const clean = (emailText || '').trim();
+    if (AppState.currentWorkOrder && String(AppState.currentWorkOrder.id) === String(woId)) {
+        AppState.currentWorkOrder.contact_email = clean;
+    }
+    if (clean) {
+        try { localStorage.setItem('enlab_last_recipient_email', clean); } catch (e) {}
+    }
+    const statusEl = document.getElementById(`woEmailSaveStatus_${woId}`);
+    if (statusEl) {
+        statusEl.classList.remove('hidden');
+        statusEl.innerHTML = `<i class="fa-solid fa-rotate fa-spin"></i>`;
+    }
+    clearTimeout(woEmailSaveTimer);
+    woEmailSaveTimer = setTimeout(async () => {
+        await fetch(`/api/work-orders/${woId}/notes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contact_email: clean })
+        });
+        if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-check text-emerald-600"></i> Kaydedildi`;
+    }, 300);
+}
 
 function appendQuickSnippetToJobNotes(woId, snippet) {
 
@@ -2800,6 +2844,34 @@ async function renderWorkOrderDetails(workOrderId) {
 
 
 
+            <!-- YETKİLİ E-POSTA ADRESİ (HIZLI RAPOR GÖNDERİMİ İÇİN) -->
+
+            <div class="card-craft-white p-2.5 flex items-center gap-2">
+
+                <div class="flex items-center gap-1.5 text-xs font-bold text-slate-700 shrink-0">
+
+                    <i class="fa-solid fa-envelope text-sky-600"></i>
+
+                    <span>Yetkili E-posta:</span>
+
+                </div>
+
+                <input type="email" id="woContactEmailInput_${wo.id}"
+
+                    value="${escapeHtml(wo.contact_email || '')}"
+
+                    oninput="saveWorkOrderEmailRealtime('${wo.id}', this.value)"
+
+                    placeholder="yetkili@firma.com (Raporların gönderileceği adres)"
+
+                    class="flex-1 min-w-0 border border-slate-200 bg-slate-50/70 focus:bg-white rounded-lg px-2.5 py-1 text-xs text-slate-900 focus:border-sky-500 focus:outline-none">
+
+                <span id="woEmailSaveStatus_${wo.id}" class="text-[10px] text-slate-400 shrink-0 hidden sm:inline">Otomatik</span>
+
+            </div>
+
+
+
             <!-- NOT DEFTERİ (KOMPAKT) -->
 
             <div class="card-craft-white p-2.5 space-y-1.5">
@@ -2844,13 +2916,25 @@ async function renderWorkOrderDetails(workOrderId) {
 
                     </div>
 
-                    <button onclick="openAddInspectionModal('${wo.id}')" class="px-3.5 py-1.5 btn-craft-emerald active:scale-95 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition">
+                    <div class="flex items-center gap-1.5">
 
-                        <i class="fa-solid fa-plus"></i>
+                        <button onclick="openMultiReportEmailModal('${wo.id}')" class="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-2xs transition" title="Klasördeki Raporları E-posta ile Gönder">
 
-                        <span>Rapor Ekle</span>
+                            <i class="fa-solid fa-envelope-open-text"></i>
 
-                    </button>
+                            <span>Çoklu Rapor Gönder</span>
+
+                        </button>
+
+                        <button onclick="openAddInspectionModal('${wo.id}')" class="px-3.5 py-1.5 btn-craft-emerald active:scale-95 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition">
+
+                            <i class="fa-solid fa-plus"></i>
+
+                            <span>Rapor Ekle</span>
+
+                        </button>
+
+                    </div>
 
                 </div>
 
@@ -5677,6 +5761,8 @@ function ensureCompanyInfo() {
 
     if (!fd.companyInfo.sgkSicilNo) fd.companyInfo.sgkSicilNo = insp.sgk_sicil_no || wo.sgk_sicil_no || '';
 
+    if (!fd.companyInfo.contactEmail) fd.companyInfo.contactEmail = insp.contact_email || insp.customer_email || wo.contact_email || '';
+
     if (fd.companyInfo.equipmentName === undefined) fd.companyInfo.equipmentName = insp.equipment_name || '';
 
     if (fd.companyInfo.serialCode === undefined) fd.companyInfo.serialCode = insp.serial_no || '';
@@ -5812,6 +5898,18 @@ function renderSharedCompanyInfoSection() {
                         oninput="AppState.currentFormData.companyInfo.reportNo=this.value; AppState.currentInspection.report_no=this.value; triggerAutoSave();"
 
                         class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono bg-white">
+
+                </div>
+
+                <div class="sm:col-span-2">
+
+                    <label class="block font-bold text-slate-700 mb-1"><i class="fa-solid fa-envelope text-sky-600 mr-1"></i>Yetkili E-posta Adresi <span class="text-[10px] text-slate-400 font-normal">(Rapor Gönderimi İçin)</span></label>
+
+                    <input type="email" value="${escapeHtml(ci.contactEmail || '')}" placeholder="yetkili@firma.com"
+
+                        oninput="AppState.currentFormData.companyInfo.contactEmail=this.value; AppState.currentInspection.contact_email=this.value; if(AppState.currentInspection.work_order_id && typeof saveWorkOrderEmailRealtime==='function'){saveWorkOrderEmailRealtime(AppState.currentInspection.work_order_id, this.value);} triggerAutoSave();"
+
+                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
 
                 </div>
 
@@ -13310,55 +13408,194 @@ function triggerBrowserPrint() {
 
 }
 
+let _emailModalReportsPool = [];
+
+function getResolvedRecipientEmail(wo, insp, ci) {
+    return (
+        (ci && ci.contactEmail) ||
+        (insp && (insp.contact_email || insp.customer_email)) ||
+        (wo && (wo.contact_email || wo.customer_email)) ||
+        (function() { try { return localStorage.getItem('enlab_last_recipient_email') || ''; } catch (e) { return ''; } })() ||
+        ''
+    ).trim();
+}
+
+function onReportEmailRecipientChange(val) {
+    const clean = (val || '').trim();
+    try {
+        if (clean) localStorage.setItem('enlab_last_recipient_email', clean);
+    } catch (e) {}
+    if (AppState.currentFormData && AppState.currentFormData.companyInfo) {
+        AppState.currentFormData.companyInfo.contactEmail = clean;
+    }
+    if (AppState.currentInspection) {
+        AppState.currentInspection.contact_email = clean;
+    }
+    const woId = (AppState.currentWorkOrder && AppState.currentWorkOrder.id) || (AppState.currentInspection && AppState.currentInspection.work_order_id);
+    if (woId && typeof saveWorkOrderEmailRealtime === 'function') {
+        saveWorkOrderEmailRealtime(woId, clean);
+    }
+}
+
+function renderEmailModalMultiList(reports, preselectedIds) {
+    const sec = document.getElementById('reportEmailMultiSection');
+    const listEl = document.getElementById('reportEmailMultiList');
+    if (!sec || !listEl) return;
+
+    _emailModalReportsPool = Array.isArray(reports) ? reports : [];
+    if (_emailModalReportsPool.length <= 1) {
+        sec.classList.add('hidden');
+        listEl.innerHTML = '';
+        return;
+    }
+
+    sec.classList.remove('hidden');
+    const selectedSet = new Set((preselectedIds || []).map(x => String(x)));
+    listEl.innerHTML = _emailModalReportsPool.map((item, idx) => {
+        const isChecked = selectedSet.has(String(item.id));
+        const eqName = item.equipment_name || 'Periyodik Kontrol Raporu';
+        const rNo = item.report_no || `Rapor-${idx + 1}`;
+        return `
+            <label class="flex items-center justify-between gap-2 p-2 rounded-lg bg-slate-900/90 hover:bg-slate-800/80 border border-slate-800 cursor-pointer transition">
+                <div class="flex items-center gap-2 min-w-0">
+                    <input type="checkbox" name="emailReportItemCb" value="${item.id}" ${isChecked ? 'checked' : ''}
+                        onchange="rebuildEmailTextFromSelection()"
+                        class="w-4 h-4 accent-sky-500 rounded shrink-0">
+                    <span class="font-bold text-slate-100 text-xs truncate">${escapeHtml(eqName)}</span>
+                </div>
+                <span class="text-[10px] font-mono text-slate-400 shrink-0">${escapeHtml(rNo)}</span>
+            </label>
+        `;
+    }).join('');
+}
+
+function toggleAllEmailReports(selectAll = true) {
+    const boxes = document.querySelectorAll('input[name="emailReportItemCb"]');
+    const allChecked = Array.from(boxes).every(cb => cb.checked);
+    const targetState = selectAll ? !allChecked : false;
+    boxes.forEach(cb => { cb.checked = targetState; });
+    rebuildEmailTextFromSelection();
+}
+
+function rebuildEmailTextFromSelection() {
+    const subjectInput = document.getElementById('reportEmailSubject');
+    const bodyInput = document.getElementById('reportEmailBody');
+    if (!subjectInput || !bodyInput) return;
+
+    const insp = AppState.currentInspection || {};
+    const fd = AppState.currentFormData || {};
+    const ci = fd.companyInfo || {};
+    const wo = AppState.currentWorkOrder || {};
+
+    const checkedIds = Array.from(document.querySelectorAll('input[name="emailReportItemCb"]:checked')).map(cb => String(cb.value));
+    let selectedReports = _emailModalReportsPool.filter(r => checkedIds.includes(String(r.id)));
+
+    if (selectedReports.length === 0 && _emailModalReportsPool.length > 0) {
+        selectedReports = [_emailModalReportsPool[0]];
+    }
+
+    const customer = (
+        (selectedReports[0] && (selectedReports[0].customer_name || selectedReports[0].company_name)) ||
+        wo.customer_name ||
+        wo.company_name ||
+        insp.customer_name ||
+        ci.firmName ||
+        'Firmanız'
+    ).trim();
+
+    if (selectedReports.length <= 1) {
+        const r = selectedReports[0] || insp;
+        const reportNo = r.report_no || ci.reportNo || 'TKM-RAPOR';
+        const equipment = r.equipment_name || ci.equipmentName || 'Periyodik Kontrol';
+
+        subjectInput.value = `Periyodik Kontrol Raporu - ${customer} (${equipment})`;
+        bodyInput.value =
+`Sayın Yetkili,
+
+${customer} firmasında gerçekleştirilen periyodik kontrol çalışmasına ait ${equipment} (${reportNo}) raporu hazırlanmış olup ekte bilgilerinize sunulmuştur.
+
+İyi çalışmalar dileriz.
+ENLAB / TEKKOMER Periyodik Kontrol Muayene Kuruluşu`;
+    } else {
+        const listLines = selectedReports.map((r, i) => {
+            const eq = r.equipment_name || 'Periyodik Kontrol Raporu';
+            const rNo = r.report_no ? ` (${r.report_no})` : '';
+            return `${i + 1}. ${eq}${rNo}`;
+        }).join('\n');
+
+        subjectInput.value = `Periyodik Kontrol Raporları (${selectedReports.length} Adet) - ${customer}`;
+        bodyInput.value =
+`Sayın Yetkili,
+
+${customer} firmasında gerçekleştirilen periyodik kontrol çalışmalarına ait aşağıdaki raporlar hazırlanmış olup ekte bilgilerinize sunulmuştur:
+
+${listLines}
+
+İyi çalışmalar dileriz.
+ENLAB / TEKKOMER Periyodik Kontrol Muayene Kuruluşu`;
+    }
+}
+
 function openReportEmailModal() {
     const insp = AppState.currentInspection || {};
     const fd = AppState.currentFormData || {};
     const ci = fd.companyInfo || {};
+    const woId = insp.work_order_id || (AppState.currentWorkOrder && AppState.currentWorkOrder.id);
+    const wo = (window.OfflineDB?.state?.workOrders || []).find(w => String(w.id) === String(woId)) || AppState.currentWorkOrder || {};
 
-    const reportNo = insp.report_no || ci.reportNo || 'TKM-RAPOR';
-    const customer = insp.customer_name || ci.firmName || 'Müşteri';
-    const equipment = insp.equipment_name || 'Elektrik Tesisatı / Ekipman';
-    const reportDate = insp.inspection_date || ci.reportDate || new Date().toLocaleDateString('tr-TR');
-    const nextDate = fd.nextInspectionDate || ci.nextControlDate || '-';
-    const recipientEmail = insp.customer_email || ci.email || '';
-
-    // Overall result text
-    let resultStatus = 'KULLANILMASI UYGUNDUR';
-    if (fd.overallResult === 'UYGUN DEĞİL' || (fd.defects && Object.values(fd.defects).some(d => d && (d.severity === 'C1' || d.code === 'C1')))) {
-        resultStatus = 'KULLANILMASI UYGUN DEĞİLDİR (Kusur Mevcut)';
+    let folderReports = [];
+    if (woId && window.OfflineDB?.state?.inspections) {
+        folderReports = window.OfflineDB.state.inspections.filter(i => String(i.work_order_id) === String(woId));
+    } else if (Array.isArray(AppState.inspectionsCache) && AppState.inspectionsCache.length > 0) {
+        folderReports = AppState.inspectionsCache;
+    }
+    if (folderReports.length === 0 && insp.id) {
+        folderReports = [insp];
     }
 
     const modal = document.getElementById('reportEmailModal');
     if (!modal) return;
 
     const recipientInput = document.getElementById('reportEmailRecipient');
-    const subjectInput = document.getElementById('reportEmailSubject');
-    const bodyInput = document.getElementById('reportEmailBody');
-
-    if (recipientInput) recipientInput.value = recipientEmail;
-    if (subjectInput) {
-        subjectInput.value = `[PERİYODİK KONTROL RAPORU] ${reportNo} - ${customer}`;
+    if (recipientInput) {
+        recipientInput.value = getResolvedRecipientEmail(wo, insp, ci);
     }
-    if (bodyInput) {
-        bodyInput.value = 
-`Sayın Yetkili,
 
-${customer} firmasında gerçekleştirilen ${equipment} periyodik kontrol denetimi tamamlanmıştır.
+    renderEmailModalMultiList(folderReports, [insp.id || (folderReports[0] && folderReports[0].id)]);
+    rebuildEmailTextFromSelection();
 
-DENETİM & RAPOR ÖZETİ
---------------------------------------------------
-• Rapor Numarası        : ${reportNo}
-• Denetlenen Ekipman    : ${equipment}
-• Kontrol Tarihi        : ${reportDate}
-• Gelecek Kontrol Tarihi: ${nextDate}
-• Denetim Sonucu        : ${resultStatus}
---------------------------------------------------
+    modal.classList.remove('hidden');
+}
 
-Raporun resmi A4 PDF formatındaki nüshası bilgilerinize sunulmuştur.
+async function openMultiReportEmailModal(workOrderId) {
+    const woId = workOrderId || (AppState.currentWorkOrder && AppState.currentWorkOrder.id);
+    let wo = AppState.currentWorkOrder || {};
+    let reports = Array.isArray(AppState.inspectionsCache) ? AppState.inspectionsCache : [];
 
-İyi çalışmalar dileriz.
-ENLAB / TEKKOMER Muayene Kuruluşu`;
+    if (woId) {
+        try {
+            const res = await fetch(`/api/work-orders/${woId}`);
+            const data = await res.json();
+            if (data.workOrder) wo = normalizeWorkOrder(data.workOrder);
+            if (Array.isArray(data.inspections)) reports = data.inspections.map(normalizeInspection);
+        } catch (e) {}
     }
+
+    if (!reports.length) {
+        if (typeof showToast === 'function') showToast('Bu klasörde gönderilecek rapor bulunamadı.', 'warning');
+        return;
+    }
+
+    const modal = document.getElementById('reportEmailModal');
+    if (!modal) return;
+
+    const recipientInput = document.getElementById('reportEmailRecipient');
+    if (recipientInput) {
+        recipientInput.value = getResolvedRecipientEmail(wo, reports[0], null);
+    }
+
+    renderEmailModalMultiList(reports, reports.map(r => r.id));
+    rebuildEmailTextFromSelection();
 
     modal.classList.remove('hidden');
 }
@@ -13370,28 +13607,60 @@ function closeReportEmailModal() {
 
 function sendReportEmailDirect() {
     const recipient = (document.getElementById('reportEmailRecipient')?.value || '').trim();
-    const subject = document.getElementById('reportEmailSubject')?.value || 'Periyodik Kontrol Raporu';
+    const subject = (document.getElementById('reportEmailSubject')?.value || 'Periyodik Kontrol Raporu').trim();
     const body = document.getElementById('reportEmailBody')?.value || '';
 
-    const mailtoUrl = `mailto:${encodeURIComponent(recipient)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    
-    try {
-        window.location.href = mailtoUrl;
-        if (typeof showToast === 'function') {
-            showToast('E-posta uygulaması açılıyor...', 3000);
+    if (recipient) {
+        onReportEmailRecipientChange(recipient);
+    }
+
+    // 1. Native Android Bridge (Automatically opens Android Email/Share Chooser with EXTRA_EMAIL, EXTRA_SUBJECT, EXTRA_TEXT)
+    if (window.AndroidBridge && typeof window.AndroidBridge.shareJsonBackup === 'function') {
+        try {
+            const packedSubjectAndRecipient = recipient ? `${subject}\n${recipient}` : subject;
+            window.AndroidBridge.shareJsonBackup(packedSubjectAndRecipient, body);
+            if (typeof showToast === 'function') {
+                showToast('E-posta / Paylaşım ekranı açılıyor...');
+            }
+            setTimeout(() => closeReportEmailModal(), 400);
+            return;
+        } catch (err) {
+            console.warn('AndroidBridge email launch error:', err);
         }
-        setTimeout(() => closeReportEmailModal(), 600);
+    }
+
+    // 2. Desktop / Mobile Browser Fallback via mailto:
+    const mailtoUrl = `mailto:${encodeURIComponent(recipient)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    try {
+        const a = document.createElement('a');
+        a.href = mailtoUrl;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { if (a.parentNode) document.body.removeChild(a); }, 300);
+        if (typeof showToast === 'function') {
+            showToast('E-posta uygulaması açılıyor...');
+        }
+        setTimeout(() => closeReportEmailModal(), 500);
     } catch (err) {
         console.error('Mailto link error:', err);
-        if (typeof showToast === 'function') {
-            showToast('E-posta uygulaması başlatılamadı. Metni panoya kopyalayabilirsiniz.', 3500);
-        }
+        shareReportViaWebShare();
     }
 }
 
 function shareReportViaWebShare() {
-    const subject = document.getElementById('reportEmailSubject')?.value || 'Periyodik Kontrol Raporu';
+    const recipient = (document.getElementById('reportEmailRecipient')?.value || '').trim();
+    const subject = (document.getElementById('reportEmailSubject')?.value || 'Periyodik Kontrol Raporu').trim();
     const body = document.getElementById('reportEmailBody')?.value || '';
+
+    if (window.AndroidBridge && typeof window.AndroidBridge.shareJsonBackup === 'function') {
+        try {
+            const packedSubjectAndRecipient = recipient ? `${subject}\n${recipient}` : subject;
+            window.AndroidBridge.shareJsonBackup(packedSubjectAndRecipient, body);
+            closeReportEmailModal();
+            return;
+        } catch (e) {}
+    }
 
     if (navigator.share) {
         navigator.share({
@@ -13402,7 +13671,6 @@ function shareReportViaWebShare() {
             closeReportEmailModal();
         }).catch((err) => {
             if (err && err.name !== 'AbortError') {
-                console.warn('WebShare error:', err);
                 copyReportEmailText();
             }
         });
@@ -13447,10 +13715,14 @@ function fallbackCopyText(text) {
 }
 
 window.openReportEmailModal = openReportEmailModal;
+window.openMultiReportEmailModal = openMultiReportEmailModal;
 window.closeReportEmailModal = closeReportEmailModal;
 window.sendReportEmailDirect = sendReportEmailDirect;
 window.shareReportViaWebShare = shareReportViaWebShare;
 window.copyReportEmailText = copyReportEmailText;
+window.onReportEmailRecipientChange = onReportEmailRecipientChange;
+window.toggleAllEmailReports = toggleAllEmailReports;
+window.rebuildEmailTextFromSelection = rebuildEmailTextFromSelection;
 
 
 

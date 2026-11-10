@@ -485,6 +485,8 @@ function normalizeWorkOrder(w) {
 
         sgk_sicil_no: w.sgk_sicil_no || '',
 
+        contact_email: w.contact_email || w.customer_email || '',
+
         assigned_to: w.inspectors || w.assigned_to || 'Ali Şamil Aytekin',
 
         planner_name: w.planner || '',
@@ -1122,6 +1124,9 @@ async function exportLocalBackup() {
 
         if (window.AndroidBridge && typeof window.AndroidBridge.shareJsonBackup === 'function') {
 
+            if (typeof window.AndroidBridge.saveDatabase === 'function') {
+                window.AndroidBridge.saveDatabase(jsonStr);
+            }
             window.AndroidBridge.shareJsonBackup(fileName, jsonStr);
 
             showToast('Saha yedeği hazırlandı!');

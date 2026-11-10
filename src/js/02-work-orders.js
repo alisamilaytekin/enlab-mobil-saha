@@ -92,6 +92,16 @@ function openQuickFieldJobModal() {
 
             <div>
 
+                <label class="block font-bold text-slate-700 mb-1"><i class="fa-solid fa-envelope text-sky-600 mr-1"></i>Yetkili E-posta Adresi <span class="text-[10px] text-slate-400 font-normal">(Rapor Gönderimi İçin)</span></label>
+
+                <input type="email" id="qjContactEmail" placeholder="yetkili@firma.com"
+
+                    class="w-full border border-slate-300 focus:border-sky-500 rounded-lg px-3 py-1.5 text-xs">
+
+            </div>
+
+            <div>
+
                 <div class="flex items-center justify-between gap-2 mb-1.5">
 
                     <label class="font-bold text-slate-800 flex items-center gap-1.5">
@@ -171,6 +181,8 @@ async function submitQuickFieldJob(openFirstReportDirectly = false) {
     const address = (document.getElementById('qjAddress')?.value || '').trim();
     const isgKatipNo = (document.getElementById('qjIsgKatipNo')?.value || '').trim();
     const sgkSicilNo = (document.getElementById('qjSgkSicilNo')?.value || '').trim();
+    const contactEmail = (document.getElementById('qjContactEmail')?.value || '').trim();
+    if (contactEmail) { try { localStorage.setItem('enlab_last_recipient_email', contactEmail); } catch (e) {} }
     const fieldNotes = (document.getElementById('qjFieldNotes')?.value || '').trim();
 
     const checkedTpls = Array.from(document.querySelectorAll('input[name="quickJobTpl"]:checked')).map(cb => cb.value);
@@ -194,6 +206,8 @@ async function submitQuickFieldJob(openFirstReportDirectly = false) {
             isg_katip_no: isgKatipNo,
 
             sgk_sicil_no: sgkSicilNo,
+
+            contact_email: contactEmail,
 
             field_notes: fieldNotes,
 
@@ -592,6 +606,31 @@ function saveWorkOrderNotesRealtime(woId, notesText) {
 }
 
 
+
+let woEmailSaveTimer = null;
+function saveWorkOrderEmailRealtime(woId, emailText) {
+    const clean = (emailText || '').trim();
+    if (AppState.currentWorkOrder && String(AppState.currentWorkOrder.id) === String(woId)) {
+        AppState.currentWorkOrder.contact_email = clean;
+    }
+    if (clean) {
+        try { localStorage.setItem('enlab_last_recipient_email', clean); } catch (e) {}
+    }
+    const statusEl = document.getElementById(`woEmailSaveStatus_${woId}`);
+    if (statusEl) {
+        statusEl.classList.remove('hidden');
+        statusEl.innerHTML = `<i class="fa-solid fa-rotate fa-spin"></i>`;
+    }
+    clearTimeout(woEmailSaveTimer);
+    woEmailSaveTimer = setTimeout(async () => {
+        await fetch(`/api/work-orders/${woId}/notes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contact_email: clean })
+        });
+        if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-check text-emerald-600"></i> Kaydedildi`;
+    }, 300);
+}
 
 function appendQuickSnippetToJobNotes(woId, snippet) {
 
@@ -1047,6 +1086,34 @@ async function renderWorkOrderDetails(workOrderId) {
 
 
 
+            <!-- YETKİLİ E-POSTA ADRESİ (HIZLI RAPOR GÖNDERİMİ İÇİN) -->
+
+            <div class="card-craft-white p-2.5 flex items-center gap-2">
+
+                <div class="flex items-center gap-1.5 text-xs font-bold text-slate-700 shrink-0">
+
+                    <i class="fa-solid fa-envelope text-sky-600"></i>
+
+                    <span>Yetkili E-posta:</span>
+
+                </div>
+
+                <input type="email" id="woContactEmailInput_${wo.id}"
+
+                    value="${escapeHtml(wo.contact_email || '')}"
+
+                    oninput="saveWorkOrderEmailRealtime('${wo.id}', this.value)"
+
+                    placeholder="yetkili@firma.com (Raporların gönderileceği adres)"
+
+                    class="flex-1 min-w-0 border border-slate-200 bg-slate-50/70 focus:bg-white rounded-lg px-2.5 py-1 text-xs text-slate-900 focus:border-sky-500 focus:outline-none">
+
+                <span id="woEmailSaveStatus_${wo.id}" class="text-[10px] text-slate-400 shrink-0 hidden sm:inline">Otomatik</span>
+
+            </div>
+
+
+
             <!-- NOT DEFTERİ (KOMPAKT) -->
 
             <div class="card-craft-white p-2.5 space-y-1.5">
@@ -1091,13 +1158,25 @@ async function renderWorkOrderDetails(workOrderId) {
 
                     </div>
 
-                    <button onclick="openAddInspectionModal('${wo.id}')" class="px-3.5 py-1.5 btn-craft-emerald active:scale-95 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition">
+                    <div class="flex items-center gap-1.5">
 
-                        <i class="fa-solid fa-plus"></i>
+                        <button onclick="openMultiReportEmailModal('${wo.id}')" class="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-2xs transition" title="Klasördeki Raporları E-posta ile Gönder">
 
-                        <span>Rapor Ekle</span>
+                            <i class="fa-solid fa-envelope-open-text"></i>
 
-                    </button>
+                            <span>Çoklu Rapor Gönder</span>
+
+                        </button>
+
+                        <button onclick="openAddInspectionModal('${wo.id}')" class="px-3.5 py-1.5 btn-craft-emerald active:scale-95 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition">
+
+                            <i class="fa-solid fa-plus"></i>
+
+                            <span>Rapor Ekle</span>
+
+                        </button>
+
+                    </div>
 
                 </div>
 

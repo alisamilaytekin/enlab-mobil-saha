@@ -247,6 +247,7 @@
                     company_address: body.company_address || '',
                     isg_katip_no: body.isg_katip_no || '',
                     sgk_sicil_no: body.sgk_sicil_no || '',
+                    contact_email: body.contact_email || '',
                     proposal_no: body.proposal_no || code,
                     open_date: todayStr,
                     start_date: body.start_date || todayStr,
@@ -281,6 +282,7 @@
                             address: newWO.company_address,
                             isg_katip_no: newWO.isg_katip_no,
                             sgk_sicil_no: newWO.sgk_sicil_no,
+                            contact_email: newWO.contact_email || '',
                             equipment_name: body.equipment_name || (tplObj.name.includes('TOPRAKLAMA') ? 'Topraklama Tesisi' : (tplObj.name.includes('JENERATÖR') ? 'Jeneratör-1' : 'Ana Dağıtım Panosu (ADP)')),
                             accreditation: 'AK',
                             serial_no: body.default_serial || '',
@@ -300,6 +302,7 @@
                                     address: newWO.company_address,
                                     isgKatipNo: newWO.isg_katip_no,
                                     sgkSicilNo: newWO.sgk_sicil_no,
+                                    contactEmail: newWO.contact_email || '',
                                     reportNo: rNo,
                                     reportDate: todayStr
                                 }
@@ -334,6 +337,7 @@
                     if (body.company_name !== undefined) wo.company_name = body.company_name;
                     if (body.company_branch !== undefined) wo.company_branch = body.company_branch;
                     if (body.company_address !== undefined) wo.company_address = body.company_address;
+                    if (body.contact_email !== undefined) wo.contact_email = body.contact_email;
                     this.save();
                 }
                 return { success: true, workOrder: wo };
@@ -399,6 +403,7 @@
                 if (!parsedInitialData.companyInfo.address) parsedInitialData.companyInfo.address = body.address || wo.company_address || '';
                 if (!parsedInitialData.companyInfo.isgKatipNo) parsedInitialData.companyInfo.isgKatipNo = wo.isg_katip_no || '';
                 if (!parsedInitialData.companyInfo.sgkSicilNo) parsedInitialData.companyInfo.sgkSicilNo = wo.sgk_sicil_no || '';
+                if (!parsedInitialData.companyInfo.contactEmail) parsedInitialData.companyInfo.contactEmail = wo.contact_email || '';
                 if (!parsedInitialData.companyInfo.reportNo) parsedInitialData.companyInfo.reportNo = reportNo;
                 if (!parsedInitialData.companyInfo.reportDate) parsedInitialData.companyInfo.reportDate = todayStr;
 
