@@ -13503,16 +13503,25 @@ function rebuildEmailTextFromSelection() {
         'Firmanız'
     ).trim();
 
+    const pdfBtnLabel = document.getElementById('btnDownloadSelectedPdfLabel');
+    if (pdfBtnLabel) {
+        pdfBtnLabel.textContent = selectedReports.length > 1
+            ? `Seçili ${selectedReports.length} Raporu Tek PDF Olarak Kaydet / İndir`
+            : 'Seçili Raporu PDF Olarak Kaydet / İndir';
+    }
+
     if (selectedReports.length <= 1) {
         const r = selectedReports[0] || insp;
         const reportNo = r.report_no || ci.reportNo || 'TKM-RAPOR';
         const equipment = r.equipment_name || ci.equipmentName || 'Periyodik Kontrol';
+        const safeCust = customer.replace(/[^a-zA-Z0-9ğüşıöçĞÜŞİÖÇ_-]/g, '_').slice(0, 25);
+        const pdfFileName = `${reportNo}_${safeCust}.pdf`;
 
         subjectInput.value = `Periyodik Kontrol Raporu - ${customer} (${equipment})`;
         bodyInput.value =
 `Sayın Yetkili,
 
-${customer} firmasında gerçekleştirilen periyodik kontrol çalışmasına ait ${equipment} (${reportNo}) raporu hazırlanmış olup ekte bilgilerinize sunulmuştur.
+${customer} firmasında gerçekleştirilen periyodik kontrol çalışmasına ait ${equipment} (${reportNo}) raporu hazırlanmış olup ekte (${pdfFileName}) bilgilerinize sunulmuştur.
 
 İyi çalışmalar dileriz.
 ENLAB / TEKKOMER Periyodik Kontrol Muayene Kuruluşu`;
@@ -13522,18 +13531,117 @@ ENLAB / TEKKOMER Periyodik Kontrol Muayene Kuruluşu`;
             const rNo = r.report_no ? ` (${r.report_no})` : '';
             return `${i + 1}. ${eq}${rNo}`;
         }).join('\n');
+        const safeCust = customer.replace(/[^a-zA-Z0-9ğüşıöçĞÜŞİÖÇ_-]/g, '_').slice(0, 25);
+        const pdfFileName = `Periyodik_Kontrol_Raporlari_${selectedReports.length}_Adet_${safeCust}.pdf`;
 
         subjectInput.value = `Periyodik Kontrol Raporları (${selectedReports.length} Adet) - ${customer}`;
         bodyInput.value =
 `Sayın Yetkili,
 
-${customer} firmasında gerçekleştirilen periyodik kontrol çalışmalarına ait aşağıdaki raporlar hazırlanmış olup ekte bilgilerinize sunulmuştur:
+${customer} firmasında gerçekleştirilen periyodik kontrol çalışmalarına ait aşağıdaki raporlar hazırlanmış olup ekte (${pdfFileName}) bilgilerinize sunulmuştur:
 
 ${listLines}
 
 İyi çalışmalar dileriz.
 ENLAB / TEKKOMER Periyodik Kontrol Muayene Kuruluşu`;
     }
+}
+
+function getSelectedEmailReportsList() {
+    const checkedIds = Array.from(document.querySelectorAll('input[name="emailReportItemCb"]:checked')).map(cb => String(cb.value));
+    let selectedReports = _emailModalReportsPool.filter(r => checkedIds.includes(String(r.id)));
+    if (selectedReports.length === 0) {
+        if (_emailModalReportsPool.length > 0) selectedReports = [_emailModalReportsPool[0]];
+        else if (AppState.currentInspection) selectedReports = [AppState.currentInspection];
+    }
+    return selectedReports;
+}
+
+function loadInspectionFormDataObject(inspObj) {
+    if (!inspObj) return {};
+    let baseData = {};
+    try {
+        baseData = typeof inspObj.data_json === 'string' ? JSON.parse(inspObj.data_json || '{}') : (inspObj.form_data || {});
+    } catch (e) {}
+    let localData = null;
+    try {
+        const localRaw = localStorage.getItem(`enlab_insp_${inspObj.id}`);
+        if (localRaw) localData = JSON.parse(localRaw);
+    } catch (e) {}
+    const formData = Object.assign({}, baseData || {}, localData || {});
+    if (!formData.answers) formData.answers = {};
+    if (!formData.tableRows) formData.tableRows = {};
+    if (!formData.specializedFields) formData.specializedFields = {};
+    if (!formData.specializedChecks) formData.specializedChecks = {};
+    if (!formData.specializedRows) formData.specializedRows = [];
+    if (!formData.photos) formData.photos = [];
+    if (formData.defectNotes === undefined) formData.defectNotes = '';
+    if (formData.generalNotes === undefined) formData.generalNotes = '';
+    if (!formData.overallResult) formData.overallResult = 'UYGUN';
+    if (!formData.grounding) formData.grounding = { details: {}, detected: {}, method: 'Çevrim empedansı', points: [], selectivity: [] };
+    if (!formData.generator) formData.generator = { info: {}, equipment: {}, checks: {}, potential: {}, measurements: {}, battery: {}, devices: [] };
+    return formData;
+}
+
+function downloadSelectedEmailReportsAsPdf() {
+    const selectedReports = getSelectedEmailReportsList();
+    if (!selectedReports.length) {
+        if (typeof showToast === 'function') showToast('Lütfen en az bir rapor seçin.', 'warning');
+        return;
+    }
+
+    const printArea = document.getElementById('printableReportArea');
+    const activePdfTheme = getPdfTheme();
+
+    // Save current editor state so we don't disturb the user's open report
+    const savedInsp = AppState.currentInspection;
+    const savedFd = AppState.currentFormData;
+
+    const allPagesHtml = [];
+
+    try {
+        for (let i = 0; i < selectedReports.length; i++) {
+            const r = normalizeInspection(selectedReports[i]);
+            let fd = loadInspectionFormDataObject(r);
+            if (savedInsp && String(savedInsp.id) === String(r.id) && savedFd) {
+                fd = savedFd;
+            }
+            AppState.currentInspection = r;
+            AppState.currentFormData = fd;
+            printOfficialReport(false);
+            if (printArea && printArea.innerHTML) {
+                allPagesHtml.push(printArea.innerHTML);
+            }
+        }
+    } finally {
+        AppState.currentInspection = savedInsp;
+        AppState.currentFormData = savedFd;
+    }
+
+    if (printArea && allPagesHtml.length > 0) {
+        printArea.setAttribute('data-pdf-theme', activePdfTheme);
+        printArea.innerHTML = allPagesHtml.join('');
+    }
+
+    const first = selectedReports[0];
+    const customer = ((first && (first.customer_name || first.company_name)) || 'Rapor').replace(/[^a-zA-Z0-9ğüşıöçĞÜŞİÖÇ_-]/g, '_').slice(0, 25);
+    const jobTitle = selectedReports.length > 1
+        ? `Periyodik_Kontrol_Raporlari_${selectedReports.length}_Adet_${customer}`
+        : `${first.report_no || 'TKM_Rapor'}_${customer}`;
+
+    if (typeof showToast === 'function') {
+        showToast('Açılan ekranda üstten "PDF Olarak Kaydet"i seçip telefonunuza kaydedin, ardından E-posta uygulamasında ataç (📎) ikonundan ekleyin.', 5000);
+    }
+
+    if (window.AndroidBridge && typeof window.AndroidBridge.printA4Report === 'function') {
+        try {
+            window.AndroidBridge.printA4Report(jobTitle);
+            return;
+        } catch (err) {
+            console.warn('AndroidBridge.printA4Report error:', err);
+        }
+    }
+    window.print();
 }
 
 function openReportEmailModal() {
@@ -13730,6 +13838,7 @@ window.copyReportEmailText = copyReportEmailText;
 window.onReportEmailRecipientChange = onReportEmailRecipientChange;
 window.toggleAllEmailReports = toggleAllEmailReports;
 window.rebuildEmailTextFromSelection = rebuildEmailTextFromSelection;
+window.downloadSelectedEmailReportsAsPdf = downloadSelectedEmailReportsAsPdf;
 
 
 
