@@ -106,7 +106,7 @@
            TEKKOMER RESMİ TÜRKAK AKREDİTE A4 RAPOR TASARIMI (TKM-FR.318)
            Bakanlık & TÜRKAK ISO/IEC 17020 Akreditasyon Standart Formatı
            ========================================================================== */
-
+        /* TKM_A4_CSS_START */
         .tkm-a4-page {
             width: 210mm;
             min-height: 296.5mm;
@@ -246,6 +246,7 @@
             color: #111111;
             padding-top: 2px;
         }
+        /* TKM_A4_CSS_END */
 
         @page {
 
@@ -600,7 +601,7 @@
            %30 Omurga: Kurumsal Renk Tonu & Nötr Arduvaz Gri
            %10 Semantik: Uygun (#14573A) / C1 Tehlike (#7A1812) / C2 Acil (#5C3D00)
            ========================================================================== */
-
+        /* TKM_RAMS_CSS_START */
         /* Ortak Rams Temel Kuralları */
         [data-pdf-theme^="rams_"].tkm-a4-page,
         [data-pdf-theme^="rams_"] .tkm-a4-page,
@@ -889,6 +890,7 @@
         [data-pdf-theme="rams_tuv"] .tkm-footer-meta {
             color: #1e3a8a !important;
         }
+        /* TKM_RAMS_CSS_END */
     </style>
 
     <script>
@@ -1048,14 +1050,19 @@
             </div>
 
             <!-- Action Buttons -->
-            <div class="flex items-center gap-2 flex-1 justify-end min-w-0">
+            <div class="flex items-center gap-1.5 flex-1 justify-end min-w-0">
+                <!-- İnternete Yükle / Link Butonu -->
+                <button onclick="openPortalUploadModal(AppState.currentInspection?.work_order_id, AppState.currentInspection?.id ? [AppState.currentInspection.id] : null)" class="px-2.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-slate-950 font-black text-xs flex items-center justify-center gap-1 shadow-md shadow-amber-500/20 active:scale-95 shrink-0" title="Raporu İnternet Portalına Yükle ve Müşteri Linki Oluştur">
+                    <i class="fa-solid fa-cloud-arrow-up text-xs"></i>
+                    <span class="hidden sm:inline">Portal </span><span>Yükle</span>
+                </button>
                 <!-- E-posta Butonu -->
-                <button onclick="openReportEmailModal()" class="px-3 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 active:bg-sky-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-sky-600/20 active:scale-95 shrink-0" title="Raporu E-posta ile Gönder">
+                <button onclick="openReportEmailModal()" class="px-2.5 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 active:bg-sky-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-sky-600/20 active:scale-95 shrink-0" title="Raporu E-posta ile Gönder">
                     <i class="fa-solid fa-envelope text-xs"></i>
                     <span>E-posta</span>
                 </button>
                 <!-- PDF İndir / Yazdır Butonu (Asla taşmaz, tam görünür!) -->
-                <button onclick="triggerBrowserPrint()" class="flex-1 max-w-[210px] px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/25 active:scale-95 truncate" title="PDF İndir veya Yazdır">
+                <button onclick="triggerBrowserPrint()" class="flex-1 max-w-[195px] px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/25 active:scale-95 truncate" title="PDF İndir veya Yazdır">
                     <i class="fa-solid fa-file-pdf text-sm shrink-0"></i>
                     <span class="truncate">PDF İndir / Yazdır</span>
                 </button>
@@ -1099,6 +1106,21 @@
                     <button type="button" onclick="downloadSelectedEmailReportsAsPdf()" class="w-full py-2 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/20 active:scale-95 transition">
                         <i class="fa-solid fa-file-arrow-down"></i>
                         <span id="btnDownloadSelectedPdfLabel">Seçili Raporu PDF Olarak Kaydet / Birleştir</span>
+                    </button>
+                </div>
+
+                <!-- Quick Cloud Portal Link Card -->
+                <div class="p-2.5 rounded-xl bg-sky-950/50 border border-sky-700/50 flex items-center justify-between gap-2">
+                    <div class="min-w-0">
+                        <div class="font-bold text-sky-300 text-[11px] flex items-center gap-1.5">
+                            <i class="fa-solid fa-globe text-sky-400"></i>
+                            <span>Bulut Müşteri Linki Oluştur / Güncelle</span>
+                        </div>
+                        <div class="text-[10px] text-sky-200/80 truncate">Raporu internete yükler ve e-posta metnine link ekler</div>
+                    </div>
+                    <button type="button" onclick="closeReportEmailModal(); openPortalUploadModal(AppState.currentWorkOrder?.id || AppState.currentInspection?.work_order_id, getSelectedEmailReportsList().map(r => r.id));"
+                        class="px-2.5 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-black text-[11px] shrink-0 active:scale-95 transition">
+                        Yükle / Link
                     </button>
                 </div>
 

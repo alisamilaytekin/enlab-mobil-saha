@@ -1148,7 +1148,7 @@ async function renderWorkOrderDetails(workOrderId) {
 
             <div class="card-craft-white p-3.5 space-y-3">
 
-                <div class="flex items-center justify-between gap-2">
+                <div class="flex flex-wrap items-center justify-between gap-2">
 
                     <div class="font-bold text-xs text-slate-800 flex items-center gap-1.5">
 
@@ -1158,7 +1158,15 @@ async function renderWorkOrderDetails(workOrderId) {
 
                     </div>
 
-                    <div class="flex items-center gap-1.5">
+                    <div class="flex items-center gap-1.5 flex-wrap justify-end">
+
+                        <button onclick="openPortalUploadModal('${wo.id}')" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-2xs transition" title="Raporları İnternete Yükle ve Müşteri Linki Oluştur">
+
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+
+                            <span>İnternete Yükle</span>
+
+                        </button>
 
                         <button onclick="openMultiReportEmailModal('${wo.id}')" class="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-2xs transition" title="Klasördeki Raporları E-posta ile Gönder">
 
@@ -1179,6 +1187,27 @@ async function renderWorkOrderDetails(workOrderId) {
                     </div>
 
                 </div>
+
+                ${wo.portal_folder_url ? `
+                <div class="p-2.5 rounded-xl bg-indigo-50/90 border border-indigo-200 flex items-center justify-between gap-2 flex-wrap">
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-1.5 text-[11px] font-bold text-indigo-900">
+                            <i class="fa-solid fa-globe text-indigo-600"></i>
+                            <span>Müşteri İnternet Klasörü Hazır</span>
+                            ${wo.portal_pin ? `<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 font-mono text-[10px]">PIN: ${escapeHtml(wo.portal_pin)}</span>` : `<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px]">Şifresiz</span>`}
+                        </div>
+                        <div class="text-[10px] font-mono text-indigo-700 truncate mt-0.5">${escapeHtml(wo.portal_folder_url)}</div>
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <button type="button" onclick="CloudPortal.copyText('${escapeForJs(wo.portal_folder_url)}')" class="px-2.5 py-1 rounded-lg bg-white hover:bg-indigo-100 text-indigo-800 font-bold text-[11px] border border-indigo-200 transition">
+                            <i class="fa-regular fa-copy mr-1"></i>Linki Kopyala
+                        </button>
+                        <a href="${escapeHtml(wo.portal_folder_url)}" target="_blank" rel="noopener" class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] transition">
+                            <i class="fa-solid fa-arrow-up-right-from-square mr-1"></i>Aç
+                        </a>
+                    </div>
+                </div>
+                ` : ''}
 
 
 
@@ -1292,6 +1321,8 @@ function renderWoInspectionRows(list, workOrderId) {
 
         const isSuitable = (item.result_status || 'UYGUN') === 'UYGUN';
 
+        const isPublished = Boolean(item.portal_report_url);
+
         const typeLabel = getCleanTemplateTypeLabel(item.template_id, item.template_code);
 
         return `
@@ -1312,13 +1343,19 @@ function renderWoInspectionRows(list, workOrderId) {
 
                     </div>
 
-                    <span class="inline-flex items-center gap-1 text-[10px] font-semibold ${isSuitable ? 'text-emerald-700' : 'text-rose-700'} shrink-0 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200">
+                    <div class="flex items-center gap-1 shrink-0">
 
-                        <span class="w-1.5 h-1.5 rounded-full ${isSuitable ? 'bg-emerald-500' : 'bg-rose-500'}"></span>
+                        ${isPublished ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold text-sky-700 bg-sky-50 px-1.5 py-0.5 rounded-md border border-sky-200" title="Doğrulama: ${escapeHtml(item.portal_verify_code || '')}"><i class="fa-solid fa-globe text-[9px]"></i>Yayında</span>` : ''}
 
-                        ${item.result_status || 'UYGUN'}
+                        <span class="inline-flex items-center gap-1 text-[10px] font-semibold ${isSuitable ? 'text-emerald-700' : 'text-rose-700'} bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200">
 
-                    </span>
+                            <span class="w-1.5 h-1.5 rounded-full ${isSuitable ? 'bg-emerald-500' : 'bg-rose-500'}"></span>
+
+                            ${item.result_status || 'UYGUN'}
+
+                        </span>
+
+                    </div>
 
                 </div>
 
@@ -1340,13 +1377,13 @@ function renderWoInspectionRows(list, workOrderId) {
 
             <!-- TIER 2: ACTION BUTTONS (KOMPAKT & RAFİNE) -->
 
-            <div class="flex items-center justify-between gap-1.5 pt-1.5 border-t border-slate-100">
+            <div class="flex flex-wrap items-center justify-between gap-1.5 pt-1.5 border-t border-slate-100">
 
-                <div class="flex items-center gap-1.5 flex-1 min-w-0">
+                <div class="flex items-center gap-1 flex-wrap flex-1 min-w-0">
 
                     <button onclick="navigateTo('inspection-complete', {id: '${item.id}', templateId: '${item.template_id}'})"
 
-                        class="px-2.5 py-1 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white font-semibold rounded-lg text-xs flex items-center gap-1 transition shadow-2xs">
+                        class="px-2 py-1 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white font-semibold rounded-lg text-xs flex items-center gap-1 transition shadow-2xs">
 
                         <i class="fa-solid fa-pen-to-square text-[10px]"></i>
 
@@ -1356,13 +1393,25 @@ function renderWoInspectionRows(list, workOrderId) {
 
                     <button onclick="quickPreviewReportFromList('${item.id}')"
 
-                        class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-semibold rounded-lg text-xs flex items-center gap-1 transition border border-slate-200">
+                        class="px-2 py-1 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-semibold rounded-lg text-xs flex items-center gap-1 transition border border-slate-200">
 
                         <i class="fa-solid fa-file-pdf text-amber-600 text-[10px]"></i>
 
                         <span>PDF</span>
 
                     </button>
+
+                    <button onclick="openPortalUploadModal('${workOrderId}', ['${item.id}'])"
+
+                        class="px-2 py-1 ${isPublished ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'} active:scale-95 font-semibold rounded-lg text-xs flex items-center gap-1 transition border" title="${isPublished ? 'Raporu İnternette Güncelle' : 'İnternete Yükle'}">
+
+                        <i class="fa-solid fa-cloud-arrow-up text-[10px] ${isPublished ? 'text-indigo-600' : 'text-sky-600'}"></i>
+
+                        <span>${isPublished ? 'Güncelle' : 'Yükle'}</span>
+
+                    </button>
+
+                    ${isPublished ? `<button onclick="copyReportPortalLink('${item.id}')" class="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 active:scale-95 text-emerald-700 font-semibold rounded-lg text-xs flex items-center gap-1 transition border border-emerald-200" title="Rapor İnternet Linkini Kopyala"><i class="fa-solid fa-link text-[10px]"></i><span>Link</span></button>` : ''}
 
                 </div>
 

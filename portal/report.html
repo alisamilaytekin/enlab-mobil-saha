@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rapor Görüntüleme &amp; Doğrulama</title>
+  <link rel="stylesheet" href="/styles.css">
+  <style id="dynamicA4Styles"></style>
+</head>
+<body>
+  <header class="topbar portal-chrome">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="brand-icon">⚡</div>
+        <div style="min-width:0">
+          <div id="hdrReportTitle" class="brand-title">Rapor Görüntüleyici</div>
+          <div id="hdrReportSub" class="brand-sub">Dijital Rapor Doğrulama</div>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <a id="backToFolderBtn" href="/" class="btn btn-ghost btn-sm hidden">← Klasöre Dön</a>
+        <button id="topPrintBtn" type="button" class="btn btn-emerald btn-sm hidden" onclick="downloadOrPrintReport()">PDF İndir / Yazdır</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container" style="padding-top:16px; padding-bottom:40px;">
+    <div id="loadingState" class="card portal-chrome" style="text-align:center; color:#64748b; font-size:14px;">
+      Rapor yükleniyor ve doğrulanıyor...
+    </div>
+
+    <div id="errorState" class="card portal-chrome hidden" style="text-align:center; border-color:#fecaca;">
+      <h2 style="margin:0 0 8px 0; color:#991b1b; font-size:18px;">Rapor Bulunamadı</h2>
+      <p id="errorMsg" style="margin:0 0 16px 0; color:#475569; font-size:13px;"></p>
+      <a href="/" class="btn btn-dark">Doğrulama Sayfasına Git</a>
+    </div>
+
+    <div id="pinGate" class="card portal-chrome hidden" style="max-width:420px; margin:24px auto;">
+      <div style="text-align:center; margin-bottom:14px;">
+        <div style="font-size:28px; margin-bottom:6px;">🔒</div>
+        <h2 style="margin:0 0 6px 0; font-size:18px;">Bu Rapor PIN Korumalı</h2>
+        <div id="pinMetaLabel" style="font-size:13px; color:#475569;"></div>
+      </div>
+      <form id="pinForm">
+        <label class="label" for="pinInput">Erişim Şifresi (PIN)</label>
+        <input id="pinInput" type="password" inputmode="numeric" class="input mono" style="text-align:center; font-size:18px; letter-spacing:4px;" placeholder="••••" required>
+        <button id="pinSubmitBtn" type="submit" class="btn btn-primary" style="width:100%; margin-top:12px;">Raporu Aç</button>
+      </form>
+    </div>
+
+    <div id="verifiedBanner" class="card portal-chrome hidden" style="margin-bottom:14px; border-color:#a7f3d0; background:#ecfdf5; padding:14px 16px;">
+      <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px;">
+        <div>
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span class="badge badge-ok">✓ Doğrulanmış Resmi Rapor</span>
+            <span id="resultBadge"></span>
+          </div>
+          <div id="metaPrimary" style="font-size:14px; font-weight:800; color:#0f172a; margin-top:6px;"></div>
+          <div id="metaSecondary" style="font-size:12px; color:#334155; margin-top:3px;"></div>
+        </div>
+        <div id="zoomControls" class="hidden" style="display:flex; align-items:center; gap:6px;">
+          <button type="button" class="btn btn-outline btn-sm" onclick="changeZoom(-0.15)">-</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="fitToWidth()">Sığdır</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="changeZoom(0.15)">+</button>
+          <button type="button" class="btn btn-emerald btn-sm" onclick="downloadOrPrintReport()">PDF İndir / Yazdır</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="htmlViewerStage" class="viewer-stage hidden">
+      <div id="a4ScaleOuter" class="a4-scale-outer">
+        <div id="a4ScaleInner" class="a4-scale-inner"></div>
+      </div>
+    </div>
+
+    <div id="pdfViewerBox" class="card hidden" style="padding:12px;">
+      <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;">
+        <span style="font-size:13px; font-weight:700; color:#334155;">Yüklenen PDF Rapor Dosyası</span>
+        <div style="display:flex; gap:8px;">
+          <a id="pdfOpenNewTabBtn" href="#" target="_blank" rel="noopener" class="btn btn-outline btn-sm">Yeni Sekmede Aç</a>
+          <a id="pdfDownloadBtn" href="#" download class="btn btn-emerald btn-sm">PDF İndir</a>
+        </div>
+      </div>
+      <iframe id="pdfFrame" class="pdf-embed-frame" title="PDF Rapor"></iframe>
+    </div>
+  </main>
+
+  <script src="/portal.js"></script>
+  <script>
+    const reportSlug = PortalUI.getSlugFromPath('r');
+    let currentFolderSlug = '';
+    let currentReport = null;
+    let currentZoom = 1;
+
+    function applyScale() {
+      const outer = document.getElementById('a4ScaleOuter');
+      const inner = document.getElementById('a4ScaleInner');
+      if (!outer || !inner) return;
+      inner.style.transform = `scale(${currentZoom.toFixed(4)})`;
+      const naturalH = inner.scrollHeight || 1123;
+      outer.style.width = Math.round(794 * currentZoom) + 'px';
+      outer.style.height = Math.round(naturalH * currentZoom) + 'px';
+    }
+
+    function fitToWidth() {
+      const stage = document.getElementById('htmlViewerStage');
+      const avail = Math.max(280, (stage ? stage.clientWidth : window.innerWidth) - 36);
+      currentZoom = Math.min(1.05, Math.max(0.32, avail / 794));
+      applyScale();
+    }
+
+    function changeZoom(delta) {
+      currentZoom = Math.min(2.0, Math.max(0.3, currentZoom + delta));
+      applyScale();
+    }
+
+    function downloadOrPrintReport() {
+      if (!currentReport) return;
+      if (currentReport.source_type === 'uploaded_pdf') {
+        const dl = document.getElementById('pdfDownloadBtn');
+        if (dl && dl.href) dl.click();
+        return;
+      }
+      window.print();
+    }
+
+    async function loadReport() {
+      const loadingEl = document.getElementById('loadingState');
+      const errorEl = document.getElementById('errorState');
+      const pinEl = document.getElementById('pinGate');
+
+      if (!reportSlug) {
+        loadingEl.classList.add('hidden');
+        errorEl.classList.remove('hidden');
+        document.getElementById('errorMsg').textContent = 'Geçersiz rapor bağlantısı.';
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/report?slug=' + encodeURIComponent(reportSlug));
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          loadingEl.classList.add('hidden');
+          errorEl.classList.remove('hidden');
+          document.getElementById('errorMsg').textContent = data.error || 'Rapor bulunamadı.';
+          return;
+        }
+
+        const f = data.folder;
+        const r = data.report;
+        currentFolderSlug = f.share_slug;
+        currentReport = r;
+
+        document.getElementById('hdrReportTitle').textContent = r.equipment_name || 'Rapor';
+        document.getElementById('hdrReportSub').textContent = (f.company_name || '') + ' · ' + (r.report_no || '');
+        document.title = (r.report_no || 'Rapor') + ' - ' + (f.company_name || 'Portal');
+
+        const backBtn = document.getElementById('backToFolderBtn');
+        backBtn.href = '/p/' + encodeURIComponent(f.share_slug);
+        backBtn.classList.remove('hidden');
+
+        const token = PortalUI.getFolderToken(f.share_slug);
+        if (f.has_pin && !token) {
+          loadingEl.classList.add('hidden');
+          pinEl.classList.remove('hidden');
+          document.getElementById('pinMetaLabel').textContent = `${f.company_name} · ${r.report_no}`;
+          setTimeout(() => document.getElementById('pinInput').focus(), 100);
+          return;
+        }
+
+        // Verify token with report meta endpoint if PIN exists
+        if (f.has_pin) {
+          const checkRes = await fetch('/api/report?slug=' + encodeURIComponent(reportSlug), {
+            headers: { 'X-Folder-Token': token }
+          });
+          const checkData = await checkRes.json();
+          if (checkData.requiresPin) {
+            PortalUI.setFolderToken(f.share_slug, '');
+            loadingEl.classList.add('hidden');
+            pinEl.classList.remove('hidden');
+            document.getElementById('pinMetaLabel').textContent = `${f.company_name} · ${r.report_no}`;
+            return;
+          }
+        }
+
+        pinEl.classList.add('hidden');
+        document.getElementById('verifiedBanner').classList.remove('hidden');
+        document.getElementById('topPrintBtn').classList.remove('hidden');
+
+        const isOk = (r.result_status || 'UYGUN') === 'UYGUN';
+        document.getElementById('resultBadge').innerHTML = isOk
+          ? '<span class="badge badge-ok">UYGUN</span>'
+          : '<span class="badge badge-bad">' + PortalUI.escapeHtml(r.result_status) + '</span>';
+
+        document.getElementById('metaPrimary').textContent = `${f.company_name} — ${r.equipment_name}`;
+        document.getElementById('metaSecondary').innerHTML =
+          `Rapor No: <span class="mono" style="font-weight:700;">${PortalUI.escapeHtml(r.report_no)}</span>` +
+          ` · Doğrulama Kodu: <span class="mono" style="font-weight:700;">${PortalUI.escapeHtml(r.verify_code)}</span>` +
+          (r.inspection_date ? ` · Kontrol Tarihi: ${PortalUI.escapeHtml(r.inspection_date)}` : '') +
+          (r.inspector_name ? ` · Kontrol Eden: ${PortalUI.escapeHtml(r.inspector_name)}` : '');
+
+        const fileUrlBase = '/api/report-file?slug=' + encodeURIComponent(r.share_slug) +
+          (token ? '&token=' + encodeURIComponent(token) : '');
+
+        if (r.source_type === 'uploaded_pdf') {
+          loadingEl.classList.add('hidden');
+          document.getElementById('pdfViewerBox').classList.remove('hidden');
+          document.getElementById('pdfFrame').src = fileUrlBase;
+          document.getElementById('pdfOpenNewTabBtn').href = fileUrlBase;
+          document.getElementById('pdfDownloadBtn').href = fileUrlBase + '&download=1';
+          document.getElementById('topPrintBtn').textContent = 'PDF İndir';
+        } else {
+          const fRes = await fetch(fileUrlBase + '&format=json');
+          const fData = await fRes.json();
+          loadingEl.classList.add('hidden');
+          if (!fRes.ok || !fData.ok) {
+            errorEl.classList.remove('hidden');
+            document.getElementById('errorMsg').textContent = fData.error || 'Rapor içeriği okunamadı.';
+            return;
+          }
+          const parsed = PortalUI.sanitizeReportHtmlClient(fData.html);
+          document.getElementById('dynamicA4Styles').textContent = parsed.styles;
+          document.getElementById('a4ScaleInner').innerHTML = parsed.bodyHtml;
+          document.getElementById('htmlViewerStage').classList.remove('hidden');
+          document.getElementById('zoomControls').classList.remove('hidden');
+          fitToWidth();
+
+          const urlParams = new URLSearchParams(window.location.search);
+          if (urlParams.get('autoprint') === '1') {
+            setTimeout(() => window.print(), 400);
+          }
+        }
+      } catch (err) {
+        loadingEl.classList.add('hidden');
+        errorEl.classList.remove('hidden');
+        document.getElementById('errorMsg').textContent = 'Sunucu bağlantısı sırasında hata oluştu.';
+      }
+    }
+
+    document.getElementById('pinForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const pin = document.getElementById('pinInput').value.trim();
+      if (!pin || !currentFolderSlug) return;
+      const btn = document.getElementById('pinSubmitBtn');
+      btn.disabled = true;
+      btn.textContent = 'Açılıyor...';
+      try {
+        const res = await fetch('/api/folder-unlock', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ slug: currentFolderSlug, pin })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          PortalUI.toast(data.error || 'Hatalı PIN!', 'error');
+          document.getElementById('pinInput').value = '';
+          return;
+        }
+        PortalUI.setFolderToken(currentFolderSlug, data.token);
+        document.getElementById('pinGate').classList.add('hidden');
+        document.getElementById('loadingState').classList.remove('hidden');
+        await loadReport();
+      } catch {
+        PortalUI.toast('Bağlantı hatası', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Raporu Aç';
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      if (!document.getElementById('htmlViewerStage').classList.contains('hidden')) {
+        fitToWidth();
+      }
+    });
+
+    loadReport();
+  </script>
+</body>
+</html>

@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Yönetici Paneli - Hızlı Rapor Portalı</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar portal-chrome">
+    <div class="topbar-inner">
+      <a href="/" class="brand">
+        <div class="brand-icon">⚡</div>
+        <div>
+          <div class="brand-title">Hızlı Rapor Yönetici Paneli</div>
+          <div class="brand-sub">Harici PDF Yükleme &amp; Müşteri Klasör Yönetimi</div>
+        </div>
+      </a>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <a href="/" class="btn btn-ghost btn-sm">Doğrulama Sayfası</a>
+        <button id="logoutBtn" type="button" class="btn btn-danger btn-sm hidden" onclick="adminLogout()">Çıkış</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container" style="padding-top:20px; padding-bottom:48px;">
+    <section id="loginCard" class="card" style="max-width:440px; margin:24px auto;">
+      <h2 style="margin:0 0 6px 0; font-size:18px;">Yönetici Girişi</h2>
+      <p style="margin:0 0 14px 0; font-size:13px; color:#475569;">
+        Kurulumda belirlediğiniz <strong>PORTAL_ADMIN_KEY</strong> anahtarını girin.
+      </p>
+      <form id="adminLoginForm">
+        <label class="label" for="adminKeyInput">Yönetici / Yükleme Anahtarı</label>
+        <input id="adminKeyInput" type="password" class="input mono" placeholder="Yönetici anahtarınız..." required>
+        <button id="loginSubmitBtn" type="submit" class="btn btn-primary" style="width:100%; margin-top:12px;">Giriş Yap</button>
+      </form>
+    </section>
+
+    <div id="adminDashboard" class="hidden" style="display:flex; flex-direction:column; gap:16px;">
+      <!-- Hızlı Rapor Uygulama Bağlantısı -->
+      <section class="card" style="background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%); color:#fff; border-color:#334155;">
+        <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px;">
+          <div>
+            <div style="font-size:14px; font-weight:800; color:#fbbf24;">📱 Hızlı Rapor (Android / Web) Uygulama Bağlantısı</div>
+            <div style="font-size:12px; color:#cbd5e1; margin-top:4px;">
+              Uygulamadaki <strong>Ayarlar &gt; Bulut Müşteri Portalı</strong> alanına aşağıdaki site adresini ve anahtarınızı yapıştırın:
+            </div>
+            <div style="margin-top:8px; font-size:12px;">
+              Site Adresi: <code id="appPortalUrlCode" class="mono" style="background:rgba(255,255,255,0.12); padding:2px 8px; border-radius:6px;"></code>
+            </div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button type="button" class="btn btn-ghost btn-sm" onclick="copyAppUrl()">Site Adresini Kopyala</button>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="copyAdminKey()">Anahtarı Kopyala</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Harici PDF Yükleme Kartı -->
+      <section class="card">
+        <h2 style="margin:0 0 12px 0; font-size:16px;">📄 Harici PDF Rapor Yükle (Bilgisayar / Telefon)</h2>
+        <form id="pdfUploadForm">
+          <div class="grid-2">
+            <div>
+              <label class="label" for="upTargetFolder">Hedef Müşteri Klasörü</label>
+              <select id="upTargetFolder" class="select">
+                <option value="">+ Yeni Müşteri Klasörü Oluştur</option>
+              </select>
+            </div>
+            <div id="newCompanyWrap">
+              <label class="label" for="upCompanyName">Müşteri / Firma Adı *</label>
+              <input id="upCompanyName" type="text" class="input" placeholder="Örn: ABC Metal San. Tic. A.Ş.">
+            </div>
+          </div>
+
+          <div class="grid-3" style="margin-top:12px;">
+            <div>
+              <label class="label" for="upEquipmentName">Ekipman / Rapor Başlığı *</label>
+              <input id="upEquipmentName" type="text" class="input" placeholder="Örn: Topraklama Tesisatı" required>
+            </div>
+            <div>
+              <label class="label" for="upReportNo">Rapor Numarası *</label>
+              <input id="upReportNo" type="text" class="input mono" placeholder="Örn: TKM-26-02-54999" required>
+            </div>
+            <div>
+              <label class="label" for="upResultStatus">Kontrol Sonucu</label>
+              <select id="upResultStatus" class="select">
+                <option value="UYGUN">UYGUN</option>
+                <option value="UYGUN DEĞİL">UYGUN DEĞİL</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid-3" style="margin-top:12px;">
+            <div>
+              <label class="label" for="upInspectionDate">Kontrol Tarihi</label>
+              <input id="upInspectionDate" type="text" class="input" placeholder="Örn: 11.11.2026">
+            </div>
+            <div>
+              <label class="label" for="upPin">İsteğe Bağlı Müşteri PIN Şifresi</label>
+              <input id="upPin" type="text" class="input mono" placeholder="Boş bırakılırsa şifresiz açılır">
+            </div>
+            <div>
+              <label class="label" for="upPdfFile">PDF Rapor Dosyası (Maks. 50 MB) *</label>
+              <input id="upPdfFile" type="file" accept="application/pdf,.pdf" class="input" required style="padding:7px;">
+            </div>
+          </div>
+
+          <div style="margin-top:14px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+            <span id="uploadProgressText" style="font-size:12px; color:#475569;"></span>
+            <button id="pdfUploadBtn" type="submit" class="btn btn-emerald">PDF Dosyasını Yükle ve Link Oluştur</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Klasörler ve Raporlar Listesi -->
+      <section class="card">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
+          <div>
+            <h2 style="margin:0; font-size:16px;">Müşteri Klasörleri ve Yayınlanan Raporlar</h2>
+            <div id="adminStats" style="font-size:12px; color:#64748b; margin-top:2px;"></div>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <input id="adminSearchInput" type="text" class="input" style="width:240px;" placeholder="Firma, pano veya rapor ara...">
+            <button type="button" class="btn btn-outline btn-sm" onclick="loadAdminFolders()">Yenile</button>
+          </div>
+        </div>
+        <div id="adminFoldersList" style="display:flex; flex-direction:column; gap:12px;"></div>
+      </section>
+    </div>
+  </main>
+
+  <script src="/portal.js"></script>
+  <script>
+    const ADMIN_KEY_STORAGE = 'hr_portal_admin_key';
+    let cachedFolders = [];
+
+    function getAdminKey() {
+      try { return localStorage.getItem(ADMIN_KEY_STORAGE) || ''; } catch { return ''; }
+    }
+
+    function setAdminKey(k) {
+      try {
+        if (k) localStorage.setItem(ADMIN_KEY_STORAGE, k);
+        else localStorage.removeItem(ADMIN_KEY_STORAGE);
+      } catch {}
+    }
+
+    function copyAppUrl() { PortalUI.copyText(window.location.origin); }
+    function copyAdminKey() { PortalUI.copyText(getAdminKey()); }
+
+    function adminLogout() {
+      setAdminKey('');
+      location.reload();
+    }
+
+    async function verifyAndEnter(key) {
+      const res = await fetch('/api/health', {
+        headers: { 'X-Admin-Key': key }
+      });
+      const data = await res.json();
+      if (!data.authValid) {
+        return false;
+      }
+      setAdminKey(key);
+      document.getElementById('loginCard').classList.add('hidden');
+      document.getElementById('adminDashboard').classList.remove('hidden');
+      document.getElementById('logoutBtn').classList.remove('hidden');
+      document.getElementById('appPortalUrlCode').textContent = window.location.origin;
+      document.getElementById('upInspectionDate').value = new Date().toLocaleDateString('tr-TR');
+      await loadAdminFolders();
+      return true;
+    }
+
+    document.getElementById('adminLoginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const key = document.getElementById('adminKeyInput').value.trim();
+      const btn = document.getElementById('loginSubmitBtn');
+      btn.disabled = true;
+      btn.textContent = 'Kontrol ediliyor...';
+      try {
+        const ok = await verifyAndEnter(key);
+        if (!ok) PortalUI.toast('Yönetici anahtarı hatalı!', 'error');
+      } catch {
+        PortalUI.toast('Sunucu bağlantısı kurulamadı', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Giriş Yap';
+      }
+    });
+
+    document.getElementById('upTargetFolder').addEventListener('change', (e) => {
+      document.getElementById('newCompanyWrap').style.display = e.target.value ? 'none' : 'block';
+    });
+
+    async function loadAdminFolders() {
+      const q = (document.getElementById('adminSearchInput').value || '').trim();
+      const res = await fetch('/api/admin?q=' + encodeURIComponent(q), {
+        headers: { 'X-Admin-Key': getAdminKey() }
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        PortalUI.toast(data.error || 'Klasörler yüklenemedi', 'error');
+        return;
+      }
+
+      cachedFolders = data.folders || [];
+      document.getElementById('adminStats').textContent =
+        `${data.totals.folders} müşteri klasörü · ${data.totals.reports} yayında rapor`;
+
+      const sel = document.getElementById('upTargetFolder');
+      const prev = sel.value;
+      sel.innerHTML = '<option value="">+ Yeni Müşteri Klasörü Oluştur</option>' +
+        cachedFolders.map(f => `<option value="${PortalUI.escapeHtml(f.share_slug)}">${PortalUI.escapeHtml(f.company_name)} (${f.reports.length} rapor)</option>`).join('');
+      if (prev) sel.value = prev;
+      document.getElementById('newCompanyWrap').style.display = sel.value ? 'none' : 'block';
+
+      const container = document.getElementById('adminFoldersList');
+      if (!cachedFolders.length) {
+        container.innerHTML = '<div class="card-muted" style="text-align:center;color:#64748b;font-size:13px;">Henüz yüklenmiş rapor klasörü yok.</div>';
+        return;
+      }
+
+      container.innerHTML = cachedFolders.map(f => {
+        const folderUrl = window.location.origin + '/p/' + encodeURIComponent(f.share_slug);
+        const pinBadge = f.has_pin
+          ? '<span class="badge badge-warn">🔒 PIN Korumalı</span>'
+          : '<span class="badge badge-info">🔓 Şifresiz Link</span>';
+
+        const reportsHtml = f.reports.map(r => {
+          const rUrl = window.location.origin + '/r/' + encodeURIComponent(r.share_slug);
+          return `
+            <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; padding:8px 10px; background:#fff; border:1px solid #e2e8f0; border-radius:8px; font-size:12px;">
+              <div style="min-width:180px; flex:1;">
+                <strong>${PortalUI.escapeHtml(r.equipment_name)}</strong>
+                <span class="mono" style="color:#475569; margin-left:6px;">${PortalUI.escapeHtml(r.report_no)}</span>
+                <span class="mono" style="color:#0369a1; margin-left:6px;">Kod: ${PortalUI.escapeHtml(r.verify_code)}</span>
+                <span style="color:#64748b; margin-left:6px;">(${PortalUI.formatBytes(r.file_size_bytes)})</span>
+              </div>
+              <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                <a href="${rUrl}" target="_blank" class="btn btn-outline btn-sm">Aç</a>
+                <button type="button" class="btn btn-outline btn-sm" onclick="PortalUI.copyText('${rUrl}')">Link</button>
+                <button type="button" class="btn btn-danger btn-sm" onclick="deleteReport('${r.id}', '${PortalUI.escapeHtml(r.equipment_name).replace(/'/g, '')}')">Sil</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        return `
+          <div class="card-muted">
+            <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;">
+              <div>
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                  <strong style="font-size:15px;">${PortalUI.escapeHtml(f.company_name)}</strong>
+                  ${pinBadge}
+                </div>
+                <div style="font-size:12px; color:#64748b; margin-top:2px;">
+                  ${f.company_branch ? PortalUI.escapeHtml(f.company_branch) + ' · ' : ''}Güncelleme: ${PortalUI.formatDate(f.updated_at)}
+                </div>
+              </div>
+              <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                <a href="${folderUrl}" target="_blank" class="btn btn-primary btn-sm">Klasörü Aç</a>
+                <button type="button" class="btn btn-outline btn-sm" onclick="PortalUI.copyText('${folderUrl}')">Müşteri Linkini Kopyala</button>
+                <button type="button" class="btn btn-outline btn-sm" onclick="promptFolderPin('${f.id}', ${f.has_pin ? 'true' : 'false'})">PIN Ayarla</button>
+                <button type="button" class="btn btn-danger btn-sm" onclick="deleteFolder('${f.id}', '${PortalUI.escapeHtml(f.company_name).replace(/'/g, '')}')">Klasörü Sil</button>
+              </div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              ${reportsHtml || '<div style="font-size:12px;color:#64748b;">Bu klasörde henüz rapor yok.</div>'}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function promptFolderPin(folderId, hasPin) {
+      const newPin = prompt(hasPin ? 'Yeni PIN kodunu yazın (PIN kaldırmak için boş bırakıp Tamam deyin):' : 'Müşteri için 4-6 haneli PIN şifresi belirleyin:');
+      if (newPin === null) return;
+      const body = { action: 'update-folder', folder_id: folderId };
+      if (newPin.trim() === '') body.clear_pin = true;
+      else body.pin = newPin.trim();
+      const res = await fetch('/api/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Key': getAdminKey() },
+        body: JSON.stringify(body)
+      });
+      if (res.ok) {
+        PortalUI.toast('Klasör erişim ayarı güncellendi', 'success');
+        await loadAdminFolders();
+      }
+    }
+
+    async function deleteReport(reportId, name) {
+      if (!confirm(`"${name}" raporu silinsin mi?`)) return;
+      const res = await fetch('/api/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Key': getAdminKey() },
+        body: JSON.stringify({ action: 'delete-report', report_id: reportId })
+      });
+      if (res.ok) {
+        PortalUI.toast('Rapor silindi', 'success');
+        await loadAdminFolders();
+      }
+    }
+
+    async function deleteFolder(folderId, name) {
+      if (!confirm(`"${name}" klasörü ve içindeki TÜM raporlar kalıcı olarak silinsin mi?`)) return;
+      const res = await fetch('/api/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Key': getAdminKey() },
+        body: JSON.stringify({ action: 'delete-folder', folder_id: folderId })
+      });
+      if (res.ok) {
+        PortalUI.toast('Klasör silindi', 'success');
+        await loadAdminFolders();
+      }
+    }
+
+    document.getElementById('pdfUploadForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const targetSlug = document.getElementById('upTargetFolder').value;
+      const companyName = document.getElementById('upCompanyName').value.trim();
+      const equipmentName = document.getElementById('upEquipmentName').value.trim();
+      const reportNo = document.getElementById('upReportNo').value.trim();
+      const resultStatus = document.getElementById('upResultStatus').value;
+      const inspDate = document.getElementById('upInspectionDate').value.trim();
+      const pin = document.getElementById('upPin').value.trim();
+      const file = document.getElementById('upPdfFile').files[0];
+
+      if (!targetSlug && !companyName) {
+        PortalUI.toast('Lütfen firma adını yazın', 'error');
+        return;
+      }
+      if (!file) {
+        PortalUI.toast('Lütfen bir PDF dosyası seçin', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('pdfUploadBtn');
+      const prog = document.getElementById('uploadProgressText');
+      btn.disabled = true;
+      prog.textContent = '1/3 Yükleme oturumu başlatılıyor...';
+
+      try {
+        const initRes = await fetch('/api/upload-init', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Admin-Key': getAdminKey() },
+          body: JSON.stringify({
+            folder: {
+              slug: targetSlug || undefined,
+              company_name: companyName || 'Müşteri Firma',
+              pin: pin || undefined,
+              pin_mode: pin ? 'set' : 'keep'
+            },
+            report: {
+              report_no: reportNo,
+              equipment_name: equipmentName,
+              inspection_date: inspDate,
+              result_status: resultStatus,
+              source_type: 'uploaded_pdf',
+              mime_type: 'application/pdf'
+            }
+          })
+        });
+        const initData = await initRes.json();
+        if (!initRes.ok || !initData.ok) throw new Error(initData.error || 'Başlatma hatası');
+
+        prog.textContent = '2/3 PDF dosyası buluta yükleniyor...';
+        const putRes = await fetch(initData.uploadUrl, {
+          method: initData.uploadMethod || 'PUT',
+          headers: { 'Content-Type': 'application/pdf' },
+          body: file
+        });
+        if (!putRes.ok) throw new Error('Dosya yüklenemedi (' + putRes.status + ')');
+
+        prog.textContent = '3/3 Yayınlanıyor...';
+        const compRes = await fetch('/api/upload-complete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Admin-Key': getAdminKey() },
+          body: JSON.stringify({
+            report_id: initData.report.id,
+            file_size_bytes: file.size
+          })
+        });
+        const compData = await compRes.json();
+        if (!compRes.ok || !compData.ok) throw new Error(compData.error || 'Tamamlama hatası');
+
+        prog.textContent = '✓ Yüklendi! Müşteri Linki: ' + compData.folderUrl;
+        PortalUI.toast('PDF başarıyla yüklendi ve yayınlandı!', 'success');
+        document.getElementById('pdfUploadForm').reset();
+        document.getElementById('upInspectionDate').value = new Date().toLocaleDateString('tr-TR');
+        await loadAdminFolders();
+      } catch (err) {
+        prog.textContent = 'Hata: ' + err.message;
+        PortalUI.toast(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    let searchTimer = null;
+    document.getElementById('adminSearchInput').addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(loadAdminFolders, 250);
+    });
+
+    (async () => {
+      const saved = getAdminKey();
+      if (saved) {
+        const ok = await verifyAndEnter(saved).catch(() => false);
+        if (!ok) setAdminKey('');
+      }
+    })();
+  </script>
+</body>
+</html>

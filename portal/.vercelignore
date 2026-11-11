@@ -1,0 +1,7 @@
+local_server.py
+supabase_schema.sql
+.env
+.env.example
+.local_data/
+__pycache__/
+*.pyc

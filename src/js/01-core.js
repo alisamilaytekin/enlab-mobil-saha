@@ -459,6 +459,8 @@ const AppState = {
 
 };
 
+window.AppState = AppState;
+
 
 
 // Normalize DB Work Order row from server.js

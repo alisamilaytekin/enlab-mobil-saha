@@ -42,7 +42,8 @@
             calibrations,
             calendarEvents,
             qualityRecords,
-            quickNotes
+            quickNotes,
+            portalConfig: {}
         };
     }
 
@@ -81,6 +82,7 @@
                         this.state = buildInitialDatabase();
                     }
                     if (!this.state.quickNotes) this.state.quickNotes = [];
+                    if (!this.state.portalConfig) this.state.portalConfig = {};
                 } catch (e) {
                     this.state = buildInitialDatabase();
                 }
@@ -341,6 +343,10 @@
                     if (body.company_branch !== undefined) wo.company_branch = body.company_branch;
                     if (body.company_address !== undefined) wo.company_address = body.company_address;
                     if (body.contact_email !== undefined) wo.contact_email = body.contact_email;
+                    if (body.portal_folder_slug !== undefined) wo.portal_folder_slug = body.portal_folder_slug;
+                    if (body.portal_folder_url !== undefined) wo.portal_folder_url = body.portal_folder_url;
+                    if (body.portal_pin !== undefined) wo.portal_pin = body.portal_pin;
+                    if (body.portal_last_sync !== undefined) wo.portal_last_sync = body.portal_last_sync;
                     this.save();
                 }
                 return { success: true, workOrder: wo };
@@ -469,6 +475,12 @@
                         if (body.inspection_date !== undefined) insp.inspection_date = body.inspection_date;
                         if (body.end_date !== undefined) insp.end_date = body.end_date;
                         if (body.report_date !== undefined) insp.report_date = body.report_date;
+                        if (body.portal_report_slug !== undefined) insp.portal_report_slug = body.portal_report_slug;
+                        if (body.portal_report_url !== undefined) insp.portal_report_url = body.portal_report_url;
+                        if (body.portal_verify_code !== undefined) insp.portal_verify_code = body.portal_verify_code;
+                        if (body.portal_uploaded_at !== undefined) insp.portal_uploaded_at = body.portal_uploaded_at;
+                        if (body.portal_folder_slug !== undefined) insp.portal_folder_slug = body.portal_folder_slug;
+                        if (body.portal_folder_url !== undefined) insp.portal_folder_url = body.portal_folder_url;
                         if (body.form_data !== undefined) {
                             insp.data_json = typeof body.form_data === 'string' ? body.form_data : JSON.stringify(body.form_data);
                         }
@@ -579,18 +591,24 @@
     window.OfflineDB = OfflineDB;
     OfflineDB.init();
 
-    // Intercept window.fetch so all /api/ calls work 100% offline with zero network dependency!
+    // Intercept window.fetch so all internal /api/ calls work 100% offline with zero network dependency!
     const originalFetch = window.fetch ? window.fetch.bind(window) : null;
+    window.__ENLAB_REAL_FETCH__ = originalFetch;
     window.fetch = async function (input, init = {}) {
         const urlStr = typeof input === 'string' ? input : (input && input.url) || '';
         let pathname = urlStr;
+        let isCrossOrigin = false;
         try {
-            if (urlStr.startsWith('http://') || urlStr.startsWith('https://')) {
-                pathname = new URL(urlStr).pathname;
+            if (/^https?:\/\//i.test(urlStr)) {
+                const parsed = new URL(urlStr);
+                pathname = parsed.pathname;
+                isCrossOrigin = parsed.origin !== window.location.origin;
             }
         } catch (e) {}
 
-        if (pathname.startsWith('/api/')) {
+        const bypassOfflineDb = Boolean(init && init.bypassOfflineDb);
+
+        if (!bypassOfflineDb && !isCrossOrigin && pathname.startsWith('/api/')) {
             const method = (init.method || 'GET').toUpperCase();
             let bodyObj = {};
             if (init.body) {
@@ -617,6 +635,11 @@
         }
 
         if (originalFetch) {
+            if (bypassOfflineDb && init && typeof init === 'object') {
+                const cleanInit = Object.assign({}, init);
+                delete cleanInit.bypassOfflineDb;
+                return originalFetch(input, cleanInit);
+            }
             return originalFetch(input, init);
         }
         throw new Error('Offline mode');

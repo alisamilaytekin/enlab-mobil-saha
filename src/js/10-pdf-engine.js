@@ -118,7 +118,17 @@ function buildTkmPageFooter(formCode, reportNo, pageNum, totalPages) {
 
 function buildTkmOnaySection(insp, sectionNumber = '10', customTitle = null) {
 
-    const qrSrc = (window.TKM_EMBEDDED_ASSETS && window.TKM_EMBEDDED_ASSETS.qrDefault) || 'assets/qr_default.jpg';
+    const hasPortalQr = Boolean(insp && insp.portal_report_url && typeof window.generateQrDataUrl === 'function');
+
+    const qrSrc = hasPortalQr
+        ? window.generateQrDataUrl(insp.portal_report_url)
+        : ((window.TKM_EMBEDDED_ASSETS && window.TKM_EMBEDDED_ASSETS.qrDefault) || 'assets/qr_default.jpg');
+
+    const verifyCodeHtml = (insp && insp.portal_verify_code)
+        ? `<div style="font-size:6pt;font-family:monospace;font-weight:700;color:#111;margin-top:2px;letter-spacing:0.3px;">Doğrulama: ${escapeHtml(insp.portal_verify_code)}</div>`
+        : '';
+
+    const qrImgSize = verifyCodeHtml ? '70px' : '76px';
 
     const curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || {
 
@@ -186,7 +196,7 @@ function buildTkmOnaySection(insp, sectionNumber = '10', customTitle = null) {
 
                     <td rowspan="4" style="text-align:center;vertical-align:middle;padding:4px;">
 
-                        <img src="${qrSrc}" alt="QR Code" style="width:76px;height:76px;object-fit:contain;display:inline-block;">
+                        <img src="${qrSrc}" alt="QR Code" style="width:${qrImgSize};height:${qrImgSize};object-fit:contain;display:inline-block;">${verifyCodeHtml}
 
                     </td>
 
@@ -344,7 +354,11 @@ function rebuildEmailTextFromSelection() {
     const insp = AppState.currentInspection || {};
     const fd = AppState.currentFormData || {};
     const ci = fd.companyInfo || {};
-    const wo = AppState.currentWorkOrder || {};
+    const woId = insp.work_order_id || (AppState.currentWorkOrder && AppState.currentWorkOrder.id) || (_emailModalReportsPool[0] && _emailModalReportsPool[0].work_order_id);
+    const dbWo = woId && window.OfflineDB?.state?.workOrders
+        ? window.OfflineDB.state.workOrders.find(w => String(w.id) === String(woId))
+        : null;
+    const wo = dbWo || AppState.currentWorkOrder || {};
 
     const checkedIds = Array.from(document.querySelectorAll('input[name="emailReportItemCb"]:checked')).map(cb => String(cb.value));
     let selectedReports = _emailModalReportsPool.filter(r => checkedIds.includes(String(r.id)));
@@ -352,6 +366,14 @@ function rebuildEmailTextFromSelection() {
     if (selectedReports.length === 0 && _emailModalReportsPool.length > 0) {
         selectedReports = [_emailModalReportsPool[0]];
     }
+
+    // Refresh selected report objects from OfflineDB if available so freshly uploaded portal URLs are included
+    selectedReports = selectedReports.map(r => {
+        const fresh = (r && r.id && window.OfflineDB?.state?.inspections)
+            ? window.OfflineDB.state.inspections.find(x => String(x.id) === String(r.id))
+            : null;
+        return fresh ? Object.assign({}, r, fresh) : r;
+    });
 
     const customer = (
         (selectedReports[0] && (selectedReports[0].customer_name || selectedReports[0].company_name)) ||
@@ -369,6 +391,9 @@ function rebuildEmailTextFromSelection() {
             : 'Seçili Raporu PDF Olarak Kaydet / İndir';
     }
 
+    const portalFolderUrl = wo.portal_folder_url || (selectedReports.find(r => r && r.portal_folder_url) || {}).portal_folder_url || '';
+    const portalPin = wo.portal_pin || '';
+
     if (selectedReports.length <= 1) {
         const r = selectedReports[0] || insp;
         const reportNo = r.report_no || ci.reportNo || 'TKM-RAPOR';
@@ -376,11 +401,22 @@ function rebuildEmailTextFromSelection() {
         const safeCust = customer.replace(/[^a-zA-Z0-9ğüşıöçĞÜŞİÖÇ_-]/g, '_').slice(0, 25);
         const pdfFileName = `${reportNo}_${safeCust}.pdf`;
 
+        const portalBlockLines = [];
+        if (portalFolderUrl || r.portal_report_url) {
+            portalBlockLines.push('İNTERNET ÜZERİNDEN RAPOR GÖRÜNTÜLEME:');
+            if (portalFolderUrl) portalBlockLines.push(`- Müşteri Klasörü: ${portalFolderUrl}`);
+            if (portalPin) portalBlockLines.push(`- Erişim PIN Şifresi: ${portalPin}`);
+            if (r.portal_report_url) {
+                portalBlockLines.push(`- Doğrudan Rapor Linki: ${r.portal_report_url}${r.portal_verify_code ? ` (Doğrulama Kodu: ${r.portal_verify_code})` : ''}`);
+            }
+        }
+        const portalSection = portalBlockLines.length ? `\n\n${portalBlockLines.join('\n')}` : '';
+
         subjectInput.value = `Periyodik Kontrol Raporu - ${customer} (${equipment})`;
         bodyInput.value =
 `Sayın Yetkili,
 
-${customer} firmasında gerçekleştirilen periyodik kontrol çalışmasına ait ${equipment} (${reportNo}) raporu hazırlanmış olup ekte (${pdfFileName}) bilgilerinize sunulmuştur.
+${customer} firmasında gerçekleştirilen periyodik kontrol çalışmasına ait ${equipment} (${reportNo}) raporu hazırlanmış olup ekte (${pdfFileName}) bilgilerinize sunulmuştur.${portalSection}
 
 İyi çalışmalar dileriz.
 ENLAB / TEKKOMER Periyodik Kontrol Muayene Kuruluşu`;
@@ -388,10 +424,19 @@ ENLAB / TEKKOMER Periyodik Kontrol Muayene Kuruluşu`;
         const listLines = selectedReports.map((r, i) => {
             const eq = r.equipment_name || 'Periyodik Kontrol Raporu';
             const rNo = r.report_no ? ` (${r.report_no})` : '';
-            return `${i + 1}. ${eq}${rNo}`;
+            const rLink = r.portal_report_url ? `\n   Link: ${r.portal_report_url}${r.portal_verify_code ? ` · Kod: ${r.portal_verify_code}` : ''}` : '';
+            return `${i + 1}. ${eq}${rNo}${rLink}`;
         }).join('\n');
         const safeCust = customer.replace(/[^a-zA-Z0-9ğüşıöçĞÜŞİÖÇ_-]/g, '_').slice(0, 25);
         const pdfFileName = `Periyodik_Kontrol_Raporlari_${selectedReports.length}_Adet_${safeCust}.pdf`;
+
+        const portalHeaderLines = [];
+        if (portalFolderUrl) {
+            portalHeaderLines.push('İNTERNET ÜZERİNDEN RAPOR KLASÖRÜ:');
+            portalHeaderLines.push(`- Müşteri Klasörü: ${portalFolderUrl}`);
+            if (portalPin) portalHeaderLines.push(`- Erişim PIN Şifresi: ${portalPin}`);
+        }
+        const portalSection = portalHeaderLines.length ? `\n\n${portalHeaderLines.join('\n')}` : '';
 
         subjectInput.value = `Periyodik Kontrol Raporları (${selectedReports.length} Adet) - ${customer}`;
         bodyInput.value =
@@ -399,7 +444,7 @@ ENLAB / TEKKOMER Periyodik Kontrol Muayene Kuruluşu`;
 
 ${customer} firmasında gerçekleştirilen periyodik kontrol çalışmalarına ait aşağıdaki raporlar hazırlanmış olup ekte (${pdfFileName}) bilgilerinize sunulmuştur:
 
-${listLines}
+${listLines}${portalSection}
 
 İyi çalışmalar dileriz.
 ENLAB / TEKKOMER Periyodik Kontrol Muayene Kuruluşu`;
@@ -467,7 +512,7 @@ function downloadSelectedEmailReportsAsPdf() {
             }
             AppState.currentInspection = r;
             AppState.currentFormData = fd;
-            printOfficialReport(false);
+            printOfficialReport(false, null, true);
             if (printArea && printArea.innerHTML) {
                 allPagesHtml.push(printArea.innerHTML);
             }
@@ -543,7 +588,10 @@ async function openMultiReportEmailModal(workOrderId) {
         try {
             const res = await fetch(`/api/work-orders/${woId}`);
             const data = await res.json();
-            if (data.workOrder) wo = normalizeWorkOrder(data.workOrder);
+            if (data.workOrder) {
+                wo = normalizeWorkOrder(data.workOrder);
+                AppState.currentWorkOrder = wo;
+            }
             if (Array.isArray(data.inspections)) reports = data.inspections.map(normalizeInspection);
         } catch (e) {}
     }
@@ -1212,7 +1260,7 @@ function renderPdfPhotoBlocks(photosList, secTitle = 'FOTOĞRAFLAR') {
     return photoBlocks;
 }
 
-function printOfficialReport(directPrint = false) {
+function printOfficialReport(directPrint = false, customTarget = null, silentRender = false) {
 
     const insp = AppState.currentInspection;
 
@@ -3630,6 +3678,15 @@ function printOfficialReport(directPrint = false) {
     // Populate Printable Container (for @media print)
     printArea.setAttribute('data-pdf-theme', activePdfTheme);
     printArea.innerHTML = pagesArray.map(p => `<div class="tkm-a4-page" data-pdf-theme="${activePdfTheme}">${p}</div>`).join('');
+
+    if (customTarget && typeof Element !== 'undefined' && customTarget instanceof Element) {
+        customTarget.setAttribute('data-pdf-theme', activePdfTheme);
+        customTarget.innerHTML = printArea.innerHTML;
+    }
+
+    if (silentRender) {
+        return;
+    }
 
     // Populate On-Screen A4 Preview Modal
     const previewContainer = document.getElementById('a4PreviewPagesContainer');

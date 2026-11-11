@@ -1,0 +1,24 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "cleanUrls": false,
+  "rewrites": [
+    { "source": "/p/:slug", "destination": "/folder.html?slug=:slug" },
+    { "source": "/r/:slug", "destination": "/report.html?slug=:slug" },
+    { "source": "/admin", "destination": "/admin.html" }
+  ],
+  "crons": [
+    {
+      "path": "/api/health",
+      "schedule": "0 8 * * *"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+      ]
+    }
+  ]
+}

@@ -8,3 +8,8 @@ dist/*.idsig
 
 # Geçici dosyalar
 scratch/
+
+# Portal yerel test verisi ve ortam değişkenleri
+portal/.local_data/
+portal/.env
+portal/.vercel/

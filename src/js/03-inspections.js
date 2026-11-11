@@ -422,7 +422,11 @@ async function signAndApproveInspection(inspectionId, workOrderId) {
 
 function openLabelModal(inspectionId, mode = 'label') {
 
-    const item = AppState.inspectionsCache.find(x => String(x.id) === String(inspectionId)) || {};
+    const cachedItem = AppState.inspectionsCache.find(x => String(x.id) === String(inspectionId));
+
+    const dbItem = (window.OfflineDB?.state?.inspections || []).find(x => String(x.id) === String(inspectionId));
+
+    const item = Object.assign({}, dbItem || {}, cachedItem || {});
 
     const branding = (typeof CompanySettingsManager !== 'undefined') ? CompanySettingsManager.getSettings() : DEFAULT_COMPANY_BRANDING;
 
@@ -431,6 +435,10 @@ function openLabelModal(inspectionId, mode = 'label') {
     const turkakLogoSrc = (typeof CompanySettingsManager !== 'undefined') ? CompanySettingsManager.getTurkakLogoSrc() : 'assets/turkak_logo.jpg';
 
     const showTurkak = branding.showTurkakLogo !== false;
+
+    const qrImgSrc = (item.portal_report_url && typeof window.generateQrDataUrl === 'function')
+        ? window.generateQrDataUrl(item.portal_report_url)
+        : ((window.TKM_EMBEDDED_ASSETS && window.TKM_EMBEDDED_ASSETS.qrDefault) || 'assets/qr_default.jpg');
 
 
 
@@ -460,9 +468,11 @@ function openLabelModal(inspectionId, mode = 'label') {
 
             <div class="text-xs font-semibold text-slate-600">${escapeHtml(item.customer_name || '')}</div>
 
-            <div class="py-2 flex justify-center">
+            <div class="py-2 flex flex-col items-center justify-center gap-1">
 
-                <img src="/assets/qr_default.jpg" class="w-28 h-28 border border-slate-300 p-1 bg-white object-contain" alt="QR Code">
+                <img src="${qrImgSrc}" class="w-28 h-28 border border-slate-300 p-1 bg-white object-contain" alt="QR Code">
+
+                ${item.portal_verify_code ? `<div class="text-[10px] font-mono font-bold text-sky-700 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded">Doğrulama Kodu: ${escapeHtml(item.portal_verify_code)}</div>` : ''}
 
             </div>
 

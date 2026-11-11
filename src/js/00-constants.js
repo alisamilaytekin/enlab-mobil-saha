@@ -4,7 +4,7 @@
 
 window.HIZLI_RAPOR_CONSTANTS = {
     APP_NAME: 'Hızlı Rapor',
-    VERSION: '0.29',
+    VERSION: '0.58',
     
     // Rapor ve Muayene Durumları
     STATUS: {
