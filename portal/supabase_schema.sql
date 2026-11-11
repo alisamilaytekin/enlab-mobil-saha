@@ -11,6 +11,8 @@ CREATE TABLE IF NOT EXISTS public.portal_folders (
     share_slug TEXT NOT NULL UNIQUE,
     work_order_code TEXT DEFAULT '',
     local_wo_id TEXT DEFAULT '',
+    owner_company_slug TEXT NOT NULL DEFAULT '',
+    owner_company_name TEXT NOT NULL DEFAULT '',
     company_name TEXT NOT NULL,
     company_branch TEXT DEFAULT '',
     company_address TEXT DEFAULT '',
@@ -24,6 +26,7 @@ CREATE TABLE IF NOT EXISTS public.portal_folders (
 
 CREATE INDEX IF NOT EXISTS idx_portal_folders_slug ON public.portal_folders (share_slug);
 CREATE INDEX IF NOT EXISTS idx_portal_folders_local_wo ON public.portal_folders (local_wo_id);
+CREATE INDEX IF NOT EXISTS idx_portal_folders_owner_company ON public.portal_folders (owner_company_slug, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_portal_folders_updated ON public.portal_folders (updated_at DESC);
 
 -- 2. YÜKLENEN RAPORLAR (Uygulama A4 HTML veya Harici PDF)

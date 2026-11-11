@@ -345,6 +345,7 @@
                     if (body.contact_email !== undefined) wo.contact_email = body.contact_email;
                     if (body.portal_folder_slug !== undefined) wo.portal_folder_slug = body.portal_folder_slug;
                     if (body.portal_folder_url !== undefined) wo.portal_folder_url = body.portal_folder_url;
+                    if (body.portal_write_token !== undefined) wo.portal_write_token = body.portal_write_token;
                     if (body.portal_pin !== undefined) wo.portal_pin = body.portal_pin;
                     if (body.portal_last_sync !== undefined) wo.portal_last_sync = body.portal_last_sync;
                     this.save();

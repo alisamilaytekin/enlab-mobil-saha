@@ -82,6 +82,8 @@ def init_db():
             share_slug TEXT NOT NULL UNIQUE,
             work_order_code TEXT DEFAULT '',
             local_wo_id TEXT DEFAULT '',
+            owner_company_slug TEXT NOT NULL DEFAULT '',
+            owner_company_name TEXT NOT NULL DEFAULT '',
             company_name TEXT NOT NULL,
             company_branch TEXT DEFAULT '',
             company_address TEXT DEFAULT '',
@@ -123,6 +125,14 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_reports_verify ON portal_reports (report_no, verify_code);
         """
     )
+    existing_cols = {row[1] for row in conn.execute("PRAGMA table_info(portal_folders)").fetchall()}
+    if "owner_company_slug" not in existing_cols:
+        conn.execute("ALTER TABLE portal_folders ADD COLUMN owner_company_slug TEXT NOT NULL DEFAULT ''")
+    if "owner_company_name" not in existing_cols:
+        conn.execute("ALTER TABLE portal_folders ADD COLUMN owner_company_name TEXT NOT NULL DEFAULT ''")
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_folders_owner_company ON portal_folders (owner_company_slug, updated_at DESC)"
+    )
     conn.commit()
     conn.close()
 
@@ -137,6 +147,51 @@ def get_conn():
 def random_slug(length=8):
     alphabet = "abcdefghjkmnpqrstuvwxyz23456789"
     return "".join(secrets.choice(alphabet) for _ in range(length))
+
+
+TR_CHAR_MAP = str.maketrans({
+    "ç": "c", "Ç": "c",
+    "ğ": "g", "Ğ": "g",
+    "ı": "i", "I": "i",
+    "İ": "i", "i": "i",
+    "ö": "o", "Ö": "o",
+    "ş": "s", "Ş": "s",
+    "ü": "u", "Ü": "u",
+})
+
+
+def sanitize_company_slug(raw: str) -> str:
+    replaced = str(raw or "").strip().translate(TR_CHAR_MAP)
+    cleaned = re.sub(r"[^a-z0-9]+", "-", replaced.lower())
+    return cleaned.strip("-")[:18].rstrip("-")
+
+
+def prefixed_random_slug(company_slug: str, length=8) -> str:
+    prefix = sanitize_company_slug(company_slug)
+    rand = random_slug(length)
+    return f"{prefix}-{rand}" if prefix else rand
+
+
+def sign_folder_write_token(folder_id: str) -> str:
+    if not TOKEN_SECRET or not folder_id:
+        return ""
+    return b64url_encode(
+        hmac.new(TOKEN_SECRET.encode("utf-8"), f"write:{folder_id}".encode("utf-8"), hashlib.sha256).digest()
+    )
+
+
+def verify_folder_write_token(token: str, folder_id: str) -> bool:
+    if not TOKEN_SECRET or not folder_id or not token or not isinstance(token, str):
+        return False
+    expected = sign_folder_write_token(folder_id)
+    try:
+        return hmac.compare_digest(token.strip().encode("utf-8"), expected.encode("utf-8"))
+    except Exception:
+        return False
+
+
+def is_server_ready_for_app_upload() -> bool:
+    return bool(TOKEN_SECRET)
 
 
 def random_verify_code():
@@ -263,7 +318,10 @@ class PortalHandler(BaseHTTPRequestHandler):
     def add_cors_headers(self):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Admin-Key, X-Folder-Token")
+        self.send_header(
+            "Access-Control-Allow-Headers",
+            "Content-Type, Authorization, X-Admin-Key, X-Folder-Token, X-Folder-Write-Token, X-App-Client",
+        )
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
 
@@ -314,6 +372,16 @@ class PortalHandler(BaseHTTPRequestHandler):
             return hdr
         vals = query_params.get("token") or []
         return vals[0].strip() if vals else ""
+
+    def extract_folder_write_token(self, body=None) -> str:
+        hdr = (self.headers.get("X-Folder-Write-Token") or "").strip()
+        if hdr:
+            return hdr
+        if isinstance(body, dict):
+            wt = body.get("write_token")
+            if isinstance(wt, str) and wt.strip():
+                return wt.strip()
+        return ""
 
     def read_raw_body(self, max_bytes: int):
         cl_hdr = self.headers.get("Content-Length")
@@ -427,6 +495,7 @@ class PortalHandler(BaseHTTPRequestHandler):
                 "service": "hizli-rapor-portal",
                 "mode": "local-sqlite",
                 "configured": True,
+                "appUploadReady": is_server_ready_for_app_upload(),
                 "dbConnected": db_ok,
                 "dbError": db_err,
                 "authValid": auth_valid,
@@ -435,8 +504,12 @@ class PortalHandler(BaseHTTPRequestHandler):
         )
 
     def handle_upload_init(self):
-        if not self.verify_admin_key():
+        provided_admin_key = self.extract_admin_key()
+        is_admin = bool(provided_admin_key and self.verify_admin_key())
+        if provided_admin_key and not is_admin:
             return self.send_json(401, {"ok": False, "error": "Geçersiz yönetici anahtarı"})
+        if not is_server_ready_for_app_upload():
+            return self.send_json(500, {"ok": False, "error": "Portal sunucusu yapılandırılmamış"})
 
         conn = None
         try:
@@ -447,14 +520,41 @@ class PortalHandler(BaseHTTPRequestHandler):
             company_name = str(f_in.get("company_name") or "Müşteri Firma").strip()[:200]
             local_wo_id = str(f_in.get("local_wo_id") or "").strip()[:120]
             req_slug = str(f_in.get("slug") or "").strip()
+            write_token = self.extract_folder_write_token(f_in) or self.extract_folder_write_token(body)
+            branding_json = f_in.get("branding_json") if isinstance(f_in.get("branding_json"), dict) else {}
+            owner_company_name = str(
+                f_in.get("owner_company_name")
+                or branding_json.get("companyShortName")
+                or branding_json.get("companyFullName")
+                or ""
+            ).strip()[:120]
+            owner_company_slug = sanitize_company_slug(
+                f_in.get("owner_company_slug")
+                or owner_company_name
+                or branding_json.get("companyShortName")
+                or ""
+            )
             now = utc_now_iso()
 
             conn = get_conn()
             folder_row = None
             if req_slug:
-                folder_row = conn.execute("SELECT * FROM portal_folders WHERE share_slug = ? LIMIT 1", (req_slug,)).fetchone()
+                candidate = conn.execute("SELECT * FROM portal_folders WHERE share_slug = ? LIMIT 1", (req_slug,)).fetchone()
+                if candidate and (is_admin or verify_folder_write_token(write_token, candidate["id"])):
+                    folder_row = candidate
             elif local_wo_id:
-                folder_row = conn.execute("SELECT * FROM portal_folders WHERE local_wo_id = ? LIMIT 1", (local_wo_id,)).fetchone()
+                if is_admin:
+                    candidate = conn.execute(
+                        "SELECT * FROM portal_folders WHERE local_wo_id = ? LIMIT 1",
+                        (local_wo_id,),
+                    ).fetchone()
+                else:
+                    candidate = conn.execute(
+                        "SELECT * FROM portal_folders WHERE local_wo_id = ? AND owner_company_slug = ? LIMIT 1",
+                        (local_wo_id, owner_company_slug),
+                    ).fetchone()
+                if candidate and (is_admin or verify_folder_write_token(write_token, candidate["id"])):
+                    folder_row = candidate
 
             pin_mode = f_in.get("pin_mode") or ("set" if f_in.get("pin") else "keep")
             clean_pin = str(f_in.get("pin") or "").strip()
@@ -466,7 +566,9 @@ class PortalHandler(BaseHTTPRequestHandler):
                 new_addr = str(f_in["company_address"]) if f_in.get("company_address") is not None else folder_row["company_address"]
                 new_email = str(f_in["contact_email"]) if f_in.get("contact_email") is not None else folder_row["contact_email"]
                 new_wocode = str(f_in["work_order_code"]) if f_in.get("work_order_code") is not None else folder_row["work_order_code"]
-                new_brand = json.dumps(f_in.get("branding_json"), ensure_ascii=False) if f_in.get("branding_json") is not None else folder_row["branding_json"]
+                new_brand = json.dumps(branding_json, ensure_ascii=False) if branding_json else folder_row["branding_json"]
+                new_owner_slug = owner_company_slug or folder_row["owner_company_slug"] or ""
+                new_owner_name = owner_company_name or folder_row["owner_company_name"] or ""
 
                 pin_hash = folder_row["pin_hash"]
                 has_pin = folder_row["has_pin"]
@@ -482,6 +584,7 @@ class PortalHandler(BaseHTTPRequestHandler):
                     UPDATE portal_folders
                     SET company_name = ?, company_branch = ?, company_address = ?,
                         contact_email = ?, work_order_code = ?, branding_json = ?,
+                        owner_company_slug = ?, owner_company_name = ?,
                         pin_hash = ?, has_pin = ?, updated_at = ?
                     WHERE id = ?
                     """,
@@ -492,6 +595,8 @@ class PortalHandler(BaseHTTPRequestHandler):
                         new_email,
                         new_wocode,
                         new_brand,
+                        new_owner_slug,
+                        new_owner_name,
                         pin_hash,
                         has_pin,
                         now,
@@ -500,28 +605,31 @@ class PortalHandler(BaseHTTPRequestHandler):
                 )
             else:
                 folder_id = str(uuid.uuid4())
-                share_slug = random_slug(8)
+                share_slug = prefixed_random_slug(owner_company_slug, 8)
                 has_pin = 1 if (pin_mode == "set" and clean_pin) else 0
                 pin_hash = hash_pin(clean_pin) if has_pin else None
                 conn.execute(
                     """
                     INSERT INTO portal_folders
-                    (id, share_slug, work_order_code, local_wo_id, company_name, company_branch,
-                     company_address, contact_email, pin_hash, has_pin, branding_json, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    (id, share_slug, work_order_code, local_wo_id, owner_company_slug, owner_company_name,
+                     company_name, company_branch, company_address, contact_email, pin_hash, has_pin,
+                     branding_json, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         folder_id,
                         share_slug,
                         str(f_in.get("work_order_code") or ""),
                         local_wo_id,
+                        owner_company_slug,
+                        owner_company_name,
                         company_name,
                         str(f_in.get("company_branch") or ""),
                         str(f_in.get("company_address") or ""),
                         str(f_in.get("contact_email") or ""),
                         pin_hash,
                         has_pin,
-                        json.dumps(f_in.get("branding_json") or {}, ensure_ascii=False),
+                        json.dumps(branding_json or {}, ensure_ascii=False),
                         now,
                         now,
                     ),
@@ -569,7 +677,7 @@ class PortalHandler(BaseHTTPRequestHandler):
                 )
             else:
                 report_id = str(uuid.uuid4())
-                report_slug = random_slug(8)
+                report_slug = prefixed_random_slug(owner_company_slug, 8)
                 verify_code = random_verify_code()
                 storage_path = f"folders/{folder_id}/{report_id}.{ext}"
                 default_rno = f"RPR-{int(time.time()) % 1000000}"
@@ -610,6 +718,7 @@ class PortalHandler(BaseHTTPRequestHandler):
             sig = sign_local_upload(report_row["id"], report_row["storage_path"], exp_ts)
             origin = self.get_origin()
             upload_url = f"{origin}/api/local-upload?report_id={urllib.parse.quote(report_row['id'])}&exp={exp_ts}&sig={urllib.parse.quote(sig)}"
+            folder_write_token = sign_folder_write_token(folder_row["id"])
 
             return self.send_json(
                 200,
@@ -618,7 +727,10 @@ class PortalHandler(BaseHTTPRequestHandler):
                     "folder": {
                         "id": folder_row["id"],
                         "share_slug": folder_row["share_slug"],
+                        "owner_company_slug": folder_row["owner_company_slug"] or "",
+                        "owner_company_name": folder_row["owner_company_name"] or "",
                         "has_pin": bool(folder_row["has_pin"]),
+                        "write_token": folder_write_token,
                         "url": f"{origin}/p/{folder_row['share_slug']}",
                     },
                     "report": {
@@ -680,7 +792,9 @@ class PortalHandler(BaseHTTPRequestHandler):
                 conn.close()
 
     def handle_upload_complete(self):
-        if not self.verify_admin_key():
+        provided_admin_key = self.extract_admin_key()
+        is_admin = bool(provided_admin_key and self.verify_admin_key())
+        if provided_admin_key and not is_admin:
             return self.send_json(401, {"ok": False, "error": "Geçersiz yönetici anahtarı"})
 
         conn = None
@@ -694,6 +808,11 @@ class PortalHandler(BaseHTTPRequestHandler):
             report = conn.execute("SELECT * FROM portal_reports WHERE id = ? LIMIT 1", (report_id,)).fetchone()
             if not report:
                 return self.send_json(404, {"ok": False, "error": "Rapor kaydı bulunamadı"})
+
+            write_token = self.extract_folder_write_token(body)
+            has_write_access = is_admin or verify_folder_write_token(write_token, report["folder_id"])
+            if not has_write_access:
+                return self.send_json(401, {"ok": False, "error": "Yükleme doğrulama anahtarı geçersiz"})
 
             folder = conn.execute("SELECT * FROM portal_folders WHERE id = ? LIMIT 1", (report["folder_id"],)).fetchone()
             fsize = int(body.get("file_size_bytes") or report["file_size_bytes"] or 0)
@@ -1009,6 +1128,8 @@ class PortalHandler(BaseHTTPRequestHandler):
                     if q in (f.get("company_name") or "").lower()
                     or q in (f.get("company_branch") or "").lower()
                     or q in (f.get("work_order_code") or "").lower()
+                    or q in (f.get("owner_company_name") or "").lower()
+                    or q in (f.get("owner_company_slug") or "").lower()
                     or any(
                         q in (r.get("equipment_name") or "").lower()
                         or q in (r.get("report_no") or "").lower()

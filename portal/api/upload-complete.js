@@ -2,7 +2,10 @@ import {
   handlePreflight,
   sendJson,
   readJsonBody,
+  extractAdminKey,
   verifyAdminKey,
+  extractFolderWriteToken,
+  verifyFolderWriteToken,
   getOrigin,
   dbSelect,
   dbUpdate
@@ -13,7 +16,10 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return sendJson(res, 405, { ok: false, error: 'Yalnızca POST desteklenir' });
   }
-  if (!verifyAdminKey(req)) {
+
+  const providedAdminKey = extractAdminKey(req);
+  const isAdmin = Boolean(providedAdminKey && verifyAdminKey(req));
+  if (providedAdminKey && !isAdmin) {
     return sendJson(res, 401, { ok: false, error: 'Geçersiz yönetici anahtarı' });
   }
 
@@ -28,6 +34,12 @@ export default async function handler(req, res) {
     const report = found[0];
     if (!report) {
       return sendJson(res, 404, { ok: false, error: 'Rapor kaydı bulunamadı' });
+    }
+
+    const writeToken = extractFolderWriteToken(req, body);
+    const hasWriteAccess = isAdmin || verifyFolderWriteToken(writeToken, report.folder_id);
+    if (!hasWriteAccess) {
+      return sendJson(res, 401, { ok: false, error: 'Yükleme doğrulama anahtarı geçersiz' });
     }
 
     const folders = await dbSelect('portal_folders', `id=eq.${encodeURIComponent(report.folder_id)}&limit=1`);

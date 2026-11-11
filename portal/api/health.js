@@ -4,6 +4,7 @@ import {
   getConfig,
   extractAdminKey,
   verifyAdminKey,
+  isServerReadyForAppUpload,
   dbSelect
 } from './_lib/store.js';
 
@@ -30,6 +31,7 @@ export default async function handler(req, res) {
     service: 'hizli-rapor-portal',
     mode: 'supabase',
     configured: Boolean(cfg.supabaseUrl && cfg.supabaseKey && cfg.adminKey),
+    appUploadReady: isServerReadyForAppUpload(),
     dbConnected,
     dbError,
     authValid,

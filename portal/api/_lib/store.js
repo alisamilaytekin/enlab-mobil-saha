@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 export function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Admin-Key, X-Folder-Token');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Admin-Key, X-Folder-Token, X-Folder-Write-Token, X-App-Client');
   res.setHeader('Cache-Control', 'no-store');
 }
 
@@ -86,6 +86,61 @@ export function randomSlug(len = 8) {
     out += alphabet[bytes[i] % alphabet.length];
   }
   return out;
+}
+
+export function sanitizeCompanySlug(raw) {
+  const trMap = {
+    'ç': 'c', 'Ç': 'c',
+    'ğ': 'g', 'Ğ': 'g',
+    'ı': 'i', 'I': 'i',
+    'İ': 'i', 'i': 'i',
+    'ö': 'o', 'Ö': 'o',
+    'ş': 's', 'Ş': 's',
+    'ü': 'u', 'Ü': 'u'
+  };
+  const replaced = String(raw || '').trim().replace(/[çÇğĞıIİiöÖşŞüÜ]/g, ch => trMap[ch] || ch);
+  return replaced
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 18)
+    .replace(/-+$/g, '');
+}
+
+export function prefixedRandomSlug(companySlug, len = 8) {
+  const prefix = sanitizeCompanySlug(companySlug);
+  const rand = randomSlug(len);
+  return prefix ? `${prefix}-${rand}` : rand;
+}
+
+export function signFolderWriteToken(folderId) {
+  const { tokenSecret } = getConfig();
+  if (!tokenSecret || !folderId) return '';
+  return crypto.createHmac('sha256', tokenSecret).update(`write:${folderId}`).digest('base64url');
+}
+
+export function verifyFolderWriteToken(token, folderId) {
+  const { tokenSecret } = getConfig();
+  if (!tokenSecret || !folderId || !token || typeof token !== 'string') return false;
+  const expected = signFolderWriteToken(folderId);
+  const a = Buffer.from(token.trim(), 'utf8');
+  const b = Buffer.from(expected, 'utf8');
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
+}
+
+export function extractFolderWriteToken(req, body) {
+  const hdr = req.headers['x-folder-write-token'];
+  if (typeof hdr === 'string' && hdr.trim()) return hdr.trim();
+  if (body && typeof body.write_token === 'string' && body.write_token.trim()) {
+    return body.write_token.trim();
+  }
+  return '';
+}
+
+export function isServerReadyForAppUpload() {
+  const { supabaseUrl, supabaseKey, tokenSecret } = getConfig();
+  return Boolean(supabaseUrl && supabaseKey && tokenSecret);
 }
 
 export function randomVerifyCode() {

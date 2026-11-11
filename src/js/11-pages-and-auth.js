@@ -3163,6 +3163,10 @@ function saveCompanySettingsSubmit() {
 
             renderHome();
 
+        } else if (AppState.currentRoute === 'settings' && typeof renderSettingsPage === 'function') {
+
+            renderSettingsPage();
+
         }
 
     } else {
@@ -3188,6 +3192,10 @@ function resetCompanySettingsSubmit() {
     if (AppState.currentRoute === 'home') {
 
         renderHome();
+
+    } else if (AppState.currentRoute === 'settings' && typeof renderSettingsPage === 'function') {
+
+        renderSettingsPage();
 
     }
 
@@ -3511,10 +3519,12 @@ async function renderSettingsPage() {
 
 
 
-            <!-- 4B. BULUT MÜŞTERİ PORTALI (İNTERNET SİTESİ AYARLARI) -->
+            <!-- 4B. BULUT MÜŞTERİ PORTALI (OTOMATİK GÖNDERİM & ŞİRKET ÖN EKİ) -->
 
             ${(() => {
-                const pCfg = (typeof CloudPortal !== 'undefined' && CloudPortal.getConfig) ? CloudPortal.getConfig() : { portalUrl: '', adminKey: '', defaultPin: '' };
+                const pCfg = (typeof CloudPortal !== 'undefined' && CloudPortal.getConfig) ? CloudPortal.getConfig() : { portalUrl: 'https://hizli-rapor-portal.vercel.app', customPortalUrl: '', isCustomUrl: false, adminKey: '', defaultPin: '' };
+                const activeComp = (typeof CloudPortal !== 'undefined' && CloudPortal.getActiveCompanyProfile) ? CloudPortal.getActiveCompanyProfile() : { companyName: branding.companyShortName || 'Hızlı Rapor', companySlug: 'hizli-rapor', isCustomized: false };
+                const activeHost = (pCfg.portalUrl || 'https://hizli-rapor-portal.vercel.app').replace(/^https?:\/\//i, '');
                 return `
             <div class="card-craft-white p-3 space-y-2.5">
 
@@ -3524,64 +3534,86 @@ async function renderSettingsPage() {
 
                         <i class="fa-solid fa-globe text-indigo-600"></i>
 
-                        <span>Bulut Müşteri Portalı (İnternet Sitesi)</span>
+                        <span>Bulut Müşteri Portalı (Otomatik)</span>
 
                     </div>
 
-                    <span class="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">Online Yayın</span>
+                    <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">Otomatik Hazır ✓</span>
 
                 </div>
 
-                <p class="text-[11px] text-slate-600 leading-relaxed">
-                    Müşterilerinizin raporlarını internetten görüntüleyebilmesi için Vercel / özel alan adınızı (ör. <code class="font-mono text-slate-800">https://rapor.sirketadi.com</code>) veya yerel Wi-Fi test sunucunuzu (<code class="font-mono text-slate-800">http://192.168.1.35:8090</code>) ve Yönetici Anahtarını girin.
-                </p>
-
-                <div class="space-y-2 text-xs">
-
-                    <div>
-                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Portal Site Adresi (URL)</label>
-                        <input type="url" id="settingsPortalUrl" value="${escapeHtml(pCfg.portalUrl || '')}"
-                            placeholder="https://rapor.sirketadi.com"
-                            class="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-xl font-mono text-xs text-slate-900 focus:border-indigo-500 focus:outline-none">
+                <div class="p-2.5 rounded-xl bg-emerald-50/80 border border-emerald-200 space-y-1.5 text-xs">
+                    <div class="flex items-center justify-between gap-2 flex-wrap">
+                        <span class="font-bold text-emerald-950 flex items-center gap-1.5">
+                            <i class="fa-solid fa-cloud-check text-emerald-600"></i>
+                            <span>Adres / şifre istemeden tek tıkla yükler</span>
+                        </span>
+                        <code id="settingsPortalActiveHost" class="font-mono text-[10px] text-emerald-800 bg-white px-2 py-0.5 rounded border border-emerald-200">${escapeHtml(activeHost)}</code>
                     </div>
-
-                    <div>
-                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Yönetici Yükleme Anahtarı (PORTAL_ADMIN_KEY)</label>
-                        <div class="flex items-center gap-1.5">
-                            <input type="password" id="settingsPortalKey" value="${escapeHtml(pCfg.adminKey || '')}"
-                                placeholder="Gizli yükleme anahtarınız"
-                                class="flex-1 px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-xl font-mono text-xs text-slate-900 focus:border-indigo-500 focus:outline-none">
-                            <button type="button" onclick="const el=document.getElementById('settingsPortalKey'); if(el) el.type = el.type==='password' ? 'text' : 'password';"
-                                class="px-2.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 text-xs" title="Göster / Gizle">
-                                <i class="fa-regular fa-eye"></i>
-                            </button>
+                    <div class="flex items-center justify-between gap-2 flex-wrap text-[11px] text-slate-700">
+                        <span>Aktif Şirket: <strong class="text-slate-900">${escapeHtml(activeComp.companyName)}</strong></span>
+                        <span class="font-mono text-[10px] bg-white px-2 py-0.5 rounded border border-slate-200 text-indigo-700 font-bold">Ön Ek: /p/${escapeHtml(activeComp.companySlug)}-...</span>
+                    </div>
+                    ${!activeComp.isCustomized ? `
+                        <div class="pt-1 flex items-center justify-between gap-2 border-t border-emerald-200/70 text-[10px] text-amber-800">
+                            <span>Kendi şirket kısaltmanızla (/p/tkm-...) göndermek için şirket adınızı girin.</span>
+                            <button type="button" onclick="openCompanySettingsModal()" class="font-bold text-indigo-700 underline shrink-0">Şirket Adını Düzenle</button>
                         </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Varsayılan Müşteri Klasör PIN Şifresi (İsteğe Bağlı)</label>
-                        <input type="text" id="settingsPortalPin" value="${escapeHtml(pCfg.defaultPin || '')}"
-                            placeholder="Örn: 4829 (Boş bırakılırsa klasör başına sorulur)"
-                            class="w-full px-3 py-2 border border-slate-200 bg-slate-50 focus:bg-white rounded-xl font-mono text-xs text-slate-900 focus:border-indigo-500 focus:outline-none">
-                    </div>
-
+                    ` : ''}
                 </div>
 
                 <div id="settingsPortalStatus" class="hidden"></div>
 
-                <div class="grid grid-cols-3 gap-1.5 pt-1">
-                    <button type="button" onclick="CloudPortal.testPortalFromSettingsPage()" class="py-2 bg-sky-50 hover:bg-sky-100 active:scale-95 text-sky-800 border border-sky-200 font-bold text-xs rounded-xl flex items-center justify-center gap-1 transition">
+                <div class="grid grid-cols-2 gap-1.5">
+                    <button type="button" onclick="CloudPortal.testPortalFromSettingsPage()" class="py-2 bg-sky-50 hover:bg-sky-100 active:scale-95 text-sky-800 border border-sky-200 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition">
                         <i class="fa-solid fa-plug-circle-check"></i>
-                        <span>Test Et</span>
+                        <span>Bağlantıyı Test Et</span>
                     </button>
-                    <button type="button" onclick="CloudPortal.savePortalSettingsFromPage()" class="py-2 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1 shadow-sm transition">
-                        <i class="fa-solid fa-floppy-disk"></i>
-                        <span>Kaydet</span>
-                    </button>
-                    <button type="button" onclick="CloudPortal.openPortalSiteFromSettings()" class="py-2 bg-slate-800 hover:bg-slate-900 active:scale-95 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1 transition">
+                    <button type="button" onclick="CloudPortal.openPortalSiteFromSettings()" class="py-2 bg-slate-800 hover:bg-slate-900 active:scale-95 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition">
                         <i class="fa-solid fa-arrow-up-right-from-square"></i>
-                        <span>Siteyi Aç</span>
+                        <span>Portal Sitesini Aç</span>
                     </button>
+                </div>
+
+                <div class="pt-1 border-t border-slate-100">
+                    <button type="button" onclick="document.getElementById('settingsPortalAdvancedWrap')?.classList.toggle('hidden')" class="w-full py-1.5 px-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 font-semibold text-[11px] flex items-center justify-between border border-slate-200/80 transition">
+                        <span class="flex items-center gap-1.5"><i class="fa-solid fa-sliders text-slate-400"></i> Gelişmiş / Özel Domain &amp; Varsayılan PIN (İsteğe Bağlı)</span>
+                        <i class="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
+                    </button>
+
+                    <div id="settingsPortalAdvancedWrap" class="hidden mt-2 space-y-2 text-xs p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Özel Alan Adı / Sunucu URL (Boş = Varsayılan Bulut)</label>
+                            <input type="url" id="settingsPortalUrl" value="${escapeHtml(pCfg.customPortalUrl || '')}"
+                                placeholder="https://hizli-rapor-portal.vercel.app (varsayılan)"
+                                class="w-full px-3 py-2 border border-slate-200 bg-white rounded-xl font-mono text-xs text-slate-900 focus:border-indigo-500 focus:outline-none">
+                        </div>
+
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Yönetici Anahtarı (Sadece Kendi Sunucunuz İçin, İsteğe Bağlı)</label>
+                            <div class="flex items-center gap-1.5">
+                                <input type="password" id="settingsPortalKey" value="${escapeHtml(pCfg.adminKey || '')}"
+                                    placeholder="Varsayılan bulutta boş bırakın"
+                                    class="flex-1 px-3 py-2 border border-slate-200 bg-white rounded-xl font-mono text-xs text-slate-900 focus:border-indigo-500 focus:outline-none">
+                                <button type="button" onclick="const el=document.getElementById('settingsPortalKey'); if(el) el.type = el.type==='password' ? 'text' : 'password';"
+                                    class="px-2.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 text-xs" title="Göster / Gizle">
+                                    <i class="fa-regular fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Varsayılan Müşteri Klasör PIN Şifresi (İsteğe Bağlı)</label>
+                            <input type="text" id="settingsPortalPin" value="${escapeHtml(pCfg.defaultPin || '')}"
+                                placeholder="Örn: 4829 (Boş bırakılırsa şifresiz)"
+                                class="w-full px-3 py-2 border border-slate-200 bg-white rounded-xl font-mono text-xs text-slate-900 focus:border-indigo-500 focus:outline-none">
+                        </div>
+
+                        <button type="button" onclick="CloudPortal.savePortalSettingsFromPage()" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition">
+                            <i class="fa-solid fa-floppy-disk"></i>
+                            <span>Gelişmiş Ayarları Kaydet</span>
+                        </button>
+                    </div>
                 </div>
 
             </div>

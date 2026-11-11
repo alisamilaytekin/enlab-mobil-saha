@@ -43,7 +43,7 @@
           <div>
             <div style="font-size:14px; font-weight:800; color:#fbbf24;">📱 Hızlı Rapor (Android / Web) Uygulama Bağlantısı</div>
             <div style="font-size:12px; color:#cbd5e1; margin-top:4px;">
-              Uygulamadaki <strong>Ayarlar &gt; Bulut Müşteri Portalı</strong> alanına aşağıdaki site adresini ve anahtarınızı yapıştırın:
+              Uygulama artık bu siteye şifre sormadan otomatik bağlanır ve kullanıcı şirket kısa adına göre klasörleri (<code class="mono">/p/kisaad-...</code>) ayırır.
             </div>
             <div style="margin-top:8px; font-size:12px;">
               Site Adresi: <code id="appPortalUrlCode" class="mono" style="background:rgba(255,255,255,0.12); padding:2px 8px; border-radius:6px;"></code>
@@ -121,10 +121,11 @@
             <div id="adminStats" style="font-size:12px; color:#64748b; margin-top:2px;"></div>
           </div>
           <div style="display:flex; gap:8px; align-items:center;">
-            <input id="adminSearchInput" type="text" class="input" style="width:240px;" placeholder="Firma, pano veya rapor ara...">
+            <input id="adminSearchInput" type="text" class="input" style="width:240px;" placeholder="Şirket, firma, pano veya rapor ara...">
             <button type="button" class="btn btn-outline btn-sm" onclick="loadAdminFolders()">Yenile</button>
           </div>
         </div>
+        <div id="companyFilterBar" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px;"></div>
         <div id="adminFoldersList" style="display:flex; flex-direction:column; gap:12px;"></div>
       </section>
     </div>
@@ -134,6 +135,7 @@
   <script>
     const ADMIN_KEY_STORAGE = 'hr_portal_admin_key';
     let cachedFolders = [];
+    let activeCompanyFilter = '';
 
     function getAdminKey() {
       try { return localStorage.getItem(ADMIN_KEY_STORAGE) || ''; } catch { return ''; }
@@ -193,36 +195,48 @@
       document.getElementById('newCompanyWrap').style.display = e.target.value ? 'none' : 'block';
     });
 
-    async function loadAdminFolders() {
-      const q = (document.getElementById('adminSearchInput').value || '').trim();
-      const res = await fetch('/api/admin?q=' + encodeURIComponent(q), {
-        headers: { 'X-Admin-Key': getAdminKey() }
-      });
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        PortalUI.toast(data.error || 'Klasörler yüklenemedi', 'error');
-        return;
+    function setCompanyFilter(slug) {
+      activeCompanyFilter = slug || '';
+      renderAdminFolders();
+    }
+
+    function renderAdminFolders() {
+      const bar = document.getElementById('companyFilterBar');
+      const companies = new Map();
+      for (const f of cachedFolders) {
+        const key = f.owner_company_slug || 'genel';
+        const label = f.owner_company_name || (f.branding_json && f.branding_json.companyShortName) || f.owner_company_slug || 'Genel';
+        if (!companies.has(key)) companies.set(key, { label, count: 0 });
+        companies.get(key).count += 1;
+      }
+      if (bar) {
+        if (companies.size > 1) {
+          let html = `<button type="button" class="btn btn-sm ${activeCompanyFilter === '' ? 'btn-primary' : 'btn-outline'}" onclick="setCompanyFilter('')">Tümü (${cachedFolders.length})</button>`;
+          for (const [slug, info] of companies.entries()) {
+            html += `<button type="button" class="btn btn-sm ${activeCompanyFilter === slug ? 'btn-primary' : 'btn-outline'}" onclick="setCompanyFilter('${PortalUI.escapeHtml(slug)}')">${PortalUI.escapeHtml(info.label)} (${info.count})</button>`;
+          }
+          bar.innerHTML = html;
+        } else {
+          bar.innerHTML = '';
+        }
       }
 
-      cachedFolders = data.folders || [];
-      document.getElementById('adminStats').textContent =
-        `${data.totals.folders} müşteri klasörü · ${data.totals.reports} yayında rapor`;
-
-      const sel = document.getElementById('upTargetFolder');
-      const prev = sel.value;
-      sel.innerHTML = '<option value="">+ Yeni Müşteri Klasörü Oluştur</option>' +
-        cachedFolders.map(f => `<option value="${PortalUI.escapeHtml(f.share_slug)}">${PortalUI.escapeHtml(f.company_name)} (${f.reports.length} rapor)</option>`).join('');
-      if (prev) sel.value = prev;
-      document.getElementById('newCompanyWrap').style.display = sel.value ? 'none' : 'block';
+      const filtered = activeCompanyFilter
+        ? cachedFolders.filter(f => (f.owner_company_slug || 'genel') === activeCompanyFilter)
+        : cachedFolders;
 
       const container = document.getElementById('adminFoldersList');
-      if (!cachedFolders.length) {
+      if (!filtered.length) {
         container.innerHTML = '<div class="card-muted" style="text-align:center;color:#64748b;font-size:13px;">Henüz yüklenmiş rapor klasörü yok.</div>';
         return;
       }
 
-      container.innerHTML = cachedFolders.map(f => {
+      container.innerHTML = filtered.map(f => {
         const folderUrl = window.location.origin + '/p/' + encodeURIComponent(f.share_slug);
+        const companyLabel = f.owner_company_name || (f.branding_json && f.branding_json.companyShortName) || f.owner_company_slug || '';
+        const ownerBadge = companyLabel
+          ? `<span class="badge badge-info">🏢 ${PortalUI.escapeHtml(companyLabel)}</span>`
+          : '';
         const pinBadge = f.has_pin
           ? '<span class="badge badge-warn">🔒 PIN Korumalı</span>'
           : '<span class="badge badge-info">🔓 Şifresiz Link</span>';
@@ -252,6 +266,7 @@
               <div>
                 <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                   <strong style="font-size:15px;">${PortalUI.escapeHtml(f.company_name)}</strong>
+                  ${ownerBadge}
                   ${pinBadge}
                 </div>
                 <div style="font-size:12px; color:#64748b; margin-top:2px;">
@@ -271,6 +286,31 @@
           </div>
         `;
       }).join('');
+    }
+
+    async function loadAdminFolders() {
+      const q = (document.getElementById('adminSearchInput').value || '').trim();
+      const res = await fetch('/api/admin?q=' + encodeURIComponent(q), {
+        headers: { 'X-Admin-Key': getAdminKey() }
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        PortalUI.toast(data.error || 'Klasörler yüklenemedi', 'error');
+        return;
+      }
+
+      cachedFolders = data.folders || [];
+      document.getElementById('adminStats').textContent =
+        `${data.totals.folders} müşteri klasörü · ${data.totals.reports} yayında rapor`;
+
+      const sel = document.getElementById('upTargetFolder');
+      const prev = sel.value;
+      sel.innerHTML = '<option value="">+ Yeni Müşteri Klasörü Oluştur</option>' +
+        cachedFolders.map(f => `<option value="${PortalUI.escapeHtml(f.share_slug)}">${PortalUI.escapeHtml(f.company_name)} (${f.reports.length} rapor)</option>`).join('');
+      if (prev) sel.value = prev;
+      document.getElementById('newCompanyWrap').style.display = sel.value ? 'none' : 'block';
+
+      renderAdminFolders();
     }
 
     async function promptFolderPin(folderId, hasPin) {

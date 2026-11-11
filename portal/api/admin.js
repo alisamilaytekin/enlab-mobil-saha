@@ -26,7 +26,7 @@ export default async function handler(req, res) {
 
       const folders = await dbSelect(
         'portal_folders',
-        'select=id,share_slug,work_order_code,local_wo_id,company_name,company_branch,company_address,contact_email,has_pin,created_at,updated_at&order=updated_at.desc'
+        'select=id,share_slug,work_order_code,local_wo_id,owner_company_slug,owner_company_name,company_name,company_branch,company_address,contact_email,has_pin,branding_json,created_at,updated_at&order=updated_at.desc'
       );
       const reports = await dbSelect(
         'portal_reports',
@@ -53,6 +53,8 @@ export default async function handler(req, res) {
           (f.company_name || '').toLowerCase().includes(q) ||
           (f.company_branch || '').toLowerCase().includes(q) ||
           (f.work_order_code || '').toLowerCase().includes(q) ||
+          (f.owner_company_name || '').toLowerCase().includes(q) ||
+          (f.owner_company_slug || '').toLowerCase().includes(q) ||
           f.reports.some(r =>
             (r.equipment_name || '').toLowerCase().includes(q) ||
             (r.report_no || '').toLowerCase().includes(q) ||

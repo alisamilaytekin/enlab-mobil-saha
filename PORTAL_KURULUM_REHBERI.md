@@ -71,14 +71,13 @@ Yeni bir domain alacaksanız **Cloudflare Registrar**, **Turhost**, **Natro**, *
 
 ---
 
-## Adım 5: Android / Web Uygulamasını Portal'a Bağlama
+## Adım 5: Android / Web Uygulamasını Kullanma (Otomatik Bağlantı)
 
-1. Yeni oluşturulan **`Hizli_Rapor_v0.58.apk`** (veya `dist/` altındaki güncel APK) dosyasını Android telefonunuza kurun.
-2. Uygulama içinde **Ayarlar** sayfasına girin ve **Bulut Müşteri Portalı (İnternet Sitesi)** kartını bulun:
-   - **Portal Site Adresi:** `https://rapor.sirketadi.com` (sonunda `/` olmadan)
-   - **Yönetici Yükleme Anahtarı:** Vercel'de belirlediğiniz `PORTAL_ADMIN_KEY`
-   - **Varsayılan Müşteri Klasör PIN Şifresi (İsteğe Bağlı):** Müşteri klasörlerine otomatik uygulanmasını istediğiniz bir şifre veya klasör başına özel bırakmak için boş bırakın.
-3. **Test Et** butonuna basın (`✓ Bağlantı başarılı!` mesajını görün) ve **Kaydet**'e dokunun.
+1. Yeni oluşturulan **`Hizli_Rapor_v0.59.apk`** (veya `dist/` altındaki güncel APK) dosyasını Android telefonunuza kurun.
+2. Uygulama **varsayılan olarak adres veya yönetici şifresi istemeden** doğrudan bulut portalına (`https://hizli-rapor-portal.vercel.app`) bağlanır.
+3. **Ayarlar > Şirket & Marka Bilgileri** bölümünden firma kısa adınızı / şirket adınızı veya rapor ön ekinizi belirlediğinizde, yüklenen müşteri klasörleri ve rapor bağlantıları otomatik olarak şirket ön ekinizle oluşur (ör. `/p/tkm-...`, `/r/tkm-...`) ve `/admin` panelinde şirkete göre filtrelenebilir.
+4. *(İsteğe Bağlı — Özel Domain veya Kendi Sunucunuz)* Yalnızca farklı bir domain (`rapor.sirketadi.com`) ya da yerel/özel sunucu kullanacaksanız **Ayarlar > Bulut Müşteri Portalı (Otomatik) > Gelişmiş / Özel Domain & Varsayılan PIN** bölümünü açıp özel URL, anahtar veya varsayılan klasör PIN'i girebilirsiniz.
+5. İsterseniz **Bağlantıyı Test Et** butonuna basarak sunucu bağlantısını tek dokunuşla doğrulayabilirsiniz.
 
 ---
 
