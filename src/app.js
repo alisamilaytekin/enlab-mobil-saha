@@ -13605,6 +13605,17 @@ function closeReportEmailModal() {
     if (modal) modal.classList.add('hidden');
 }
 
+function restoreNativeDatabaseImmediately() {
+    try {
+        if (window.OfflineDB) {
+            window.OfflineDB.init();
+            window.OfflineDB.save();
+        }
+    } catch (e) {
+        console.warn('Database restore warning:', e);
+    }
+}
+
 function sendReportEmailDirect() {
     const recipient = (document.getElementById('reportEmailRecipient')?.value || '').trim();
     const subject = (document.getElementById('reportEmailSubject')?.value || 'Periyodik Kontrol Raporu').trim();
@@ -13612,15 +13623,27 @@ function sendReportEmailDirect() {
 
     if (recipient) {
         onReportEmailRecipientChange(recipient);
+        // Copy recipient email to clipboard so user can paste with 1 tap if needed
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(recipient);
+            }
+        } catch (e) {}
     }
 
-    // 1. Native Android Bridge (Automatically opens Android Email/Share Chooser with EXTRA_EMAIL, EXTRA_SUBJECT, EXTRA_TEXT)
+    const fullEmailText = recipient ? `Alıcı: ${recipient}\n\n${body}` : body;
+
+    // 1. Native Android Share / Email Chooser via AndroidBridge
     if (window.AndroidBridge && typeof window.AndroidBridge.shareJsonBackup === 'function') {
         try {
-            const packedSubjectAndRecipient = recipient ? `${subject}\n${recipient}` : subject;
-            window.AndroidBridge.shareJsonBackup(packedSubjectAndRecipient, body);
+            window.AndroidBridge.shareJsonBackup(subject, fullEmailText);
+            // Restore actual offline DB immediately on both JS and UI threads
+            restoreNativeDatabaseImmediately();
+            setTimeout(restoreNativeDatabaseImmediately, 80);
+            setTimeout(restoreNativeDatabaseImmediately, 350);
+            setTimeout(restoreNativeDatabaseImmediately, 1000);
             if (typeof showToast === 'function') {
-                showToast('E-posta / Paylaşım ekranı açılıyor...');
+                showToast(recipient ? `E-posta ekranı açılıyor (Alıcı: ${recipient} panoya kopyalandı)` : 'E-posta / Paylaşım ekranı açılıyor...');
             }
             setTimeout(() => closeReportEmailModal(), 400);
             return;
@@ -13629,7 +13652,18 @@ function sendReportEmailDirect() {
         }
     }
 
-    // 2. Desktop / Mobile Browser Fallback via mailto:
+    // 2. Web Share API fallback
+    if (navigator.share) {
+        navigator.share({
+            title: subject,
+            text: fullEmailText
+        }).then(() => {
+            closeReportEmailModal();
+        }).catch(() => {});
+        return;
+    }
+
+    // 3. Desktop Browser Fallback via mailto:
     const mailtoUrl = `mailto:${encodeURIComponent(recipient)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     try {
         const a = document.createElement('a');
@@ -13644,39 +13678,12 @@ function sendReportEmailDirect() {
         setTimeout(() => closeReportEmailModal(), 500);
     } catch (err) {
         console.error('Mailto link error:', err);
-        shareReportViaWebShare();
+        copyReportEmailText();
     }
 }
 
 function shareReportViaWebShare() {
-    const recipient = (document.getElementById('reportEmailRecipient')?.value || '').trim();
-    const subject = (document.getElementById('reportEmailSubject')?.value || 'Periyodik Kontrol Raporu').trim();
-    const body = document.getElementById('reportEmailBody')?.value || '';
-
-    if (window.AndroidBridge && typeof window.AndroidBridge.shareJsonBackup === 'function') {
-        try {
-            const packedSubjectAndRecipient = recipient ? `${subject}\n${recipient}` : subject;
-            window.AndroidBridge.shareJsonBackup(packedSubjectAndRecipient, body);
-            closeReportEmailModal();
-            return;
-        } catch (e) {}
-    }
-
-    if (navigator.share) {
-        navigator.share({
-            title: subject,
-            text: body
-        }).then(() => {
-            if (typeof showToast === 'function') showToast('Paylaşım tamamlandı!');
-            closeReportEmailModal();
-        }).catch((err) => {
-            if (err && err.name !== 'AbortError') {
-                copyReportEmailText();
-            }
-        });
-    } else {
-        copyReportEmailText();
-    }
+    sendReportEmailDirect();
 }
 
 function copyReportEmailText() {

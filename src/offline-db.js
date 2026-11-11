@@ -56,8 +56,11 @@
             try {
                 if (window.AndroidBridge && typeof window.AndroidBridge.loadDatabase === 'function') {
                     const androidJson = window.AndroidBridge.loadDatabase();
-                    if (androidJson && androidJson.length > 10) {
-                        raw = androidJson;
+                    if (androidJson && androidJson.length > 10 && androidJson.trim().startsWith('{')) {
+                        const parsed = JSON.parse(androidJson);
+                        if (parsed && Array.isArray(parsed.workOrders) && Array.isArray(parsed.inspections)) {
+                            raw = androidJson;
+                        }
                     }
                 }
             } catch (e) {
