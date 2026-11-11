@@ -8,12 +8,18 @@ import {
   extractFolderWriteToken,
   signFolderWriteToken,
   verifyFolderWriteToken,
+  extractAccountWriteToken,
+  signAccountWriteToken,
+  verifyAccountWriteToken,
   isServerReadyForAppUpload,
   getOrigin,
   sanitizeCompanySlug,
+  normalizeUsername,
   prefixedRandomSlug,
+  randomSlug,
   randomVerifyCode,
   hashPin,
+  verifyPin,
   dbSelect,
   dbInsert,
   dbUpdate,
@@ -39,6 +45,7 @@ export default async function handler(req, res) {
     const body = await readJsonBody(req, 512 * 1024);
     const fIn = body.folder || {};
     const rIn = body.report || {};
+    const cIn = body.customer && typeof body.customer === 'object' ? body.customer : null;
 
     const companyName = String(fIn.company_name || 'Müşteri Firma').trim().slice(0, 200);
     const localWoId = fIn.local_wo_id ? String(fIn.local_wo_id).trim().slice(0, 120) : '';
@@ -52,6 +59,140 @@ export default async function handler(req, res) {
     const ownerCompanySlug = sanitizeCompanySlug(
       fIn.owner_company_slug || ownerCompanyName || brandingJson.companyShortName || ''
     );
+
+    // 0. Resolve or provision customer firm login account (multi-tenant isolation)
+    let customerRow = null;
+    let customerCreated = false;
+    if (cIn && (cIn.id || cIn.username)) {
+      if (isAdmin && cIn.id) {
+        const foundById = await dbSelect(
+          'portal_customer_accounts',
+          `id=eq.${encodeURIComponent(String(cIn.id).trim())}&limit=1`
+        );
+        if (!foundById[0]) {
+          return sendJson(res, 404, { ok: false, error: 'Seçilen müşteri hesabı bulunamadı' });
+        }
+        customerRow = foundById[0];
+      } else if (cIn.username) {
+        const reqUsername = normalizeUsername(cIn.username);
+        if (!reqUsername || reqUsername.length < 3) {
+          return sendJson(res, 400, {
+            ok: false,
+            error: 'Müşteri kullanıcı adı en az 3 karakter olmalıdır (harf, rakam, tire).'
+          });
+        }
+
+        const reqPassword = String(cIn.password || '').trim();
+        const reqCompanyName = String(cIn.company_name || companyName || 'Müşteri Firma').trim().slice(0, 200);
+        const autoUsername = Boolean(cIn.auto_username);
+        const updatePassword = Boolean(cIn.update_password);
+        const acctWriteToken = extractAccountWriteToken(req, cIn) || extractAccountWriteToken(req, body);
+
+        const existingRows = await dbSelect(
+          'portal_customer_accounts',
+          `username=eq.${encodeURIComponent(reqUsername)}&limit=1`
+        );
+        const existingAcct = existingRows[0] || null;
+
+        if (existingAcct) {
+          const hasAcctToken = verifyAccountWriteToken(acctWriteToken, existingAcct.id);
+          const matchesPwd = Boolean(reqPassword && verifyPin(reqPassword, existingAcct.password_hash));
+
+          if (isAdmin || hasAcctToken || matchesPwd) {
+            if (existingAcct.is_active === false && !isAdmin) {
+              return sendJson(res, 403, {
+                ok: false,
+                error: 'Bu müşteri hesabı pasif durumda olduğu için yükleme yapılamaz.'
+              });
+            }
+            if ((isAdmin || hasAcctToken) && updatePassword && reqPassword) {
+              if (reqPassword.length < 4) {
+                return sendJson(res, 400, {
+                  ok: false,
+                  error: 'Müşteri şifresi en az 4 karakter olmalıdır.'
+                });
+              }
+              const nextVer = Number(existingAcct.token_version || 1) + 1;
+              const updatedAcct = await dbUpdate(
+                'portal_customer_accounts',
+                `id=eq.${encodeURIComponent(existingAcct.id)}`,
+                {
+                  password_hash: hashPin(reqPassword),
+                  token_version: nextVer,
+                  updated_at: new Date().toISOString()
+                }
+              );
+              customerRow = updatedAcct[0] || existingAcct;
+            } else {
+              customerRow = existingAcct;
+            }
+          } else if (autoUsername) {
+            if (reqPassword.length < 4) {
+              return sendJson(res, 400, {
+                ok: false,
+                error: 'Yeni müşteri hesabı için en az 4 karakterli şifre gereklidir.'
+              });
+            }
+            let freeUsername = '';
+            for (let attempt = 0; attempt < 6; attempt++) {
+              const candidate = normalizeUsername(`${reqUsername.slice(0, 24)}-${randomSlug(4)}`);
+              if (candidate.length < 3) continue;
+              const check = await dbSelect(
+                'portal_customer_accounts',
+                `username=eq.${encodeURIComponent(candidate)}&select=id&limit=1`
+              );
+              if (!check.length) {
+                freeUsername = candidate;
+                break;
+              }
+            }
+            if (!freeUsername) {
+              return sendJson(res, 409, {
+                ok: false,
+                error: 'Benzersiz müşteri kullanıcı adı üretilemedi, lütfen farklı bir kullanıcı adı yazın.'
+              });
+            }
+            customerRow = await dbInsert('portal_customer_accounts', {
+              id: crypto.randomUUID(),
+              username: freeUsername,
+              company_name: reqCompanyName,
+              company_key: sanitizeCompanySlug(reqCompanyName),
+              owner_company_slug: ownerCompanySlug,
+              owner_company_name: ownerCompanyName,
+              password_hash: hashPin(reqPassword),
+              is_active: true,
+              token_version: 1
+            });
+            customerCreated = true;
+          } else {
+            return sendJson(res, 409, {
+              ok: false,
+              error:
+                'Bu müşteri kullanıcı adı zaten başka bir firmada kayıtlı. Mevcut firmaya eklemek için doğru şifreyi girin ya da farklı bir kullanıcı adı belirleyin.'
+            });
+          }
+        } else {
+          if (reqPassword.length < 4) {
+            return sendJson(res, 400, {
+              ok: false,
+              error: 'Yeni müşteri hesabı için en az 4 karakterli şifre gereklidir.'
+            });
+          }
+          customerRow = await dbInsert('portal_customer_accounts', {
+            id: crypto.randomUUID(),
+            username: reqUsername,
+            company_name: reqCompanyName,
+            company_key: sanitizeCompanySlug(reqCompanyName),
+            owner_company_slug: ownerCompanySlug,
+            owner_company_name: ownerCompanyName,
+            password_hash: hashPin(reqPassword),
+            is_active: true,
+            token_version: 1
+          });
+          customerCreated = true;
+        }
+      }
+    }
 
     // 1. Find (with ownership check) or create folder
     let folderRow = null;
@@ -90,6 +231,10 @@ export default async function handler(req, res) {
         branding_json: Object.keys(brandingJson).length ? brandingJson : (folderRow.branding_json || {}),
         updated_at: new Date().toISOString()
       };
+      if (customerRow) {
+        patch.customer_account_id = customerRow.id;
+        patch.require_auth = true;
+      }
       if (pinMode === 'set' && cleanPin) {
         patch.pin_hash = hashPin(cleanPin);
         patch.has_pin = true;
@@ -110,6 +255,8 @@ export default async function handler(req, res) {
         local_wo_id: localWoId,
         owner_company_slug: ownerCompanySlug,
         owner_company_name: ownerCompanyName,
+        customer_account_id: customerRow ? customerRow.id : null,
+        require_auth: Boolean(customerRow),
         company_name: companyName,
         company_branch: String(fIn.company_branch || ''),
         company_address: String(fIn.company_address || ''),
@@ -188,10 +335,21 @@ export default async function handler(req, res) {
         share_slug: folderRow.share_slug,
         owner_company_slug: folderRow.owner_company_slug || '',
         owner_company_name: folderRow.owner_company_name || '',
+        customer_account_id: folderRow.customer_account_id || null,
+        require_auth: Boolean(folderRow.require_auth),
         has_pin: Boolean(folderRow.has_pin),
         write_token: folderWriteToken,
         url: `${origin}/p/${folderRow.share_slug}`
       },
+      customer: customerRow
+        ? {
+            id: customerRow.id,
+            username: customerRow.username,
+            company_name: customerRow.company_name,
+            write_token: signAccountWriteToken(customerRow.id),
+            created: customerCreated
+          }
+        : null,
       report: {
         id: reportRow.id,
         share_slug: reportRow.share_slug,

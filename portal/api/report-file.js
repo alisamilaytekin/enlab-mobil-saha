@@ -3,8 +3,10 @@ import {
   setCors,
   sendJson,
   dbSelect,
+  verifyAdminKey,
   extractFolderToken,
   verifyFolderToken,
+  resolveAuthenticatedCustomer,
   downloadStorageObject,
   sanitizeReportHtml
 } from './_lib/store.js';
@@ -36,14 +38,35 @@ export default async function handler(req, res) {
 
     const folders = await dbSelect(
       'portal_folders',
-      `id=eq.${encodeURIComponent(report.folder_id)}&select=id,share_slug,has_pin&limit=1`
+      `id=eq.${encodeURIComponent(report.folder_id)}&select=id,share_slug,customer_account_id,require_auth,has_pin&limit=1`
     );
     const folder = folders[0];
     if (!folder) {
       return sendJson(res, 404, { ok: false, error: 'Klasör bulunamadı' });
     }
 
-    if (folder.has_pin) {
+    const isAdmin = verifyAdminKey(req);
+    const isCustomerProtected = Boolean(folder.customer_account_id || folder.require_auth);
+
+    if (isCustomerProtected && !isAdmin) {
+      const customer = await resolveAuthenticatedCustomer(req, urlObj);
+      if (!customer) {
+        return sendJson(res, 401, {
+          ok: false,
+          requiresAuth: true,
+          error: 'Bu raporu görüntülemek için firma girişi gereklidir'
+        });
+      }
+      if (!folder.customer_account_id || customer.id !== folder.customer_account_id) {
+        return sendJson(res, 403, {
+          ok: false,
+          wrongTenant: true,
+          error: 'Bu rapor başka bir firmaya aittir. Yalnızca kendi firmanızın raporlarını görüntüleyebilirsiniz.'
+        });
+      }
+    }
+
+    if (folder.has_pin && !isAdmin) {
       const token = extractFolderToken(req, urlObj);
       if (!verifyFolderToken(token, folder.share_slug)) {
         return sendJson(res, 403, { ok: false, error: 'Bu raporu görüntülemek için erişim şifresi (PIN) gereklidir' });

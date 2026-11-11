@@ -4,6 +4,34 @@
 // Satır Aralığı: 5947 - 6872 (926 satır)
 // ============================================================================
 
+function ensureThermalCameraDevice() {
+
+    const fd = AppState.currentFormData;
+    const tpl = AppState.electricalTemplate;
+    if (!fd || !tpl || !tpl.areas) return;
+
+    if (!fd.tableRows || typeof fd.tableRows !== 'object') {
+        fd.tableRows = {};
+    }
+
+    const curRows = fd.tableRows.topic_1_0;
+    const isBlank = !Array.isArray(curRows) || curRows.length === 0 || curRows.every(r =>
+        !r || typeof r !== 'object' || Object.values(r).every(v => !String(v || '').trim())
+    );
+
+    if (!isBlank && !fd._thermalInitialized) {
+        fd._thermalInitialized = true;
+    }
+
+    if (!fd._thermalInitialized && isBlank && window.MeasuringDevicesManager) {
+        const mgr = window.MeasuringDevicesManager;
+        if (mgr.isAutoApplyEnabled() && mgr.getAssignedThermalCamera()) {
+            mgr.applyDefaultsToFormData(fd, '2201', false);
+        }
+    }
+
+}
+
 function renderElectrical2201Editor() {
 
     const tpl = AppState.electricalTemplate;
@@ -15,6 +43,8 @@ function renderElectrical2201Editor() {
     ensureCompanyInfo();
 
     ensureMeasuringDevices();
+
+    ensureThermalCameraDevice();
 
 
 
@@ -693,6 +723,51 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
 
 
 
+    const isThermalSection = (area.index === 1 && topic.index === 0);
+
+    const mgr = window.MeasuringDevicesManager || null;
+    let thermalToolbarHtml = '';
+    if (isThermalSection) {
+        const firstGuid = topic.questions?.[0]?.guid;
+        const serialGuid = topic.questions?.[1]?.guid;
+        const firstVal = String((rows[0] && firstGuid && rows[0][firstGuid]) || '').trim();
+        const serialVal = String((rows[0] && serialGuid && rows[0][serialGuid]) || '').trim();
+        const isNotApp = firstVal.includes('Uygulaması Yok');
+        const activeLabelHtml = isNotApp
+            ? `<span class="px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-bold text-[10px]">Uygulaması Yok</span>`
+            : firstVal
+                ? `<span class="px-2 py-0.5 rounded-full bg-orange-100 text-orange-900 border border-orange-300 font-bold text-[10px] truncate max-w-[200px]"><i class="fa-solid fa-temperature-half mr-1"></i>${escapeHtml(firstVal)}${serialVal ? ` (${escapeHtml(serialVal)})` : ''}</span>`
+                : `<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 font-bold text-[10px]">Termal kamera seçilmedi</span>`;
+
+        thermalToolbarHtml = `
+            <div class="px-3.5 py-2 bg-orange-50/80 border-b border-orange-200 flex items-center justify-between gap-2 flex-wrap">
+                <div class="flex items-center gap-1.5 min-w-0">
+                    ${activeLabelHtml}
+                </div>
+                <div class="flex items-center gap-1.5 flex-wrap">
+                    ${mgr ? `
+                        <button type="button" onclick="openReportThermalSwapModal()"
+                            class="px-2.5 py-1.5 bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-bold rounded-lg text-[11px] flex items-center gap-1 shadow-2xs transition">
+                            <i class="fa-solid fa-right-left"></i>
+                            <span>Termal Kamera Değiştir</span>
+                        </button>
+                        <button type="button" onclick="applyAssignedThermalCameraToReport()"
+                            class="px-2.5 py-1.5 bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 font-bold rounded-lg text-[11px] flex items-center gap-1 shadow-2xs transition"
+                            title="Ayarlarda üzerinizde seçili termal kamerayı getir">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                            <span>Üzerimdekini Getir</span>
+                        </button>
+                    ` : ''}
+                    <button type="button" onclick="setThermalCameraNotApplicable('${tKey}')"
+                        class="px-2 py-1.5 bg-white hover:bg-slate-100 active:scale-95 text-slate-700 border border-slate-300 font-bold rounded-lg text-[11px] flex items-center gap-1 transition">
+                        <i class="fa-solid fa-ban text-slate-500"></i>
+                        <span>Uyg. Yok</span>
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
     return `
 
         <div class="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
@@ -708,6 +783,8 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
                 </button>
 
             </div>
+
+            ${thermalToolbarHtml}
 
             <div class="p-3 space-y-3">
 
@@ -768,6 +845,10 @@ function handleTopicTableCell(tKey, rowIndex, qGuid, value) {
     if (!rows || !rows[rowIndex]) return;
 
     rows[rowIndex][qGuid] = value;
+
+    if (tKey === 'topic_1_0') {
+        AppState.currentFormData._thermalInitialized = true;
+    }
 
     triggerAutoSave();
 
@@ -852,6 +933,8 @@ function setThermalCameraNotApplicable(tKey) {
     });
 
     AppState.currentFormData.tableRows[tKey] = [obj];
+    AppState.currentFormData._thermalInitialized = true;
+    AppState.currentFormData._thermalSourceId = '';
 
     triggerAutoSave();
 
@@ -863,6 +946,18 @@ function setThermalCameraNotApplicable(tKey) {
 
 function autofillThermalCamera(tKey) {
 
+    if (window.MeasuringDevicesManager) {
+        const thermalDev = window.MeasuringDevicesManager.getAssignedThermalCamera();
+        if (thermalDev) {
+            window.MeasuringDevicesManager.swapReportThermalCamera(thermalDev.id);
+            return;
+        }
+        if (typeof window.openReportThermalSwapModal === 'function') {
+            window.openReportThermalSwapModal();
+            return;
+        }
+    }
+
     const tpl = AppState.electricalTemplate;
 
     const area = tpl?.areas?.[1];
@@ -872,6 +967,7 @@ function autofillThermalCamera(tKey) {
     if (!topic) return;
 
     AppState.currentFormData.tableRows[tKey] = [createDefaultTopicRow(area, topic, 1)];
+    AppState.currentFormData._thermalInitialized = true;
 
     triggerAutoSave();
 

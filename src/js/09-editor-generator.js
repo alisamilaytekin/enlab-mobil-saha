@@ -52,13 +52,16 @@ function renderGenerator2205Editor() {
 
     ensureCompanyInfo();
 
-    ensureMeasuringDevices();
+    const hadInitDevices = Boolean(fd._devicesInitialized);
+    const hasLegacyGenDevices = Array.isArray(gen.devices) && gen.devices.some(d => d && (d.name || d.serial || d.calDate || d.validDate || d.certNo));
+    const isMeasBlank = !Array.isArray(fd.measuringDevices) || fd.measuringDevices.length === 0 || fd.measuringDevices.every(d => !d || (!d.name && !d.serial && !d.calDate && !d.validDate && !d.certNo));
 
-    if (gen.devices && gen.devices.length && (!fd.measuringDevices || !fd.measuringDevices.length || !fd.measuringDevices[0].name)) {
-
+    if (!hadInitDevices && hasLegacyGenDevices && isMeasBlank) {
         fd.measuringDevices = gen.devices;
-
+        fd._devicesInitialized = true;
     }
+
+    ensureMeasuringDevices();
 
     gen.devices = fd.measuringDevices;
 
@@ -944,13 +947,15 @@ function markAllGeneratorChecksSuitable() {
 
 function addGeneratorDeviceRow() {
 
+    if (typeof window.addManualMeasuringDeviceRow === 'function') {
+        return window.addManualMeasuringDeviceRow();
+    }
+
     const fd = AppState.currentFormData;
 
-    if (!fd.generator) fd.generator = {};
+    if (!Array.isArray(fd.measuringDevices)) fd.measuringDevices = [];
 
-    if (!fd.generator.devices) fd.generator.devices = [];
-
-    fd.generator.devices.push({
+    fd.measuringDevices.push({
 
         name: '',
 
@@ -964,6 +969,11 @@ function addGeneratorDeviceRow() {
 
     });
 
+    fd._devicesInitialized = true;
+
+    if (!fd.generator) fd.generator = {};
+    fd.generator.devices = fd.measuringDevices;
+
     triggerAutoSave();
 
     paintInspectionEditorUI();
@@ -974,11 +984,19 @@ function addGeneratorDeviceRow() {
 
 function removeGeneratorDeviceRow(idx) {
 
+    if (typeof window.removeMeasuringDeviceRow === 'function') {
+        return window.removeMeasuringDeviceRow(idx);
+    }
+
     const fd = AppState.currentFormData;
 
-    if (!fd.generator || !fd.generator.devices || !fd.generator.devices[idx]) return;
+    if (!Array.isArray(fd.measuringDevices) || !fd.measuringDevices[idx]) return;
 
-    fd.generator.devices.splice(idx, 1);
+    fd.measuringDevices.splice(idx, 1);
+
+    fd._devicesInitialized = true;
+
+    if (fd.generator) fd.generator.devices = fd.measuringDevices;
 
     triggerAutoSave();
 
@@ -994,7 +1012,11 @@ function seedGeneratorDefaultDevices() {
 
     if (!fd.generator) fd.generator = {};
 
-    fd.generator.devices = [
+    const assignedRows = (window.MeasuringDevicesManager && window.MeasuringDevicesManager.getAssignedDevices().length > 0)
+        ? window.MeasuringDevicesManager.getDefaultReportDevices()
+        : null;
+
+    fd.measuringDevices = assignedRows || [
 
         { name: 'Multimetre', serial: '0793436', calDate: '19.06.2026', validDate: '19.06.2027', certNo: '0074K-0626-00956' },
 
@@ -1008,11 +1030,14 @@ function seedGeneratorDefaultDevices() {
 
     ];
 
+    fd._devicesInitialized = true;
+    fd.generator.devices = fd.measuringDevices;
+
     triggerAutoSave();
 
     paintInspectionEditorUI();
 
-    showToast('Örnek cihaz listesi eklendi');
+    showToast(assignedRows ? 'Üzerinizdeki cihaz listesi eklendi' : 'Örnek cihaz listesi eklendi');
 
 }
 

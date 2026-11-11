@@ -1191,14 +1191,17 @@ async function renderWorkOrderDetails(workOrderId) {
                 ${wo.portal_folder_url ? `
                 <div class="p-2.5 rounded-xl bg-indigo-50/90 border border-indigo-200 flex items-center justify-between gap-2 flex-wrap">
                     <div class="min-w-0 flex-1">
-                        <div class="flex items-center gap-1.5 text-[11px] font-bold text-indigo-900">
+                        <div class="flex items-center gap-1.5 flex-wrap text-[11px] font-bold text-indigo-900">
                             <i class="fa-solid fa-globe text-indigo-600"></i>
                             <span>Müşteri İnternet Klasörü Hazır</span>
-                            ${wo.portal_pin ? `<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 font-mono text-[10px]">PIN: ${escapeHtml(wo.portal_pin)}</span>` : `<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px]">Şifresiz</span>`}
+                            ${wo.portal_customer_username ? `<span class="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-900 border border-indigo-300 font-mono text-[10px]">🛡️ @${escapeHtml(wo.portal_customer_username)}</span>` : ''}
+                            ${wo.portal_customer_password ? `<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-900 border border-emerald-300 font-mono text-[10px]">Şifre: ${escapeHtml(wo.portal_customer_password)}</span>` : ''}
+                            ${wo.portal_pin ? `<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 font-mono text-[10px]">PIN: ${escapeHtml(wo.portal_pin)}</span>` : (!wo.portal_customer_username ? `<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px]">Şifresiz</span>` : '')}
                         </div>
                         <div class="text-[10px] font-mono text-indigo-700 truncate mt-0.5">${escapeHtml(wo.portal_folder_url)}</div>
                     </div>
-                    <div class="flex items-center gap-1 shrink-0">
+                    <div class="flex items-center gap-1 shrink-0 flex-wrap">
+                        ${wo.portal_customer_username ? `<button type="button" onclick="CloudPortal.copyCustomerLoginInfo('${escapeForJs(wo.id)}')" class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] transition"><i class="fa-solid fa-user-shield mr-1"></i>Girişi Kopyala</button>` : ''}
                         <button type="button" onclick="CloudPortal.copyText('${escapeForJs(wo.portal_folder_url)}')" class="px-2.5 py-1 rounded-lg bg-white hover:bg-indigo-100 text-indigo-800 font-bold text-[11px] border border-indigo-200 transition">
                             <i class="fa-regular fa-copy mr-1"></i>Linki Kopyala
                         </button>

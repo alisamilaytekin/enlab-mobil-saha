@@ -53,6 +53,33 @@
       }
     },
 
+    async customerLogin(username, password) {
+      const res = await fetch('/api/customer', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'login',
+          username: String(username || '').trim(),
+          password: String(password || '').trim()
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || 'Kullanıcı adı veya şifre hatalı!');
+      }
+      return data;
+    },
+
+    async customerLogout() {
+      await fetch('/api/customer', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'logout' })
+      }).catch(() => {});
+    },
+
     getTokenKey(folderSlug) {
       return 'hr_folder_token_' + folderSlug;
     },
@@ -82,10 +109,10 @@
       return '';
     },
 
-    async copyText(text) {
+    async copyText(text, label = 'Panoya kopyalandı!') {
       try {
         await navigator.clipboard.writeText(text);
-        this.toast('Bağlantı panoya kopyalandı!', 'success');
+        this.toast(label, 'success');
       } catch {
         const ta = document.createElement('textarea');
         ta.value = text;
@@ -95,7 +122,7 @@
         ta.select();
         document.execCommand('copy');
         document.body.removeChild(ta);
-        this.toast('Bağlantı panoya kopyalandı!', 'success');
+        this.toast(label, 'success');
       }
     },
 

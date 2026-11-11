@@ -4,7 +4,7 @@
 
 window.HIZLI_RAPOR_CONSTANTS = {
     APP_NAME: 'Hızlı Rapor',
-    VERSION: '0.59',
+    VERSION: '0.60',
     
     // Rapor ve Muayene Durumları
     STATUS: {
@@ -44,9 +44,1839 @@ window.HIZLI_RAPOR_CONSTANTS = {
         DEFECT_LIBRARY: 'enlab_defects_library_v1',
         USER_ACCOUNTS: 'enlab_user_accounts_v1',
         CURRENT_USER: 'enlab_current_user_v1',
-        COMPANY_SETTINGS: 'enlab_company_branding_v1'
+        COMPANY_SETTINGS: 'enlab_company_branding_v1',
+        USER_DEVICES: 'enlab_user_devices_v1'
     }
 };
+
+
+// ============================================================================
+// HIZLI RAPOR - 00B-DEVICES-MANAGER.JS
+// Açıklama: Personel Üzerine Alınan Ölçüm Cihazları Havuzu, Ayarlar & Editör Entegrasyonu
+// ============================================================================
+
+(function () {
+    const STORAGE_KEY = (window.HIZLI_RAPOR_CONSTANTS && window.HIZLI_RAPOR_CONSTANTS.STORAGE && window.HIZLI_RAPOR_CONSTANTS.STORAGE.USER_DEVICES)
+        || 'enlab_user_devices_v1';
+
+    // Elektrik İç Tesisatı (2201) -> 3. TERMAL KAMERA BİLGİLERİ (topic_1_0) varsayılan GUID eşlemeleri
+    const THERMAL_TOPIC_FALLBACK_GUIDS = [
+        '82b2fd27-f7df-488d-b52a-9120fc5cdd55', // 0: Cihaz Adı
+        'd61d680b-c295-4240-9907-dabaae9cc955', // 1: Seri No
+        'b17cd17a-8329-4146-ae40-38dbfec58e66', // 2: Kalibrasyon Tarihi
+        'aa1e8e0f-de2f-42d2-982e-ba99bd668942', // 3: Kalibrasyon Geçerlilik Tarihi
+        '3958b75a-20e4-4c1a-afb3-495da0c47fc1'  // 4: Sertifika No
+    ];
+
+    const DEVICE_CATEGORIES = [
+        'Termal Kamera',
+        'Çok Fonksiyonlu Test Cihazı',
+        'Multimetre',
+        'Pensampermetre',
+        'Dijital Işık Ölçer',
+        'Kumpas',
+        'Dijital Ses Seviyesi Ölçer',
+        'Lazer Mesafe Ölçer',
+        'Diğer'
+    ];
+
+    function esc(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function cloneObj(obj) {
+        return JSON.parse(JSON.stringify(obj));
+    }
+
+    function getDefaultCatalog() {
+        return [
+            {
+                id: 'dev_termal_fluke_tis40',
+                category: 'Termal Kamera',
+                code: 'C.70',
+                brand: 'Fluke',
+                model: 'TiS40',
+                reportName: 'Termal Kamera',
+                thermalReportName: 'Fluke TiS40',
+                isThermal: true,
+                serial: '18110120',
+                calDate: '',
+                validDate: '',
+                certNo: '',
+                isCustom: false
+            },
+            {
+                id: 'dev_termal_unit_c105',
+                category: 'Termal Kamera',
+                code: 'C.105',
+                brand: 'UNI-T',
+                model: 'UTi165A',
+                reportName: 'Termal Kamera',
+                thermalReportName: 'UNI-T UTi165A',
+                isThermal: true,
+                serial: '201266702',
+                calDate: '22.06.2026',
+                validDate: '22.06.2027',
+                certNo: '0074K-0626-01712',
+                isCustom: false
+            },
+            {
+                id: 'dev_termal_unit_c104',
+                category: 'Termal Kamera',
+                code: 'C.104',
+                brand: 'UNI-T',
+                model: 'PRO (UTi165A)',
+                reportName: 'Termal Kamera',
+                thermalReportName: 'UNI-T PRO',
+                isThermal: true,
+                serial: '201266711',
+                calDate: '20.06.2026',
+                validDate: '20.06.2027',
+                certNo: '0074K-0626-01516',
+                isCustom: false
+            },
+            {
+                id: 'dev_termal_unit_c122',
+                category: 'Termal Kamera',
+                code: 'C.122',
+                brand: 'UNI-T',
+                model: 'UTi165A',
+                reportName: 'Termal Kamera',
+                thermalReportName: 'UNI-T UTi165A',
+                isThermal: true,
+                serial: 'C210839955',
+                calDate: '',
+                validDate: '',
+                certNo: '',
+                isCustom: false
+            },
+            {
+                id: 'dev_termal_hti_c162',
+                category: 'Termal Kamera',
+                code: 'C.162',
+                brand: 'Hti',
+                model: 'HT-04D',
+                reportName: 'Termal Kamera',
+                thermalReportName: 'Hti HT-04D',
+                isThermal: true,
+                serial: 'HDJA000005950',
+                calDate: '02.07.2026',
+                validDate: '02.07.2027',
+                certNo: '0074K-0626-02534',
+                isCustom: false
+            },
+            {
+                id: 'dev_mft_metrel_c121',
+                category: 'Çok Fonksiyonlu Test Cihazı',
+                code: 'C.121',
+                brand: 'Metrel',
+                model: 'MI 3102 BT',
+                reportName: 'Çok Fonksiyonlu Test Cihazı',
+                thermalReportName: '',
+                isThermal: false,
+                serial: '21050830',
+                calDate: '20.10.2026',
+                validDate: '20.10.2027',
+                certNo: '0176K-1026-01697',
+                isCustom: false
+            },
+            {
+                id: 'dev_mft_metrel_2515',
+                category: 'Çok Fonksiyonlu Test Cihazı',
+                code: 'MFT-1',
+                brand: 'Metrel',
+                model: 'MI 3102 BT',
+                reportName: 'Çok Fonksiyonlu Test Cihazı',
+                thermalReportName: '',
+                isThermal: false,
+                serial: '25151340',
+                calDate: '18.08.2026',
+                validDate: '18.08.2027',
+                certNo: '0176K-0826-01648',
+                isCustom: false
+            },
+            {
+                id: 'dev_mft_metrel_c177',
+                category: 'Çok Fonksiyonlu Test Cihazı',
+                code: 'C.177',
+                brand: 'Metrel',
+                model: 'MI 3102 BT',
+                reportName: 'Çok Fonksiyonlu Test Cihazı',
+                thermalReportName: '',
+                isThermal: false,
+                serial: '25213081',
+                calDate: '05.10.2026',
+                validDate: '05.10.2027',
+                certNo: '0176K-1026-00358',
+                isCustom: false
+            },
+            {
+                id: 'dev_mft_cem_c173',
+                category: 'Çok Fonksiyonlu Test Cihazı',
+                code: 'C.173',
+                brand: 'CEM',
+                model: 'DT-6650',
+                reportName: 'Çok Fonksiyonlu Test Cihazı',
+                thermalReportName: '',
+                isThermal: false,
+                serial: '230878850',
+                calDate: '',
+                validDate: '',
+                certNo: '',
+                isCustom: false
+            },
+            {
+                id: 'dev_mm_fluke_c103',
+                category: 'Multimetre',
+                code: 'C.103',
+                brand: 'Fluke',
+                model: '179',
+                reportName: 'Multimetre',
+                thermalReportName: '',
+                isThermal: false,
+                serial: '48291021',
+                calDate: '',
+                validDate: '',
+                certNo: '',
+                isCustom: false
+            },
+            {
+                id: 'dev_mm_079',
+                category: 'Multimetre',
+                code: 'MM-1',
+                brand: 'Multimetre',
+                model: 'Genel',
+                reportName: 'Multimetre',
+                thermalReportName: '',
+                isThermal: false,
+                serial: '0793436',
+                calDate: '19.06.2026',
+                validDate: '19.06.2027',
+                certNo: '0074K-0626-00956',
+                isCustom: false
+            },
+            {
+                id: 'dev_clamp_unit_c116',
+                category: 'Pensampermetre',
+                code: 'C.116',
+                brand: 'UNI-T',
+                model: 'UT204',
+                reportName: 'Pensampermetre',
+                thermalReportName: '',
+                isThermal: false,
+                serial: 'C182918252',
+                calDate: '09.09.2026',
+                validDate: '09.09.2027',
+                certNo: '0074K-0926-00560',
+                isCustom: false
+            },
+            {
+                id: 'dev_clamp_pa_2512',
+                category: 'Pensampermetre',
+                code: 'PA-1',
+                brand: 'Pensampermetre',
+                model: 'C251245633',
+                reportName: 'Pensampermetre',
+                thermalReportName: '',
+                isThermal: false,
+                serial: 'C251245633',
+                calDate: '12.01.2026',
+                validDate: '12.01.2027',
+                certNo: '0074K-0126-00541',
+                isCustom: false
+            },
+            {
+                id: 'dev_lux_cem_c165',
+                category: 'Dijital Işık Ölçer',
+                code: 'C.165',
+                brand: 'CEM',
+                model: 'DT-1308',
+                reportName: 'Dijital Işık Ölçer',
+                thermalReportName: '',
+                isThermal: false,
+                serial: '19082311',
+                calDate: '',
+                validDate: '',
+                certNo: '',
+                isCustom: false
+            },
+            {
+                id: 'dev_lux_2331',
+                category: 'Dijital Işık Ölçer',
+                code: 'LUX-1',
+                brand: 'CEM',
+                model: 'DT-1308',
+                reportName: 'Dijital Işık Ölçer',
+                thermalReportName: '',
+                isThermal: false,
+                serial: 'C233112975',
+                calDate: '09.01.2026',
+                validDate: '09.01.2027',
+                certNo: '0016K-0126-01217',
+                isCustom: false
+            },
+            {
+                id: 'dev_kumpas_c135',
+                category: 'Kumpas',
+                code: 'C.135',
+                brand: 'Electronic',
+                model: 'Karbon Fiber Kompozit',
+                reportName: 'Kumpas',
+                thermalReportName: '',
+                isThermal: false,
+                serial: 'TKM-CFC-0003',
+                calDate: '04.10.2026',
+                validDate: '04.04.2027',
+                certNo: '2026-03.2',
+                isCustom: false
+            },
+            {
+                id: 'dev_kumpas_mitutoyo_c170',
+                category: 'Kumpas',
+                code: 'C.170',
+                brand: 'Mitutoyo',
+                model: '150mm',
+                reportName: 'Kumpas',
+                thermalReportName: '',
+                isThermal: false,
+                serial: '2019482',
+                calDate: '',
+                validDate: '',
+                certNo: '',
+                isCustom: false
+            },
+            {
+                id: 'dev_sound_2520',
+                category: 'Dijital Ses Seviyesi Ölçer',
+                code: 'DB-1',
+                brand: 'Ses Seviyesi',
+                model: 'Dijital',
+                reportName: 'Dijital Ses Seviyesi Ölçer',
+                thermalReportName: '',
+                isThermal: false,
+                serial: 'C252034872',
+                calDate: '09.01.2026',
+                validDate: '09.01.2027',
+                certNo: '0016K-0126-01218',
+                isCustom: false
+            },
+            {
+                id: 'dev_laser_488',
+                category: 'Lazer Mesafe Ölçer',
+                code: 'LZR-1',
+                brand: 'Lazer Metre',
+                model: 'Dijital',
+                reportName: 'Lazer Mesafe Ölçer',
+                thermalReportName: '',
+                isThermal: false,
+                serial: '488309447',
+                calDate: '04.12.2025',
+                validDate: '04.12.2026',
+                certNo: '0074K-1225-00179',
+                isCustom: false
+            }
+        ];
+    }
+
+    function parseTrDate(dateStr) {
+        if (!dateStr || typeof dateStr !== 'string') return null;
+        const clean = dateStr.trim();
+        let m = clean.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+        if (m) {
+            const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), 23, 59, 59);
+            return isNaN(d.getTime()) ? null : d;
+        }
+        m = clean.match(/^(\d{4})[./-](\d{1,2})[./-](\d{1,2})$/);
+        if (m) {
+            const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 23, 59, 59);
+            return isNaN(d.getTime()) ? null : d;
+        }
+        return null;
+    }
+
+    function addOneYearTrDate(dateStr) {
+        if (!dateStr || typeof dateStr !== 'string') return '';
+        const clean = dateStr.trim();
+        const m = clean.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+        if (m) {
+            const day = String(m[1]).padStart(2, '0');
+            const month = String(m[2]).padStart(2, '0');
+            const year = Number(m[3]) + 1;
+            return `${day}.${month}.${year}`;
+        }
+        const mIso = clean.match(/^(\d{4})[./-](\d{1,2})[./-](\d{1,2})$/);
+        if (mIso) {
+            const day = String(mIso[3]).padStart(2, '0');
+            const month = String(mIso[2]).padStart(2, '0');
+            const year = Number(mIso[1]) + 1;
+            return `${day}.${month}.${year}`;
+        }
+        return '';
+    }
+
+    function isThermalDeviceObj(dev) {
+        if (!dev) return false;
+        if (dev.isThermal) return true;
+        const cat = (dev.category || '').toLowerCase();
+        const nm = (dev.name || dev.reportName || '').toLowerCase();
+        return cat.includes('termal') || nm.includes('termal kamera');
+    }
+
+    function getDeviceDisplayTitle(dev) {
+        if (!dev) return 'Ölçüm Cihazı';
+        const bm = [dev.brand, dev.model].filter(Boolean).join(' ').trim();
+        if (bm) return bm;
+        return dev.reportName || dev.name || dev.category || 'Ölçüm Cihazı';
+    }
+
+    function getThermalCameraQuestions(topic) {
+        if (topic && Array.isArray(topic.questions) && topic.questions.length >= 5) {
+            return topic.questions.map(q => q.guid);
+        }
+        const tpl = window.AppState && window.AppState.electricalTemplate;
+        const area1 = tpl && Array.isArray(tpl.areas) ? tpl.areas[1] : null;
+        const t0 = area1 && Array.isArray(area1.topics) ? area1.topics[0] : null;
+        if (t0 && Array.isArray(t0.questions) && t0.questions.length >= 5) {
+            return t0.questions.map(q => q.guid);
+        }
+        if (window.OFFLINE_SEED_DATA && Array.isArray(window.OFFLINE_SEED_DATA.electricalTemplate)) {
+            const seedArea1 = window.OFFLINE_SEED_DATA.electricalTemplate[1];
+            const seedT0 = seedArea1 && Array.isArray(seedArea1.topics) ? seedArea1.topics[0] : null;
+            if (seedT0 && Array.isArray(seedT0.questions) && seedT0.questions.length >= 5) {
+                return seedT0.questions.map(q => q.guid);
+            }
+        }
+        return THERMAL_TOPIC_FALLBACK_GUIDS;
+    }
+
+    function isDeviceRowBlank(row) {
+        if (!row || typeof row !== 'object') return true;
+        return !String(row.name || '').trim()
+            && !String(row.serial || '').trim()
+            && !String(row.calDate || '').trim()
+            && !String(row.validDate || '').trim()
+            && !String(row.certNo || '').trim();
+    }
+
+    function isThermalTopicRowsBlank(rows) {
+        if (!Array.isArray(rows) || rows.length === 0) return true;
+        return rows.every(r => {
+            if (!r || typeof r !== 'object') return true;
+            return Object.values(r).every(v => !String(v || '').trim());
+        });
+    }
+
+    const MeasuringDevicesManager = {
+        STORAGE_KEY,
+        DEVICE_CATEGORIES,
+
+        getCurrentUserId() {
+            try {
+                if (typeof AuthManager !== 'undefined' && typeof AuthManager.getCurrentUser === 'function') {
+                    const u = AuthManager.getCurrentUser();
+                    if (u && u.id) return String(u.id);
+                }
+                const sid = localStorage.getItem('enlab_current_user_id');
+                if (sid) return String(sid);
+            } catch (e) {}
+            return 'default';
+        },
+
+        loadState() {
+            let state = null;
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && Array.isArray(parsed.catalog)) {
+                        state = parsed;
+                    }
+                }
+            } catch (e) {}
+
+            // Fallback: Android WebView DB içinde saklanan yedekten kurtar
+            if (!state && window.OfflineDB && window.OfflineDB.state && window.OfflineDB.state.userDevicesCatalog) {
+                const cached = window.OfflineDB.state.userDevicesCatalog;
+                if (cached && Array.isArray(cached.catalog)) {
+                    state = cloneObj(cached);
+                    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+                }
+            }
+
+            if (!state) {
+                state = {
+                    version: 1,
+                    catalog: getDefaultCatalog(),
+                    assignmentsByUser: {},
+                    autoApplyEnabled: true
+                };
+                this.saveState(state);
+            }
+
+            if (!Array.isArray(state.catalog)) state.catalog = getDefaultCatalog();
+            if (!state.assignmentsByUser || typeof state.assignmentsByUser !== 'object') state.assignmentsByUser = {};
+            if (state.autoApplyEnabled === undefined) state.autoApplyEnabled = true;
+
+            return state;
+        },
+
+        saveState(state) {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            } catch (e) {
+                console.warn('MeasuringDevicesManager localStorage warning:', e);
+            }
+            try {
+                if (window.OfflineDB && window.OfflineDB.state) {
+                    window.OfflineDB.state.userDevicesCatalog = cloneObj(state);
+                    if (typeof window.OfflineDB.save === 'function') {
+                        window.OfflineDB.save();
+                    }
+                }
+            } catch (e) {
+                console.warn('MeasuringDevicesManager OfflineDB sync warning:', e);
+            }
+        },
+
+        getCatalog() {
+            const s = this.loadState();
+            return s.catalog;
+        },
+
+        getDeviceById(deviceId) {
+            if (!deviceId) return null;
+            return this.getCatalog().find(d => String(d.id) === String(deviceId)) || null;
+        },
+
+        isAutoApplyEnabled() {
+            return this.loadState().autoApplyEnabled !== false;
+        },
+
+        setAutoApplyEnabled(enabled) {
+            const s = this.loadState();
+            s.autoApplyEnabled = Boolean(enabled);
+            this.saveState(s);
+        },
+
+        getAssignedDeviceIds(userId = null) {
+            const s = this.loadState();
+            const uid = userId || this.getCurrentUserId();
+            const ids = s.assignmentsByUser[uid];
+            if (Array.isArray(ids)) return ids;
+            // Fallback: varsa default anahtarını kontrol et
+            if (uid !== 'default' && Array.isArray(s.assignmentsByUser.default) && s.assignmentsByUser.default.length) {
+                return s.assignmentsByUser.default;
+            }
+            return [];
+        },
+
+        setAssignedDeviceIds(ids, userId = null) {
+            const s = this.loadState();
+            const uid = userId || this.getCurrentUserId();
+            const validIdSet = new Set(s.catalog.map(d => String(d.id)));
+            const deduped = [];
+            (Array.isArray(ids) ? ids : []).forEach(id => {
+                const sid = String(id);
+                if (validIdSet.has(sid) && !deduped.includes(sid)) deduped.push(sid);
+            });
+            s.assignmentsByUser[uid] = deduped;
+            this.saveState(s);
+            return deduped;
+        },
+
+        getAssignedDevices(userId = null) {
+            const s = this.loadState();
+            const ids = this.getAssignedDeviceIds(userId);
+            const map = new Map(s.catalog.map(d => [String(d.id), d]));
+            return ids.map(id => map.get(String(id))).filter(Boolean);
+        },
+
+        isAssigned(deviceId, userId = null) {
+            return this.getAssignedDeviceIds(userId).map(String).includes(String(deviceId));
+        },
+
+        assignDevice(deviceId, userId = null) {
+            const ids = [...this.getAssignedDeviceIds(userId)];
+            const sid = String(deviceId);
+            if (!ids.map(String).includes(sid)) {
+                ids.push(sid);
+                this.setAssignedDeviceIds(ids, userId);
+            }
+            return this.getAssignedDevices(userId);
+        },
+
+        unassignDevice(deviceId, userId = null) {
+            const sid = String(deviceId);
+            const ids = this.getAssignedDeviceIds(userId).filter(id => String(id) !== sid);
+            this.setAssignedDeviceIds(ids, userId);
+            return this.getAssignedDevices(userId);
+        },
+
+        toggleAssignment(deviceId, userId = null) {
+            if (this.isAssigned(deviceId, userId)) {
+                this.unassignDevice(deviceId, userId);
+                return false;
+            }
+            this.assignDevice(deviceId, userId);
+            return true;
+        },
+
+        swapAssignedDevice(oldDeviceId, newDeviceId, userId = null) {
+            const ids = [...this.getAssignedDeviceIds(userId)];
+            const oldIdx = ids.findIndex(id => String(id) === String(oldDeviceId));
+            const newSid = String(newDeviceId);
+            if (!this.getDeviceById(newSid)) return false;
+
+            const existingNewIdx = ids.findIndex(id => String(id) === newSid);
+            if (oldIdx >= 0) {
+                if (existingNewIdx >= 0 && existingNewIdx !== oldIdx) {
+                    // Yer değiştir (eskiyi kaldırıp yeniyi eski pozisyona koy)
+                    ids[oldIdx] = newSid;
+                    ids.splice(existingNewIdx, 1);
+                } else {
+                    ids[oldIdx] = newSid;
+                }
+            } else if (existingNewIdx < 0) {
+                ids.push(newSid);
+            }
+            this.setAssignedDeviceIds(ids, userId);
+            return true;
+        },
+
+        moveAssignedDevice(deviceId, direction, userId = null) {
+            const ids = [...this.getAssignedDeviceIds(userId)];
+            const idx = ids.findIndex(id => String(id) === String(deviceId));
+            if (idx < 0) return false;
+            const targetIdx = idx + (direction < 0 ? -1 : 1);
+            if (targetIdx < 0 || targetIdx >= ids.length) return false;
+            const tmp = ids[targetIdx];
+            ids[targetIdx] = ids[idx];
+            ids[idx] = tmp;
+            this.setAssignedDeviceIds(ids, userId);
+            return true;
+        },
+
+        saveCatalogDevice(input, assignToUser = null) {
+            const s = this.loadState();
+            const isEdit = Boolean(input.id && s.catalog.some(d => String(d.id) === String(input.id)));
+            const category = String(input.category || 'Diğer').trim() || 'Diğer';
+            const brand = String(input.brand || '').trim();
+            const model = String(input.model || '').trim();
+            const isThermal = input.isThermal !== undefined ? Boolean(input.isThermal) : category.toLowerCase().includes('termal');
+            const defaultReportName = category === 'Diğer' ? ([brand, model].filter(Boolean).join(' ') || 'Ölçüm Cihazı') : category;
+            const reportName = String(input.reportName || '').trim() || defaultReportName;
+            const thermalDefaultName = [brand, model].filter(Boolean).join(' ').trim() || reportName;
+            const thermalReportName = isThermal
+                ? (String(input.thermalReportName || '').trim() || thermalDefaultName)
+                : '';
+
+            const devObj = {
+                id: isEdit ? String(input.id) : ('dev_custom_' + Date.now() + '_' + Math.floor(100 + Math.random() * 899)),
+                category,
+                code: String(input.code || '').trim(),
+                brand,
+                model,
+                reportName,
+                thermalReportName,
+                isThermal,
+                serial: String(input.serial || '').trim(),
+                calDate: String(input.calDate || '').trim(),
+                validDate: String(input.validDate || '').trim(),
+                certNo: String(input.certNo || '').trim(),
+                isCustom: isEdit ? Boolean(s.catalog.find(d => String(d.id) === String(input.id))?.isCustom) : true
+            };
+
+            if (isEdit) {
+                const idx = s.catalog.findIndex(d => String(d.id) === String(devObj.id));
+                s.catalog[idx] = devObj;
+            } else {
+                s.catalog.unshift(devObj);
+            }
+            this.saveState(s);
+
+            if (assignToUser === true) {
+                this.assignDevice(devObj.id);
+            } else if (assignToUser === false) {
+                this.unassignDevice(devObj.id);
+            }
+            return devObj;
+        },
+
+        deleteCatalogDevice(deviceId) {
+            const s = this.loadState();
+            const sid = String(deviceId);
+            s.catalog = s.catalog.filter(d => String(d.id) !== sid);
+            Object.keys(s.assignmentsByUser).forEach(uid => {
+                if (Array.isArray(s.assignmentsByUser[uid])) {
+                    s.assignmentsByUser[uid] = s.assignmentsByUser[uid].filter(id => String(id) !== sid);
+                }
+            });
+            this.saveState(s);
+        },
+
+        restoreDefaultCatalogEntries() {
+            const s = this.loadState();
+            const existingIds = new Set(s.catalog.map(d => String(d.id)));
+            let added = 0;
+            getDefaultCatalog().forEach(def => {
+                if (!existingIds.has(String(def.id))) {
+                    s.catalog.push(cloneObj(def));
+                    added++;
+                }
+            });
+            if (added > 0) this.saveState(s);
+            return added;
+        },
+
+        getCalibrationStatus(validDateStr) {
+            const d = parseTrDate(validDateStr);
+            if (!d) {
+                return {
+                    status: 'unknown',
+                    label: 'Tarih Girilmedi',
+                    daysLeft: null,
+                    badgeClass: 'bg-slate-100 text-slate-600 border-slate-200'
+                };
+            }
+            const now = new Date();
+            const diffDays = Math.ceil((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+            if (diffDays < 0) {
+                return {
+                    status: 'expired',
+                    label: 'Kalibrasyon Süresi Doldu',
+                    daysLeft: diffDays,
+                    badgeClass: 'bg-rose-100 text-rose-800 border-rose-300'
+                };
+            }
+            if (diffDays <= 30) {
+                return {
+                    status: 'soon',
+                    label: `${diffDays} Gün Kaldı`,
+                    daysLeft: diffDays,
+                    badgeClass: 'bg-amber-100 text-amber-800 border-amber-300'
+                };
+            }
+            return {
+                status: 'valid',
+                label: 'Geçerli',
+                daysLeft: diffDays,
+                badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-300'
+            };
+        },
+
+        toReportDeviceRow(dev) {
+            if (!dev) return { name: '', serial: '', calDate: '', validDate: '', certNo: '' };
+            return {
+                sourceId: dev.id || '',
+                brand: dev.brand || '',
+                model: dev.model || '',
+                code: dev.code || '',
+                category: dev.category || '',
+                isThermal: isThermalDeviceObj(dev),
+                name: dev.reportName || dev.name || dev.category || getDeviceDisplayTitle(dev),
+                serial: dev.serial || '',
+                calDate: dev.calDate || '',
+                validDate: dev.validDate || '',
+                certNo: dev.certNo || ''
+            };
+        },
+
+        toThermalTopicRow(dev, topic = null) {
+            const guids = getThermalCameraQuestions(topic);
+            const thermalName = (dev && (dev.thermalReportName || [dev.brand, dev.model].filter(Boolean).join(' ').trim() || dev.reportName || dev.name)) || '';
+            const row = {};
+            row[guids[0]] = thermalName;
+            row[guids[1]] = (dev && dev.serial) || '';
+            row[guids[2]] = (dev && dev.calDate) || '';
+            row[guids[3]] = (dev && dev.validDate) || '';
+            row[guids[4]] = (dev && dev.certNo) || '';
+            return row;
+        },
+
+        getDefaultReportDevices() {
+            return this.getAssignedDevices().map(d => this.toReportDeviceRow(d));
+        },
+
+        getAssignedThermalCamera() {
+            const assigned = this.getAssignedDevices();
+            return assigned.find(isThermalDeviceObj) || null;
+        },
+
+        applyDefaultsToFormData(formData, templateId = null, forceReplace = false) {
+            if (!formData || typeof formData !== 'object') return formData;
+            if (!forceReplace && !this.isAutoApplyEnabled()) return formData;
+
+            const assigned = this.getAssignedDevices();
+            if (!assigned.length && !forceReplace) return formData;
+
+            const tplStr = String(templateId || '');
+
+            // 1. Genel Ölçüm Aletleri Tablosu (fd.measuringDevices)
+            const curDevices = Array.isArray(formData.measuringDevices) ? formData.measuringDevices : [];
+            const isDevicesBlank = curDevices.length === 0 || curDevices.every(isDeviceRowBlank);
+            if (forceReplace || (!formData._devicesInitialized && isDevicesBlank)) {
+                const mapped = assigned.map(d => this.toReportDeviceRow(d));
+                formData.measuringDevices = mapped.length ? mapped : (forceReplace ? [] : curDevices);
+                formData._devicesInitialized = true;
+                if (tplStr === '2205') {
+                    if (!formData.generator || typeof formData.generator !== 'object') {
+                        formData.generator = { info: {}, equipment: {}, checks: {}, potential: {}, measurements: {}, battery: {}, devices: [] };
+                    }
+                    formData.generator.devices = formData.measuringDevices;
+                }
+            }
+
+            // 2. Elektrik İç Tesisatı (2201) -> 3. Termal Kamera Bilgileri (tableRows.topic_1_0)
+            if (tplStr === '2201') {
+                if (!formData.tableRows || typeof formData.tableRows !== 'object') {
+                    formData.tableRows = {};
+                }
+                const curThermalRows = formData.tableRows.topic_1_0 || [];
+                const isThermalBlank = isThermalTopicRowsBlank(curThermalRows);
+                const thermalDev = this.getAssignedThermalCamera();
+
+                if ((forceReplace || (!formData._thermalInitialized && isThermalBlank)) && thermalDev) {
+                    formData.tableRows.topic_1_0 = [this.toThermalTopicRow(thermalDev)];
+                    formData._thermalSourceId = thermalDev.id;
+                    formData._thermalInitialized = true;
+                }
+            }
+
+            return formData;
+        },
+
+        inferCategoryForReportRow(row) {
+            if (!row) return '';
+            if (row.category && DEVICE_CATEGORIES.includes(row.category)) return row.category;
+            if (row.isThermal) return 'Termal Kamera';
+            const src = row.sourceId ? this.getDeviceById(row.sourceId) : null;
+            if (src && src.category) return src.category;
+            const n = String(row.name || '').toLowerCase();
+            if (n.includes('termal')) return 'Termal Kamera';
+            if (n.includes('çok fonksiyon') || n.includes('test cihaz')) return 'Çok Fonksiyonlu Test Cihazı';
+            if (n.includes('multimetre') || n.includes('avometre')) return 'Multimetre';
+            if (n.includes('pensampermetre') || n.includes('pens')) return 'Pensampermetre';
+            if (n.includes('ışık') || n.includes('lüks') || n.includes('luks')) return 'Dijital Işık Ölçer';
+            if (n.includes('kumpas')) return 'Kumpas';
+            if (n.includes('ses') || n.includes('gürültü') || n.includes('desibel')) return 'Dijital Ses Seviyesi Ölçer';
+            if (n.includes('lazer') || n.includes('mesafe')) return 'Lazer Mesafe Ölçer';
+            return '';
+        },
+
+        swapReportDevice(rowIdx, newDeviceId) {
+            const fd = window.AppState && window.AppState.currentFormData;
+            const insp = window.AppState && window.AppState.currentInspection;
+            if (!fd || !Array.isArray(fd.measuringDevices)) return false;
+
+            const newDev = this.getDeviceById(newDeviceId);
+            if (!newDev) return false;
+
+            const oldRow = fd.measuringDevices[rowIdx] || {};
+            const oldLabel = oldRow.brand || oldRow.model
+                ? [oldRow.brand, oldRow.model].filter(Boolean).join(' ')
+                : (oldRow.name || `Cihaz #${rowIdx + 1}`);
+
+            const wasThermal = isThermalDeviceObj(oldRow) || isThermalDeviceObj(newDev);
+            fd.measuringDevices[rowIdx] = this.toReportDeviceRow(newDev);
+            fd._devicesInitialized = true;
+
+            if (insp && String(insp.template_id) === '2205' && fd.generator) {
+                fd.generator.devices = fd.measuringDevices;
+            }
+
+            // 2201 Elektrik İç Tesisatı raporunda Bölüm 3 (Termal Kamera) ile otomatik senkronize et
+            if (insp && String(insp.template_id) === '2201' && wasThermal && isThermalDeviceObj(newDev)) {
+                if (!fd.tableRows) fd.tableRows = {};
+                const curTCam = fd.tableRows.topic_1_0 || [];
+                const guids = getThermalCameraQuestions();
+                const firstCellVal = String((curTCam[0] && curTCam[0][guids[0]]) || '');
+                if (!firstCellVal.includes('Uygulaması Yok')) {
+                    fd.tableRows.topic_1_0 = [this.toThermalTopicRow(newDev)];
+                    fd._thermalSourceId = newDev.id;
+                    fd._thermalInitialized = true;
+                }
+            }
+
+            if (typeof window.triggerAutoSave === 'function') window.triggerAutoSave();
+            if (typeof window.paintInspectionEditorUI === 'function') window.paintInspectionEditorUI();
+            if (typeof window.showToast === 'function') {
+                window.showToast(`${oldLabel} yerine ${getDeviceDisplayTitle(newDev)} seçildi`);
+            }
+            return true;
+        },
+
+        addReportDeviceFromCatalog(deviceId) {
+            const fd = window.AppState && window.AppState.currentFormData;
+            const insp = window.AppState && window.AppState.currentInspection;
+            if (!fd) return false;
+
+            const dev = this.getDeviceById(deviceId);
+            if (!dev) return false;
+
+            if (!Array.isArray(fd.measuringDevices)) fd.measuringDevices = [];
+            // Eğer sadece tek boş satır varsa onun üzerine yaz
+            if (fd.measuringDevices.length === 1 && isDeviceRowBlank(fd.measuringDevices[0])) {
+                fd.measuringDevices[0] = this.toReportDeviceRow(dev);
+            } else {
+                fd.measuringDevices.push(this.toReportDeviceRow(dev));
+            }
+            fd._devicesInitialized = true;
+
+            if (insp && String(insp.template_id) === '2205' && fd.generator) {
+                fd.generator.devices = fd.measuringDevices;
+            }
+
+            if (typeof window.triggerAutoSave === 'function') window.triggerAutoSave();
+            if (typeof window.paintInspectionEditorUI === 'function') window.paintInspectionEditorUI();
+            if (typeof window.showToast === 'function') {
+                window.showToast(`${getDeviceDisplayTitle(dev)} rapora eklendi`);
+            }
+            return true;
+        },
+
+        swapReportThermalCamera(newDeviceId) {
+            const fd = window.AppState && window.AppState.currentFormData;
+            const insp = window.AppState && window.AppState.currentInspection;
+            if (!fd) return false;
+
+            const newDev = this.getDeviceById(newDeviceId);
+            if (!newDev) return false;
+
+            if (!fd.tableRows) fd.tableRows = {};
+            const prevTCam = fd.tableRows.topic_1_0 && fd.tableRows.topic_1_0[0];
+            const guids = getThermalCameraQuestions();
+            const prevSerial = prevTCam ? String(prevTCam[guids[1]] || '').trim() : '';
+            const prevSourceId = fd._thermalSourceId || '';
+
+            fd.tableRows.topic_1_0 = [this.toThermalTopicRow(newDev)];
+            fd._thermalSourceId = newDev.id;
+            fd._thermalInitialized = true;
+
+            // Bölüm 4 (Ölçüm Aletleri Bilgileri) içinde termal kamera satırı varsa onu da senkronize et
+            if (Array.isArray(fd.measuringDevices)) {
+                const matchIdx = fd.measuringDevices.findIndex(r =>
+                    isThermalDeviceObj(r)
+                    || (prevSourceId && String(r.sourceId) === String(prevSourceId))
+                    || (prevSerial && String(r.serial || '').trim() === prevSerial)
+                );
+                if (matchIdx >= 0) {
+                    fd.measuringDevices[matchIdx] = this.toReportDeviceRow(newDev);
+                    fd._devicesInitialized = true;
+                }
+            }
+
+            if (insp && String(insp.template_id) === '2205' && fd.generator) {
+                fd.generator.devices = fd.measuringDevices;
+            }
+
+            if (typeof window.triggerAutoSave === 'function') window.triggerAutoSave();
+            if (typeof window.paintInspectionEditorUI === 'function') window.paintInspectionEditorUI();
+            if (typeof window.showToast === 'function') {
+                window.showToast(`Termal kamera: ${getDeviceDisplayTitle(newDev)} seçildi`);
+            }
+            return true;
+        },
+
+        syncAssignedDevicesToCurrentReport(mode = 'replace') {
+            const fd = window.AppState && window.AppState.currentFormData;
+            const insp = window.AppState && window.AppState.currentInspection;
+            if (!fd) return false;
+
+            const assigned = this.getAssignedDevices();
+            if (!assigned.length) {
+                if (typeof window.showToast === 'function') {
+                    window.showToast('Ayarlarda üzerinize kayıtlı cihaz bulunamadı', 'warning');
+                }
+                return false;
+            }
+
+            if (mode === 'replace') {
+                fd.measuringDevices = assigned.map(d => this.toReportDeviceRow(d));
+                if (insp && String(insp.template_id) === '2201') {
+                    const thermalDev = assigned.find(isThermalDeviceObj);
+                    if (thermalDev) {
+                        if (!fd.tableRows) fd.tableRows = {};
+                        fd.tableRows.topic_1_0 = [this.toThermalTopicRow(thermalDev)];
+                        fd._thermalSourceId = thermalDev.id;
+                        fd._thermalInitialized = true;
+                    }
+                }
+            } else {
+                if (!Array.isArray(fd.measuringDevices)) fd.measuringDevices = [];
+                if (fd.measuringDevices.length === 1 && isDeviceRowBlank(fd.measuringDevices[0])) {
+                    fd.measuringDevices = [];
+                }
+                const existingKeys = new Set(fd.measuringDevices.map(d =>
+                    `${String(d.sourceId || '')}|${String(d.name || '').trim().toLowerCase()}|${String(d.serial || '').trim().toLowerCase()}`
+                ));
+                assigned.forEach(d => {
+                    const row = this.toReportDeviceRow(d);
+                    const key = `${String(row.sourceId || '')}|${String(row.name || '').trim().toLowerCase()}|${String(row.serial || '').trim().toLowerCase()}`;
+                    if (!existingKeys.has(key)) {
+                        fd.measuringDevices.push(row);
+                    }
+                });
+            }
+
+            fd._devicesInitialized = true;
+            if (insp && String(insp.template_id) === '2205' && fd.generator) {
+                fd.generator.devices = fd.measuringDevices;
+            }
+
+            if (typeof window.triggerAutoSave === 'function') window.triggerAutoSave();
+            if (typeof window.paintInspectionEditorUI === 'function') window.paintInspectionEditorUI();
+            if (typeof window.showToast === 'function') {
+                window.showToast(`Üzerinizdeki ${assigned.length} cihaz rapora aktarıldı`);
+            }
+            return true;
+        },
+
+        // ====================================================================
+        // AYARLAR SAYFASI KART RENDER'I
+        // ====================================================================
+        renderSettingsCardHtml() {
+            const curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || null;
+            const userName = curUser ? curUser.fullName : 'Aktif Personel';
+            const assigned = this.getAssignedDevices();
+            const catalog = this.getCatalog();
+            const autoApply = this.isAutoApplyEnabled();
+
+            const cardsHtml = assigned.length ? assigned.map((dev, idx) => {
+                const calStatus = this.getCalibrationStatus(dev.validDate);
+                const dispTitle = getDeviceDisplayTitle(dev);
+                const isFirst = idx === 0;
+                const isLast = idx === assigned.length - 1;
+                const isTherm = isThermalDeviceObj(dev);
+
+                return `
+                    <div class="p-2.5 rounded-xl border border-slate-200 bg-slate-50/90 space-y-2">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <span class="px-1.5 py-0.5 rounded bg-slate-900 text-amber-300 font-black text-[10px] shrink-0">#${idx + 1}</span>
+                                    ${dev.code ? `<span class="px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 border border-sky-200 font-mono font-bold text-[10px] shrink-0">${esc(dev.code)}</span>` : ''}
+                                    <span class="font-bold text-slate-900 text-xs truncate">${esc(dispTitle)}</span>
+                                    ${isTherm ? `<span class="px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-800 border border-orange-200 font-bold text-[9px] shrink-0"><i class="fa-solid fa-temperature-half mr-0.5"></i>Bölüm 3 + 4</span>` : ''}
+                                </div>
+                                <div class="text-[11px] text-slate-600 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                                    <span class="font-semibold text-slate-700">${esc(dev.reportName || dev.category)}</span>
+                                    <span class="text-slate-300">•</span>
+                                    <span>Seri: <strong class="font-mono text-slate-800">${esc(dev.serial || '-')}</strong></span>
+                                </div>
+                            </div>
+                            <span class="px-2 py-0.5 rounded-full border font-bold text-[10px] shrink-0 ${calStatus.badgeClass}">
+                                ${esc(calStatus.label)}
+                            </span>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-1.5 text-[10px] bg-white border border-slate-200/80 rounded-lg p-1.5">
+                            <div>
+                                <span class="text-slate-400 block font-semibold">Kalibrasyon</span>
+                                <span class="font-mono font-bold text-slate-800">${esc(dev.calDate || '-')}</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-400 block font-semibold">Geçerlilik</span>
+                                <span class="font-mono font-bold ${calStatus.status === 'expired' ? 'text-rose-700' : 'text-slate-800'}">${esc(dev.validDate || '-')}</span>
+                            </div>
+                            <div>
+                                <span class="text-slate-400 block font-semibold">Sertifika No</span>
+                                <span class="font-mono font-bold text-slate-800 truncate block">${esc(dev.certNo || '-')}</span>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between gap-1.5 pt-0.5">
+                            <div class="flex items-center gap-1">
+                                <button type="button" onclick="MeasuringDevicesManager.handleMove('${esc(dev.id)}', -1)" ${isFirst ? 'disabled' : ''}
+                                    class="px-2 py-1 rounded-lg border text-[10px] font-bold ${isFirst ? 'bg-slate-100 text-slate-300 border-slate-200' : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300 active:scale-95'}" title="Yukarı Taşı">
+                                    ▲
+                                </button>
+                                <button type="button" onclick="MeasuringDevicesManager.handleMove('${esc(dev.id)}', 1)" ${isLast ? 'disabled' : ''}
+                                    class="px-2 py-1 rounded-lg border text-[10px] font-bold ${isLast ? 'bg-slate-100 text-slate-300 border-slate-200' : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300 active:scale-95'}" title="Aşağı Taşı">
+                                    ▼
+                                </button>
+                            </div>
+                            <div class="flex items-center gap-1.5 flex-wrap justify-end">
+                                <button type="button" onclick="openDeviceCatalogPickerModal('settings_swap', { oldDeviceId: '${esc(dev.id)}' })"
+                                    class="px-2.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-bold text-[11px] flex items-center gap-1 shadow-2xs transition">
+                                    <i class="fa-solid fa-right-left"></i>
+                                    <span>Değiştir</span>
+                                </button>
+                                <button type="button" onclick="openDeviceEditModal('${esc(dev.id)}', { refreshSettings: true })"
+                                    class="px-2.5 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 active:scale-95 text-slate-800 font-bold text-[11px] flex items-center gap-1 transition">
+                                    <i class="fa-solid fa-pen"></i>
+                                    <span>Düzenle</span>
+                                </button>
+                                <button type="button" onclick="MeasuringDevicesManager.handleUnassignFromSettings('${esc(dev.id)}')"
+                                    class="px-2 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-700 border border-rose-200 font-bold text-[11px] flex items-center gap-1 transition" title="Üzerimden Çıkar">
+                                    <i class="fa-solid fa-xmark"></i>
+                                    <span>Çıkar</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('') : `
+                <div class="p-4 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/70 text-center space-y-2">
+                    <div class="w-10 h-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto text-base">
+                        <i class="fa-solid fa-screwdriver-wrench"></i>
+                    </div>
+                    <div class="text-xs font-bold text-slate-800">Henüz üzerinize ölçüm cihazı almadınız</div>
+                    <p class="text-[11px] text-slate-500 max-w-sm mx-auto leading-relaxed">
+                        Aşağıdan kendi kullandığınız cihazları (ör. Fluke / UNI-T Termal Kamera, Metrel Test Cihazı, Pensampermetre vb.) seçin; yeni rapor yazarken otomatik eklensinler.
+                    </p>
+                </div>
+            `;
+
+            return `
+                <div id="settingsMeasuringDevicesCard" class="card-craft-white p-3 space-y-2.5">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2 gap-2">
+                        <div class="text-xs font-bold text-slate-800 flex items-center gap-1.5 min-w-0">
+                            <i class="fa-solid fa-screwdriver-wrench text-amber-600 shrink-0"></i>
+                            <span class="truncate">Ölçüm Cihazlarım (Üzerime Alınanlar)</span>
+                        </div>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${assigned.length ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}">
+                            ${assigned.length} Aktif Cihaz
+                        </span>
+                    </div>
+
+                    <div class="flex items-center justify-between gap-2 p-2 rounded-xl bg-amber-50/80 border border-amber-200/80 text-[11px]">
+                        <label class="flex items-center gap-2 cursor-pointer font-semibold text-amber-950 flex-1 min-w-0">
+                            <input type="checkbox" ${autoApply ? 'checked' : ''}
+                                onchange="MeasuringDevicesManager.setAutoApplyEnabled(this.checked); showToast(this.checked ? 'Raporlara otomatik cihaz ekleme açıldı' : 'Otomatik ekleme kapatıldı');"
+                                class="w-4 h-4 rounded border-amber-400 text-amber-600 focus:ring-amber-500 shrink-0">
+                            <span class="leading-snug"><strong>${esc(userName)}</strong> için yeni rapor yazarken otomatik eklensin</span>
+                        </label>
+                    </div>
+
+                    <div class="space-y-2">
+                        ${cardsHtml}
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                        <button type="button" onclick="openDeviceCatalogPickerModal('settings_assign')"
+                            class="w-full py-2.5 px-3 bg-slate-900 hover:bg-slate-800 active:scale-95 text-amber-400 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition">
+                            <i class="fa-solid fa-list-check"></i>
+                            <span>Havuzdan Cihaz Seç / Üzerime Al (${catalog.length})</span>
+                        </button>
+                        <button type="button" onclick="openDeviceEditModal(null, { assignByDefault: true, refreshSettings: true })"
+                            class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>Yeni Ölçüm Cihazı Ekle</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+        },
+
+        handleMove(deviceId, dir) {
+            if (this.moveAssignedDevice(deviceId, dir)) {
+                if (typeof window.renderSettingsPage === 'function' && window.AppState && window.AppState.currentRoute === 'settings') {
+                    window.renderSettingsPage();
+                }
+            }
+        },
+
+        handleUnassignFromSettings(deviceId) {
+            const dev = this.getDeviceById(deviceId);
+            this.unassignDevice(deviceId);
+            if (typeof window.renderSettingsPage === 'function' && window.AppState && window.AppState.currentRoute === 'settings') {
+                window.renderSettingsPage();
+            }
+            if (typeof window.showToast === 'function') {
+                window.showToast(`${dev ? getDeviceDisplayTitle(dev) : 'Cihaz'} üzerinizden çıkarıldı`, 'info');
+            }
+        }
+    };
+
+    // ========================================================================
+    // MODALLAR: HAVUZ / DEĞİŞTİRME SEÇİCİSİ & CİHAZ EKLEME/DÜZENLEME
+    // ========================================================================
+    let _pickerState = {
+        mode: 'settings_assign',
+        context: {},
+        searchQuery: '',
+        categoryFilter: 'ALL'
+    };
+
+    function openDeviceCatalogPickerModal(mode = 'settings_assign', context = {}) {
+        let initialCategory = 'ALL';
+        if (mode === 'report_thermal_swap') {
+            initialCategory = 'Termal Kamera';
+        } else if (mode === 'settings_swap' && context.oldDeviceId) {
+            const oldDev = MeasuringDevicesManager.getDeviceById(context.oldDeviceId);
+            if (oldDev && oldDev.category) initialCategory = oldDev.category;
+        } else if (mode === 'report_swap' && context.rowIdx !== undefined) {
+            const row = window.AppState?.currentFormData?.measuringDevices?.[context.rowIdx];
+            const inferred = MeasuringDevicesManager.inferCategoryForReportRow(row);
+            if (inferred) initialCategory = inferred;
+        }
+
+        _pickerState = {
+            mode,
+            context: context || {},
+            searchQuery: '',
+            categoryFilter: initialCategory
+        };
+        renderDeviceCatalogPickerModal();
+    }
+
+    function setDevicePickerCategory(cat) {
+        _pickerState.categoryFilter = cat;
+        renderDeviceCatalogPickerModal();
+    }
+
+    function setDevicePickerSearch(query) {
+        _pickerState.searchQuery = query || '';
+        const listEl = document.getElementById('devicePickerListContainer');
+        if (listEl) {
+            listEl.innerHTML = buildDevicePickerListHtml();
+        }
+    }
+
+    function renderDeviceCatalogPickerModal() {
+        const mode = _pickerState.mode;
+        const ctx = _pickerState.context;
+        const catalog = MeasuringDevicesManager.getCatalog();
+
+        let modalTitle = '<i class="fa-solid fa-screwdriver-wrench text-amber-400 mr-2"></i>Ölçüm Cihazı Havuzu';
+        let bannerHtml = '';
+        let newDeviceContextOpts = { assignByDefault: true };
+
+        if (mode === 'settings_assign') {
+            const assignedCount = MeasuringDevicesManager.getAssignedDeviceIds().length;
+            modalTitle = `<i class="fa-solid fa-list-check text-amber-400 mr-2"></i>Üzerime Cihaz Al (${assignedCount} Seçili)`;
+            bannerHtml = `
+                <div class="p-2.5 rounded-xl bg-sky-50 border border-sky-200 text-[11px] text-sky-900">
+                    Kendi çantanızda / üzerinizde taşıdığınız cihazları işaretleyin. Seçilen cihazlar yeni rapor oluştururken otomatik eklenir.
+                </div>
+            `;
+            newDeviceContextOpts = { assignByDefault: true, reopenPicker: true };
+        } else if (mode === 'settings_swap') {
+            const oldDev = MeasuringDevicesManager.getDeviceById(ctx.oldDeviceId);
+            modalTitle = `<i class="fa-solid fa-right-left text-sky-400 mr-2"></i>Cihaz Değiştir (Ayarlar)`;
+            bannerHtml = `
+                <div class="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-950">
+                    <span class="font-semibold">Değiştirilecek Cihaz:</span>
+                    <strong class="ml-1">${esc(oldDev ? getDeviceDisplayTitle(oldDev) : 'Seçili Cihaz')}</strong>
+                    ${oldDev && oldDev.serial ? `<span class="font-mono text-[10px] ml-1">(${esc(oldDev.serial)})</span>` : ''}
+                </div>
+            `;
+            newDeviceContextOpts = {
+                defaultCategory: (oldDev && oldDev.category) || '',
+                assignByDefault: false,
+                swapSettingsOldId: ctx.oldDeviceId
+            };
+        } else if (mode === 'report_swap') {
+            const row = window.AppState?.currentFormData?.measuringDevices?.[ctx.rowIdx] || {};
+            const rowLabel = [row.brand, row.model].filter(Boolean).join(' ') || row.name || `Cihaz #${Number(ctx.rowIdx) + 1}`;
+            modalTitle = `<i class="fa-solid fa-right-left text-sky-400 mr-2"></i>Rapordaki Cihazı Değiştir`;
+            bannerHtml = `
+                <div class="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-950">
+                    <span class="font-semibold">Şu an seçili:</span>
+                    <strong class="ml-1">${esc(rowLabel)}</strong>
+                    ${row.serial ? `<span class="font-mono text-[10px] ml-1">(${esc(row.serial)})</span>` : ''}
+                    <div class="text-[10px] text-amber-800 mt-0.5">Yeni seçtiğiniz cihaz hemen bu satırın yerine yazılır (örn. Fluke yerine UNI-T).</div>
+                </div>
+            `;
+            newDeviceContextOpts = {
+                defaultCategory: MeasuringDevicesManager.inferCategoryForReportRow(row),
+                assignByDefault: false,
+                swapReportRowIdx: ctx.rowIdx
+            };
+        } else if (mode === 'report_thermal_swap') {
+            const guids = getThermalCameraQuestions();
+            const curRow = window.AppState?.currentFormData?.tableRows?.topic_1_0?.[0] || {};
+            const curCamName = curRow[guids[0]] || 'Henüz Seçilmedi';
+            const curCamSerial = curRow[guids[1]] || '';
+            modalTitle = `<i class="fa-solid fa-temperature-half text-orange-400 mr-2"></i>Termal Kamera Seç / Değiştir`;
+            bannerHtml = `
+                <div class="p-2.5 rounded-xl bg-orange-50 border border-orange-200 text-[11px] text-orange-950">
+                    <span class="font-semibold">Bölüm 3 Termal Kamera:</span>
+                    <strong class="ml-1">${esc(curCamName)}</strong>
+                    ${curCamSerial ? `<span class="font-mono text-[10px] ml-1">(${esc(curCamSerial)})</span>` : ''}
+                    <div class="text-[10px] text-orange-800 mt-0.5">Seçtiğiniz termal kamera Bölüm 3'e ve Bölüm 4'teki termal kamera satırına uygulanır.</div>
+                </div>
+            `;
+            newDeviceContextOpts = {
+                defaultCategory: 'Termal Kamera',
+                assignByDefault: false,
+                swapThermalReport: true
+            };
+        } else if (mode === 'report_add') {
+            modalTitle = `<i class="fa-solid fa-plus text-emerald-400 mr-2"></i>Rapora Cihaz Ekle`;
+            bannerHtml = `
+                <div class="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-950">
+                    Üzerinizdeki cihazlardan veya havuzdan dokunarak bu rapora ekleyin.
+                </div>
+            `;
+            newDeviceContextOpts = {
+                assignByDefault: false,
+                addReportAfterSave: true
+            };
+        }
+
+        const catCounts = {};
+        catalog.forEach(d => {
+            const c = d.category || 'Diğer';
+            catCounts[c] = (catCounts[c] || 0) + 1;
+        });
+
+        const categoryChips = ['ALL', ...DEVICE_CATEGORIES.filter(c => catCounts[c] > 0 || _pickerState.categoryFilter === c)].map(c => {
+            const isActive = _pickerState.categoryFilter === c;
+            const label = c === 'ALL' ? `Tümü (${catalog.length})` : `${c} (${catCounts[c] || 0})`;
+            return `
+                <button type="button" onclick="setDevicePickerCategory('${esc(c)}')"
+                    class="px-2.5 py-1 rounded-full text-[11px] font-bold border transition whitespace-nowrap shrink-0 ${
+                        isActive
+                            ? 'bg-slate-900 text-amber-300 border-slate-900 shadow-2xs'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                    }">
+                    ${esc(label)}
+                </button>
+            `;
+        }).join('');
+
+        window._activeNewDeviceCtxOpts = newDeviceContextOpts;
+
+        const bodyHtml = `
+            <div class="space-y-2.5 text-xs">
+                ${bannerHtml}
+
+                <div class="flex items-center gap-1.5">
+                    <div class="relative flex-1">
+                        <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-slate-400 text-xs"></i>
+                        <input type="text" id="devicePickerSearchInput" value="${esc(_pickerState.searchQuery)}"
+                            oninput="setDevicePickerSearch(this.value)"
+                            placeholder="Marka, model, kod veya seri no ara (ör. Fluke, UNI-T, Metrel)..."
+                            class="w-full border border-slate-300 rounded-xl pl-8 pr-3 py-2 text-xs font-medium bg-white focus:border-sky-500 focus:outline-none">
+                    </div>
+                    <button type="button" onclick="openDeviceEditModal(null, window._activeNewDeviceCtxOpts || {})"
+                        class="px-2.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs shrink-0 flex items-center gap-1 shadow-xs">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Yeni</span>
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-1.5 overflow-x-auto pb-1">
+                    ${categoryChips}
+                </div>
+
+                <div id="devicePickerListContainer" class="space-y-2 max-h-[46vh] overflow-y-auto pr-0.5">
+                    ${buildDevicePickerListHtml()}
+                </div>
+            </div>
+        `;
+
+        const footerHtml = mode === 'settings_assign'
+            ? `<button type="button" onclick="closeModal(); if(AppState.currentRoute==='settings' && typeof renderSettingsPage==='function') renderSettingsPage();" class="w-full sm:w-auto px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs shadow-sm">Tamam (Kaydedildi)</button>`
+            : `<button type="button" onclick="closeModal()" class="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs">Kapat</button>`;
+
+        if (typeof window.openModal === 'function') {
+            window.openModal(modalTitle, bodyHtml, footerHtml);
+        }
+    }
+
+    function buildDevicePickerListHtml() {
+        const mode = _pickerState.mode;
+        const ctx = _pickerState.context;
+        const q = (_pickerState.searchQuery || '').trim().toLowerCase();
+        const catFilter = _pickerState.categoryFilter;
+        const assignedIds = new Set(MeasuringDevicesManager.getAssignedDeviceIds().map(String));
+
+        let items = MeasuringDevicesManager.getCatalog().filter(dev => {
+            if (catFilter !== 'ALL' && (dev.category || 'Diğer') !== catFilter) return false;
+            if (!q) return true;
+            const hay = `${dev.brand} ${dev.model} ${dev.category} ${dev.reportName} ${dev.thermalReportName} ${dev.code} ${dev.serial} ${dev.certNo}`.toLowerCase();
+            return hay.includes(q);
+        });
+
+        // Sıralama: report_add için önce üzerimdekiler, swap modlarında alternatifler
+        items = [...items].sort((a, b) => {
+            if (mode === 'report_add') {
+                const aA = assignedIds.has(String(a.id)) ? 0 : 1;
+                const bA = assignedIds.has(String(b.id)) ? 0 : 1;
+                if (aA !== bA) return aA - bA;
+            }
+            return String(a.category || '').localeCompare(String(b.category || ''), 'tr');
+        });
+
+        if (!items.length) {
+            return `
+                <div class="p-6 text-center border border-dashed border-slate-200 rounded-xl bg-slate-50 space-y-2">
+                    <div class="text-xs font-bold text-slate-600">Aramaya uygun cihaz bulunamadı</div>
+                    <button type="button" onclick="openDeviceEditModal(null, window._activeNewDeviceCtxOpts || {})"
+                        class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-xs inline-flex items-center gap-1">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Yeni Cihaz Olarak Ekle</span>
+                    </button>
+                </div>
+            `;
+        }
+
+        return items.map(dev => {
+            const isMine = assignedIds.has(String(dev.id));
+            const isSameOld = mode === 'settings_swap' && String(ctx.oldDeviceId) === String(dev.id);
+            const cal = MeasuringDevicesManager.getCalibrationStatus(dev.validDate);
+            const title = getDeviceDisplayTitle(dev);
+
+            let primaryActionHtml = '';
+            if (mode === 'settings_assign') {
+                primaryActionHtml = `
+                    <button type="button" onclick="handlePickerToggleAssign('${esc(dev.id)}')"
+                        class="px-2.5 py-1.5 rounded-lg font-bold text-[11px] flex items-center gap-1 shrink-0 transition active:scale-95 ${
+                            isMine
+                                ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs'
+                                : 'bg-slate-200 hover:bg-slate-300 text-slate-800'
+                        }">
+                        <i class="fa-solid ${isMine ? 'fa-check' : 'fa-plus'}"></i>
+                        <span>${isMine ? 'Üzerimde' : 'Üzerime Al'}</span>
+                    </button>
+                `;
+            } else if (mode === 'settings_swap') {
+                primaryActionHtml = isSameOld
+                    ? `<span class="px-2.5 py-1.5 rounded-lg bg-amber-100 text-amber-800 border border-amber-200 font-bold text-[11px] shrink-0">Mevcut</span>`
+                    : `<button type="button" onclick="handlePickerSelectSwapSettings('${esc(ctx.oldDeviceId)}', '${esc(dev.id)}')"
+                        class="px-2.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-bold text-[11px] flex items-center gap-1 shrink-0 shadow-2xs">
+                        <i class="fa-solid fa-check"></i>
+                        <span>Bunu Seç</span>
+                    </button>`;
+            } else if (mode === 'report_swap') {
+                primaryActionHtml = `
+                    <button type="button" onclick="MeasuringDevicesManager.swapReportDevice(${Number(ctx.rowIdx)}, '${esc(dev.id)}'); closeModal();"
+                        class="px-2.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-bold text-[11px] flex items-center gap-1 shrink-0 shadow-2xs">
+                        <i class="fa-solid fa-right-left"></i>
+                        <span>Seç</span>
+                    </button>
+                `;
+            } else if (mode === 'report_thermal_swap') {
+                primaryActionHtml = `
+                    <button type="button" onclick="MeasuringDevicesManager.swapReportThermalCamera('${esc(dev.id)}'); closeModal();"
+                        class="px-2.5 py-1.5 rounded-lg bg-orange-600 hover:bg-orange-700 active:scale-95 text-white font-bold text-[11px] flex items-center gap-1 shrink-0 shadow-2xs">
+                        <i class="fa-solid fa-check"></i>
+                        <span>Bunu Seç</span>
+                    </button>
+                `;
+            } else if (mode === 'report_add') {
+                primaryActionHtml = `
+                    <button type="button" onclick="MeasuringDevicesManager.addReportDeviceFromCatalog('${esc(dev.id)}'); closeModal();"
+                        class="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-[11px] flex items-center gap-1 shrink-0 shadow-2xs">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Ekle</span>
+                    </button>
+                `;
+            }
+
+            return `
+                <div class="p-2.5 rounded-xl border transition flex items-center justify-between gap-2 ${
+                    isMine ? 'border-emerald-300 bg-emerald-50/40' : 'border-slate-200 bg-white'
+                }">
+                    <div class="min-w-0 flex-1 space-y-0.5">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            ${dev.code ? `<span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-mono font-bold text-[10px]">${esc(dev.code)}</span>` : ''}
+                            <span class="font-bold text-slate-900 text-xs">${esc(title)}</span>
+                            ${isMine && mode !== 'settings_assign' ? `<span class="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[9px]">Üzerimde</span>` : ''}
+                            <span class="px-1.5 py-0.5 rounded-full border font-bold text-[9px] ${cal.badgeClass}">${esc(cal.label)}</span>
+                        </div>
+                        <div class="text-[11px] text-slate-600">
+                            ${esc(dev.category)}${dev.serial ? ` · Seri: <span class="font-mono font-semibold text-slate-800">${esc(dev.serial)}</span>` : ''}
+                        </div>
+                        <div class="text-[10px] text-slate-500 font-mono">
+                            Kal: ${esc(dev.calDate || '-')} · Geç: ${esc(dev.validDate || '-')}${dev.certNo ? ` · Sert: ${esc(dev.certNo)}` : ''}
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <button type="button" onclick="openDeviceEditModal('${esc(dev.id)}', { reopenPicker: true })"
+                            class="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 text-[11px]" title="Cihaz Bilgilerini Düzenle">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                        ${primaryActionHtml}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function handlePickerToggleAssign(deviceId) {
+        const assigned = MeasuringDevicesManager.toggleAssignment(deviceId);
+        const dev = MeasuringDevicesManager.getDeviceById(deviceId);
+        renderDeviceCatalogPickerModal();
+        if (window.AppState && window.AppState.currentRoute === 'settings' && typeof window.renderSettingsPage === 'function') {
+            window.renderSettingsPage();
+        }
+        if (typeof window.showToast === 'function') {
+            window.showToast(assigned ? `${getDeviceDisplayTitle(dev)} üzerinize alındı` : `${getDeviceDisplayTitle(dev)} üzerinizden çıkarıldı`);
+        }
+    }
+
+    function handlePickerSelectSwapSettings(oldDeviceId, newDeviceId) {
+        const oldDev = MeasuringDevicesManager.getDeviceById(oldDeviceId);
+        const newDev = MeasuringDevicesManager.getDeviceById(newDeviceId);
+        MeasuringDevicesManager.swapAssignedDevice(oldDeviceId, newDeviceId);
+        if (typeof window.closeModal === 'function') window.closeModal();
+        if (window.AppState && window.AppState.currentRoute === 'settings' && typeof window.renderSettingsPage === 'function') {
+            window.renderSettingsPage();
+        }
+        if (typeof window.showToast === 'function') {
+            window.showToast(`${getDeviceDisplayTitle(oldDev)} yerine ${getDeviceDisplayTitle(newDev)} seçildi`);
+        }
+    }
+
+    let _editModalOptions = {};
+
+    function openDeviceEditModal(deviceId = null, options = {}) {
+        _editModalOptions = options || {};
+        const existing = deviceId ? MeasuringDevicesManager.getDeviceById(deviceId) : null;
+        const isEdit = Boolean(existing);
+
+        const defaultCat = (existing && existing.category) || _editModalOptions.defaultCategory || 'Termal Kamera';
+        const isAssignedNow = existing
+            ? MeasuringDevicesManager.isAssigned(existing.id)
+            : (_editModalOptions.assignByDefault !== false);
+        const defaultReportName = existing
+            ? existing.reportName
+            : (defaultCat === 'Diğer' ? '' : defaultCat);
+        const isThermCat = defaultCat.toLowerCase().includes('termal');
+
+        const catOptions = DEVICE_CATEGORIES.map(c =>
+            `<option value="${esc(c)}" ${c === defaultCat ? 'selected' : ''}>${esc(c)}</option>`
+        ).join('');
+
+        const titleHtml = isEdit
+            ? `<i class="fa-solid fa-pen-to-square text-amber-400 mr-2"></i>Ölçüm Cihazını Düzenle`
+            : `<i class="fa-solid fa-plus text-emerald-400 mr-2"></i>Yeni Ölçüm Cihazı Tanımla`;
+
+        const bodyHtml = `
+            <div class="space-y-2.5 text-xs">
+                <input type="hidden" id="devFormId" value="${esc(existing ? existing.id : '')}">
+
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">Cihaz Kategorisi</label>
+                    <select id="devFormCategory" onchange="onDeviceFormCategoryChange(this.value)"
+                        class="w-full border border-slate-300 rounded-xl px-2.5 py-2 text-xs font-bold bg-white">
+                        ${catOptions}
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Marka</label>
+                        <input type="text" id="devFormBrand" value="${esc(existing ? existing.brand : '')}"
+                            placeholder="Örn: UNI-T, Fluke, Metrel"
+                            class="w-full border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-semibold bg-white">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Model</label>
+                        <input type="text" id="devFormModel" value="${esc(existing ? existing.model : '')}"
+                            placeholder="Örn: UTi165A, TiS40, MI 3102 BT"
+                            class="w-full border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-semibold bg-white">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Cihaz Kodu (İsteğe Bağlı)</label>
+                        <input type="text" id="devFormCode" value="${esc(existing ? existing.code : '')}"
+                            placeholder="Örn: C.105"
+                            class="w-full border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-mono bg-white">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Seri Numarası</label>
+                        <input type="text" id="devFormSerial" value="${esc(existing ? existing.serial : '')}"
+                            placeholder="Örn: 201266702"
+                            class="w-full border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-mono font-bold bg-white">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">Rapor Tablosundaki Cihaz Adı <span class="text-[10px] font-normal text-slate-400">(Ölçüm Aletleri Bilgileri)</span></label>
+                    <input type="text" id="devFormReportName" value="${esc(defaultReportName)}"
+                        placeholder="Örn: Termal Kamera, Çok Fonksiyonlu Test Cihazı"
+                        class="w-full border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-semibold bg-white">
+                </div>
+
+                <div id="devFormThermalNameWrap" class="${isThermCat ? '' : 'hidden'}">
+                    <label class="block font-bold text-orange-900 mb-1">Bölüm 3 Termal Kamera Adı <span class="text-[10px] font-normal text-orange-700">(Elektrik İç Tesisatı Raporu)</span></label>
+                    <input type="text" id="devFormThermalName" value="${esc(existing ? existing.thermalReportName : '')}"
+                        placeholder="Örn: UNI-T UTi165A veya Fluke TiS40 (Boş = Marka Model)"
+                        class="w-full border border-orange-300 rounded-xl px-2.5 py-1.5 text-xs font-semibold bg-orange-50/40">
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1 flex items-center justify-between">
+                            <span>Kalibrasyon Tarihi</span>
+                            <button type="button" onclick="autoFillValidDatePlusOneYear()" class="text-[10px] font-bold text-sky-700 hover:underline">+1 Yıl</button>
+                        </label>
+                        <input type="text" id="devFormCalDate" value="${esc(existing ? existing.calDate : '')}"
+                            placeholder="GG.AA.YYYY"
+                            class="w-full border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-mono bg-white">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Geçerlilik Tarihi</label>
+                        <input type="text" id="devFormValidDate" value="${esc(existing ? existing.validDate : '')}"
+                            placeholder="GG.AA.YYYY"
+                            class="w-full border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-mono bg-white">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">Kalibrasyon Sertifika No</label>
+                    <input type="text" id="devFormCertNo" value="${esc(existing ? existing.certNo : '')}"
+                        placeholder="Örn: 0074K-0626-01712"
+                        class="w-full border border-slate-300 rounded-xl px-2.5 py-1.5 text-xs font-mono bg-white">
+                </div>
+
+                <label class="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 cursor-pointer">
+                    <input type="checkbox" id="devFormAssignToMe" ${isAssignedNow ? 'checked' : ''}
+                        class="w-4 h-4 rounded border-emerald-400 text-emerald-600">
+                    <span class="font-bold text-emerald-950 text-xs">Bu cihaz üzerimde olsun (Yeni raporlara otomatik eklensin)</span>
+                </label>
+
+                ${isEdit && existing.isCustom ? `
+                    <div class="pt-1 border-t border-slate-100 flex justify-end">
+                        <button type="button" onclick="handleDeleteCustomCatalogDevice('${esc(existing.id)}')"
+                            class="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-[11px] flex items-center gap-1 border border-rose-200">
+                            <i class="fa-solid fa-trash-can"></i>
+                            <span>Cihazı Havuzdan Kalıcı Sil</span>
+                        </button>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+
+        const footerHtml = `
+            <button type="button" onclick="${_editModalOptions.reopenPicker ? 'renderDeviceCatalogPickerModal()' : 'closeModal()'}"
+                class="px-3.5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs">
+                ${_editModalOptions.reopenPicker ? 'Geri' : 'İptal'}
+            </button>
+            <button type="button" onclick="submitDeviceEditModal()"
+                class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs shadow-sm flex items-center gap-1.5">
+                <i class="fa-solid fa-check"></i>
+                <span>Kaydet</span>
+            </button>
+        `;
+
+        if (typeof window.openModal === 'function') {
+            window.openModal(titleHtml, bodyHtml, footerHtml);
+        }
+    }
+
+    function onDeviceFormCategoryChange(cat) {
+        const isTherm = String(cat || '').toLowerCase().includes('termal');
+        const wrap = document.getElementById('devFormThermalNameWrap');
+        if (wrap) wrap.classList.toggle('hidden', !isTherm);
+
+        const repInput = document.getElementById('devFormReportName');
+        if (repInput) {
+            const curVal = repInput.value.trim();
+            if (!curVal || DEVICE_CATEGORIES.includes(curVal)) {
+                repInput.value = cat === 'Diğer' ? '' : cat;
+            }
+        }
+    }
+
+    function autoFillValidDatePlusOneYear() {
+        const calInput = document.getElementById('devFormCalDate');
+        const valInput = document.getElementById('devFormValidDate');
+        if (!calInput || !valInput) return;
+        const nextDate = addOneYearTrDate(calInput.value);
+        if (nextDate) {
+            valInput.value = nextDate;
+        } else if (typeof window.showToast === 'function') {
+            window.showToast('Önce GG.AA.YYYY formatında kalibrasyon tarihi girin', 'warning');
+        }
+    }
+
+    function submitDeviceEditModal() {
+        const id = document.getElementById('devFormId')?.value || '';
+        const category = document.getElementById('devFormCategory')?.value || 'Diğer';
+        const brand = document.getElementById('devFormBrand')?.value.trim() || '';
+        const model = document.getElementById('devFormModel')?.value.trim() || '';
+        const code = document.getElementById('devFormCode')?.value.trim() || '';
+        const serial = document.getElementById('devFormSerial')?.value.trim() || '';
+        const reportName = document.getElementById('devFormReportName')?.value.trim() || '';
+        const thermalReportName = document.getElementById('devFormThermalName')?.value.trim() || '';
+        const calDate = document.getElementById('devFormCalDate')?.value.trim() || '';
+        const validDate = document.getElementById('devFormValidDate')?.value.trim() || '';
+        const certNo = document.getElementById('devFormCertNo')?.value.trim() || '';
+        const assignChecked = Boolean(document.getElementById('devFormAssignToMe')?.checked);
+
+        if (!brand && !model && !reportName) {
+            if (typeof window.showToast === 'function') {
+                window.showToast('Lütfen en az marka/model veya cihaz adı girin', 'warning');
+            }
+            return;
+        }
+
+        const saved = MeasuringDevicesManager.saveCatalogDevice({
+            id: id || undefined,
+            category,
+            brand,
+            model,
+            code,
+            serial,
+            reportName,
+            thermalReportName,
+            isThermal: category.toLowerCase().includes('termal'),
+            calDate,
+            validDate,
+            certNo
+        }, assignChecked);
+
+        const opts = _editModalOptions || {};
+
+        if (opts.swapSettingsOldId) {
+            MeasuringDevicesManager.swapAssignedDevice(opts.swapSettingsOldId, saved.id);
+        }
+        if (opts.swapReportRowIdx !== undefined) {
+            MeasuringDevicesManager.swapReportDevice(opts.swapReportRowIdx, saved.id);
+            closeModal();
+            return;
+        }
+        if (opts.swapThermalReport) {
+            MeasuringDevicesManager.swapReportThermalCamera(saved.id);
+            closeModal();
+            return;
+        }
+        if (opts.addReportAfterSave) {
+            MeasuringDevicesManager.addReportDeviceFromCatalog(saved.id);
+            closeModal();
+            return;
+        }
+
+        if (opts.reopenPicker) {
+            renderDeviceCatalogPickerModal();
+        } else if (typeof window.closeModal === 'function') {
+            window.closeModal();
+        }
+
+        if (window.AppState && window.AppState.currentRoute === 'settings' && typeof window.renderSettingsPage === 'function') {
+            window.renderSettingsPage();
+        }
+        if (typeof window.showToast === 'function') {
+            window.showToast(`${getDeviceDisplayTitle(saved)} kaydedildi!`);
+        }
+    }
+
+    function handleDeleteCustomCatalogDevice(deviceId) {
+        const dev = MeasuringDevicesManager.getDeviceById(deviceId);
+        if (!confirm(`"${dev ? getDeviceDisplayTitle(dev) : 'Cihaz'}" havuzdan kalıcı olarak silinsin mi?`)) return;
+        MeasuringDevicesManager.deleteCatalogDevice(deviceId);
+        if (_editModalOptions && _editModalOptions.reopenPicker) {
+            renderDeviceCatalogPickerModal();
+        } else if (typeof window.closeModal === 'function') {
+            window.closeModal();
+        }
+        if (window.AppState && window.AppState.currentRoute === 'settings' && typeof window.renderSettingsPage === 'function') {
+            window.renderSettingsPage();
+        }
+        if (typeof window.showToast === 'function') {
+            window.showToast('Cihaz havuzdan silindi', 'info');
+        }
+    }
+
+    function openReportSwapDeviceModal(rowIdx) {
+        openDeviceCatalogPickerModal('report_swap', { rowIdx });
+    }
+
+    function openReportAddDeviceModal() {
+        openDeviceCatalogPickerModal('report_add', {});
+    }
+
+    function openReportThermalSwapModal() {
+        openDeviceCatalogPickerModal('report_thermal_swap', {});
+    }
+
+    function applyAssignedThermalCameraToReport() {
+        const thermalDev = MeasuringDevicesManager.getAssignedThermalCamera();
+        if (!thermalDev) {
+            if (typeof window.showToast === 'function') {
+                window.showToast('Ayarlarda üzerinizde tanımlı termal kamera yok; buradan seçebilirsiniz', 'warning');
+            }
+            openReportThermalSwapModal();
+            return;
+        }
+        MeasuringDevicesManager.swapReportThermalCamera(thermalDev.id);
+    }
+
+    function syncSettingsDevicesToCurrentReportPrompt() {
+        const assigned = MeasuringDevicesManager.getAssignedDevices();
+        if (!assigned.length) {
+            if (typeof window.showToast === 'function') {
+                window.showToast('Ayarlarda üzerinize kayıtlı cihaz bulunmuyor. Önce havuzdan seçin.', 'warning');
+            }
+            openDeviceCatalogPickerModal('report_add', {});
+            return;
+        }
+
+        const fd = window.AppState && window.AppState.currentFormData;
+        const curDevices = (fd && Array.isArray(fd.measuringDevices)) ? fd.measuringDevices : [];
+        const hasRealEntries = curDevices.some(d => !isDeviceRowBlank(d));
+
+        if (!hasRealEntries) {
+            MeasuringDevicesManager.syncAssignedDevicesToCurrentReport('replace');
+            return;
+        }
+
+        const modalHtml = `
+            <div class="space-y-3 text-xs">
+                <div class="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-950">
+                    Raporda şu anda <strong>${curDevices.length} cihaz</strong> kayıtlı. Ayarlardaki üzerinizdeki <strong>${assigned.length} cihaz</strong> nasıl aktarılsın?
+                </div>
+                <div class="space-y-2">
+                    <button type="button" onclick="MeasuringDevicesManager.syncAssignedDevicesToCurrentReport('replace'); closeModal();"
+                        class="w-full p-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-left flex items-center justify-between gap-2">
+                        <div>
+                            <div class="text-amber-300">Mevcut Listeyi Yenile (Üzerimdekilerle Değiştir)</div>
+                            <div class="text-[10px] font-normal text-slate-300 mt-0.5">Rapordaki ölçüm aletleri tablosunu ayarlardaki listeyle değiştirir</div>
+                        </div>
+                        <i class="fa-solid fa-arrows-rotate text-amber-400"></i>
+                    </button>
+                    <button type="button" onclick="MeasuringDevicesManager.syncAssignedDevicesToCurrentReport('append'); closeModal();"
+                        class="w-full p-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-200 font-bold text-left flex items-center justify-between gap-2">
+                        <div>
+                            <div>Eksik Olanları Sona Ekle</div>
+                            <div class="text-[10px] font-normal text-emerald-800 mt-0.5">Mevcut cihazları korur, ayarlardaki eksik cihazları ekler</div>
+                        </div>
+                        <i class="fa-solid fa-plus text-emerald-700"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        if (typeof window.openModal === 'function') {
+            window.openModal(
+                '<i class="fa-solid fa-arrows-rotate text-amber-400 mr-2"></i>Ayarlarımdaki Cihazları Aktar',
+                modalHtml,
+                `<button type="button" onclick="closeModal()" class="px-4 py-2 rounded-xl bg-slate-200 text-slate-800 font-bold text-xs">Vazgeç</button>`
+            );
+        }
+    }
+
+    // Global dışa aktarım
+    window.MeasuringDevicesManager = MeasuringDevicesManager;
+    window.openDeviceCatalogPickerModal = openDeviceCatalogPickerModal;
+    window.renderDeviceCatalogPickerModal = renderDeviceCatalogPickerModal;
+    window.setDevicePickerCategory = setDevicePickerCategory;
+    window.setDevicePickerSearch = setDevicePickerSearch;
+    window.handlePickerToggleAssign = handlePickerToggleAssign;
+    window.handlePickerSelectSwapSettings = handlePickerSelectSwapSettings;
+    window.openDeviceEditModal = openDeviceEditModal;
+    window.onDeviceFormCategoryChange = onDeviceFormCategoryChange;
+    window.autoFillValidDatePlusOneYear = autoFillValidDatePlusOneYear;
+    window.submitDeviceEditModal = submitDeviceEditModal;
+    window.handleDeleteCustomCatalogDevice = handleDeleteCustomCatalogDevice;
+    window.openReportSwapDeviceModal = openReportSwapDeviceModal;
+    window.openReportAddDeviceModal = openReportAddDeviceModal;
+    window.openReportThermalSwapModal = openReportThermalSwapModal;
+    window.applyAssignedThermalCameraToReport = applyAssignedThermalCameraToReport;
+    window.syncSettingsDevicesToCurrentReportPrompt = syncSettingsDevicesToCurrentReportPrompt;
+})();
 
 
 // ============================================================================
@@ -1105,9 +2935,33 @@ function openCharPickerModal() {
 
 function openUserSettingsModal() {
 
+    const curUser = (typeof AuthManager !== 'undefined' && typeof AuthManager.getCurrentUser === 'function')
+        ? AuthManager.getCurrentUser()
+        : null;
+    const assigned = (typeof MeasuringDevicesManager !== 'undefined' && typeof MeasuringDevicesManager.getAssignedDevices === 'function')
+        ? MeasuringDevicesManager.getAssignedDevices()
+        : [];
+    const defaultTitle = curUser
+        ? `${curUser.title || 'Elektrik Mühendisi'}${curUser.emoNo ? ` (EMO: ${curUser.emoNo})` : ''}`
+        : 'Elektrik Mühendisi';
+    const savedTitle = localStorage.getItem('enlab_eng_title') || defaultTitle;
+    const escapeVal = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+    const assignedSummaryHtml = assigned.length
+        ? assigned.map((d, i) => `
+            <div class="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200">
+                <div class="min-w-0 truncate">
+                    <span class="font-bold text-slate-800">${i + 1}. ${escapeVal([d.brand, d.model].filter(Boolean).join(' ') || d.reportName || d.category)}</span>
+                    ${d.serial ? `<span class="text-[10px] font-mono text-slate-500 ml-1">(${escapeVal(d.serial)})</span>` : ''}
+                </div>
+                <span class="text-[10px] font-semibold text-emerald-700 shrink-0">${escapeVal(d.category || '')}</span>
+            </div>
+        `).join('')
+        : `<div class="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-[11px]">Henüz üzerinize alınmış ölçüm cihazı yok. Havuzdan seçerek raporlara otomatik eklenmesini sağlayabilirsiniz.</div>`;
+
     openModal(
 
-        '<i class="fa-solid fa-sliders mr-2 text-sky-400"></i>Kullanıcı ve Saha Ayarları',
+        '<i class="fa-solid fa-sliders mr-2 text-sky-400"></i>Kullanıcı ve Ölçüm Cihazı Ayarları',
 
         `<div class="space-y-3 text-xs">
 
@@ -1117,7 +2971,7 @@ function openUserSettingsModal() {
 
                     <label class="block font-semibold text-slate-600 mb-1">Ad Soyad</label>
 
-                    <input type="text" value="Ali Şamil Aytekin" class="w-full border border-slate-300 rounded-lg px-3 py-2 bg-slate-50" readonly>
+                    <input type="text" value="${escapeVal(curUser ? curUser.fullName : 'Aktif Personel')}" class="w-full border border-slate-300 rounded-lg px-3 py-2 bg-slate-50 font-semibold" readonly>
 
                 </div>
 
@@ -1125,25 +2979,29 @@ function openUserSettingsModal() {
 
                     <label class="block font-semibold text-slate-600 mb-1">Unvan / Oda Sicil No</label>
 
-                    <input type="text" id="prefEngineerTitle" value="${localStorage.getItem('enlab_eng_title') || 'Elektrik Mühendisi (EMO: 64892)'}" class="w-full border border-slate-300 rounded-lg px-3 py-2">
+                    <input type="text" id="prefEngineerTitle" value="${escapeVal(savedTitle)}" class="w-full border border-slate-300 rounded-lg px-3 py-2">
 
                 </div>
 
             </div>
 
-            <div>
+            <div class="space-y-2 pt-1 border-t border-slate-100">
 
-                <label class="block font-semibold text-slate-600 mb-1">Varsayılan Çok Fonksiyonlu Test Cihazı</label>
+                <div class="flex items-center justify-between">
+                    <span class="font-bold text-slate-800">Üzerinizdeki Ölçüm Cihazları (${assigned.length})</span>
+                    <button type="button" onclick="closeModal(); openDeviceEditModal(null, { assignByDefault: true, refreshSettings: true });"
+                        class="text-[11px] font-bold text-emerald-700 hover:underline">+ Yeni Cihaz Tanımla</button>
+                </div>
 
-                <input type="text" id="prefDefaultTester" value="${localStorage.getItem('enlab_def_tester') || 'C.121 - METREL MI 3102 BT (Seri: 21080512)'}" class="w-full border border-slate-300 rounded-lg px-3 py-2">
+                <div class="space-y-1.5 max-h-40 overflow-y-auto">
+                    ${assignedSummaryHtml}
+                </div>
 
-            </div>
-
-            <div>
-
-                <label class="block font-semibold text-slate-600 mb-1">Varsayılan Termal Kamera</label>
-
-                <input type="text" id="prefDefaultThermal" value="${localStorage.getItem('enlab_def_thermal') || 'C.105 - UNI-T UTi165A (Seri: 1120548)'}" class="w-full border border-slate-300 rounded-lg px-3 py-2">
+                <button type="button" onclick="closeModal(); openDeviceCatalogPickerModal('settings_assign');"
+                    class="w-full py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-amber-400 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition">
+                    <i class="fa-solid fa-right-left"></i>
+                    <span>Ölçüm Cihazlarımı Seç / Değiştir (Havuz)</span>
+                </button>
 
             </div>
 
@@ -1151,7 +3009,7 @@ function openUserSettingsModal() {
 
         `<button onclick="closeModal()" class="px-4 py-2 rounded-lg bg-slate-200 text-slate-700 font-semibold text-xs">İptal</button>
 
-         <button onclick="localStorage.setItem('enlab_eng_title', document.getElementById('prefEngineerTitle').value); localStorage.setItem('enlab_def_tester', document.getElementById('prefDefaultTester').value); localStorage.setItem('enlab_def_thermal', document.getElementById('prefDefaultThermal').value); closeModal(); showToast('Ayarlar kaydedildi');" class="px-4 py-2 rounded-lg bg-sky-600 text-white font-semibold text-xs">Kaydet</button>`
+         <button onclick="localStorage.setItem('enlab_eng_title', document.getElementById('prefEngineerTitle').value); closeModal(); showToast('Ayarlar kaydedildi');" class="px-4 py-2 rounded-lg bg-sky-600 text-white font-semibold text-xs">Kaydet</button>`
 
     );
 
@@ -2951,14 +4809,17 @@ async function renderWorkOrderDetails(workOrderId) {
                 ${wo.portal_folder_url ? `
                 <div class="p-2.5 rounded-xl bg-indigo-50/90 border border-indigo-200 flex items-center justify-between gap-2 flex-wrap">
                     <div class="min-w-0 flex-1">
-                        <div class="flex items-center gap-1.5 text-[11px] font-bold text-indigo-900">
+                        <div class="flex items-center gap-1.5 flex-wrap text-[11px] font-bold text-indigo-900">
                             <i class="fa-solid fa-globe text-indigo-600"></i>
                             <span>Müşteri İnternet Klasörü Hazır</span>
-                            ${wo.portal_pin ? `<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 font-mono text-[10px]">PIN: ${escapeHtml(wo.portal_pin)}</span>` : `<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px]">Şifresiz</span>`}
+                            ${wo.portal_customer_username ? `<span class="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-900 border border-indigo-300 font-mono text-[10px]">🛡️ @${escapeHtml(wo.portal_customer_username)}</span>` : ''}
+                            ${wo.portal_customer_password ? `<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-900 border border-emerald-300 font-mono text-[10px]">Şifre: ${escapeHtml(wo.portal_customer_password)}</span>` : ''}
+                            ${wo.portal_pin ? `<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 font-mono text-[10px]">PIN: ${escapeHtml(wo.portal_pin)}</span>` : (!wo.portal_customer_username ? `<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px]">Şifresiz</span>` : '')}
                         </div>
                         <div class="text-[10px] font-mono text-indigo-700 truncate mt-0.5">${escapeHtml(wo.portal_folder_url)}</div>
                     </div>
-                    <div class="flex items-center gap-1 shrink-0">
+                    <div class="flex items-center gap-1 shrink-0 flex-wrap">
+                        ${wo.portal_customer_username ? `<button type="button" onclick="CloudPortal.copyCustomerLoginInfo('${escapeForJs(wo.id)}')" class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] transition"><i class="fa-solid fa-user-shield mr-1"></i>Girişi Kopyala</button>` : ''}
                         <button type="button" onclick="CloudPortal.copyText('${escapeForJs(wo.portal_folder_url)}')" class="px-2.5 py-1 rounded-lg bg-white hover:bg-indigo-100 text-indigo-800 font-bold text-[11px] border border-indigo-200 transition">
                             <i class="fa-regular fa-copy mr-1"></i>Linki Kopyala
                         </button>
@@ -5984,25 +7845,87 @@ function renderSharedCompanyInfoSection() {
 
 
 
+function isSharedMeasuringDeviceRowBlank(row) {
+    if (!row || typeof row !== 'object') return true;
+    return !String(row.name || '').trim()
+        && !String(row.serial || '').trim()
+        && !String(row.calDate || '').trim()
+        && !String(row.validDate || '').trim()
+        && !String(row.certNo || '').trim();
+}
+
 function ensureMeasuringDevices() {
 
     const fd = AppState.currentFormData;
+    const insp = AppState.currentInspection;
 
     if (!fd) return;
 
-    if (!fd.measuringDevices || !Array.isArray(fd.measuringDevices) || fd.measuringDevices.length === 0) {
+    if (!Array.isArray(fd.measuringDevices)) {
+        fd.measuringDevices = [];
+    }
 
+    const isBlankList = fd.measuringDevices.length === 0 || fd.measuringDevices.every(isSharedMeasuringDeviceRowBlank);
+    if (!isBlankList && !fd._devicesInitialized) {
+        fd._devicesInitialized = true;
+    }
+
+    if (!fd._devicesInitialized && isBlankList && window.MeasuringDevicesManager) {
+        const mgr = window.MeasuringDevicesManager;
+        if (mgr.isAutoApplyEnabled() && mgr.getAssignedDevices().length > 0) {
+            mgr.applyDefaultsToFormData(fd, insp ? insp.template_id : null, false);
+        }
+    }
+
+    if (!fd._devicesInitialized && fd.measuringDevices.length === 0) {
         fd.measuringDevices = [
-
             { name: '', serial: '', calDate: '', validDate: '', certNo: '' }
-
         ];
-
     }
 
 }
 
+function syncGeneratorMeasuringDevicesRef() {
+    const fd = AppState.currentFormData;
+    const insp = AppState.currentInspection;
+    if (fd && insp && String(insp.template_id) === '2205' && fd.generator) {
+        fd.generator.devices = fd.measuringDevices;
+    }
+}
 
+function addManualMeasuringDeviceRow() {
+    const fd = AppState.currentFormData;
+    if (!fd) return;
+    if (!Array.isArray(fd.measuringDevices)) fd.measuringDevices = [];
+    fd.measuringDevices.push({ name: '', serial: '', calDate: '', validDate: '', certNo: '' });
+    fd._devicesInitialized = true;
+    syncGeneratorMeasuringDevicesRef();
+    triggerAutoSave();
+    paintInspectionEditorUI();
+}
+
+function removeMeasuringDeviceRow(dIdx) {
+    const fd = AppState.currentFormData;
+    if (!fd || !Array.isArray(fd.measuringDevices)) return;
+    fd.measuringDevices.splice(dIdx, 1);
+    fd._devicesInitialized = true;
+    syncGeneratorMeasuringDevicesRef();
+    triggerAutoSave();
+    paintInspectionEditorUI();
+}
+
+function updateMeasuringDeviceCell(dIdx, field, val) {
+    const fd = AppState.currentFormData;
+    if (!fd || !Array.isArray(fd.measuringDevices) || !fd.measuringDevices[dIdx]) return;
+    fd.measuringDevices[dIdx][field] = val;
+    fd._devicesInitialized = true;
+    syncGeneratorMeasuringDevicesRef();
+    triggerAutoSave();
+}
+
+window.addManualMeasuringDeviceRow = addManualMeasuringDeviceRow;
+window.removeMeasuringDeviceRow = removeMeasuringDeviceRow;
+window.updateMeasuringDeviceCell = updateMeasuringDeviceCell;
 
 function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgileri') {
 
@@ -6011,50 +7934,39 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
     const fd = AppState.currentFormData;
 
     const devices = fd.measuringDevices;
+    const mgr = window.MeasuringDevicesManager || null;
+    const hasCatalogUi = Boolean(mgr);
 
+    const cardsHtml = devices.length ? devices.map((dev, dIdx) => {
+        const subLabel = [dev.brand, dev.model].filter(Boolean).join(' ').trim();
+        const calStatus = (mgr && dev.validDate) ? mgr.getCalibrationStatus(dev.validDate) : null;
+        const isTherm = Boolean(dev.isThermal || (String(dev.category || '').toLowerCase().includes('termal')) || (String(dev.name || '').toLowerCase().includes('termal')));
 
+        return `
+                    <div class="p-2.5 rounded-xl border ${isTherm ? 'border-orange-200 bg-orange-50/30' : 'border-slate-200 bg-slate-50'} space-y-2">
 
-    return `
+                        <div class="flex items-center justify-between border-b border-slate-200/80 pb-1.5 gap-2 flex-wrap">
 
-        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                            <div class="flex items-center gap-1.5 flex-wrap min-w-0">
+                                <span class="font-bold text-slate-800">Cihaz #${dIdx + 1}</span>
+                                ${dev.code ? `<span class="px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 border border-sky-200 font-mono font-bold text-[10px]">${escapeHtml(dev.code)}</span>` : ''}
+                                ${subLabel ? `<span class="px-1.5 py-0.5 rounded bg-slate-200/80 text-slate-800 font-bold text-[10px] truncate max-w-[160px]">${escapeHtml(subLabel)}</span>` : ''}
+                                ${calStatus && calStatus.status !== 'unknown' ? `<span class="px-1.5 py-0.5 rounded-full border font-bold text-[9px] ${calStatus.badgeClass}">${escapeHtml(calStatus.label)}</span>` : ''}
+                            </div>
 
-            <div class="px-3.5 py-2.5 bg-slate-800 text-white font-bold text-xs flex items-center justify-between">
-
-                <span>${title} (${devices.length})</span>
-
-                <button onclick="AppState.currentFormData.measuringDevices.push({name:'',serial:'',calDate:'',validDate:'',certNo:''}); triggerAutoSave(); paintInspectionEditorUI();"
-
-                    class="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1">
-
-                    <i class="fa-solid fa-plus"></i>
-
-                    <span>Cihaz Ekle</span>
-
-                </button>
-
-            </div>
-
-            <div class="p-3 space-y-2.5 text-xs">
-
-                ${devices.map((dev, dIdx) => `
-
-                    <div class="p-2.5 rounded-lg border border-slate-200 bg-slate-50 space-y-2">
-
-                        <div class="flex items-center justify-between border-b border-slate-200 pb-1">
-
-                            <span class="font-bold text-slate-700">Cihaz #${dIdx + 1}</span>
-
-                            ${devices.length > 1 ? `
-
-                                <button onclick="AppState.currentFormData.measuringDevices.splice(${dIdx},1); triggerAutoSave(); paintInspectionEditorUI();"
-
-                                    class="text-rose-600 hover:text-rose-700 font-semibold text-xs flex items-center gap-1">
-
+                            <div class="flex items-center gap-1.5 shrink-0">
+                                ${hasCatalogUi ? `
+                                    <button type="button" onclick="openReportSwapDeviceModal(${dIdx})"
+                                        class="px-2 py-1 rounded-lg bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-bold text-[11px] flex items-center gap-1 shadow-2xs transition">
+                                        <i class="fa-solid fa-right-left"></i>
+                                        <span>Değiştir</span>
+                                    </button>
+                                ` : ''}
+                                <button type="button" onclick="removeMeasuringDeviceRow(${dIdx})"
+                                    class="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-600 border border-rose-200 font-semibold text-[11px] flex items-center gap-1 transition">
                                     <i class="fa-solid fa-trash-can"></i> Sil
-
                                 </button>
-
-                            ` : ''}
+                            </div>
 
                         </div>
 
@@ -6066,7 +7978,7 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
 
                                 <input type="text" value="${escapeHtml(dev.name || '')}" placeholder=""
 
-                                    oninput="AppState.currentFormData.measuringDevices[${dIdx}].name=this.value; triggerAutoSave();"
+                                    oninput="updateMeasuringDeviceCell(${dIdx}, 'name', this.value)"
 
                                     class="w-full px-2 py-1.5 border border-slate-300 rounded-lg bg-white font-semibold">
 
@@ -6078,7 +7990,7 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
 
                                 <input type="text" value="${escapeHtml(dev.serial || '')}" placeholder=""
 
-                                    oninput="AppState.currentFormData.measuringDevices[${dIdx}].serial=this.value; triggerAutoSave();"
+                                    oninput="updateMeasuringDeviceCell(${dIdx}, 'serial', this.value)"
 
                                     class="w-full px-2 py-1.5 border border-slate-300 rounded-lg bg-white">
 
@@ -6090,7 +8002,7 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
 
                                 <input type="text" value="${escapeHtml(dev.certNo || '')}" placeholder=""
 
-                                    oninput="AppState.currentFormData.measuringDevices[${dIdx}].certNo=this.value; triggerAutoSave();"
+                                    oninput="updateMeasuringDeviceCell(${dIdx}, 'certNo', this.value)"
 
                                     class="w-full px-2 py-1.5 border border-slate-300 rounded-lg bg-white">
 
@@ -6102,7 +8014,7 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
 
                                 <input type="text" value="${escapeHtml(dev.calDate || '')}" placeholder=""
 
-                                    oninput="AppState.currentFormData.measuringDevices[${dIdx}].calDate=this.value; triggerAutoSave();"
+                                    oninput="updateMeasuringDeviceCell(${dIdx}, 'calDate', this.value)"
 
                                     class="w-full px-2 py-1.5 border border-slate-300 rounded-lg bg-white">
 
@@ -6114,7 +8026,7 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
 
                                 <input type="text" value="${escapeHtml(dev.validDate || '')}" placeholder=""
 
-                                    oninput="AppState.currentFormData.measuringDevices[${dIdx}].validDate=this.value; triggerAutoSave();"
+                                    oninput="updateMeasuringDeviceCell(${dIdx}, 'validDate', this.value)"
 
                                     class="w-full px-2 py-1.5 border border-slate-300 rounded-lg bg-white">
 
@@ -6123,8 +8035,70 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
                         </div>
 
                     </div>
+        `;
+    }).join('') : `
+        <div class="p-4 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/70 text-center space-y-2.5">
+            <div class="text-xs font-bold text-slate-700">Bu raporda henüz ölçüm cihazı tanımlı değil.</div>
+            <div class="flex items-center justify-center gap-2 flex-wrap">
+                ${hasCatalogUi ? `
+                    <button type="button" onclick="syncSettingsDevicesToCurrentReportPrompt()"
+                        class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-[11px] flex items-center gap-1">
+                        <i class="fa-solid fa-arrows-rotate"></i>
+                        <span>Üzerimdekileri Çek</span>
+                    </button>
+                    <button type="button" onclick="openReportAddDeviceModal()"
+                        class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-bold text-[11px] flex items-center gap-1">
+                        <i class="fa-solid fa-list-check"></i>
+                        <span>Havuzdan Cihaz Ekle</span>
+                    </button>
+                ` : ''}
+                <button type="button" onclick="addManualMeasuringDeviceRow()"
+                    class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>+ Boş Satır Ekle</span>
+                </button>
+            </div>
+        </div>
+    `;
 
-                `).join('')}
+    return `
+
+        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+
+            <div class="px-3.5 py-2.5 bg-slate-800 text-white font-bold text-xs flex items-center justify-between gap-2 flex-wrap">
+
+                <span>${title} (${devices.length})</span>
+
+                <div class="flex items-center gap-1.5 flex-wrap">
+                    ${hasCatalogUi ? `
+                        <button type="button" onclick="syncSettingsDevicesToCurrentReportPrompt()"
+                            class="px-2 py-1 bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 font-bold rounded-lg text-[11px] flex items-center gap-1 shadow-2xs transition"
+                            title="Ayarlardaki üzerinizdeki cihazları bu rapora çek">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                            <span>Üzerimdekileri Çek</span>
+                        </button>
+                        <button type="button" onclick="openReportAddDeviceModal()"
+                            class="px-2 py-1 bg-sky-500 hover:bg-sky-400 active:scale-95 text-slate-950 font-bold rounded-lg text-[11px] flex items-center gap-1 shadow-2xs transition">
+                            <i class="fa-solid fa-list-check"></i>
+                            <span>Havuzdan Ekle</span>
+                        </button>
+                    ` : ''}
+                    <button type="button" onclick="addManualMeasuringDeviceRow()"
+
+                        class="px-2 py-1 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-slate-950 font-bold rounded-lg text-[11px] flex items-center gap-1 shadow-2xs transition">
+
+                        <i class="fa-solid fa-plus"></i>
+
+                        <span>Manuel</span>
+
+                    </button>
+                </div>
+
+            </div>
+
+            <div class="p-3 space-y-2.5 text-xs">
+
+                ${cardsHtml}
 
             </div>
 
@@ -6202,6 +8176,34 @@ function switchEditorTemplate(newTemplateId) {
 // Satır Aralığı: 5947 - 6872 (926 satır)
 // ============================================================================
 
+function ensureThermalCameraDevice() {
+
+    const fd = AppState.currentFormData;
+    const tpl = AppState.electricalTemplate;
+    if (!fd || !tpl || !tpl.areas) return;
+
+    if (!fd.tableRows || typeof fd.tableRows !== 'object') {
+        fd.tableRows = {};
+    }
+
+    const curRows = fd.tableRows.topic_1_0;
+    const isBlank = !Array.isArray(curRows) || curRows.length === 0 || curRows.every(r =>
+        !r || typeof r !== 'object' || Object.values(r).every(v => !String(v || '').trim())
+    );
+
+    if (!isBlank && !fd._thermalInitialized) {
+        fd._thermalInitialized = true;
+    }
+
+    if (!fd._thermalInitialized && isBlank && window.MeasuringDevicesManager) {
+        const mgr = window.MeasuringDevicesManager;
+        if (mgr.isAutoApplyEnabled() && mgr.getAssignedThermalCamera()) {
+            mgr.applyDefaultsToFormData(fd, '2201', false);
+        }
+    }
+
+}
+
 function renderElectrical2201Editor() {
 
     const tpl = AppState.electricalTemplate;
@@ -6213,6 +8215,8 @@ function renderElectrical2201Editor() {
     ensureCompanyInfo();
 
     ensureMeasuringDevices();
+
+    ensureThermalCameraDevice();
 
 
 
@@ -6891,6 +8895,51 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
 
 
 
+    const isThermalSection = (area.index === 1 && topic.index === 0);
+
+    const mgr = window.MeasuringDevicesManager || null;
+    let thermalToolbarHtml = '';
+    if (isThermalSection) {
+        const firstGuid = topic.questions?.[0]?.guid;
+        const serialGuid = topic.questions?.[1]?.guid;
+        const firstVal = String((rows[0] && firstGuid && rows[0][firstGuid]) || '').trim();
+        const serialVal = String((rows[0] && serialGuid && rows[0][serialGuid]) || '').trim();
+        const isNotApp = firstVal.includes('Uygulaması Yok');
+        const activeLabelHtml = isNotApp
+            ? `<span class="px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-bold text-[10px]">Uygulaması Yok</span>`
+            : firstVal
+                ? `<span class="px-2 py-0.5 rounded-full bg-orange-100 text-orange-900 border border-orange-300 font-bold text-[10px] truncate max-w-[200px]"><i class="fa-solid fa-temperature-half mr-1"></i>${escapeHtml(firstVal)}${serialVal ? ` (${escapeHtml(serialVal)})` : ''}</span>`
+                : `<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 font-bold text-[10px]">Termal kamera seçilmedi</span>`;
+
+        thermalToolbarHtml = `
+            <div class="px-3.5 py-2 bg-orange-50/80 border-b border-orange-200 flex items-center justify-between gap-2 flex-wrap">
+                <div class="flex items-center gap-1.5 min-w-0">
+                    ${activeLabelHtml}
+                </div>
+                <div class="flex items-center gap-1.5 flex-wrap">
+                    ${mgr ? `
+                        <button type="button" onclick="openReportThermalSwapModal()"
+                            class="px-2.5 py-1.5 bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-bold rounded-lg text-[11px] flex items-center gap-1 shadow-2xs transition">
+                            <i class="fa-solid fa-right-left"></i>
+                            <span>Termal Kamera Değiştir</span>
+                        </button>
+                        <button type="button" onclick="applyAssignedThermalCameraToReport()"
+                            class="px-2.5 py-1.5 bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 font-bold rounded-lg text-[11px] flex items-center gap-1 shadow-2xs transition"
+                            title="Ayarlarda üzerinizde seçili termal kamerayı getir">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                            <span>Üzerimdekini Getir</span>
+                        </button>
+                    ` : ''}
+                    <button type="button" onclick="setThermalCameraNotApplicable('${tKey}')"
+                        class="px-2 py-1.5 bg-white hover:bg-slate-100 active:scale-95 text-slate-700 border border-slate-300 font-bold rounded-lg text-[11px] flex items-center gap-1 transition">
+                        <i class="fa-solid fa-ban text-slate-500"></i>
+                        <span>Uyg. Yok</span>
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
     return `
 
         <div class="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
@@ -6906,6 +8955,8 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
                 </button>
 
             </div>
+
+            ${thermalToolbarHtml}
 
             <div class="p-3 space-y-3">
 
@@ -6966,6 +9017,10 @@ function handleTopicTableCell(tKey, rowIndex, qGuid, value) {
     if (!rows || !rows[rowIndex]) return;
 
     rows[rowIndex][qGuid] = value;
+
+    if (tKey === 'topic_1_0') {
+        AppState.currentFormData._thermalInitialized = true;
+    }
 
     triggerAutoSave();
 
@@ -7050,6 +9105,8 @@ function setThermalCameraNotApplicable(tKey) {
     });
 
     AppState.currentFormData.tableRows[tKey] = [obj];
+    AppState.currentFormData._thermalInitialized = true;
+    AppState.currentFormData._thermalSourceId = '';
 
     triggerAutoSave();
 
@@ -7061,6 +9118,18 @@ function setThermalCameraNotApplicable(tKey) {
 
 function autofillThermalCamera(tKey) {
 
+    if (window.MeasuringDevicesManager) {
+        const thermalDev = window.MeasuringDevicesManager.getAssignedThermalCamera();
+        if (thermalDev) {
+            window.MeasuringDevicesManager.swapReportThermalCamera(thermalDev.id);
+            return;
+        }
+        if (typeof window.openReportThermalSwapModal === 'function') {
+            window.openReportThermalSwapModal();
+            return;
+        }
+    }
+
     const tpl = AppState.electricalTemplate;
 
     const area = tpl?.areas?.[1];
@@ -7070,6 +9139,7 @@ function autofillThermalCamera(tKey) {
     if (!topic) return;
 
     AppState.currentFormData.tableRows[tKey] = [createDefaultTopicRow(area, topic, 1)];
+    AppState.currentFormData._thermalInitialized = true;
 
     triggerAutoSave();
 
@@ -11345,13 +13415,16 @@ function renderGenerator2205Editor() {
 
     ensureCompanyInfo();
 
-    ensureMeasuringDevices();
+    const hadInitDevices = Boolean(fd._devicesInitialized);
+    const hasLegacyGenDevices = Array.isArray(gen.devices) && gen.devices.some(d => d && (d.name || d.serial || d.calDate || d.validDate || d.certNo));
+    const isMeasBlank = !Array.isArray(fd.measuringDevices) || fd.measuringDevices.length === 0 || fd.measuringDevices.every(d => !d || (!d.name && !d.serial && !d.calDate && !d.validDate && !d.certNo));
 
-    if (gen.devices && gen.devices.length && (!fd.measuringDevices || !fd.measuringDevices.length || !fd.measuringDevices[0].name)) {
-
+    if (!hadInitDevices && hasLegacyGenDevices && isMeasBlank) {
         fd.measuringDevices = gen.devices;
-
+        fd._devicesInitialized = true;
     }
+
+    ensureMeasuringDevices();
 
     gen.devices = fd.measuringDevices;
 
@@ -12237,13 +14310,15 @@ function markAllGeneratorChecksSuitable() {
 
 function addGeneratorDeviceRow() {
 
+    if (typeof window.addManualMeasuringDeviceRow === 'function') {
+        return window.addManualMeasuringDeviceRow();
+    }
+
     const fd = AppState.currentFormData;
 
-    if (!fd.generator) fd.generator = {};
+    if (!Array.isArray(fd.measuringDevices)) fd.measuringDevices = [];
 
-    if (!fd.generator.devices) fd.generator.devices = [];
-
-    fd.generator.devices.push({
+    fd.measuringDevices.push({
 
         name: '',
 
@@ -12257,6 +14332,11 @@ function addGeneratorDeviceRow() {
 
     });
 
+    fd._devicesInitialized = true;
+
+    if (!fd.generator) fd.generator = {};
+    fd.generator.devices = fd.measuringDevices;
+
     triggerAutoSave();
 
     paintInspectionEditorUI();
@@ -12267,11 +14347,19 @@ function addGeneratorDeviceRow() {
 
 function removeGeneratorDeviceRow(idx) {
 
+    if (typeof window.removeMeasuringDeviceRow === 'function') {
+        return window.removeMeasuringDeviceRow(idx);
+    }
+
     const fd = AppState.currentFormData;
 
-    if (!fd.generator || !fd.generator.devices || !fd.generator.devices[idx]) return;
+    if (!Array.isArray(fd.measuringDevices) || !fd.measuringDevices[idx]) return;
 
-    fd.generator.devices.splice(idx, 1);
+    fd.measuringDevices.splice(idx, 1);
+
+    fd._devicesInitialized = true;
+
+    if (fd.generator) fd.generator.devices = fd.measuringDevices;
 
     triggerAutoSave();
 
@@ -12287,7 +14375,11 @@ function seedGeneratorDefaultDevices() {
 
     if (!fd.generator) fd.generator = {};
 
-    fd.generator.devices = [
+    const assignedRows = (window.MeasuringDevicesManager && window.MeasuringDevicesManager.getAssignedDevices().length > 0)
+        ? window.MeasuringDevicesManager.getDefaultReportDevices()
+        : null;
+
+    fd.measuringDevices = assignedRows || [
 
         { name: 'Multimetre', serial: '0793436', calDate: '19.06.2026', validDate: '19.06.2027', certNo: '0074K-0626-00956' },
 
@@ -12301,11 +14393,14 @@ function seedGeneratorDefaultDevices() {
 
     ];
 
+    fd._devicesInitialized = true;
+    fd.generator.devices = fd.measuringDevices;
+
     triggerAutoSave();
 
     paintInspectionEditorUI();
 
-    showToast('Örnek cihaz listesi eklendi');
+    showToast(assignedRows ? 'Üzerinizdeki cihaz listesi eklendi' : 'Örnek cihaz listesi eklendi');
 
 }
 
@@ -13595,6 +15690,9 @@ function rebuildEmailTextFromSelection() {
 
     const portalFolderUrl = wo.portal_folder_url || (selectedReports.find(r => r && r.portal_folder_url) || {}).portal_folder_url || '';
     const portalPin = wo.portal_pin || '';
+    const portalUsername = wo.portal_customer_username || '';
+    const portalPassword = wo.portal_customer_password || '';
+    const portalSiteUrl = (typeof CloudPortal !== 'undefined' && CloudPortal.getConfig) ? CloudPortal.getConfig().portalUrl : 'https://hizli-rapor-portal.vercel.app';
 
     if (selectedReports.length <= 1) {
         const r = selectedReports[0] || insp;
@@ -13604,10 +15702,15 @@ function rebuildEmailTextFromSelection() {
         const pdfFileName = `${reportNo}_${safeCust}.pdf`;
 
         const portalBlockLines = [];
-        if (portalFolderUrl || r.portal_report_url) {
-            portalBlockLines.push('İNTERNET ÜZERİNDEN RAPOR GÖRÜNTÜLEME:');
+        if (portalFolderUrl || r.portal_report_url || portalUsername) {
+            portalBlockLines.push('İNTERNET ÜZERİNDEN RAPOR GÖRÜNTÜLEME (Yalnızca firmanıza özeldir):');
+            if (portalUsername) {
+                portalBlockLines.push(`- Portal Giriş Adresi: ${portalSiteUrl}`);
+                portalBlockLines.push(`- Müşteri Kullanıcı Adı: ${portalUsername}`);
+                if (portalPassword) portalBlockLines.push(`- Müşteri Şifresi: ${portalPassword}`);
+            }
             if (portalFolderUrl) portalBlockLines.push(`- Müşteri Klasörü: ${portalFolderUrl}`);
-            if (portalPin) portalBlockLines.push(`- Erişim PIN Şifresi: ${portalPin}`);
+            if (portalPin) portalBlockLines.push(`- Ek Erişim PIN Şifresi: ${portalPin}`);
             if (r.portal_report_url) {
                 portalBlockLines.push(`- Doğrudan Rapor Linki: ${r.portal_report_url}${r.portal_verify_code ? ` (Doğrulama Kodu: ${r.portal_verify_code})` : ''}`);
             }
@@ -13633,10 +15736,15 @@ ENLAB / TEKKOMER Periyodik Kontrol Muayene Kuruluşu`;
         const pdfFileName = `Periyodik_Kontrol_Raporlari_${selectedReports.length}_Adet_${safeCust}.pdf`;
 
         const portalHeaderLines = [];
-        if (portalFolderUrl) {
-            portalHeaderLines.push('İNTERNET ÜZERİNDEN RAPOR KLASÖRÜ:');
-            portalHeaderLines.push(`- Müşteri Klasörü: ${portalFolderUrl}`);
-            if (portalPin) portalHeaderLines.push(`- Erişim PIN Şifresi: ${portalPin}`);
+        if (portalFolderUrl || portalUsername) {
+            portalHeaderLines.push('İNTERNET ÜZERİNDEN RAPOR KLASÖRÜ (Yalnızca firmanıza özeldir):');
+            if (portalUsername) {
+                portalHeaderLines.push(`- Portal Giriş Adresi: ${portalSiteUrl}`);
+                portalHeaderLines.push(`- Müşteri Kullanıcı Adı: ${portalUsername}`);
+                if (portalPassword) portalHeaderLines.push(`- Müşteri Şifresi: ${portalPassword}`);
+            }
+            if (portalFolderUrl) portalHeaderLines.push(`- Müşteri Klasörü: ${portalFolderUrl}`);
+            if (portalPin) portalHeaderLines.push(`- Ek Erişim PIN Şifresi: ${portalPin}`);
         }
         const portalSection = portalHeaderLines.length ? `\n\n${portalHeaderLines.join('\n')}` : '';
 
@@ -13686,6 +15794,12 @@ function loadInspectionFormDataObject(inspObj) {
     if (!formData.overallResult) formData.overallResult = 'UYGUN';
     if (!formData.grounding) formData.grounding = { details: {}, detected: {}, method: 'Çevrim empedansı', points: [], selectivity: [] };
     if (!formData.generator) formData.generator = { info: {}, equipment: {}, checks: {}, potential: {}, measurements: {}, battery: {}, devices: [] };
+    if (window.MeasuringDevicesManager && typeof window.MeasuringDevicesManager.applyDefaultsToFormData === 'function') {
+        window.MeasuringDevicesManager.applyDefaultsToFormData(formData, inspObj.template_id, false);
+    }
+    if (String(inspObj.template_id) === '2205' && Array.isArray(formData.measuringDevices) && formData.measuringDevices.length && (!formData.generator.devices || !formData.generator.devices.length)) {
+        formData.generator.devices = formData.measuringDevices;
+    }
     return formData;
 }
 
@@ -14471,6 +16585,10 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
     const printArea = document.getElementById('printableReportArea');
 
     if (!insp || !printArea) return;
+
+    if (fd && window.MeasuringDevicesManager && typeof window.MeasuringDevicesManager.applyDefaultsToFormData === 'function') {
+        window.MeasuringDevicesManager.applyDefaultsToFormData(fd, insp.template_id, false);
+    }
 
     const activePdfTheme = getPdfTheme();
 
@@ -15482,11 +17600,65 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
 
 
-        // Block 3: 3. TEST DEĞERLERİ
+        // Block 3: 3. ÖLÇÜM ALETLERİ BİLGİLERİ
+
+        const grdDevList = (fd.measuringDevices && fd.measuringDevices.length) ? fd.measuringDevices : [
+            { name: '', serial: '', calDate: '', validDate: '', certNo: '' }
+        ];
+
+        const grdDevRowsHtml = grdDevList.map(dev => `
+            <tr>
+                <td style="text-align:center;">${escapeHtml(dev.name || '')}</td>
+                <td style="text-align:center;">${escapeHtml(dev.serial || '')}</td>
+                <td style="text-align:center;">${escapeHtml(dev.calDate || '')}</td>
+                <td style="text-align:center;">${escapeHtml(dev.validDate || '')}</td>
+                <td style="text-align:center;">${escapeHtml(dev.certNo || '')}</td>
+            </tr>
+        `).join('');
 
         blocks.push(`
 
-            <div class="tkm-sec-title">3. TEST DEĞERLERİ</div>
+            <div class="tkm-sec-title">3. ÖLÇÜM ALETLERİ BİLGİLERİ</div>
+
+            <table class="tkm-table">
+
+                <colgroup>
+
+                    <col style="width:24%;"><col style="width:17%;"><col style="width:19%;"><col style="width:21%;"><col style="width:19%;">
+
+                </colgroup>
+
+                <thead>
+
+                    <tr>
+
+                        <th style="text-align:center;font-weight:700;">Cihaz Adı</th>
+
+                        <th style="text-align:center;font-weight:700;">Seri No</th>
+
+                        <th style="text-align:center;font-weight:700;">Kalibrasyon Tarihi</th>
+
+                        <th style="text-align:center;font-weight:700;">Kalibrasyon Geçerlilik Tarihi</th>
+
+                        <th style="text-align:center;font-weight:700;">Sertifika No</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>${grdDevRowsHtml}</tbody>
+
+            </table>
+
+        `);
+
+
+
+        // Block 4: 4. TEST DEĞERLERİ
+
+        blocks.push(`
+
+            <div class="tkm-sec-title">4. TEST DEĞERLERİ</div>
 
             <table class="tkm-table">
 
@@ -15540,7 +17712,7 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
 
 
-        // Block 4: 4. KONTROL KRİTERLERİ VE TESTLER (4.1 & 4.2)
+        // Block 5: 5. KONTROL KRİTERLERİ VE TESTLER (5.1 & 5.2)
 
         const pointRowsToRender = points.length ? points : [
 
@@ -15570,9 +17742,9 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
                 chunkHtml += `
 
-                    <div class="tkm-sec-title">4. KONTROL KRİTERLERİ VE TESTLER</div>
+                    <div class="tkm-sec-title">5. KONTROL KRİTERLERİ VE TESTLER</div>
 
-                    <div class="tkm-sub-bar">4.1. ÖLÇÜM METODU</div>
+                    <div class="tkm-sub-bar">5.1. ÖLÇÜM METODU</div>
 
                     <table class="tkm-table" style="margin-bottom:3px;">
 
@@ -15586,7 +17758,7 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
                     </table>
 
-                    <div class="tkm-sub-bar">4.2. SON TÜKETİM NOKTALARINDA DOLAYLI DOKUNMAYA KARŞI KORUMA YETERLİLİĞİ KONTROLÜ</div>
+                    <div class="tkm-sub-bar">5.2. SON TÜKETİM NOKTALARINDA DOLAYLI DOKUNMAYA KARŞI KORUMA YETERLİLİĞİ KONTROLÜ</div>
 
                 `;
 
@@ -15594,7 +17766,7 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
                 chunkHtml += `
 
-                    <div class="tkm-sub-bar">4.2. SON TÜKETİM NOKTALARINDA DOLAYLI DOKUNMAYA KARŞI KORUMA YETERLİLİĞİ KONTROLÜ (Devam)</div>
+                    <div class="tkm-sub-bar">5.2. SON TÜKETİM NOKTALARINDA DOLAYLI DOKUNMAYA KARŞI KORUMA YETERLİLİĞİ KONTROLÜ (Devam)</div>
 
                 `;
 
@@ -15682,7 +17854,7 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
             if (isLastChunk) {
 
-                // Also append 4.3 RCD Selektivite Kontrolü
+                // Also append 5.3 RCD Selektivite Kontrolü
 
                 const selRowsHtml = selectivity.length ? selectivity.map((s, idx) => `
 
@@ -15722,7 +17894,7 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
                 chunkHtml += `
 
-                    <div class="tkm-sub-bar" style="margin-top:3px;">4.3. ARTIK AKIM ANAHTARLARI (RCD) SELEKTİVİTE KONTROLÜ</div>
+                    <div class="tkm-sub-bar" style="margin-top:3px;">5.3. ARTIK AKIM ANAHTARLARI (RCD) SELEKTİVİTE KONTROLÜ</div>
 
                     <table class="tkm-table" style="font-size:6.7pt;">
 
@@ -15772,11 +17944,11 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
 
 
-        // Block 5: 5. KUSUR AÇIKLAMALARI & 6. NOTLAR
+        // Block 6: 6. KUSUR AÇIKLAMALARI & 7. NOTLAR
 
         blocks.push(`
 
-            <div class="tkm-sec-title">5. KUSUR AÇIKLAMALARI</div>
+            <div class="tkm-sec-title">6. KUSUR AÇIKLAMALARI</div>
 
             <table class="tkm-table">
 
@@ -15788,7 +17960,7 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
             </table>
 
-            <div class="tkm-sec-title">6. NOTLAR</div>
+            <div class="tkm-sec-title">7. NOTLAR</div>
 
             <table class="tkm-table">
 
@@ -15814,13 +17986,13 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
 
 
-        // Block 6: 7. SONUÇ VE KANAAT
+        // Block 7: 8. SONUÇ VE KANAAT
 
         const isGroundingSuitable = fd.overallResult !== 'UYGUN DEĞİL';
 
         blocks.push(`
 
-            <div class="tkm-sec-title">7. SONUÇ VE KANAAT</div>
+            <div class="tkm-sec-title">8. SONUÇ VE KANAAT</div>
 
             <table class="tkm-table">
 
@@ -15871,9 +18043,9 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
 
 
-        // Block 7: 8. ONAY
+        // Block 8: 9. ONAY
 
-        blocks.push(buildTkmOnaySection(insp, '8'));
+        blocks.push(buildTkmOnaySection(insp, '9'));
 
 
 
@@ -15971,7 +18143,9 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
         // Block 2: 2. ÖLÇÜM ALETLERİ BİLGİLERİ
 
-        const genDeviceRows = (gen.devices && gen.devices.length) ? gen.devices : [];
+        const genDeviceRows = (fd.measuringDevices && fd.measuringDevices.length)
+            ? fd.measuringDevices
+            : ((gen.devices && gen.devices.length) ? gen.devices : []);
 
 
 
@@ -18520,6 +20694,8 @@ function syncCompanyAndDevicesToAllReports() {
 
                 otherFd.measuringDevices = JSON.parse(JSON.stringify(currentFd.measuringDevices));
 
+                otherFd._devicesInitialized = true;
+
             }
 
 
@@ -20340,6 +22516,12 @@ async function renderSettingsPage() {
 
 
 
+            <!-- 2B. KİŞİSEL ÖLÇÜM CİHAZLARI (ÜZERİME ALINANLAR) -->
+
+            ${typeof MeasuringDevicesManager !== 'undefined' ? MeasuringDevicesManager.renderSettingsCardHtml() : ''}
+
+
+
             <!-- 3. ŞİRKET & KURUMSAL LOGO YÖNETİMİ (ÇOKLU ŞİRKET / WHITE-LABEL) -->
 
             <div class="card-craft-white p-3 space-y-2.5">
@@ -20448,7 +22630,7 @@ async function renderSettingsPage() {
 
                     <i class="fa-solid fa-screwdriver-wrench text-slate-600"></i>
 
-                    <span>Varsayılan Test Cihazlarını Düzenle</span>
+                    <span>Mühendis Unvanı & Hızlı Cihaz Ayarları</span>
 
                 </button>
 
@@ -20483,7 +22665,7 @@ async function renderSettingsPage() {
                     <div class="flex items-center justify-between gap-2 flex-wrap">
                         <span class="font-bold text-emerald-950 flex items-center gap-1.5">
                             <i class="fa-solid fa-cloud-check text-emerald-600"></i>
-                            <span>Adres / şifre istemeden tek tıkla yükler</span>
+                            <span>Firma bazlı kullanıcı adı &amp; şifre ile güvenli otomatik yükleme</span>
                         </span>
                         <code id="settingsPortalActiveHost" class="font-mono text-[10px] text-emerald-800 bg-white px-2 py-0.5 rounded border border-emerald-200">${escapeHtml(activeHost)}</code>
                     </div>
@@ -20696,6 +22878,7 @@ window.executeSecurityPasswordCheck = executeSecurityPasswordCheck;
 
 (function () {
     const PORTAL_CONFIG_STORAGE_KEY = 'enlab_portal_config_v1';
+    const CUSTOMER_ACCOUNTS_STORAGE_KEY = 'enlab_customer_portal_accounts_v1';
     const DEFAULT_CLOUD_PORTAL_URL = 'https://hizli-rapor-portal.vercel.app';
 
     // ========================================================================
@@ -21209,6 +23392,147 @@ window.executeSecurityPasswordCheck = executeSecurityPasswordCheck;
             .replace(/-+$/g, '');
     }
 
+    function sanitizeUsername(raw) {
+        const trMap = {
+            'ç': 'c', 'Ç': 'c',
+            'ğ': 'g', 'Ğ': 'g',
+            'ı': 'i', 'I': 'i',
+            'İ': 'i', 'i': 'i',
+            'ö': 'o', 'Ö': 'o',
+            'ş': 's', 'Ş': 's',
+            'ü': 'u', 'Ü': 'u'
+        };
+        const replaced = String(raw || '').trim().replace(/[çÇğĞıIİiöÖşŞüÜ]/g, ch => trMap[ch] || ch);
+        return replaced
+            .toLowerCase()
+            .replace(/[^a-z0-9-]+/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .slice(0, 28)
+            .replace(/-+$/g, '');
+    }
+
+    function buildSuggestedUsername(companyName) {
+        let slug = sanitizeUsername(companyName);
+        if (!slug || slug === 'musteri-firma') slug = 'musteri';
+        if (slug.length < 3) slug = slug + '-01';
+        return slug.slice(0, 24).replace(/-+$/g, '') || 'musteri';
+    }
+
+    function generateReadablePassword(len = 8) {
+        const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+        let out = '';
+        try {
+            if (window.crypto && typeof window.crypto.getRandomValues === 'function') {
+                const buf = new Uint32Array(len);
+                window.crypto.getRandomValues(buf);
+                for (let i = 0; i < len; i++) out += alphabet[buf[i] % alphabet.length];
+                return out;
+            }
+        } catch (e) {}
+        for (let i = 0; i < len; i++) {
+            out += alphabet[Math.floor(Math.random() * alphabet.length)];
+        }
+        return out;
+    }
+
+    function getCustomerAccountKey(companyName) {
+        return sanitizeUsername(companyName).slice(0, 48);
+    }
+
+    function loadCustomerAccountsMap() {
+        let map = {};
+        try {
+            const raw = localStorage.getItem(CUSTOMER_ACCOUNTS_STORAGE_KEY);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (parsed && typeof parsed === 'object') map = Object.assign(map, parsed);
+            }
+        } catch (e) {}
+        try {
+            if (window.OfflineDB) {
+                window.OfflineDB.init();
+                const dbMap = window.OfflineDB.state && window.OfflineDB.state.customerPortalAccounts;
+                if (dbMap && typeof dbMap === 'object') {
+                    map = Object.assign({}, map, dbMap);
+                }
+            }
+        } catch (e) {}
+        return map;
+    }
+
+    function getRememberedCustomerCreds(companyName, wo) {
+        if (wo && wo.portal_customer_username) {
+            return {
+                username: String(wo.portal_customer_username).trim(),
+                password: String(wo.portal_customer_password || '').trim(),
+                account_write_token: String(wo.portal_account_write_token || '').trim(),
+                company_name: String(wo.customer_name || wo.company_name || companyName || '').trim(),
+                source: 'wo'
+            };
+        }
+        const map = loadCustomerAccountsMap();
+        const key = getCustomerAccountKey(companyName);
+        if (key && map[key] && map[key].username) {
+            return Object.assign({}, map[key], { source: 'memory' });
+        }
+        const shortKey = sanitizeCompanySlug(companyName);
+        if (shortKey && map[shortKey] && map[shortKey].username) {
+            return Object.assign({}, map[shortKey], { source: 'memory' });
+        }
+        return null;
+    }
+
+    function rememberCustomerCreds(info, wo) {
+        if (!info || !info.username) return;
+        const username = sanitizeUsername(info.username);
+        const password = String(info.password || '').trim();
+        const acctToken = String(info.account_write_token || '').trim();
+        const companyName = String(info.companyName || info.company_name || (wo && (wo.customer_name || wo.company_name)) || '').trim();
+        const key = getCustomerAccountKey(companyName);
+
+        const map = loadCustomerAccountsMap();
+        if (key) {
+            const prev = map[key] || {};
+            map[key] = {
+                username,
+                password: password || prev.password || '',
+                account_write_token: acctToken || prev.account_write_token || '',
+                company_name: companyName || prev.company_name || '',
+                updated_at: new Date().toISOString()
+            };
+            try {
+                localStorage.setItem(CUSTOMER_ACCOUNTS_STORAGE_KEY, JSON.stringify(map));
+            } catch (e) {}
+        }
+
+        if (window.OfflineDB && window.OfflineDB.state) {
+            if (!window.OfflineDB.state.customerPortalAccounts || typeof window.OfflineDB.state.customerPortalAccounts !== 'object') {
+                window.OfflineDB.state.customerPortalAccounts = {};
+            }
+            if (key) window.OfflineDB.state.customerPortalAccounts[key] = map[key];
+            if (wo && wo.id) {
+                const dbWo = (window.OfflineDB.state.workOrders || []).find(w => String(w.id) === String(wo.id));
+                if (dbWo) {
+                    dbWo.portal_customer_username = username;
+                    if (password) dbWo.portal_customer_password = password;
+                    if (acctToken) dbWo.portal_account_write_token = acctToken;
+                }
+            }
+            window.OfflineDB.save();
+        }
+
+        if (wo) {
+            wo.portal_customer_username = username;
+            if (password) wo.portal_customer_password = password;
+            if (acctToken) wo.portal_account_write_token = acctToken;
+        }
+        if (window.AppState?.currentWorkOrder && wo && String(window.AppState.currentWorkOrder.id) === String(wo.id)) {
+            window.AppState.currentWorkOrder.portal_customer_username = username;
+            if (password) window.AppState.currentWorkOrder.portal_customer_password = password;
+            if (acctToken) window.AppState.currentWorkOrder.portal_account_write_token = acctToken;
+        }
+    }
+
     function resolveActiveCompanyProfile() {
         const branding = (typeof CompanySettingsManager !== 'undefined' && CompanySettingsManager.getSettings)
             ? CompanySettingsManager.getSettings()
@@ -21494,6 +23818,9 @@ ${ramsCss}
                     portal_folder_slug: wo.portal_folder_slug,
                     portal_folder_url: wo.portal_folder_url,
                     portal_write_token: wo.portal_write_token || dbWo.portal_write_token || '',
+                    portal_customer_username: wo.portal_customer_username || dbWo.portal_customer_username || '',
+                    portal_customer_password: wo.portal_customer_password !== undefined ? wo.portal_customer_password : (dbWo.portal_customer_password || ''),
+                    portal_account_write_token: wo.portal_account_write_token || dbWo.portal_account_write_token || '',
                     portal_pin: wo.portal_pin,
                     portal_last_sync: wo.portal_last_sync
                 });
@@ -21528,6 +23855,9 @@ ${ramsCss}
                 portal_folder_slug: wo.portal_folder_slug,
                 portal_folder_url: wo.portal_folder_url,
                 portal_write_token: wo.portal_write_token || window.AppState.currentWorkOrder.portal_write_token || '',
+                portal_customer_username: wo.portal_customer_username || window.AppState.currentWorkOrder.portal_customer_username || '',
+                portal_customer_password: wo.portal_customer_password !== undefined ? wo.portal_customer_password : (window.AppState.currentWorkOrder.portal_customer_password || ''),
+                portal_account_write_token: wo.portal_account_write_token || window.AppState.currentWorkOrder.portal_account_write_token || '',
                 portal_pin: wo.portal_pin,
                 portal_last_sync: wo.portal_last_sync
             });
@@ -21552,6 +23882,9 @@ ${ramsCss}
                     portal_folder_slug: wo.portal_folder_slug,
                     portal_folder_url: wo.portal_folder_url,
                     portal_write_token: wo.portal_write_token || '',
+                    portal_customer_username: wo.portal_customer_username || '',
+                    portal_customer_password: wo.portal_customer_password || '',
+                    portal_account_write_token: wo.portal_account_write_token || '',
                     portal_pin: wo.portal_pin !== undefined ? wo.portal_pin : '',
                     portal_last_sync: wo.portal_last_sync
                 })
@@ -21573,13 +23906,14 @@ ${ramsCss}
         }
     }
 
-    async function callUploadInit(cfg, payload, writeToken) {
+    async function callUploadInit(cfg, payload, writeToken, accountWriteToken) {
         const headers = {
             'Content-Type': 'application/json',
             'X-App-Client': 'hizli-rapor-mobile'
         };
         if (cfg.adminKey) headers['X-Admin-Key'] = cfg.adminKey;
         if (writeToken) headers['X-Folder-Write-Token'] = writeToken;
+        if (accountWriteToken) headers['X-Account-Write-Token'] = accountWriteToken;
 
         const res = await realFetch(`${cfg.portalUrl}/api/upload-init`, {
             method: 'POST',
@@ -21669,7 +24003,23 @@ ${ramsCss}
         }
     }
 
-    async function uploadInspectionReport(inspRaw, woRaw, pinOption = { pinMode: 'keep' }) {
+    function buildCustomerRequestPayload(wo, customerOption) {
+        if (!customerOption || !customerOption.username) return undefined;
+        const username = sanitizeUsername(customerOption.username);
+        if (!username) return undefined;
+        return {
+            username,
+            password: String(customerOption.password || '').trim(),
+            company_name: String(
+                customerOption.company_name || (wo && (wo.customer_name || wo.company_name)) || 'Müşteri Firma'
+            ).trim(),
+            auto_username: Boolean(customerOption.auto_username),
+            update_password: Boolean(customerOption.update_password),
+            account_write_token: customerOption.account_write_token || undefined
+        };
+    }
+
+    async function uploadInspectionReport(inspRaw, woRaw, pinOption = { pinMode: 'keep' }, customerOption = null) {
         const cfg = getPortalConfig();
         const normInsp = typeof normalizeInspection === 'function' ? normalizeInspection(inspRaw) : Object.assign({}, inspRaw);
         const wo = woRaw || {};
@@ -21679,8 +24029,12 @@ ${ramsCss}
         }
         const ci = (fd && fd.companyInfo) || {};
 
+        const customerPayload = buildCustomerRequestPayload(wo, customerOption);
+        const acctToken = (customerOption && customerOption.account_write_token) || wo.portal_account_write_token || '';
+
         // 1. Reserve report slug & verify code BEFORE rendering A4 HTML so live QR matches final URL
         const initData = await callUploadInit(cfg, {
+            customer: customerPayload,
             folder: buildFolderPayload(wo, pinOption),
             report: {
                 local_inspection_id: String(normInsp.id || ''),
@@ -21694,10 +24048,18 @@ ${ramsCss}
                 source_type: 'app_html',
                 mime_type: 'text/html'
             }
-        }, wo.portal_write_token || '');
+        }, wo.portal_write_token || '', acctToken);
 
         const activeWriteToken = (initData.folder && initData.folder.write_token) || wo.portal_write_token || '';
         rememberFolderOwnershipNow(wo, initData.folder);
+        if (initData.customer && initData.customer.username) {
+            rememberCustomerCreds({
+                companyName: wo.customer_name || wo.company_name || initData.customer.company_name,
+                username: initData.customer.username,
+                password: (customerOption && customerOption.password) || wo.portal_customer_password || '',
+                account_write_token: initData.customer.write_token || acctToken
+            }, wo);
+        }
 
         normInsp.portal_report_slug = initData.report.share_slug;
         normInsp.portal_report_url = initData.report.url;
@@ -21769,11 +24131,12 @@ ${ramsCss}
             verifyCode: compData.verifyCode || initData.report.verify_code,
             equipmentName: normInsp.equipment_name || 'Rapor',
             reportNo: normInsp.report_no || '',
-            sourceType: 'app_html'
+            sourceType: 'app_html',
+            customer: initData.customer || null
         };
     }
 
-    async function uploadExternalPdfToPortal(woRaw, pdfFile, meta = {}, pinOption = { pinMode: 'keep' }) {
+    async function uploadExternalPdfToPortal(woRaw, pdfFile, meta = {}, pinOption = { pinMode: 'keep' }, customerOption = null) {
         const cfg = getPortalConfig();
         if (!pdfFile) {
             throw new Error('Yüklenecek PDF dosyası seçilmedi.');
@@ -21784,7 +24147,11 @@ ${ramsCss}
         const equipmentName = String(meta.equipmentName || fallbackTitle).trim();
         const resultStatus = String(meta.resultStatus || 'UYGUN').trim();
 
+        const customerPayload = buildCustomerRequestPayload(wo, customerOption);
+        const acctToken = (customerOption && customerOption.account_write_token) || wo.portal_account_write_token || '';
+
         const initData = await callUploadInit(cfg, {
+            customer: customerPayload,
             folder: buildFolderPayload(wo, pinOption),
             report: {
                 report_no: reportNo,
@@ -21794,10 +24161,18 @@ ${ramsCss}
                 source_type: 'uploaded_pdf',
                 mime_type: 'application/pdf'
             }
-        }, wo.portal_write_token || '');
+        }, wo.portal_write_token || '', acctToken);
 
         const activeWriteToken = (initData.folder && initData.folder.write_token) || wo.portal_write_token || '';
         rememberFolderOwnershipNow(wo, initData.folder);
+        if (initData.customer && initData.customer.username) {
+            rememberCustomerCreds({
+                companyName: wo.customer_name || wo.company_name || initData.customer.company_name,
+                username: initData.customer.username,
+                password: (customerOption && customerOption.password) || wo.portal_customer_password || '',
+                account_write_token: initData.customer.write_token || acctToken
+            }, wo);
+        }
 
         await callSignedUpload(initData.uploadUrl, 'application/pdf', pdfFile);
         const compData = await callUploadComplete(cfg, initData.report.id, pdfFile.size || 0, activeWriteToken);
@@ -21820,7 +24195,8 @@ ${ramsCss}
             verifyCode: compData.verifyCode || initData.report.verify_code,
             equipmentName,
             reportNo,
-            sourceType: 'uploaded_pdf'
+            sourceType: 'uploaded_pdf',
+            customer: initData.customer || null
         };
     }
 
@@ -21856,24 +24232,77 @@ ${ramsCss}
         if (ta.parentNode) document.body.removeChild(ta);
     }
 
-    function buildCustomerShareText(wo, uploadedResults, effectivePin) {
+    function buildCustomerShareText(wo, uploadedResults, effectivePin, customerCreds) {
+        const cfg = getPortalConfig();
         const customerName = (wo && (wo.customer_name || wo.company_name)) || 'Firmanız';
         const folderUrl = (uploadedResults[0] && uploadedResults[0].folderUrl) || (wo && wo.portal_folder_url) || '';
+        const username = (customerCreds && customerCreds.username) || (wo && wo.portal_customer_username) || '';
+        const password = (customerCreds && customerCreds.password) || (wo && wo.portal_customer_password) || '';
         const listText = uploadedResults.map((r, i) =>
             `${i + 1}. ${r.equipmentName} (${r.reportNo}) - Doğrulama: ${r.verifyCode}\n   ${r.reportUrl}`
         ).join('\n');
+
+        const accessLines = [];
+        if (username) {
+            accessLines.push(`MÜŞTERİ PORTAL GİRİŞ BİLGİLERİ (Yalnızca firmanızın raporlarını görürsünüz):`);
+            accessLines.push(`- Portal Giriş Adresi: ${cfg.portalUrl}`);
+            accessLines.push(`- Kullanıcı Adı: ${username}`);
+            if (password) accessLines.push(`- Şifre: ${password}`);
+            if (folderUrl) accessLines.push(`- Direkt Klasör Bağlantısı: ${folderUrl}`);
+            if (effectivePin) accessLines.push(`- Ek Klasör PIN'i: ${effectivePin}`);
+        } else {
+            if (folderUrl) accessLines.push(`Müşteri Rapor Klasörü: ${folderUrl}`);
+            accessLines.push(effectivePin ? `Erişim Şifresi (PIN): ${effectivePin}` : `Erişim Durumu: Doğrudan bağlantı ile açılır`);
+        }
 
         return [
             `Sayın Yetkili,`,
             ``,
             `${customerName} firmasına ait Periyodik Kontrol Raporları internet portalına yüklenmiştir.`,
             ``,
-            `Müşteri Rapor Klasörü: ${folderUrl}`,
-            effectivePin ? `Erişim Şifresi (PIN): ${effectivePin}` : `Erişim Durumu: Doğrudan bağlantı ile açılır`,
+            ...accessLines,
             uploadedResults.length ? `\nYayınlanan Raporlar:\n${listText}` : '',
             ``,
-            `Klasör linkine tıklayarak tüm raporları inceleyebilir ve PDF olarak indirebilirsiniz.`
+            `Portal giriş adresinden veya klasör bağlantısından kullanıcı adı ve şifrenizle oturum açarak firmanıza ait tüm raporları inceleyebilir ve PDF olarak indirebilirsiniz.`
         ].filter(Boolean).join('\n');
+    }
+
+    function buildLoginCredentialSnippet(username, password, portalUrl) {
+        const lines = [
+            `Portal Adresi: ${portalUrl}`,
+            `Kullanıcı Adı: ${username}`
+        ];
+        if (password) lines.push(`Şifre: ${password}`);
+        return lines.join('\n');
+    }
+
+    function copyCustomerLoginInfo(workOrderId) {
+        let wo = window.AppState?.currentWorkOrder || null;
+        if (workOrderId && window.OfflineDB?.state?.workOrders) {
+            wo = window.OfflineDB.state.workOrders.find(w => String(w.id) === String(workOrderId)) || wo;
+        }
+        if (!wo || !wo.portal_customer_username) {
+            toast('Bu iş kaydında kayıtlı müşteri giriş bilgisi bulunamadı.', 'warning');
+            return;
+        }
+        const cfg = getPortalConfig();
+        const snippet = buildLoginCredentialSnippet(
+            wo.portal_customer_username,
+            wo.portal_customer_password || '',
+            cfg.portalUrl
+        );
+        copyTextToClipboard(snippet, 'Müşteri giriş bilgileri panoya kopyalandı!');
+    }
+
+    function copyLastCredentials() {
+        if (!_portalModalState || !_portalModalState.effectiveCustomer?.username) return;
+        const cfg = getPortalConfig();
+        const snippet = buildLoginCredentialSnippet(
+            _portalModalState.effectiveCustomer.username,
+            _portalModalState.effectiveCustomer.password || '',
+            cfg.portalUrl
+        );
+        copyTextToClipboard(snippet, 'Müşteri giriş bilgileri panoya kopyalandı!');
     }
 
     function shareTextViaNativeOrWeb(subject, text) {
@@ -21951,11 +24380,27 @@ ${ramsCss}
             ? new Set(preselectedIds.map(x => String(x)))
             : null;
 
+        const customerName = (wo.customer_name || wo.company_name || '').trim();
+        const remembered = getRememberedCustomerCreds(customerName, wo);
+        const initUsername = remembered ? remembered.username : buildSuggestedUsername(customerName);
+        const initPassword = remembered
+            ? (remembered.password || '')
+            : generateReadablePassword(8);
+
         _portalModalState = {
             wo,
             reports,
             uploadedResults: [],
-            effectivePin: wo.portal_pin || cfg.defaultPin || ''
+            effectivePin: wo.portal_pin || '',
+            rememberedCustomer: remembered,
+            initialUsername: initUsername,
+            initialPassword: initPassword,
+            manualUsernameEdit: false,
+            effectiveCustomer: remembered ? {
+                username: remembered.username,
+                password: initPassword,
+                account_write_token: remembered.account_write_token || ''
+            } : null
         };
 
         const reportsHtml = reports.length ? reports.map(r => {
@@ -22049,22 +24494,42 @@ ${ramsCss}
                     </div>
                 </div>
 
-                <!-- Müşteri Erişim PIN Ayarı -->
-                <div class="p-3 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
-                    <div class="flex items-center justify-between gap-2">
-                        <label class="font-bold text-slate-800 flex items-center gap-1.5">
-                            <i class="fa-solid fa-key text-amber-500"></i>
-                            <span>Müşteri Klasörü PIN Şifresi</span>
+                <!-- Müşteri Firma Giriş Bilgileri (Kullanıcı Adı & Şifre ile Firma İzolasyonu) -->
+                <div class="p-3 rounded-xl border border-indigo-200 bg-indigo-50/70 space-y-2">
+                    <div class="flex items-center justify-between gap-2 flex-wrap">
+                        <label class="font-bold text-slate-900 flex items-center gap-1.5">
+                            <i class="fa-solid fa-user-shield text-indigo-600"></i>
+                            <span>Müşteri Firma Giriş Bilgileri</span>
                         </label>
-                        <button type="button" onclick="CloudPortal.generateRandomPin()" class="px-2 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-[10px] border border-amber-300">Rastgele 4 Hane</button>
+                        ${remembered
+                            ? `<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-[10px]">✓ Kayıtlı Firma Hesabı</span>`
+                            : `<span class="px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 border border-sky-200 font-bold text-[10px]">Otomatik Hesap Açılır</span>`}
                     </div>
-                    <input type="text" id="portalUploadPinInput" value="${escapeStr(wo.portal_pin || cfg.defaultPin || '')}"
-                        placeholder="Örn: 4829 (Boş bırakılırsa şifresiz / mevcut korunur)"
-                        class="w-full px-3 py-1.5 border border-slate-300 bg-white rounded-lg text-xs font-mono font-bold tracking-wider">
-                    ${wo.portal_folder_slug ? `
-                        <label class="flex items-center gap-1.5 text-[11px] text-slate-600 cursor-pointer">
-                            <input type="checkbox" id="portalUploadClearPinCb" onchange="if(this.checked) document.getElementById('portalUploadPinInput').value='';" class="accent-sky-600">
-                            <span>Klasörü şifresiz (yalnızca gizli linkle açılır) yap</span>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-600 mb-0.5" for="portalCustUsernameInput">Kullanıcı Adı</label>
+                            <input type="text" id="portalCustUsernameInput" value="${escapeStr(initUsername)}"
+                                oninput="CloudPortal.onCustomerUsernameInput()"
+                                placeholder="ornek-firma"
+                                class="w-full px-2.5 py-1.5 border border-slate-300 bg-white rounded-lg text-xs font-mono font-bold text-slate-900">
+                        </div>
+                        <div>
+                            <div class="flex items-center justify-between mb-0.5">
+                                <label class="block text-[10px] font-bold text-slate-600" for="portalCustPasswordInput">Şifre</label>
+                                <button type="button" onclick="CloudPortal.generateRandomCustomerPassword()" class="text-[10px] font-bold text-indigo-700 hover:underline">Rastgele</button>
+                            </div>
+                            <input type="text" id="portalCustPasswordInput" value="${escapeStr(initPassword)}"
+                                placeholder="${remembered && !initPassword ? 'Mevcut şifre korunur' : 'En az 4 karakter'}"
+                                class="w-full px-2.5 py-1.5 border border-slate-300 bg-white rounded-lg text-xs font-mono font-bold text-slate-900">
+                        </div>
+                    </div>
+                    <div class="text-[10px] text-slate-600 leading-snug">
+                        Müşteri <strong class="font-mono">${escapeStr(portalHostLabel)}</strong> adresinden bu bilgilerle giriş yaparak yalnızca kendi firmasına ait raporları görür. Diğer firmaların raporları gizlidir.
+                    </div>
+                    ${wo.portal_pin ? `
+                        <label class="flex items-center gap-1.5 text-[11px] text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 cursor-pointer">
+                            <input type="checkbox" id="portalUploadClearPinCb" checked class="accent-indigo-600">
+                            <span>Eski klasör PIN kilidini (<strong>${escapeStr(wo.portal_pin)}</strong>) kaldır — yalnızca kullanıcı adı &amp; şifre ile açılsın</span>
                         </label>
                     ` : ''}
                 </div>
@@ -22115,6 +24580,18 @@ ${ramsCss}
         }
     }
 
+    function onCustomerUsernameInput() {
+        if (!_portalModalState) return;
+        const val = (document.getElementById('portalCustUsernameInput')?.value || '').trim();
+        _portalModalState.manualUsernameEdit = (sanitizeUsername(val) !== sanitizeUsername(_portalModalState.initialUsername));
+    }
+
+    function generateRandomCustomerPassword() {
+        const pwd = generateReadablePassword(8);
+        const inp = document.getElementById('portalCustPasswordInput');
+        if (inp) inp.value = pwd;
+    }
+
     function generateRandomPin() {
         const pin = String(Math.floor(1000 + Math.random() * 9000));
         const inp = document.getElementById('portalUploadPinInput');
@@ -22135,14 +24612,40 @@ ${ramsCss}
             return;
         }
 
-        const pinRaw = (document.getElementById('portalUploadPinInput')?.value || '').trim();
-        const clearChecked = Boolean(document.getElementById('portalUploadClearPinCb')?.checked);
-        let pinOption = { pinMode: 'keep', pin: '' };
-        if (clearChecked) {
-            pinOption = { pinMode: 'clear', pin: '' };
-        } else if (pinRaw) {
-            pinOption = { pinMode: 'set', pin: pinRaw };
+        const usernameInputEl = document.getElementById('portalCustUsernameInput');
+        const passwordInputEl = document.getElementById('portalCustPasswordInput');
+        const username = sanitizeUsername(usernameInputEl?.value || '');
+        const passwordRaw = (passwordInputEl?.value || '').trim();
+
+        if (!username || username.length < 3) {
+            toast('Müşteri kullanıcı adı en az 3 karakter olmalıdır.', 'warning');
+            if (usernameInputEl) usernameInputEl.focus();
+            return;
         }
+        if (usernameInputEl) usernameInputEl.value = username;
+
+        const remembered = _portalModalState.rememberedCustomer;
+        const isSameRememberedUser = Boolean(remembered && sanitizeUsername(remembered.username) === username);
+        const hasRememberedToken = Boolean(isSameRememberedUser && remembered.account_write_token);
+
+        if ((!hasRememberedToken && passwordRaw.length < 4) || (passwordRaw && passwordRaw.length < 4)) {
+            toast('Müşteri şifresi en az 4 karakter olmalıdır.', 'warning');
+            if (passwordInputEl) passwordInputEl.focus();
+            return;
+        }
+
+        const pwdChanged = Boolean(passwordRaw && passwordRaw !== (_portalModalState.initialPassword || ''));
+        let activeCustomerOpt = {
+            username,
+            password: passwordRaw,
+            company_name: (_portalModalState.wo && (_portalModalState.wo.customer_name || _portalModalState.wo.company_name)) || 'Müşteri Firma',
+            auto_username: !isSameRememberedUser && !_portalModalState.manualUsernameEdit,
+            update_password: Boolean(hasRememberedToken && pwdChanged),
+            account_write_token: hasRememberedToken ? remembered.account_write_token : ''
+        };
+
+        const clearChecked = Boolean(document.getElementById('portalUploadClearPinCb')?.checked);
+        const pinOption = clearChecked ? { pinMode: 'clear', pin: '' } : { pinMode: 'keep', pin: '' };
 
         const startBtn = document.getElementById('portalStartUploadBtn');
         const progBox = document.getElementById('portalUploadProgressBox');
@@ -22165,11 +24668,26 @@ ${ramsCss}
             if (progBar) progBar.style.width = `${pct}%`;
         };
 
+        const syncResolvedCustomer = (resItem) => {
+            if (resItem && resItem.customer && resItem.customer.username) {
+                activeCustomerOpt = {
+                    username: resItem.customer.username,
+                    password: passwordRaw || (remembered && remembered.password) || '',
+                    company_name: activeCustomerOpt.company_name,
+                    auto_username: false,
+                    update_password: false,
+                    account_write_token: resItem.customer.write_token || activeCustomerOpt.account_write_token
+                };
+                if (usernameInputEl) usernameInputEl.value = activeCustomerOpt.username;
+            }
+        };
+
         try {
             for (const insp of selectedReports) {
                 updateProg(`${doneCount + 1}/${totalTasks} Yükleniyor: ${insp.equipment_name || insp.report_no || 'Rapor'}...`);
                 try {
-                    const r = await uploadInspectionReport(insp, _portalModalState.wo, pinOption);
+                    const r = await uploadInspectionReport(insp, _portalModalState.wo, pinOption, activeCustomerOpt);
+                    syncResolvedCustomer(r);
                     uploaded.push(r);
                 } catch (err) {
                     errors.push(`${insp.equipment_name || insp.report_no}: ${err.message}`);
@@ -22185,7 +24703,8 @@ ${ramsCss}
                         equipmentName: document.getElementById('portalExtPdfTitle')?.value || '',
                         reportNo: document.getElementById('portalExtPdfNo')?.value || '',
                         resultStatus: document.getElementById('portalExtPdfResult')?.value || 'UYGUN'
-                    }, pinOption);
+                    }, pinOption, activeCustomerOpt);
+                    syncResolvedCustomer(r);
                     uploaded.push(r);
                 } catch (err) {
                     errors.push(`PDF (${pdfFile.name}): ${err.message}`);
@@ -22195,15 +24714,25 @@ ${ramsCss}
             }
 
             _portalModalState.uploadedResults = uploaded;
+            _portalModalState.effectiveCustomer = activeCustomerOpt;
+            _portalModalState.rememberedCustomer = {
+                username: activeCustomerOpt.username,
+                password: activeCustomerOpt.password,
+                account_write_token: activeCustomerOpt.account_write_token,
+                company_name: activeCustomerOpt.company_name
+            };
             _portalModalState.effectivePin = pinOption.pinMode === 'clear'
                 ? ''
-                : (pinOption.pinMode === 'set' ? pinOption.pin : (_portalModalState.wo.portal_pin || ''));
+                : (_portalModalState.wo.portal_pin || '');
 
             if (progBar) progBar.style.width = '100%';
 
             if (uploaded.length > 0 && resultBox) {
+                const cfg = getPortalConfig();
                 const folderUrl = uploaded[0].folderUrl || _portalModalState.wo.portal_folder_url || '';
                 const effPin = _portalModalState.effectivePin;
+                const finalUsername = activeCustomerOpt.username || _portalModalState.wo.portal_customer_username || '';
+                const finalPassword = activeCustomerOpt.password || _portalModalState.wo.portal_customer_password || '';
                 const linksList = uploaded.map(u => `
                     <div class="flex items-center justify-between gap-2 bg-white px-2.5 py-1.5 rounded-lg border border-emerald-200">
                         <div class="min-w-0">
@@ -22218,15 +24747,28 @@ ${ramsCss}
                 `).join('');
 
                 resultBox.innerHTML = `
-                    <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center justify-between gap-2 flex-wrap">
                         <div class="font-black text-emerald-900 flex items-center gap-1.5">
                             <i class="fa-solid fa-circle-check text-emerald-600 text-sm"></i>
                             <span>${uploaded.length} Rapor Başarıyla Yayınlandı!</span>
                         </div>
-                        ${effPin ? `<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 font-mono font-bold text-[10px]">PIN: ${escapeStr(effPin)}</span>` : `<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">Şifresiz Link</span>`}
+                        <span class="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-900 border border-indigo-300 font-mono font-bold text-[10px]">🛡️ @${escapeStr(finalUsername)}</span>
+                    </div>
+                    <div class="p-2.5 rounded-xl bg-white border border-indigo-200 space-y-1.5">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-[10px] font-bold text-indigo-900 uppercase">Müşteri Portal Giriş Bilgileri</span>
+                            <button type="button" onclick="CloudPortal.copyLastCredentials()" class="px-2 py-0.5 rounded bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px]">Girişi Kopyala</button>
+                        </div>
+                        <div class="grid grid-cols-1 gap-1 text-[11px] font-mono text-slate-800">
+                            <div class="truncate">Site: <strong>${escapeStr(cfg.portalUrl)}</strong></div>
+                            <div>Kullanıcı Adı: <strong>${escapeStr(finalUsername)}</strong> · Şifre: <strong>${escapeStr(finalPassword || '(Mevcut)')}</strong></div>
+                        </div>
                     </div>
                     <div class="space-y-1">
-                        <div class="text-[10px] font-bold text-emerald-800 uppercase">Müşteri Klasör Bağlantısı</div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-bold text-emerald-800 uppercase">Müşteri Klasör Bağlantısı</span>
+                            ${effPin ? `<span class="text-[10px] font-mono text-amber-800 font-bold">Ek PIN: ${escapeStr(effPin)}</span>` : ''}
+                        </div>
                         <div class="flex items-center gap-1.5">
                             <input type="text" readonly value="${escapeStr(folderUrl)}" onclick="this.select()"
                                 class="flex-1 px-2.5 py-1.5 bg-white border border-emerald-300 rounded-lg font-mono text-[11px] text-slate-900">
@@ -22244,7 +24786,7 @@ ${ramsCss}
                             <i class="fa-solid fa-envelope"></i>
                             <span>E-postaya Aktar</span>
                         </button>
-                        <a href="${escapeStr(folderUrl)}" target="_blank" rel="noopener" class="py-2 px-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-[11px] flex items-center justify-center gap-1">
+                        <a href="${escapeStr(cfg.portalUrl)}" target="_blank" rel="noopener" class="py-2 px-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-[11px] flex items-center justify-center gap-1">
                             <i class="fa-solid fa-arrow-up-right-from-square"></i>
                             <span>Siteye Git</span>
                         </a>
@@ -22272,7 +24814,12 @@ ${ramsCss}
         const wo = _portalModalState.wo || {};
         const customer = wo.customer_name || wo.company_name || 'Müşteri';
         const subject = `Periyodik Kontrol Raporları - ${customer}`;
-        const text = buildCustomerShareText(wo, _portalModalState.uploadedResults, _portalModalState.effectivePin);
+        const text = buildCustomerShareText(
+            wo,
+            _portalModalState.uploadedResults,
+            _portalModalState.effectivePin,
+            _portalModalState.effectiveCustomer
+        );
         shareTextViaNativeOrWeb(subject, text);
     }
 
@@ -22352,6 +24899,9 @@ ${ramsCss}
         saveConfig: savePortalConfig,
         normalizeUrl: normalizePortalUrl,
         sanitizeCompanySlug,
+        sanitizeUsername,
+        buildSuggestedUsername,
+        generateReadablePassword,
         getActiveCompanyProfile: resolveActiveCompanyProfile,
         generateQrDataUrl,
         buildPortableA4ReportHtml,
@@ -22361,11 +24911,15 @@ ${ramsCss}
         openPortalUploadModal,
         toggleAllModalReports,
         onExternalPdfSelected,
+        onCustomerUsernameInput,
+        generateRandomCustomerPassword,
         generateRandomPin,
         executeModalUpload,
         shareLastUpload,
         transferLastUploadToEmail,
         copyReportPortalLink,
+        copyCustomerLoginInfo,
+        copyLastCredentials,
         savePortalSettingsFromPage,
         testPortalFromSettingsPage,
         openPortalSiteFromSettings,

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Müşteri Rapor Portalı &amp; Doğrulama Sistemi</title>
+  <title>Müşteri Rapor Portalı &amp; Firma Girişi</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
@@ -12,29 +12,87 @@
       <a href="/" class="brand">
         <div class="brand-icon">⚡</div>
         <div style="min-width:0">
-          <div class="brand-title">Hızlı Rapor Portalı</div>
-          <div class="brand-sub">Periyodik Kontrol Rapor Görüntüleme ve Doğrulama</div>
+          <div class="brand-title">Hızlı Rapor Müşteri Portalı</div>
+          <div class="brand-sub">Firma Bazlı Güvenli Periyodik Kontrol Rapor Erişimi</div>
         </div>
       </a>
-      <a href="/admin.html" class="btn btn-ghost btn-sm">Yönetici Girişi</a>
+      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        <span id="hdrCustomerChip" class="badge badge-info hidden" style="background:rgba(255,255,255,0.12); color:#e2e8f0; border-color:rgba(255,255,255,0.2);"></span>
+        <button id="hdrLogoutBtn" type="button" class="btn btn-danger btn-sm hidden" onclick="handleLogout()">Çıkış Yap</button>
+        <a href="/admin.html" class="btn btn-ghost btn-sm">Yönetici Girişi</a>
+      </div>
     </div>
   </header>
 
-  <main class="container" style="padding-top: 28px; padding-bottom: 48px;">
-    <section class="card" style="margin-bottom: 18px; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);">
-      <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:20px;">
-        <div style="flex:1; min-width:260px;">
-          <span class="badge badge-info" style="margin-bottom:10px;">ISO/IEC 17020 Dijital Rapor Erişimi</span>
-          <h1 style="margin:0 0 8px 0; font-size:24px; line-height:1.2; letter-spacing:-0.02em;">
-            Periyodik Kontrol Raporunuzu Doğrulayın &amp; İndirin
+  <main class="container" style="padding-top: 24px; padding-bottom: 48px;">
+    <!-- Oturum Açılmadığında Gösterilen Müşteri Giriş Kartı -->
+    <section id="loginSection" class="card" style="margin-bottom: 18px; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);">
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 22px; align-items:center;">
+        <div>
+          <span class="badge badge-info" style="margin-bottom:10px;">🛡️ Firma Bazlı Rapor İzolasyonu</span>
+          <h1 style="margin:0 0 8px 0; font-size:23px; line-height:1.22; letter-spacing:-0.02em;">
+            Müşteri Firma Girişi
           </h1>
-          <p style="margin:0; font-size:14px; color:#475569;">
-            Size iletilen özel müşteri klasör bağlantısına tıklayarak veya rapor üzerindeki Kare Kod (QR) / Doğrulama Kodu ile raporlarınızı güvenle görüntüleyip PDF olarak indirebilirsiniz.
+          <p style="margin:0; font-size:13.5px; color:#475569;">
+            Firmanıza tanımlanan <strong>kullanıcı adı</strong> ve <strong>şifre</strong> ile giriş yaparak yalnızca kendi işletmenize ait periyodik kontrol klasörlerini ve PDF raporlarını görüntüleyip indirebilirsiniz. Diğer firmaların raporları kesinlikle görünmez.
           </p>
+        </div>
+
+        <form id="customerLoginForm" class="card-muted" style="background:#ffffff; border-color:#cbd5e1;">
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <div>
+              <label class="label" for="loginUsername">Kullanıcı Adı</label>
+              <input id="loginUsername" class="input mono" type="text" autocomplete="username" placeholder="Örn: abc-metal" required>
+            </div>
+            <div>
+              <label class="label" for="loginPassword">Şifre</label>
+              <div style="display:flex; gap:6px;">
+                <input id="loginPassword" class="input mono" type="password" autocomplete="current-password" placeholder="••••••" required>
+                <button type="button" class="btn btn-outline btn-sm" onclick="const i=document.getElementById('loginPassword'); i.type = i.type==='password' ? 'text' : 'password';" title="Şifreyi Göster/Gizle">👁</button>
+              </div>
+            </div>
+            <div id="loginErrorBox" class="hidden" style="padding:8px 10px; border-radius:8px; background:#fef2f2; border:1px solid #fecaca; color:#991b1b; font-size:12px; font-weight:600;"></div>
+            <button id="loginBtn" type="submit" class="btn btn-primary" style="width:100%; height:41px;">
+              Giriş Yap ve Raporlarımı Gör
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Giriş Yapıldığında Gösterilen Firma Paneli -->
+    <section id="dashboardSection" class="hidden" style="display:flex; flex-direction:column; gap:16px; margin-bottom:18px;">
+      <div class="card" style="background:linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color:#fff; border-color:#334155;">
+        <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:14px;">
+          <div>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px;">
+              <span class="badge badge-ok">✓ Doğrulanmış Firma Oturumu</span>
+              <span id="dashUsernameBadge" class="badge badge-info mono"></span>
+            </div>
+            <h1 id="dashCompanyTitle" style="margin:0; font-size:22px; color:#fff;">Firma Rapor Paneli</h1>
+            <div id="dashSummaryText" style="font-size:12.5px; color:#cbd5e1; margin-top:4px;"></div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <input id="dashSearchInput" type="text" class="input" style="width:240px; max-width:100%;" placeholder="Klasör, ekipman veya rapor no ara...">
+            <button type="button" class="btn btn-ghost btn-sm" onclick="loadCustomerSession()">Yenile</button>
+          </div>
         </div>
       </div>
 
-      <form id="verifyForm" style="margin-top:20px; padding-top:18px; border-top:1px solid #e2e8f0;">
+      <div id="dashFoldersList" style="display:flex; flex-direction:column; gap:12px;"></div>
+    </section>
+
+    <!-- QR / Rapor Doğrulama Kartı -->
+    <section class="card" style="margin-bottom: 18px;">
+      <div>
+        <span class="badge badge-info" style="margin-bottom:8px;">QR &amp; Rapor Doğrulama</span>
+        <h2 style="margin:0 0 6px 0; font-size:18px;">Rapor Numarası ve Doğrulama Kodu ile Sorgulama</h2>
+        <p style="margin:0; font-size:13px; color:#475569;">
+          Rapor üzerindeki Kare Kod (QR) veya 6 haneli doğrulama kodunu kullanarak belgenin sistemdeki geçerliliğini teyit edebilirsiniz. Firma raporlarının detayları yalnızca ilgili firmanın giriş oturumunda açılır.
+        </p>
+      </div>
+
+      <form id="verifyForm" style="margin-top:16px; padding-top:14px; border-top:1px solid #e2e8f0;">
         <div class="grid-3" style="align-items:end;">
           <div>
             <label class="label" for="verifyReportNo">Rapor Numarası</label>
@@ -45,8 +103,8 @@
             <input id="verifyCode" class="input mono" type="text" placeholder="Örn: A4K9P2" maxlength="10" style="text-transform:uppercase;" required>
           </div>
           <div>
-            <button id="verifyBtn" type="submit" class="btn btn-primary" style="width:100%; height:41px;">
-              Raporu Doğrula ve Aç
+            <button id="verifyBtn" type="submit" class="btn btn-dark" style="width:100%; height:41px;">
+              Raporu Doğrula
             </button>
           </div>
         </div>
@@ -57,21 +115,21 @@
 
     <section class="grid-3">
       <div class="card">
-        <div style="font-weight:800; font-size:14px; margin-bottom:6px; color:#0f172a;">1. Özel Müşteri Klasörü</div>
+        <div style="font-weight:800; font-size:14px; margin-bottom:6px; color:#0f172a;">1. Firma Hesabı ile Giriş</div>
         <div style="font-size:13px; color:#475569;">
-          Firmanıza özel paylaşılan bağlantı üzerinden tüm pano, topraklama, jeneratör ve ekipman raporlarınıza tek ekranda ulaşabilirsiniz.
+          Her işletme kendi kullanıcı adı ve şifresiyle giriş yapar; tüm dönemlere ait rapor klasörlerini tek panelde görür.
         </div>
       </div>
       <div class="card">
-        <div style="font-weight:800; font-size:14px; margin-bottom:6px; color:#0f172a;">2. PIN Korumalı Gizlilik</div>
+        <div style="font-weight:800; font-size:14px; margin-bottom:6px; color:#0f172a;">2. Katı Firma İzolasyonu</div>
         <div style="font-size:13px; color:#475569;">
-          Raporlar yalnızca tahmin edilemez özel bağlantıya ve istenirse size özel erişim şifresine (PIN) sahip yetkililer tarafından görüntülenir.
+          Sunucu seviyesinde kiracı kontrolü sayesinde hiçbir müşteri başka bir firmaya ait klasör veya rapora erişemez.
         </div>
       </div>
       <div class="card">
-        <div style="font-weight:800; font-size:14px; margin-bottom:6px; color:#0f172a;">3. Resmi A4 PDF Çıktı</div>
+        <div style="font-weight:800; font-size:14px; margin-bottom:6px; color:#0f172a;">3. Resmi A4 &amp; PDF İndirme</div>
         <div style="font-size:13px; color:#475569;">
-          Tüm raporları telefon veya bilgisayarınızdan orijinal A4 formatında inceleyebilir, tek tıkla PDF olarak kaydedebilirsiniz.
+          Yetkili oturumla tüm A4 kontrol raporlarını ve ekli PDF belgelerini tarayıcıda görüntüleyip indirebilirsiniz.
         </div>
       </div>
     </section>
@@ -79,33 +137,226 @@
 
   <script src="/portal.js"></script>
   <script>
-    const form = document.getElementById('verifyForm');
-    const resultBox = document.getElementById('verifyResult');
-    const verifyBtn = document.getElementById('verifyBtn');
+    let activeCustomer = null;
+    let cachedFolders = [];
 
-    form.addEventListener('submit', async (e) => {
+    function renderCustomerFolders(list) {
+      const box = document.getElementById('dashFoldersList');
+      if (!list.length) {
+        box.innerHTML = '<div class="card" style="text-align:center;color:#64748b;font-size:13px;">Firmanıza ait henüz yayınlanmış rapor bulunmuyor.</div>';
+        return;
+      }
+
+      box.innerHTML = list.map(f => {
+        const folderUrl = '/p/' + encodeURIComponent(f.share_slug);
+        const issuer = f.owner_company_name || (f.branding_json && (f.branding_json.companyShortName || f.branding_json.companyFullName)) || '';
+        const reportsHtml = (f.reports || []).length
+          ? f.reports.map(r => {
+              const isOk = (r.result_status || 'UYGUN') === 'UYGUN';
+              const statusBadge = isOk
+                ? '<span class="badge badge-ok">UYGUN</span>'
+                : '<span class="badge badge-bad">' + PortalUI.escapeHtml(r.result_status) + '</span>';
+              const rUrl = '/r/' + encodeURIComponent(r.share_slug);
+              const dlUrl = r.source_type === 'uploaded_pdf'
+                ? '/api/report-file?slug=' + encodeURIComponent(r.share_slug) + '&download=1'
+                : rUrl + '?autoprint=1';
+              return `
+                <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; background:#fff; border:1px solid #e2e8f0; border-radius:10px;">
+                  <div style="min-width:200px; flex:1;">
+                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                      <strong style="font-size:14px; color:#0f172a;">${PortalUI.escapeHtml(r.equipment_name)}</strong>
+                      ${statusBadge}
+                    </div>
+                    <div style="font-size:12px; color:#475569; margin-top:3px;">
+                      Rapor No: <span class="mono" style="font-weight:700;">${PortalUI.escapeHtml(r.report_no)}</span>
+                      · Kod: <span class="mono" style="font-weight:700;">${PortalUI.escapeHtml(r.verify_code)}</span>
+                      ${r.inspection_date ? ' · Tarih: ' + PortalUI.escapeHtml(r.inspection_date) : ''}
+                    </div>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                    <a href="${rUrl}" class="btn btn-primary btn-sm">Görüntüle</a>
+                    <a href="${dlUrl}" ${r.source_type === 'uploaded_pdf' ? 'download' : ''} class="btn btn-emerald btn-sm">PDF İndir</a>
+                  </div>
+                </div>
+              `;
+            }).join('')
+          : '<div style="font-size:12px; color:#64748b; padding:6px 0;">Bu klasörde henüz yayında rapor yok.</div>';
+
+        return `
+          <div class="card">
+            <div style="display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:12px;">
+              <div>
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                  <strong style="font-size:16px; color:#0f172a;">${PortalUI.escapeHtml(f.company_name)}</strong>
+                  ${f.work_order_code ? `<span class="badge badge-info mono">${PortalUI.escapeHtml(f.work_order_code)}</span>` : ''}
+                  ${issuer ? `<span class="badge badge-warn">Muayene Kuruluşu: ${PortalUI.escapeHtml(issuer)}</span>` : ''}
+                </div>
+                <div style="font-size:12px; color:#64748b; margin-top:3px;">
+                  ${f.company_branch ? PortalUI.escapeHtml(f.company_branch) + ' · ' : ''}Güncelleme: ${PortalUI.formatDate(f.updated_at)}
+                </div>
+              </div>
+              <a href="${folderUrl}" class="btn btn-outline btn-sm">Klasör Görünümü →</a>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              ${reportsHtml}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function loadCustomerSession() {
+      const loginSec = document.getElementById('loginSection');
+      const dashSec = document.getElementById('dashboardSection');
+      const chip = document.getElementById('hdrCustomerChip');
+      const logoutBtn = document.getElementById('hdrLogoutBtn');
+
+      try {
+        const res = await fetch('/api/customer', { credentials: 'same-origin' });
+        if (!res.ok) {
+          activeCustomer = null;
+          cachedFolders = [];
+          loginSec.classList.remove('hidden');
+          dashSec.classList.add('hidden');
+          chip.classList.add('hidden');
+          logoutBtn.classList.add('hidden');
+          return;
+        }
+        const data = await res.json();
+        if (!data.ok || !data.customer) {
+          throw new Error('Oturum yok');
+        }
+        activeCustomer = data.customer;
+        cachedFolders = data.folders || [];
+
+        loginSec.classList.add('hidden');
+        dashSec.classList.remove('hidden');
+        chip.textContent = '🏢 ' + (activeCustomer.company_name || activeCustomer.username);
+        chip.classList.remove('hidden');
+        logoutBtn.classList.remove('hidden');
+
+        document.getElementById('dashCompanyTitle').textContent = activeCustomer.company_name || 'Firma Rapor Paneli';
+        document.getElementById('dashUsernameBadge').textContent = '@' + activeCustomer.username;
+        document.getElementById('dashSummaryText').textContent =
+          `${data.totals?.folders || 0} klasör · ${data.totals?.reports || 0} rapor · Yalnızca kendi firmanızın raporları gösterilmektedir.`;
+
+        filterCustomerFolders();
+      } catch {
+        activeCustomer = null;
+        loginSec.classList.remove('hidden');
+        dashSec.classList.add('hidden');
+        chip.classList.add('hidden');
+        logoutBtn.classList.add('hidden');
+      }
+    }
+
+    function filterCustomerFolders() {
+      const q = (document.getElementById('dashSearchInput').value || '').trim().toLowerCase();
+      if (!q) {
+        renderCustomerFolders(cachedFolders);
+        return;
+      }
+      const filtered = cachedFolders
+        .map(f => {
+          const folderMatch =
+            (f.company_name || '').toLowerCase().includes(q) ||
+            (f.company_branch || '').toLowerCase().includes(q) ||
+            (f.work_order_code || '').toLowerCase().includes(q);
+          if (folderMatch) return f;
+          const matchedReports = (f.reports || []).filter(r =>
+            (r.equipment_name || '').toLowerCase().includes(q) ||
+            (r.report_no || '').toLowerCase().includes(q) ||
+            (r.verify_code || '').toLowerCase().includes(q)
+          );
+          if (matchedReports.length) return { ...f, reports: matchedReports };
+          return null;
+        })
+        .filter(Boolean);
+      renderCustomerFolders(filtered);
+    }
+
+    async function handleLogout() {
+      await PortalUI.customerLogout();
+      PortalUI.toast('Oturum kapatıldı', 'info');
+      document.getElementById('verifyResult').classList.add('hidden');
+      await loadCustomerSession();
+    }
+
+    document.getElementById('customerLoginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const u = document.getElementById('loginUsername').value.trim();
+      const p = document.getElementById('loginPassword').value.trim();
+      const btn = document.getElementById('loginBtn');
+      const errBox = document.getElementById('loginErrorBox');
+      errBox.classList.add('hidden');
+      btn.disabled = true;
+      btn.textContent = 'Giriş Yapılıyor...';
+      try {
+        await PortalUI.customerLogin(u, p);
+        document.getElementById('loginPassword').value = '';
+        PortalUI.toast('Giriş başarılı!', 'success');
+        await loadCustomerSession();
+      } catch (err) {
+        errBox.textContent = err.message || 'Kullanıcı adı veya şifre hatalı!';
+        errBox.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Giriş Yap ve Raporlarımı Gör';
+      }
+    });
+
+    document.getElementById('dashSearchInput').addEventListener('input', filterCustomerFolders);
+
+    document.getElementById('verifyForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const reportNo = document.getElementById('verifyReportNo').value.trim();
       const verifyCode = document.getElementById('verifyCode').value.trim().toUpperCase();
       if (!reportNo || !verifyCode) return;
 
+      const verifyBtn = document.getElementById('verifyBtn');
+      const resultBox = document.getElementById('verifyResult');
       verifyBtn.disabled = true;
       verifyBtn.textContent = 'Sorgulanıyor...';
       resultBox.classList.add('hidden');
 
       try {
-        const res = await fetch('/api/report?report_no=' + encodeURIComponent(reportNo) + '&verify_code=' + encodeURIComponent(verifyCode));
+        const res = await fetch(
+          '/api/report?report_no=' + encodeURIComponent(reportNo) + '&verify_code=' + encodeURIComponent(verifyCode),
+          { credentials: 'same-origin' }
+        );
         const data = await res.json();
         if (!res.ok || !data.ok) {
-          resultBox.innerHTML = '<div class="card-muted" style="border-color:#fecaca;background:#fef2f2;color:#991b1b;font-size:13px;font-weight:600;">Rapor bulunamadı. Lütfen Rapor Numarası ve Doğrulama Kodunu kontrol edin.</div>';
+          resultBox.innerHTML = `<div class="card-muted" style="border-color:#fecaca;background:#fef2f2;color:#991b1b;font-size:13px;font-weight:600;">${PortalUI.escapeHtml(data.error || 'Rapor bulunamadı. Lütfen Rapor Numarası ve Doğrulama Kodunu kontrol edin.')}</div>`;
           resultBox.classList.remove('hidden');
           return;
         }
-        const r = data.report;
-        const f = data.folder;
+        const r = data.report || {};
+        const f = data.folder || {};
         const okBadge = (r.result_status || 'UYGUN') === 'UYGUN'
           ? '<span class="badge badge-ok">UYGUN</span>'
           : '<span class="badge badge-bad">' + PortalUI.escapeHtml(r.result_status) + '</span>';
+
+        if (data.requiresAuth) {
+          resultBox.innerHTML = `
+            <div class="card-muted" style="border-color:#bae6fd; background:#f0f9ff;">
+              <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px;">
+                <div>
+                  <div style="font-weight:800; color:#075985; font-size:14px; margin-bottom:4px;">✓ Rapor Kaydı Sistemde Doğrulandı</div>
+                  <div style="font-size:12.5px; color:#334155;">
+                    Rapor No: <span class="mono" style="font-weight:700;">${PortalUI.escapeHtml(r.report_no || reportNo)}</span>
+                    ${r.inspection_date ? ' · Tarih: ' + PortalUI.escapeHtml(r.inspection_date) : ''} · ${okBadge}
+                  </div>
+                  <div style="font-size:12px; color:#475569; margin-top:4px;">
+                    Firma gizliliği nedeniyle rapor içeriğini görüntülemek için ilgili firmanın kullanıcı adı ve şifresiyle yukarıdan oturum açın.
+                  </div>
+                </div>
+                <button type="button" class="btn btn-primary btn-sm" onclick="window.scrollTo({top:0,behavior:'smooth'}); document.getElementById('loginUsername')?.focus();">Giriş Yap ↑</button>
+              </div>
+            </div>
+          `;
+          resultBox.classList.remove('hidden');
+          return;
+        }
 
         resultBox.innerHTML = `
           <div class="card-muted" style="border-color:#a7f3d0; background:#ecfdf5;">
@@ -125,13 +376,15 @@
           </div>
         `;
         resultBox.classList.remove('hidden');
-      } catch (err) {
+      } catch {
         PortalUI.toast('Sunucuya bağlanılamadı', 'error');
       } finally {
         verifyBtn.disabled = false;
-        verifyBtn.textContent = 'Raporu Doğrula ve Aç';
+        verifyBtn.textContent = 'Raporu Doğrula';
       }
     });
+
+    loadCustomerSession();
   </script>
 </body>
 </html>

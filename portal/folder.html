@@ -16,7 +16,11 @@
           <div id="hdrBrandSub" class="brand-sub">Dijital Rapor Teslim Portalı</div>
         </div>
       </a>
-      <a href="/" class="btn btn-ghost btn-sm">Rapor Doğrulama</a>
+      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        <span id="hdrCustomerChip" class="badge badge-info hidden" style="background:rgba(255,255,255,0.12); color:#e2e8f0; border-color:rgba(255,255,255,0.2);"></span>
+        <a href="/" class="btn btn-ghost btn-sm">← Tüm Raporlarım</a>
+        <button id="hdrLogoutBtn" type="button" class="btn btn-danger btn-sm hidden" onclick="logoutAndReload()">Çıkış</button>
+      </div>
     </div>
   </header>
 
@@ -31,6 +35,44 @@
       <a href="/" class="btn btn-dark">Ana Sayfaya Dön</a>
     </div>
 
+    <!-- Yanlış Firma Oturumu Engeli (Multi-Tenant Isolation) -->
+    <div id="wrongTenantState" class="card hidden" style="max-width:480px; margin:24px auto; text-align:center; border-color:#fecaca;">
+      <div style="font-size:30px; margin-bottom:6px;">⛔</div>
+      <h2 style="margin:0 0 8px 0; color:#991b1b; font-size:18px;">Başka Bir Firmaya Ait Klasör</h2>
+      <p id="wrongTenantMsg" style="margin:0 0 14px 0; color:#475569; font-size:13px;"></p>
+      <div id="wrongTenantCurrentUser" style="font-size:12px; color:#64748b; margin-bottom:14px;"></div>
+      <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+        <a href="/" class="btn btn-primary btn-sm">Kendi Raporlarıma Git</a>
+        <button type="button" class="btn btn-outline btn-sm" onclick="switchCustomerAccount()">Farklı Hesapla Giriş Yap</button>
+      </div>
+    </div>
+
+    <!-- Müşteri Kullanıcı Adı + Şifre Giriş Kapısı -->
+    <div id="authGate" class="card hidden" style="max-width:430px; margin:24px auto;">
+      <div style="text-align:center; margin-bottom:16px;">
+        <div style="font-size:28px; margin-bottom:6px;">🛡️</div>
+        <h2 style="margin:0 0 6px 0; font-size:18px;">Müşteri Firma Girişi Gerekli</h2>
+        <div style="font-size:13px; color:#475569;">
+          Bu klasördeki raporlar yalnızca yetkili firma hesabıyla görüntülenebilir. Size iletilen kullanıcı adı ve şifre ile giriş yapın.
+        </div>
+      </div>
+      <form id="authForm" style="display:flex; flex-direction:column; gap:10px;">
+        <div>
+          <label class="label" for="authUsername">Kullanıcı Adı</label>
+          <input id="authUsername" type="text" autocomplete="username" class="input mono" placeholder="Örn: abc-metal" required>
+        </div>
+        <div>
+          <label class="label" for="authPassword">Şifre</label>
+          <input id="authPassword" type="password" autocomplete="current-password" class="input mono" placeholder="••••••" required>
+        </div>
+        <div id="authErrorBox" class="hidden" style="padding:8px 10px; border-radius:8px; background:#fef2f2; border:1px solid #fecaca; color:#991b1b; font-size:12px; font-weight:600;"></div>
+        <button id="authSubmitBtn" type="submit" class="btn btn-primary" style="width:100%;">
+          Giriş Yap ve Klasörü Aç
+        </button>
+      </form>
+    </div>
+
+    <!-- İsteğe Bağlı Ek PIN Kapısı (Eski Klasörler İçin) -->
     <div id="pinGate" class="card hidden" style="max-width:420px; margin:24px auto;">
       <div style="text-align:center; margin-bottom:16px;">
         <div style="font-size:28px; margin-bottom:6px;">🔒</div>
@@ -73,6 +115,31 @@
   <script>
     const folderSlug = PortalUI.getSlugFromPath('p');
     let allReports = [];
+
+    function renderHeaderCustomer(cust) {
+      const chip = document.getElementById('hdrCustomerChip');
+      const logoutBtn = document.getElementById('hdrLogoutBtn');
+      if (cust) {
+        chip.textContent = '@' + cust.username;
+        chip.classList.remove('hidden');
+        logoutBtn.classList.remove('hidden');
+      } else {
+        chip.classList.add('hidden');
+        logoutBtn.classList.add('hidden');
+      }
+    }
+
+    async function logoutAndReload() {
+      await PortalUI.customerLogout();
+      PortalUI.toast('Oturum kapatıldı', 'info');
+      await loadFolder();
+    }
+
+    async function switchCustomerAccount() {
+      await PortalUI.customerLogout();
+      document.getElementById('wrongTenantState').classList.add('hidden');
+      await loadFolder();
+    }
 
     function renderReportsList(list) {
       const box = document.getElementById('reportsList');
@@ -121,8 +188,17 @@
     async function loadFolder() {
       const loadingEl = document.getElementById('loadingState');
       const errorEl = document.getElementById('errorState');
+      const wrongEl = document.getElementById('wrongTenantState');
+      const authEl = document.getElementById('authGate');
       const pinEl = document.getElementById('pinGate');
       const contentEl = document.getElementById('folderContent');
+
+      loadingEl.classList.remove('hidden');
+      errorEl.classList.add('hidden');
+      wrongEl.classList.add('hidden');
+      authEl.classList.add('hidden');
+      pinEl.classList.add('hidden');
+      contentEl.classList.add('hidden');
 
       if (!folderSlug) {
         loadingEl.classList.add('hidden');
@@ -134,10 +210,23 @@
       try {
         const token = PortalUI.getFolderToken(folderSlug);
         const res = await fetch('/api/folder?slug=' + encodeURIComponent(folderSlug), {
+          credentials: 'same-origin',
           headers: token ? { 'X-Folder-Token': token } : {}
         });
         const data = await res.json();
         loadingEl.classList.add('hidden');
+
+        renderHeaderCustomer(data.customer || null);
+
+        if (res.status === 403 && data.wrongTenant) {
+          wrongEl.classList.remove('hidden');
+          document.getElementById('wrongTenantMsg').textContent =
+            data.error || 'Bu klasör başka bir firmaya aittir. Yalnızca kendi firmanızın raporlarını görüntüleyebilirsiniz.';
+          document.getElementById('wrongTenantCurrentUser').textContent = data.customer
+            ? `Şu anda giriş yapılan firma: ${data.customer.company_name} (@${data.customer.username})`
+            : '';
+          return;
+        }
 
         if (!res.ok || !data.ok) {
           errorEl.classList.remove('hidden');
@@ -152,6 +241,12 @@
           document.getElementById('hdrBrandSub').textContent = branding.companyFullName;
         }
 
+        if (data.requiresAuth) {
+          authEl.classList.remove('hidden');
+          setTimeout(() => document.getElementById('authUsername').focus(), 100);
+          return;
+        }
+
         if (data.requiresPin) {
           pinEl.classList.remove('hidden');
           document.getElementById('pinCompanyLabel').textContent = f.company_name || '';
@@ -159,7 +254,6 @@
           return;
         }
 
-        pinEl.classList.add('hidden');
         contentEl.classList.remove('hidden');
 
         document.getElementById('companyTitle').textContent = f.company_name || 'Müşteri Klasörü';
@@ -179,12 +273,35 @@
         `;
 
         renderReportsList(allReports);
-      } catch (err) {
+      } catch {
         loadingEl.classList.add('hidden');
         errorEl.classList.remove('hidden');
         document.getElementById('errorMsg').textContent = 'Sunucuya erişilirken hata oluştu.';
       }
     }
+
+    document.getElementById('authForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const u = document.getElementById('authUsername').value.trim();
+      const p = document.getElementById('authPassword').value.trim();
+      const btn = document.getElementById('authSubmitBtn');
+      const errBox = document.getElementById('authErrorBox');
+      errBox.classList.add('hidden');
+      btn.disabled = true;
+      btn.textContent = 'Doğrulanıyor...';
+      try {
+        await PortalUI.customerLogin(u, p);
+        document.getElementById('authPassword').value = '';
+        PortalUI.toast('Giriş başarılı!', 'success');
+        await loadFolder();
+      } catch (err) {
+        errBox.textContent = err.message || 'Kullanıcı adı veya şifre hatalı!';
+        errBox.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Giriş Yap ve Klasörü Aç';
+      }
+    });
 
     document.getElementById('pinForm').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -207,8 +324,6 @@
           return;
         }
         PortalUI.setFolderToken(folderSlug, data.token);
-        document.getElementById('loadingState').classList.remove('hidden');
-        document.getElementById('pinGate').classList.add('hidden');
         await loadFolder();
       } catch {
         PortalUI.toast('Bağlantı hatası', 'error');

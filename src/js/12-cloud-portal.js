@@ -5,6 +5,7 @@
 
 (function () {
     const PORTAL_CONFIG_STORAGE_KEY = 'enlab_portal_config_v1';
+    const CUSTOMER_ACCOUNTS_STORAGE_KEY = 'enlab_customer_portal_accounts_v1';
     const DEFAULT_CLOUD_PORTAL_URL = 'https://hizli-rapor-portal.vercel.app';
 
     // ========================================================================
@@ -518,6 +519,147 @@
             .replace(/-+$/g, '');
     }
 
+    function sanitizeUsername(raw) {
+        const trMap = {
+            'ç': 'c', 'Ç': 'c',
+            'ğ': 'g', 'Ğ': 'g',
+            'ı': 'i', 'I': 'i',
+            'İ': 'i', 'i': 'i',
+            'ö': 'o', 'Ö': 'o',
+            'ş': 's', 'Ş': 's',
+            'ü': 'u', 'Ü': 'u'
+        };
+        const replaced = String(raw || '').trim().replace(/[çÇğĞıIİiöÖşŞüÜ]/g, ch => trMap[ch] || ch);
+        return replaced
+            .toLowerCase()
+            .replace(/[^a-z0-9-]+/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .slice(0, 28)
+            .replace(/-+$/g, '');
+    }
+
+    function buildSuggestedUsername(companyName) {
+        let slug = sanitizeUsername(companyName);
+        if (!slug || slug === 'musteri-firma') slug = 'musteri';
+        if (slug.length < 3) slug = slug + '-01';
+        return slug.slice(0, 24).replace(/-+$/g, '') || 'musteri';
+    }
+
+    function generateReadablePassword(len = 8) {
+        const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+        let out = '';
+        try {
+            if (window.crypto && typeof window.crypto.getRandomValues === 'function') {
+                const buf = new Uint32Array(len);
+                window.crypto.getRandomValues(buf);
+                for (let i = 0; i < len; i++) out += alphabet[buf[i] % alphabet.length];
+                return out;
+            }
+        } catch (e) {}
+        for (let i = 0; i < len; i++) {
+            out += alphabet[Math.floor(Math.random() * alphabet.length)];
+        }
+        return out;
+    }
+
+    function getCustomerAccountKey(companyName) {
+        return sanitizeUsername(companyName).slice(0, 48);
+    }
+
+    function loadCustomerAccountsMap() {
+        let map = {};
+        try {
+            const raw = localStorage.getItem(CUSTOMER_ACCOUNTS_STORAGE_KEY);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (parsed && typeof parsed === 'object') map = Object.assign(map, parsed);
+            }
+        } catch (e) {}
+        try {
+            if (window.OfflineDB) {
+                window.OfflineDB.init();
+                const dbMap = window.OfflineDB.state && window.OfflineDB.state.customerPortalAccounts;
+                if (dbMap && typeof dbMap === 'object') {
+                    map = Object.assign({}, map, dbMap);
+                }
+            }
+        } catch (e) {}
+        return map;
+    }
+
+    function getRememberedCustomerCreds(companyName, wo) {
+        if (wo && wo.portal_customer_username) {
+            return {
+                username: String(wo.portal_customer_username).trim(),
+                password: String(wo.portal_customer_password || '').trim(),
+                account_write_token: String(wo.portal_account_write_token || '').trim(),
+                company_name: String(wo.customer_name || wo.company_name || companyName || '').trim(),
+                source: 'wo'
+            };
+        }
+        const map = loadCustomerAccountsMap();
+        const key = getCustomerAccountKey(companyName);
+        if (key && map[key] && map[key].username) {
+            return Object.assign({}, map[key], { source: 'memory' });
+        }
+        const shortKey = sanitizeCompanySlug(companyName);
+        if (shortKey && map[shortKey] && map[shortKey].username) {
+            return Object.assign({}, map[shortKey], { source: 'memory' });
+        }
+        return null;
+    }
+
+    function rememberCustomerCreds(info, wo) {
+        if (!info || !info.username) return;
+        const username = sanitizeUsername(info.username);
+        const password = String(info.password || '').trim();
+        const acctToken = String(info.account_write_token || '').trim();
+        const companyName = String(info.companyName || info.company_name || (wo && (wo.customer_name || wo.company_name)) || '').trim();
+        const key = getCustomerAccountKey(companyName);
+
+        const map = loadCustomerAccountsMap();
+        if (key) {
+            const prev = map[key] || {};
+            map[key] = {
+                username,
+                password: password || prev.password || '',
+                account_write_token: acctToken || prev.account_write_token || '',
+                company_name: companyName || prev.company_name || '',
+                updated_at: new Date().toISOString()
+            };
+            try {
+                localStorage.setItem(CUSTOMER_ACCOUNTS_STORAGE_KEY, JSON.stringify(map));
+            } catch (e) {}
+        }
+
+        if (window.OfflineDB && window.OfflineDB.state) {
+            if (!window.OfflineDB.state.customerPortalAccounts || typeof window.OfflineDB.state.customerPortalAccounts !== 'object') {
+                window.OfflineDB.state.customerPortalAccounts = {};
+            }
+            if (key) window.OfflineDB.state.customerPortalAccounts[key] = map[key];
+            if (wo && wo.id) {
+                const dbWo = (window.OfflineDB.state.workOrders || []).find(w => String(w.id) === String(wo.id));
+                if (dbWo) {
+                    dbWo.portal_customer_username = username;
+                    if (password) dbWo.portal_customer_password = password;
+                    if (acctToken) dbWo.portal_account_write_token = acctToken;
+                }
+            }
+            window.OfflineDB.save();
+        }
+
+        if (wo) {
+            wo.portal_customer_username = username;
+            if (password) wo.portal_customer_password = password;
+            if (acctToken) wo.portal_account_write_token = acctToken;
+        }
+        if (window.AppState?.currentWorkOrder && wo && String(window.AppState.currentWorkOrder.id) === String(wo.id)) {
+            window.AppState.currentWorkOrder.portal_customer_username = username;
+            if (password) window.AppState.currentWorkOrder.portal_customer_password = password;
+            if (acctToken) window.AppState.currentWorkOrder.portal_account_write_token = acctToken;
+        }
+    }
+
     function resolveActiveCompanyProfile() {
         const branding = (typeof CompanySettingsManager !== 'undefined' && CompanySettingsManager.getSettings)
             ? CompanySettingsManager.getSettings()
@@ -803,6 +945,9 @@ ${ramsCss}
                     portal_folder_slug: wo.portal_folder_slug,
                     portal_folder_url: wo.portal_folder_url,
                     portal_write_token: wo.portal_write_token || dbWo.portal_write_token || '',
+                    portal_customer_username: wo.portal_customer_username || dbWo.portal_customer_username || '',
+                    portal_customer_password: wo.portal_customer_password !== undefined ? wo.portal_customer_password : (dbWo.portal_customer_password || ''),
+                    portal_account_write_token: wo.portal_account_write_token || dbWo.portal_account_write_token || '',
                     portal_pin: wo.portal_pin,
                     portal_last_sync: wo.portal_last_sync
                 });
@@ -837,6 +982,9 @@ ${ramsCss}
                 portal_folder_slug: wo.portal_folder_slug,
                 portal_folder_url: wo.portal_folder_url,
                 portal_write_token: wo.portal_write_token || window.AppState.currentWorkOrder.portal_write_token || '',
+                portal_customer_username: wo.portal_customer_username || window.AppState.currentWorkOrder.portal_customer_username || '',
+                portal_customer_password: wo.portal_customer_password !== undefined ? wo.portal_customer_password : (window.AppState.currentWorkOrder.portal_customer_password || ''),
+                portal_account_write_token: wo.portal_account_write_token || window.AppState.currentWorkOrder.portal_account_write_token || '',
                 portal_pin: wo.portal_pin,
                 portal_last_sync: wo.portal_last_sync
             });
@@ -861,6 +1009,9 @@ ${ramsCss}
                     portal_folder_slug: wo.portal_folder_slug,
                     portal_folder_url: wo.portal_folder_url,
                     portal_write_token: wo.portal_write_token || '',
+                    portal_customer_username: wo.portal_customer_username || '',
+                    portal_customer_password: wo.portal_customer_password || '',
+                    portal_account_write_token: wo.portal_account_write_token || '',
                     portal_pin: wo.portal_pin !== undefined ? wo.portal_pin : '',
                     portal_last_sync: wo.portal_last_sync
                 })
@@ -882,13 +1033,14 @@ ${ramsCss}
         }
     }
 
-    async function callUploadInit(cfg, payload, writeToken) {
+    async function callUploadInit(cfg, payload, writeToken, accountWriteToken) {
         const headers = {
             'Content-Type': 'application/json',
             'X-App-Client': 'hizli-rapor-mobile'
         };
         if (cfg.adminKey) headers['X-Admin-Key'] = cfg.adminKey;
         if (writeToken) headers['X-Folder-Write-Token'] = writeToken;
+        if (accountWriteToken) headers['X-Account-Write-Token'] = accountWriteToken;
 
         const res = await realFetch(`${cfg.portalUrl}/api/upload-init`, {
             method: 'POST',
@@ -978,7 +1130,23 @@ ${ramsCss}
         }
     }
 
-    async function uploadInspectionReport(inspRaw, woRaw, pinOption = { pinMode: 'keep' }) {
+    function buildCustomerRequestPayload(wo, customerOption) {
+        if (!customerOption || !customerOption.username) return undefined;
+        const username = sanitizeUsername(customerOption.username);
+        if (!username) return undefined;
+        return {
+            username,
+            password: String(customerOption.password || '').trim(),
+            company_name: String(
+                customerOption.company_name || (wo && (wo.customer_name || wo.company_name)) || 'Müşteri Firma'
+            ).trim(),
+            auto_username: Boolean(customerOption.auto_username),
+            update_password: Boolean(customerOption.update_password),
+            account_write_token: customerOption.account_write_token || undefined
+        };
+    }
+
+    async function uploadInspectionReport(inspRaw, woRaw, pinOption = { pinMode: 'keep' }, customerOption = null) {
         const cfg = getPortalConfig();
         const normInsp = typeof normalizeInspection === 'function' ? normalizeInspection(inspRaw) : Object.assign({}, inspRaw);
         const wo = woRaw || {};
@@ -988,8 +1156,12 @@ ${ramsCss}
         }
         const ci = (fd && fd.companyInfo) || {};
 
+        const customerPayload = buildCustomerRequestPayload(wo, customerOption);
+        const acctToken = (customerOption && customerOption.account_write_token) || wo.portal_account_write_token || '';
+
         // 1. Reserve report slug & verify code BEFORE rendering A4 HTML so live QR matches final URL
         const initData = await callUploadInit(cfg, {
+            customer: customerPayload,
             folder: buildFolderPayload(wo, pinOption),
             report: {
                 local_inspection_id: String(normInsp.id || ''),
@@ -1003,10 +1175,18 @@ ${ramsCss}
                 source_type: 'app_html',
                 mime_type: 'text/html'
             }
-        }, wo.portal_write_token || '');
+        }, wo.portal_write_token || '', acctToken);
 
         const activeWriteToken = (initData.folder && initData.folder.write_token) || wo.portal_write_token || '';
         rememberFolderOwnershipNow(wo, initData.folder);
+        if (initData.customer && initData.customer.username) {
+            rememberCustomerCreds({
+                companyName: wo.customer_name || wo.company_name || initData.customer.company_name,
+                username: initData.customer.username,
+                password: (customerOption && customerOption.password) || wo.portal_customer_password || '',
+                account_write_token: initData.customer.write_token || acctToken
+            }, wo);
+        }
 
         normInsp.portal_report_slug = initData.report.share_slug;
         normInsp.portal_report_url = initData.report.url;
@@ -1078,11 +1258,12 @@ ${ramsCss}
             verifyCode: compData.verifyCode || initData.report.verify_code,
             equipmentName: normInsp.equipment_name || 'Rapor',
             reportNo: normInsp.report_no || '',
-            sourceType: 'app_html'
+            sourceType: 'app_html',
+            customer: initData.customer || null
         };
     }
 
-    async function uploadExternalPdfToPortal(woRaw, pdfFile, meta = {}, pinOption = { pinMode: 'keep' }) {
+    async function uploadExternalPdfToPortal(woRaw, pdfFile, meta = {}, pinOption = { pinMode: 'keep' }, customerOption = null) {
         const cfg = getPortalConfig();
         if (!pdfFile) {
             throw new Error('Yüklenecek PDF dosyası seçilmedi.');
@@ -1093,7 +1274,11 @@ ${ramsCss}
         const equipmentName = String(meta.equipmentName || fallbackTitle).trim();
         const resultStatus = String(meta.resultStatus || 'UYGUN').trim();
 
+        const customerPayload = buildCustomerRequestPayload(wo, customerOption);
+        const acctToken = (customerOption && customerOption.account_write_token) || wo.portal_account_write_token || '';
+
         const initData = await callUploadInit(cfg, {
+            customer: customerPayload,
             folder: buildFolderPayload(wo, pinOption),
             report: {
                 report_no: reportNo,
@@ -1103,10 +1288,18 @@ ${ramsCss}
                 source_type: 'uploaded_pdf',
                 mime_type: 'application/pdf'
             }
-        }, wo.portal_write_token || '');
+        }, wo.portal_write_token || '', acctToken);
 
         const activeWriteToken = (initData.folder && initData.folder.write_token) || wo.portal_write_token || '';
         rememberFolderOwnershipNow(wo, initData.folder);
+        if (initData.customer && initData.customer.username) {
+            rememberCustomerCreds({
+                companyName: wo.customer_name || wo.company_name || initData.customer.company_name,
+                username: initData.customer.username,
+                password: (customerOption && customerOption.password) || wo.portal_customer_password || '',
+                account_write_token: initData.customer.write_token || acctToken
+            }, wo);
+        }
 
         await callSignedUpload(initData.uploadUrl, 'application/pdf', pdfFile);
         const compData = await callUploadComplete(cfg, initData.report.id, pdfFile.size || 0, activeWriteToken);
@@ -1129,7 +1322,8 @@ ${ramsCss}
             verifyCode: compData.verifyCode || initData.report.verify_code,
             equipmentName,
             reportNo,
-            sourceType: 'uploaded_pdf'
+            sourceType: 'uploaded_pdf',
+            customer: initData.customer || null
         };
     }
 
@@ -1165,24 +1359,77 @@ ${ramsCss}
         if (ta.parentNode) document.body.removeChild(ta);
     }
 
-    function buildCustomerShareText(wo, uploadedResults, effectivePin) {
+    function buildCustomerShareText(wo, uploadedResults, effectivePin, customerCreds) {
+        const cfg = getPortalConfig();
         const customerName = (wo && (wo.customer_name || wo.company_name)) || 'Firmanız';
         const folderUrl = (uploadedResults[0] && uploadedResults[0].folderUrl) || (wo && wo.portal_folder_url) || '';
+        const username = (customerCreds && customerCreds.username) || (wo && wo.portal_customer_username) || '';
+        const password = (customerCreds && customerCreds.password) || (wo && wo.portal_customer_password) || '';
         const listText = uploadedResults.map((r, i) =>
             `${i + 1}. ${r.equipmentName} (${r.reportNo}) - Doğrulama: ${r.verifyCode}\n   ${r.reportUrl}`
         ).join('\n');
+
+        const accessLines = [];
+        if (username) {
+            accessLines.push(`MÜŞTERİ PORTAL GİRİŞ BİLGİLERİ (Yalnızca firmanızın raporlarını görürsünüz):`);
+            accessLines.push(`- Portal Giriş Adresi: ${cfg.portalUrl}`);
+            accessLines.push(`- Kullanıcı Adı: ${username}`);
+            if (password) accessLines.push(`- Şifre: ${password}`);
+            if (folderUrl) accessLines.push(`- Direkt Klasör Bağlantısı: ${folderUrl}`);
+            if (effectivePin) accessLines.push(`- Ek Klasör PIN'i: ${effectivePin}`);
+        } else {
+            if (folderUrl) accessLines.push(`Müşteri Rapor Klasörü: ${folderUrl}`);
+            accessLines.push(effectivePin ? `Erişim Şifresi (PIN): ${effectivePin}` : `Erişim Durumu: Doğrudan bağlantı ile açılır`);
+        }
 
         return [
             `Sayın Yetkili,`,
             ``,
             `${customerName} firmasına ait Periyodik Kontrol Raporları internet portalına yüklenmiştir.`,
             ``,
-            `Müşteri Rapor Klasörü: ${folderUrl}`,
-            effectivePin ? `Erişim Şifresi (PIN): ${effectivePin}` : `Erişim Durumu: Doğrudan bağlantı ile açılır`,
+            ...accessLines,
             uploadedResults.length ? `\nYayınlanan Raporlar:\n${listText}` : '',
             ``,
-            `Klasör linkine tıklayarak tüm raporları inceleyebilir ve PDF olarak indirebilirsiniz.`
+            `Portal giriş adresinden veya klasör bağlantısından kullanıcı adı ve şifrenizle oturum açarak firmanıza ait tüm raporları inceleyebilir ve PDF olarak indirebilirsiniz.`
         ].filter(Boolean).join('\n');
+    }
+
+    function buildLoginCredentialSnippet(username, password, portalUrl) {
+        const lines = [
+            `Portal Adresi: ${portalUrl}`,
+            `Kullanıcı Adı: ${username}`
+        ];
+        if (password) lines.push(`Şifre: ${password}`);
+        return lines.join('\n');
+    }
+
+    function copyCustomerLoginInfo(workOrderId) {
+        let wo = window.AppState?.currentWorkOrder || null;
+        if (workOrderId && window.OfflineDB?.state?.workOrders) {
+            wo = window.OfflineDB.state.workOrders.find(w => String(w.id) === String(workOrderId)) || wo;
+        }
+        if (!wo || !wo.portal_customer_username) {
+            toast('Bu iş kaydında kayıtlı müşteri giriş bilgisi bulunamadı.', 'warning');
+            return;
+        }
+        const cfg = getPortalConfig();
+        const snippet = buildLoginCredentialSnippet(
+            wo.portal_customer_username,
+            wo.portal_customer_password || '',
+            cfg.portalUrl
+        );
+        copyTextToClipboard(snippet, 'Müşteri giriş bilgileri panoya kopyalandı!');
+    }
+
+    function copyLastCredentials() {
+        if (!_portalModalState || !_portalModalState.effectiveCustomer?.username) return;
+        const cfg = getPortalConfig();
+        const snippet = buildLoginCredentialSnippet(
+            _portalModalState.effectiveCustomer.username,
+            _portalModalState.effectiveCustomer.password || '',
+            cfg.portalUrl
+        );
+        copyTextToClipboard(snippet, 'Müşteri giriş bilgileri panoya kopyalandı!');
     }
 
     function shareTextViaNativeOrWeb(subject, text) {
@@ -1260,11 +1507,27 @@ ${ramsCss}
             ? new Set(preselectedIds.map(x => String(x)))
             : null;
 
+        const customerName = (wo.customer_name || wo.company_name || '').trim();
+        const remembered = getRememberedCustomerCreds(customerName, wo);
+        const initUsername = remembered ? remembered.username : buildSuggestedUsername(customerName);
+        const initPassword = remembered
+            ? (remembered.password || '')
+            : generateReadablePassword(8);
+
         _portalModalState = {
             wo,
             reports,
             uploadedResults: [],
-            effectivePin: wo.portal_pin || cfg.defaultPin || ''
+            effectivePin: wo.portal_pin || '',
+            rememberedCustomer: remembered,
+            initialUsername: initUsername,
+            initialPassword: initPassword,
+            manualUsernameEdit: false,
+            effectiveCustomer: remembered ? {
+                username: remembered.username,
+                password: initPassword,
+                account_write_token: remembered.account_write_token || ''
+            } : null
         };
 
         const reportsHtml = reports.length ? reports.map(r => {
@@ -1358,22 +1621,42 @@ ${ramsCss}
                     </div>
                 </div>
 
-                <!-- Müşteri Erişim PIN Ayarı -->
-                <div class="p-3 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
-                    <div class="flex items-center justify-between gap-2">
-                        <label class="font-bold text-slate-800 flex items-center gap-1.5">
-                            <i class="fa-solid fa-key text-amber-500"></i>
-                            <span>Müşteri Klasörü PIN Şifresi</span>
+                <!-- Müşteri Firma Giriş Bilgileri (Kullanıcı Adı & Şifre ile Firma İzolasyonu) -->
+                <div class="p-3 rounded-xl border border-indigo-200 bg-indigo-50/70 space-y-2">
+                    <div class="flex items-center justify-between gap-2 flex-wrap">
+                        <label class="font-bold text-slate-900 flex items-center gap-1.5">
+                            <i class="fa-solid fa-user-shield text-indigo-600"></i>
+                            <span>Müşteri Firma Giriş Bilgileri</span>
                         </label>
-                        <button type="button" onclick="CloudPortal.generateRandomPin()" class="px-2 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold text-[10px] border border-amber-300">Rastgele 4 Hane</button>
+                        ${remembered
+                            ? `<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-[10px]">✓ Kayıtlı Firma Hesabı</span>`
+                            : `<span class="px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 border border-sky-200 font-bold text-[10px]">Otomatik Hesap Açılır</span>`}
                     </div>
-                    <input type="text" id="portalUploadPinInput" value="${escapeStr(wo.portal_pin || cfg.defaultPin || '')}"
-                        placeholder="Örn: 4829 (Boş bırakılırsa şifresiz / mevcut korunur)"
-                        class="w-full px-3 py-1.5 border border-slate-300 bg-white rounded-lg text-xs font-mono font-bold tracking-wider">
-                    ${wo.portal_folder_slug ? `
-                        <label class="flex items-center gap-1.5 text-[11px] text-slate-600 cursor-pointer">
-                            <input type="checkbox" id="portalUploadClearPinCb" onchange="if(this.checked) document.getElementById('portalUploadPinInput').value='';" class="accent-sky-600">
-                            <span>Klasörü şifresiz (yalnızca gizli linkle açılır) yap</span>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-600 mb-0.5" for="portalCustUsernameInput">Kullanıcı Adı</label>
+                            <input type="text" id="portalCustUsernameInput" value="${escapeStr(initUsername)}"
+                                oninput="CloudPortal.onCustomerUsernameInput()"
+                                placeholder="ornek-firma"
+                                class="w-full px-2.5 py-1.5 border border-slate-300 bg-white rounded-lg text-xs font-mono font-bold text-slate-900">
+                        </div>
+                        <div>
+                            <div class="flex items-center justify-between mb-0.5">
+                                <label class="block text-[10px] font-bold text-slate-600" for="portalCustPasswordInput">Şifre</label>
+                                <button type="button" onclick="CloudPortal.generateRandomCustomerPassword()" class="text-[10px] font-bold text-indigo-700 hover:underline">Rastgele</button>
+                            </div>
+                            <input type="text" id="portalCustPasswordInput" value="${escapeStr(initPassword)}"
+                                placeholder="${remembered && !initPassword ? 'Mevcut şifre korunur' : 'En az 4 karakter'}"
+                                class="w-full px-2.5 py-1.5 border border-slate-300 bg-white rounded-lg text-xs font-mono font-bold text-slate-900">
+                        </div>
+                    </div>
+                    <div class="text-[10px] text-slate-600 leading-snug">
+                        Müşteri <strong class="font-mono">${escapeStr(portalHostLabel)}</strong> adresinden bu bilgilerle giriş yaparak yalnızca kendi firmasına ait raporları görür. Diğer firmaların raporları gizlidir.
+                    </div>
+                    ${wo.portal_pin ? `
+                        <label class="flex items-center gap-1.5 text-[11px] text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 cursor-pointer">
+                            <input type="checkbox" id="portalUploadClearPinCb" checked class="accent-indigo-600">
+                            <span>Eski klasör PIN kilidini (<strong>${escapeStr(wo.portal_pin)}</strong>) kaldır — yalnızca kullanıcı adı &amp; şifre ile açılsın</span>
                         </label>
                     ` : ''}
                 </div>
@@ -1424,6 +1707,18 @@ ${ramsCss}
         }
     }
 
+    function onCustomerUsernameInput() {
+        if (!_portalModalState) return;
+        const val = (document.getElementById('portalCustUsernameInput')?.value || '').trim();
+        _portalModalState.manualUsernameEdit = (sanitizeUsername(val) !== sanitizeUsername(_portalModalState.initialUsername));
+    }
+
+    function generateRandomCustomerPassword() {
+        const pwd = generateReadablePassword(8);
+        const inp = document.getElementById('portalCustPasswordInput');
+        if (inp) inp.value = pwd;
+    }
+
     function generateRandomPin() {
         const pin = String(Math.floor(1000 + Math.random() * 9000));
         const inp = document.getElementById('portalUploadPinInput');
@@ -1444,14 +1739,40 @@ ${ramsCss}
             return;
         }
 
-        const pinRaw = (document.getElementById('portalUploadPinInput')?.value || '').trim();
-        const clearChecked = Boolean(document.getElementById('portalUploadClearPinCb')?.checked);
-        let pinOption = { pinMode: 'keep', pin: '' };
-        if (clearChecked) {
-            pinOption = { pinMode: 'clear', pin: '' };
-        } else if (pinRaw) {
-            pinOption = { pinMode: 'set', pin: pinRaw };
+        const usernameInputEl = document.getElementById('portalCustUsernameInput');
+        const passwordInputEl = document.getElementById('portalCustPasswordInput');
+        const username = sanitizeUsername(usernameInputEl?.value || '');
+        const passwordRaw = (passwordInputEl?.value || '').trim();
+
+        if (!username || username.length < 3) {
+            toast('Müşteri kullanıcı adı en az 3 karakter olmalıdır.', 'warning');
+            if (usernameInputEl) usernameInputEl.focus();
+            return;
         }
+        if (usernameInputEl) usernameInputEl.value = username;
+
+        const remembered = _portalModalState.rememberedCustomer;
+        const isSameRememberedUser = Boolean(remembered && sanitizeUsername(remembered.username) === username);
+        const hasRememberedToken = Boolean(isSameRememberedUser && remembered.account_write_token);
+
+        if ((!hasRememberedToken && passwordRaw.length < 4) || (passwordRaw && passwordRaw.length < 4)) {
+            toast('Müşteri şifresi en az 4 karakter olmalıdır.', 'warning');
+            if (passwordInputEl) passwordInputEl.focus();
+            return;
+        }
+
+        const pwdChanged = Boolean(passwordRaw && passwordRaw !== (_portalModalState.initialPassword || ''));
+        let activeCustomerOpt = {
+            username,
+            password: passwordRaw,
+            company_name: (_portalModalState.wo && (_portalModalState.wo.customer_name || _portalModalState.wo.company_name)) || 'Müşteri Firma',
+            auto_username: !isSameRememberedUser && !_portalModalState.manualUsernameEdit,
+            update_password: Boolean(hasRememberedToken && pwdChanged),
+            account_write_token: hasRememberedToken ? remembered.account_write_token : ''
+        };
+
+        const clearChecked = Boolean(document.getElementById('portalUploadClearPinCb')?.checked);
+        const pinOption = clearChecked ? { pinMode: 'clear', pin: '' } : { pinMode: 'keep', pin: '' };
 
         const startBtn = document.getElementById('portalStartUploadBtn');
         const progBox = document.getElementById('portalUploadProgressBox');
@@ -1474,11 +1795,26 @@ ${ramsCss}
             if (progBar) progBar.style.width = `${pct}%`;
         };
 
+        const syncResolvedCustomer = (resItem) => {
+            if (resItem && resItem.customer && resItem.customer.username) {
+                activeCustomerOpt = {
+                    username: resItem.customer.username,
+                    password: passwordRaw || (remembered && remembered.password) || '',
+                    company_name: activeCustomerOpt.company_name,
+                    auto_username: false,
+                    update_password: false,
+                    account_write_token: resItem.customer.write_token || activeCustomerOpt.account_write_token
+                };
+                if (usernameInputEl) usernameInputEl.value = activeCustomerOpt.username;
+            }
+        };
+
         try {
             for (const insp of selectedReports) {
                 updateProg(`${doneCount + 1}/${totalTasks} Yükleniyor: ${insp.equipment_name || insp.report_no || 'Rapor'}...`);
                 try {
-                    const r = await uploadInspectionReport(insp, _portalModalState.wo, pinOption);
+                    const r = await uploadInspectionReport(insp, _portalModalState.wo, pinOption, activeCustomerOpt);
+                    syncResolvedCustomer(r);
                     uploaded.push(r);
                 } catch (err) {
                     errors.push(`${insp.equipment_name || insp.report_no}: ${err.message}`);
@@ -1494,7 +1830,8 @@ ${ramsCss}
                         equipmentName: document.getElementById('portalExtPdfTitle')?.value || '',
                         reportNo: document.getElementById('portalExtPdfNo')?.value || '',
                         resultStatus: document.getElementById('portalExtPdfResult')?.value || 'UYGUN'
-                    }, pinOption);
+                    }, pinOption, activeCustomerOpt);
+                    syncResolvedCustomer(r);
                     uploaded.push(r);
                 } catch (err) {
                     errors.push(`PDF (${pdfFile.name}): ${err.message}`);
@@ -1504,15 +1841,25 @@ ${ramsCss}
             }
 
             _portalModalState.uploadedResults = uploaded;
+            _portalModalState.effectiveCustomer = activeCustomerOpt;
+            _portalModalState.rememberedCustomer = {
+                username: activeCustomerOpt.username,
+                password: activeCustomerOpt.password,
+                account_write_token: activeCustomerOpt.account_write_token,
+                company_name: activeCustomerOpt.company_name
+            };
             _portalModalState.effectivePin = pinOption.pinMode === 'clear'
                 ? ''
-                : (pinOption.pinMode === 'set' ? pinOption.pin : (_portalModalState.wo.portal_pin || ''));
+                : (_portalModalState.wo.portal_pin || '');
 
             if (progBar) progBar.style.width = '100%';
 
             if (uploaded.length > 0 && resultBox) {
+                const cfg = getPortalConfig();
                 const folderUrl = uploaded[0].folderUrl || _portalModalState.wo.portal_folder_url || '';
                 const effPin = _portalModalState.effectivePin;
+                const finalUsername = activeCustomerOpt.username || _portalModalState.wo.portal_customer_username || '';
+                const finalPassword = activeCustomerOpt.password || _portalModalState.wo.portal_customer_password || '';
                 const linksList = uploaded.map(u => `
                     <div class="flex items-center justify-between gap-2 bg-white px-2.5 py-1.5 rounded-lg border border-emerald-200">
                         <div class="min-w-0">
@@ -1527,15 +1874,28 @@ ${ramsCss}
                 `).join('');
 
                 resultBox.innerHTML = `
-                    <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center justify-between gap-2 flex-wrap">
                         <div class="font-black text-emerald-900 flex items-center gap-1.5">
                             <i class="fa-solid fa-circle-check text-emerald-600 text-sm"></i>
                             <span>${uploaded.length} Rapor Başarıyla Yayınlandı!</span>
                         </div>
-                        ${effPin ? `<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 font-mono font-bold text-[10px]">PIN: ${escapeStr(effPin)}</span>` : `<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">Şifresiz Link</span>`}
+                        <span class="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-900 border border-indigo-300 font-mono font-bold text-[10px]">🛡️ @${escapeStr(finalUsername)}</span>
+                    </div>
+                    <div class="p-2.5 rounded-xl bg-white border border-indigo-200 space-y-1.5">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-[10px] font-bold text-indigo-900 uppercase">Müşteri Portal Giriş Bilgileri</span>
+                            <button type="button" onclick="CloudPortal.copyLastCredentials()" class="px-2 py-0.5 rounded bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px]">Girişi Kopyala</button>
+                        </div>
+                        <div class="grid grid-cols-1 gap-1 text-[11px] font-mono text-slate-800">
+                            <div class="truncate">Site: <strong>${escapeStr(cfg.portalUrl)}</strong></div>
+                            <div>Kullanıcı Adı: <strong>${escapeStr(finalUsername)}</strong> · Şifre: <strong>${escapeStr(finalPassword || '(Mevcut)')}</strong></div>
+                        </div>
                     </div>
                     <div class="space-y-1">
-                        <div class="text-[10px] font-bold text-emerald-800 uppercase">Müşteri Klasör Bağlantısı</div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-bold text-emerald-800 uppercase">Müşteri Klasör Bağlantısı</span>
+                            ${effPin ? `<span class="text-[10px] font-mono text-amber-800 font-bold">Ek PIN: ${escapeStr(effPin)}</span>` : ''}
+                        </div>
                         <div class="flex items-center gap-1.5">
                             <input type="text" readonly value="${escapeStr(folderUrl)}" onclick="this.select()"
                                 class="flex-1 px-2.5 py-1.5 bg-white border border-emerald-300 rounded-lg font-mono text-[11px] text-slate-900">
@@ -1553,7 +1913,7 @@ ${ramsCss}
                             <i class="fa-solid fa-envelope"></i>
                             <span>E-postaya Aktar</span>
                         </button>
-                        <a href="${escapeStr(folderUrl)}" target="_blank" rel="noopener" class="py-2 px-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-[11px] flex items-center justify-center gap-1">
+                        <a href="${escapeStr(cfg.portalUrl)}" target="_blank" rel="noopener" class="py-2 px-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-[11px] flex items-center justify-center gap-1">
                             <i class="fa-solid fa-arrow-up-right-from-square"></i>
                             <span>Siteye Git</span>
                         </a>
@@ -1581,7 +1941,12 @@ ${ramsCss}
         const wo = _portalModalState.wo || {};
         const customer = wo.customer_name || wo.company_name || 'Müşteri';
         const subject = `Periyodik Kontrol Raporları - ${customer}`;
-        const text = buildCustomerShareText(wo, _portalModalState.uploadedResults, _portalModalState.effectivePin);
+        const text = buildCustomerShareText(
+            wo,
+            _portalModalState.uploadedResults,
+            _portalModalState.effectivePin,
+            _portalModalState.effectiveCustomer
+        );
         shareTextViaNativeOrWeb(subject, text);
     }
 
@@ -1661,6 +2026,9 @@ ${ramsCss}
         saveConfig: savePortalConfig,
         normalizeUrl: normalizePortalUrl,
         sanitizeCompanySlug,
+        sanitizeUsername,
+        buildSuggestedUsername,
+        generateReadablePassword,
         getActiveCompanyProfile: resolveActiveCompanyProfile,
         generateQrDataUrl,
         buildPortableA4ReportHtml,
@@ -1670,11 +2038,15 @@ ${ramsCss}
         openPortalUploadModal,
         toggleAllModalReports,
         onExternalPdfSelected,
+        onCustomerUsernameInput,
+        generateRandomCustomerPassword,
         generateRandomPin,
         executeModalUpload,
         shareLastUpload,
         transferLastUploadToEmail,
         copyReportPortalLink,
+        copyCustomerLoginInfo,
+        copyLastCredentials,
         savePortalSettingsFromPage,
         testPortalFromSettingsPage,
         openPortalSiteFromSettings,

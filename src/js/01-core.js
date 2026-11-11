@@ -1054,9 +1054,33 @@ function openCharPickerModal() {
 
 function openUserSettingsModal() {
 
+    const curUser = (typeof AuthManager !== 'undefined' && typeof AuthManager.getCurrentUser === 'function')
+        ? AuthManager.getCurrentUser()
+        : null;
+    const assigned = (typeof MeasuringDevicesManager !== 'undefined' && typeof MeasuringDevicesManager.getAssignedDevices === 'function')
+        ? MeasuringDevicesManager.getAssignedDevices()
+        : [];
+    const defaultTitle = curUser
+        ? `${curUser.title || 'Elektrik Mühendisi'}${curUser.emoNo ? ` (EMO: ${curUser.emoNo})` : ''}`
+        : 'Elektrik Mühendisi';
+    const savedTitle = localStorage.getItem('enlab_eng_title') || defaultTitle;
+    const escapeVal = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+    const assignedSummaryHtml = assigned.length
+        ? assigned.map((d, i) => `
+            <div class="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200">
+                <div class="min-w-0 truncate">
+                    <span class="font-bold text-slate-800">${i + 1}. ${escapeVal([d.brand, d.model].filter(Boolean).join(' ') || d.reportName || d.category)}</span>
+                    ${d.serial ? `<span class="text-[10px] font-mono text-slate-500 ml-1">(${escapeVal(d.serial)})</span>` : ''}
+                </div>
+                <span class="text-[10px] font-semibold text-emerald-700 shrink-0">${escapeVal(d.category || '')}</span>
+            </div>
+        `).join('')
+        : `<div class="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-[11px]">Henüz üzerinize alınmış ölçüm cihazı yok. Havuzdan seçerek raporlara otomatik eklenmesini sağlayabilirsiniz.</div>`;
+
     openModal(
 
-        '<i class="fa-solid fa-sliders mr-2 text-sky-400"></i>Kullanıcı ve Saha Ayarları',
+        '<i class="fa-solid fa-sliders mr-2 text-sky-400"></i>Kullanıcı ve Ölçüm Cihazı Ayarları',
 
         `<div class="space-y-3 text-xs">
 
@@ -1066,7 +1090,7 @@ function openUserSettingsModal() {
 
                     <label class="block font-semibold text-slate-600 mb-1">Ad Soyad</label>
 
-                    <input type="text" value="Ali Şamil Aytekin" class="w-full border border-slate-300 rounded-lg px-3 py-2 bg-slate-50" readonly>
+                    <input type="text" value="${escapeVal(curUser ? curUser.fullName : 'Aktif Personel')}" class="w-full border border-slate-300 rounded-lg px-3 py-2 bg-slate-50 font-semibold" readonly>
 
                 </div>
 
@@ -1074,25 +1098,29 @@ function openUserSettingsModal() {
 
                     <label class="block font-semibold text-slate-600 mb-1">Unvan / Oda Sicil No</label>
 
-                    <input type="text" id="prefEngineerTitle" value="${localStorage.getItem('enlab_eng_title') || 'Elektrik Mühendisi (EMO: 64892)'}" class="w-full border border-slate-300 rounded-lg px-3 py-2">
+                    <input type="text" id="prefEngineerTitle" value="${escapeVal(savedTitle)}" class="w-full border border-slate-300 rounded-lg px-3 py-2">
 
                 </div>
 
             </div>
 
-            <div>
+            <div class="space-y-2 pt-1 border-t border-slate-100">
 
-                <label class="block font-semibold text-slate-600 mb-1">Varsayılan Çok Fonksiyonlu Test Cihazı</label>
+                <div class="flex items-center justify-between">
+                    <span class="font-bold text-slate-800">Üzerinizdeki Ölçüm Cihazları (${assigned.length})</span>
+                    <button type="button" onclick="closeModal(); openDeviceEditModal(null, { assignByDefault: true, refreshSettings: true });"
+                        class="text-[11px] font-bold text-emerald-700 hover:underline">+ Yeni Cihaz Tanımla</button>
+                </div>
 
-                <input type="text" id="prefDefaultTester" value="${localStorage.getItem('enlab_def_tester') || 'C.121 - METREL MI 3102 BT (Seri: 21080512)'}" class="w-full border border-slate-300 rounded-lg px-3 py-2">
+                <div class="space-y-1.5 max-h-40 overflow-y-auto">
+                    ${assignedSummaryHtml}
+                </div>
 
-            </div>
-
-            <div>
-
-                <label class="block font-semibold text-slate-600 mb-1">Varsayılan Termal Kamera</label>
-
-                <input type="text" id="prefDefaultThermal" value="${localStorage.getItem('enlab_def_thermal') || 'C.105 - UNI-T UTi165A (Seri: 1120548)'}" class="w-full border border-slate-300 rounded-lg px-3 py-2">
+                <button type="button" onclick="closeModal(); openDeviceCatalogPickerModal('settings_assign');"
+                    class="w-full py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-amber-400 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition">
+                    <i class="fa-solid fa-right-left"></i>
+                    <span>Ölçüm Cihazlarımı Seç / Değiştir (Havuz)</span>
+                </button>
 
             </div>
 
@@ -1100,7 +1128,7 @@ function openUserSettingsModal() {
 
         `<button onclick="closeModal()" class="px-4 py-2 rounded-lg bg-slate-200 text-slate-700 font-semibold text-xs">İptal</button>
 
-         <button onclick="localStorage.setItem('enlab_eng_title', document.getElementById('prefEngineerTitle').value); localStorage.setItem('enlab_def_tester', document.getElementById('prefDefaultTester').value); localStorage.setItem('enlab_def_thermal', document.getElementById('prefDefaultThermal').value); closeModal(); showToast('Ayarlar kaydedildi');" class="px-4 py-2 rounded-lg bg-sky-600 text-white font-semibold text-xs">Kaydet</button>`
+         <button onclick="localStorage.setItem('enlab_eng_title', document.getElementById('prefEngineerTitle').value); closeModal(); showToast('Ayarlar kaydedildi');" class="px-4 py-2 rounded-lg bg-sky-600 text-white font-semibold text-xs">Kaydet</button>`
 
     );
 

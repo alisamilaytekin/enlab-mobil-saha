@@ -566,25 +566,87 @@ function renderSharedCompanyInfoSection() {
 
 
 
+function isSharedMeasuringDeviceRowBlank(row) {
+    if (!row || typeof row !== 'object') return true;
+    return !String(row.name || '').trim()
+        && !String(row.serial || '').trim()
+        && !String(row.calDate || '').trim()
+        && !String(row.validDate || '').trim()
+        && !String(row.certNo || '').trim();
+}
+
 function ensureMeasuringDevices() {
 
     const fd = AppState.currentFormData;
+    const insp = AppState.currentInspection;
 
     if (!fd) return;
 
-    if (!fd.measuringDevices || !Array.isArray(fd.measuringDevices) || fd.measuringDevices.length === 0) {
+    if (!Array.isArray(fd.measuringDevices)) {
+        fd.measuringDevices = [];
+    }
 
+    const isBlankList = fd.measuringDevices.length === 0 || fd.measuringDevices.every(isSharedMeasuringDeviceRowBlank);
+    if (!isBlankList && !fd._devicesInitialized) {
+        fd._devicesInitialized = true;
+    }
+
+    if (!fd._devicesInitialized && isBlankList && window.MeasuringDevicesManager) {
+        const mgr = window.MeasuringDevicesManager;
+        if (mgr.isAutoApplyEnabled() && mgr.getAssignedDevices().length > 0) {
+            mgr.applyDefaultsToFormData(fd, insp ? insp.template_id : null, false);
+        }
+    }
+
+    if (!fd._devicesInitialized && fd.measuringDevices.length === 0) {
         fd.measuringDevices = [
-
             { name: '', serial: '', calDate: '', validDate: '', certNo: '' }
-
         ];
-
     }
 
 }
 
+function syncGeneratorMeasuringDevicesRef() {
+    const fd = AppState.currentFormData;
+    const insp = AppState.currentInspection;
+    if (fd && insp && String(insp.template_id) === '2205' && fd.generator) {
+        fd.generator.devices = fd.measuringDevices;
+    }
+}
 
+function addManualMeasuringDeviceRow() {
+    const fd = AppState.currentFormData;
+    if (!fd) return;
+    if (!Array.isArray(fd.measuringDevices)) fd.measuringDevices = [];
+    fd.measuringDevices.push({ name: '', serial: '', calDate: '', validDate: '', certNo: '' });
+    fd._devicesInitialized = true;
+    syncGeneratorMeasuringDevicesRef();
+    triggerAutoSave();
+    paintInspectionEditorUI();
+}
+
+function removeMeasuringDeviceRow(dIdx) {
+    const fd = AppState.currentFormData;
+    if (!fd || !Array.isArray(fd.measuringDevices)) return;
+    fd.measuringDevices.splice(dIdx, 1);
+    fd._devicesInitialized = true;
+    syncGeneratorMeasuringDevicesRef();
+    triggerAutoSave();
+    paintInspectionEditorUI();
+}
+
+function updateMeasuringDeviceCell(dIdx, field, val) {
+    const fd = AppState.currentFormData;
+    if (!fd || !Array.isArray(fd.measuringDevices) || !fd.measuringDevices[dIdx]) return;
+    fd.measuringDevices[dIdx][field] = val;
+    fd._devicesInitialized = true;
+    syncGeneratorMeasuringDevicesRef();
+    triggerAutoSave();
+}
+
+window.addManualMeasuringDeviceRow = addManualMeasuringDeviceRow;
+window.removeMeasuringDeviceRow = removeMeasuringDeviceRow;
+window.updateMeasuringDeviceCell = updateMeasuringDeviceCell;
 
 function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgileri') {
 
@@ -593,50 +655,39 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
     const fd = AppState.currentFormData;
 
     const devices = fd.measuringDevices;
+    const mgr = window.MeasuringDevicesManager || null;
+    const hasCatalogUi = Boolean(mgr);
 
+    const cardsHtml = devices.length ? devices.map((dev, dIdx) => {
+        const subLabel = [dev.brand, dev.model].filter(Boolean).join(' ').trim();
+        const calStatus = (mgr && dev.validDate) ? mgr.getCalibrationStatus(dev.validDate) : null;
+        const isTherm = Boolean(dev.isThermal || (String(dev.category || '').toLowerCase().includes('termal')) || (String(dev.name || '').toLowerCase().includes('termal')));
 
+        return `
+                    <div class="p-2.5 rounded-xl border ${isTherm ? 'border-orange-200 bg-orange-50/30' : 'border-slate-200 bg-slate-50'} space-y-2">
 
-    return `
+                        <div class="flex items-center justify-between border-b border-slate-200/80 pb-1.5 gap-2 flex-wrap">
 
-        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                            <div class="flex items-center gap-1.5 flex-wrap min-w-0">
+                                <span class="font-bold text-slate-800">Cihaz #${dIdx + 1}</span>
+                                ${dev.code ? `<span class="px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 border border-sky-200 font-mono font-bold text-[10px]">${escapeHtml(dev.code)}</span>` : ''}
+                                ${subLabel ? `<span class="px-1.5 py-0.5 rounded bg-slate-200/80 text-slate-800 font-bold text-[10px] truncate max-w-[160px]">${escapeHtml(subLabel)}</span>` : ''}
+                                ${calStatus && calStatus.status !== 'unknown' ? `<span class="px-1.5 py-0.5 rounded-full border font-bold text-[9px] ${calStatus.badgeClass}">${escapeHtml(calStatus.label)}</span>` : ''}
+                            </div>
 
-            <div class="px-3.5 py-2.5 bg-slate-800 text-white font-bold text-xs flex items-center justify-between">
-
-                <span>${title} (${devices.length})</span>
-
-                <button onclick="AppState.currentFormData.measuringDevices.push({name:'',serial:'',calDate:'',validDate:'',certNo:''}); triggerAutoSave(); paintInspectionEditorUI();"
-
-                    class="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1">
-
-                    <i class="fa-solid fa-plus"></i>
-
-                    <span>Cihaz Ekle</span>
-
-                </button>
-
-            </div>
-
-            <div class="p-3 space-y-2.5 text-xs">
-
-                ${devices.map((dev, dIdx) => `
-
-                    <div class="p-2.5 rounded-lg border border-slate-200 bg-slate-50 space-y-2">
-
-                        <div class="flex items-center justify-between border-b border-slate-200 pb-1">
-
-                            <span class="font-bold text-slate-700">Cihaz #${dIdx + 1}</span>
-
-                            ${devices.length > 1 ? `
-
-                                <button onclick="AppState.currentFormData.measuringDevices.splice(${dIdx},1); triggerAutoSave(); paintInspectionEditorUI();"
-
-                                    class="text-rose-600 hover:text-rose-700 font-semibold text-xs flex items-center gap-1">
-
+                            <div class="flex items-center gap-1.5 shrink-0">
+                                ${hasCatalogUi ? `
+                                    <button type="button" onclick="openReportSwapDeviceModal(${dIdx})"
+                                        class="px-2 py-1 rounded-lg bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-bold text-[11px] flex items-center gap-1 shadow-2xs transition">
+                                        <i class="fa-solid fa-right-left"></i>
+                                        <span>Değiştir</span>
+                                    </button>
+                                ` : ''}
+                                <button type="button" onclick="removeMeasuringDeviceRow(${dIdx})"
+                                    class="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-600 border border-rose-200 font-semibold text-[11px] flex items-center gap-1 transition">
                                     <i class="fa-solid fa-trash-can"></i> Sil
-
                                 </button>
-
-                            ` : ''}
+                            </div>
 
                         </div>
 
@@ -648,7 +699,7 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
 
                                 <input type="text" value="${escapeHtml(dev.name || '')}" placeholder=""
 
-                                    oninput="AppState.currentFormData.measuringDevices[${dIdx}].name=this.value; triggerAutoSave();"
+                                    oninput="updateMeasuringDeviceCell(${dIdx}, 'name', this.value)"
 
                                     class="w-full px-2 py-1.5 border border-slate-300 rounded-lg bg-white font-semibold">
 
@@ -660,7 +711,7 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
 
                                 <input type="text" value="${escapeHtml(dev.serial || '')}" placeholder=""
 
-                                    oninput="AppState.currentFormData.measuringDevices[${dIdx}].serial=this.value; triggerAutoSave();"
+                                    oninput="updateMeasuringDeviceCell(${dIdx}, 'serial', this.value)"
 
                                     class="w-full px-2 py-1.5 border border-slate-300 rounded-lg bg-white">
 
@@ -672,7 +723,7 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
 
                                 <input type="text" value="${escapeHtml(dev.certNo || '')}" placeholder=""
 
-                                    oninput="AppState.currentFormData.measuringDevices[${dIdx}].certNo=this.value; triggerAutoSave();"
+                                    oninput="updateMeasuringDeviceCell(${dIdx}, 'certNo', this.value)"
 
                                     class="w-full px-2 py-1.5 border border-slate-300 rounded-lg bg-white">
 
@@ -684,7 +735,7 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
 
                                 <input type="text" value="${escapeHtml(dev.calDate || '')}" placeholder=""
 
-                                    oninput="AppState.currentFormData.measuringDevices[${dIdx}].calDate=this.value; triggerAutoSave();"
+                                    oninput="updateMeasuringDeviceCell(${dIdx}, 'calDate', this.value)"
 
                                     class="w-full px-2 py-1.5 border border-slate-300 rounded-lg bg-white">
 
@@ -696,7 +747,7 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
 
                                 <input type="text" value="${escapeHtml(dev.validDate || '')}" placeholder=""
 
-                                    oninput="AppState.currentFormData.measuringDevices[${dIdx}].validDate=this.value; triggerAutoSave();"
+                                    oninput="updateMeasuringDeviceCell(${dIdx}, 'validDate', this.value)"
 
                                     class="w-full px-2 py-1.5 border border-slate-300 rounded-lg bg-white">
 
@@ -705,8 +756,70 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
                         </div>
 
                     </div>
+        `;
+    }).join('') : `
+        <div class="p-4 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/70 text-center space-y-2.5">
+            <div class="text-xs font-bold text-slate-700">Bu raporda henüz ölçüm cihazı tanımlı değil.</div>
+            <div class="flex items-center justify-center gap-2 flex-wrap">
+                ${hasCatalogUi ? `
+                    <button type="button" onclick="syncSettingsDevicesToCurrentReportPrompt()"
+                        class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-[11px] flex items-center gap-1">
+                        <i class="fa-solid fa-arrows-rotate"></i>
+                        <span>Üzerimdekileri Çek</span>
+                    </button>
+                    <button type="button" onclick="openReportAddDeviceModal()"
+                        class="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-bold text-[11px] flex items-center gap-1">
+                        <i class="fa-solid fa-list-check"></i>
+                        <span>Havuzdan Cihaz Ekle</span>
+                    </button>
+                ` : ''}
+                <button type="button" onclick="addManualMeasuringDeviceRow()"
+                    class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>+ Boş Satır Ekle</span>
+                </button>
+            </div>
+        </div>
+    `;
 
-                `).join('')}
+    return `
+
+        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+
+            <div class="px-3.5 py-2.5 bg-slate-800 text-white font-bold text-xs flex items-center justify-between gap-2 flex-wrap">
+
+                <span>${title} (${devices.length})</span>
+
+                <div class="flex items-center gap-1.5 flex-wrap">
+                    ${hasCatalogUi ? `
+                        <button type="button" onclick="syncSettingsDevicesToCurrentReportPrompt()"
+                            class="px-2 py-1 bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 font-bold rounded-lg text-[11px] flex items-center gap-1 shadow-2xs transition"
+                            title="Ayarlardaki üzerinizdeki cihazları bu rapora çek">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                            <span>Üzerimdekileri Çek</span>
+                        </button>
+                        <button type="button" onclick="openReportAddDeviceModal()"
+                            class="px-2 py-1 bg-sky-500 hover:bg-sky-400 active:scale-95 text-slate-950 font-bold rounded-lg text-[11px] flex items-center gap-1 shadow-2xs transition">
+                            <i class="fa-solid fa-list-check"></i>
+                            <span>Havuzdan Ekle</span>
+                        </button>
+                    ` : ''}
+                    <button type="button" onclick="addManualMeasuringDeviceRow()"
+
+                        class="px-2 py-1 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-slate-950 font-bold rounded-lg text-[11px] flex items-center gap-1 shadow-2xs transition">
+
+                        <i class="fa-solid fa-plus"></i>
+
+                        <span>Manuel</span>
+
+                    </button>
+                </div>
+
+            </div>
+
+            <div class="p-3 space-y-2.5 text-xs">
+
+                ${cardsHtml}
 
             </div>
 

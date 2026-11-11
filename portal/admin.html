@@ -13,11 +13,11 @@
         <div class="brand-icon">⚡</div>
         <div>
           <div class="brand-title">Hızlı Rapor Yönetici Paneli</div>
-          <div class="brand-sub">Harici PDF Yükleme &amp; Müşteri Klasör Yönetimi</div>
+          <div class="brand-sub">Müşteri Hesapları, Harici PDF Yükleme &amp; Klasör Yönetimi</div>
         </div>
       </a>
       <div style="display:flex; gap:8px; align-items:center;">
-        <a href="/" class="btn btn-ghost btn-sm">Doğrulama Sayfası</a>
+        <a href="/" class="btn btn-ghost btn-sm">Müşteri Portalı</a>
         <button id="logoutBtn" type="button" class="btn btn-danger btn-sm hidden" onclick="adminLogout()">Çıkış</button>
       </div>
     </div>
@@ -41,12 +41,12 @@
       <section class="card" style="background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%); color:#fff; border-color:#334155;">
         <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px;">
           <div>
-            <div style="font-size:14px; font-weight:800; color:#fbbf24;">📱 Hızlı Rapor (Android / Web) Uygulama Bağlantısı</div>
+            <div style="font-size:14px; font-weight:800; color:#fbbf24;">📱 Hızlı Rapor (Android / Web) Otomatik Bulut Bağlantısı</div>
             <div style="font-size:12px; color:#cbd5e1; margin-top:4px;">
-              Uygulama artık bu siteye şifre sormadan otomatik bağlanır ve kullanıcı şirket kısa adına göre klasörleri (<code class="mono">/p/kisaad-...</code>) ayırır.
+              Uygulamadan yüklenen her müşteri için otomatik kullanıcı adı + şifre oluşturulur ve yalnızca kendi firmasına ait klasörlerde listelenir.
             </div>
             <div style="margin-top:8px; font-size:12px;">
-              Site Adresi: <code id="appPortalUrlCode" class="mono" style="background:rgba(255,255,255,0.12); padding:2px 8px; border-radius:6px;"></code>
+              Portal Adresi: <code id="appPortalUrlCode" class="mono" style="background:rgba(255,255,255,0.12); padding:2px 8px; border-radius:6px;"></code>
             </div>
           </div>
           <div style="display:flex; gap:8px;">
@@ -54,6 +54,46 @@
             <button type="button" class="btn btn-ghost btn-sm" onclick="copyAdminKey()">Anahtarı Kopyala</button>
           </div>
         </div>
+      </section>
+
+      <!-- Müşteri Firma Hesapları Kartı -->
+      <section class="card">
+        <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px;">
+          <div>
+            <h2 style="margin:0; font-size:16px;">🛡️ Müşteri Firma Giriş Hesapları (Çok Kiracılı İzolasyon)</h2>
+            <div style="font-size:12px; color:#64748b; margin-top:2px;">
+              Her firma yalnızca kendisine bağlı klasör ve raporları görür. Buradan yeni firma hesabı açabilir, şifre yenileyebilirsiniz.
+            </div>
+          </div>
+          <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('newCustomerWrap').classList.toggle('hidden')">+ Yeni Müşteri Hesabı</button>
+        </div>
+
+        <form id="createCustomerForm">
+          <div id="newCustomerWrap" class="hidden card-muted" style="margin-bottom:14px; background:#f8fafc;">
+            <div class="grid-3">
+              <div>
+                <label class="label" for="custCompanyName">Müşteri Firma Adı *</label>
+                <input id="custCompanyName" type="text" class="input" placeholder="Örn: ABC Metal A.Ş." oninput="autoFillCustomerUsername()" required>
+              </div>
+              <div>
+                <label class="label" for="custUsername">Kullanıcı Adı *</label>
+                <input id="custUsername" type="text" class="input mono" placeholder="Örn: abc-metal" required>
+              </div>
+              <div>
+                <label class="label" for="custPassword">Giriş Şifresi *</label>
+                <div style="display:flex; gap:6px;">
+                  <input id="custPassword" type="text" class="input mono" placeholder="En az 4 karakter" required>
+                  <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('custPassword').value = randomCustomerPassword();">Üret</button>
+                </div>
+              </div>
+            </div>
+            <div style="margin-top:10px; display:flex; justify-content:flex-end;">
+              <button id="createCustBtn" type="submit" class="btn btn-primary btn-sm">Müşteri Hesabını Oluştur</button>
+            </div>
+          </div>
+        </form>
+
+        <div id="customerAccountsList" style="display:flex; flex-direction:column; gap:8px;"></div>
       </section>
 
       <!-- Harici PDF Yükleme Kartı -->
@@ -70,6 +110,26 @@
             <div id="newCompanyWrap">
               <label class="label" for="upCompanyName">Müşteri / Firma Adı *</label>
               <input id="upCompanyName" type="text" class="input" placeholder="Örn: ABC Metal San. Tic. A.Ş.">
+            </div>
+          </div>
+
+          <div class="grid-3" style="margin-top:12px;">
+            <div>
+              <label class="label" for="upCustomerSelect">Müşteri Giriş Hesabı</label>
+              <select id="upCustomerSelect" class="select">
+                <option value="">(Mevcut / Yeni Kullanıcı Adı ile)</option>
+              </select>
+            </div>
+            <div>
+              <label class="label" for="upCustUsername">Yeni veya Mevcut Kullanıcı Adı</label>
+              <input id="upCustUsername" type="text" class="input mono" placeholder="Örn: abc-metal">
+            </div>
+            <div>
+              <label class="label" for="upCustPassword">Müşteri Şifresi (yeni/doğrulama)</label>
+              <div style="display:flex; gap:6px;">
+                <input id="upCustPassword" type="text" class="input mono" placeholder="En az 4 karakter">
+                <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('upCustPassword').value = randomCustomerPassword();">Üret</button>
+              </div>
             </div>
           </div>
 
@@ -97,8 +157,8 @@
               <input id="upInspectionDate" type="text" class="input" placeholder="Örn: 11.11.2026">
             </div>
             <div>
-              <label class="label" for="upPin">İsteğe Bağlı Müşteri PIN Şifresi</label>
-              <input id="upPin" type="text" class="input mono" placeholder="Boş bırakılırsa şifresiz açılır">
+              <label class="label" for="upPin">İsteğe Bağlı Ek PIN Şifresi</label>
+              <input id="upPin" type="text" class="input mono" placeholder="Boş bırakılabilir">
             </div>
             <div>
               <label class="label" for="upPdfFile">PDF Rapor Dosyası (Maks. 50 MB) *</label>
@@ -121,7 +181,7 @@
             <div id="adminStats" style="font-size:12px; color:#64748b; margin-top:2px;"></div>
           </div>
           <div style="display:flex; gap:8px; align-items:center;">
-            <input id="adminSearchInput" type="text" class="input" style="width:240px;" placeholder="Şirket, firma, pano veya rapor ara...">
+            <input id="adminSearchInput" type="text" class="input" style="width:240px;" placeholder="Şirket, firma, kullanıcı veya rapor ara...">
             <button type="button" class="btn btn-outline btn-sm" onclick="loadAdminFolders()">Yenile</button>
           </div>
         </div>
@@ -135,7 +195,37 @@
   <script>
     const ADMIN_KEY_STORAGE = 'hr_portal_admin_key';
     let cachedFolders = [];
+    let cachedAccounts = [];
     let activeCompanyFilter = '';
+    let custUsernameTouched = false;
+
+    function randomCustomerPassword() {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+      let out = '';
+      for (let i = 0; i < 8; i++) out += chars[Math.floor(Math.random() * chars.length)];
+      return out;
+    }
+
+    function slugifyUser(raw) {
+      const tr = { 'ç':'c','Ç':'c','ğ':'g','Ğ':'g','ı':'i','I':'i','İ':'i','i':'i','ö':'o','Ö':'o','ş':'s','Ş':'s','ü':'u','Ü':'u' };
+      return String(raw || '').trim()
+        .replace(/[çÇğĞıIİiöÖşŞüÜ]/g, ch => tr[ch] || ch)
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 24)
+        .replace(/-+$/g, '');
+    }
+
+    function autoFillCustomerUsername() {
+      if (custUsernameTouched) return;
+      const cn = document.getElementById('custCompanyName').value;
+      document.getElementById('custUsername').value = slugifyUser(cn);
+    }
+
+    document.getElementById('custUsername').addEventListener('input', () => {
+      custUsernameTouched = Boolean(document.getElementById('custUsername').value.trim());
+    });
 
     function getAdminKey() {
       try { return localStorage.getItem(ADMIN_KEY_STORAGE) || ''; } catch { return ''; }
@@ -170,6 +260,9 @@
       document.getElementById('logoutBtn').classList.remove('hidden');
       document.getElementById('appPortalUrlCode').textContent = window.location.origin;
       document.getElementById('upInspectionDate').value = new Date().toLocaleDateString('tr-TR');
+      if (!document.getElementById('custPassword').value) {
+        document.getElementById('custPassword').value = randomCustomerPassword();
+      }
       await loadAdminFolders();
       return true;
     }
@@ -195,9 +288,73 @@
       document.getElementById('newCompanyWrap').style.display = e.target.value ? 'none' : 'block';
     });
 
+    document.getElementById('upCustomerSelect').addEventListener('change', (e) => {
+      const hasPreset = Boolean(e.target.value);
+      document.getElementById('upCustUsername').disabled = hasPreset;
+      document.getElementById('upCustPassword').disabled = hasPreset;
+      if (hasPreset) {
+        document.getElementById('upCustUsername').value = '';
+        document.getElementById('upCustPassword').value = '';
+      }
+    });
+
     function setCompanyFilter(slug) {
       activeCompanyFilter = slug || '';
       renderAdminFolders();
+    }
+
+    function renderCustomerAccounts() {
+      const box = document.getElementById('customerAccountsList');
+      if (!cachedAccounts.length) {
+        box.innerHTML = '<div class="card-muted" style="text-align:center;color:#64748b;font-size:13px;">Henüz müşteri giriş hesabı oluşturulmamış. Uygulamadan yükleme yaptığınızda veya "+ Yeni Müşteri Hesabı" ile otomatik oluşturulur.</div>';
+        return;
+      }
+
+      box.innerHTML = cachedAccounts.map(a => {
+        const statusBadge = a.is_active
+          ? '<span class="badge badge-ok">Aktif</span>'
+          : '<span class="badge badge-bad">Pasif</span>';
+        const toggleLabel = a.is_active ? 'Pasife Al' : 'Aktif Et';
+        return `
+          <div class="card-muted" style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px;">
+            <div style="min-width:200px; flex:1;">
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <strong style="font-size:14px;">${PortalUI.escapeHtml(a.company_name)}</strong>
+                <span class="badge badge-info mono">@${PortalUI.escapeHtml(a.username)}</span>
+                ${statusBadge}
+              </div>
+              <div style="font-size:12px; color:#64748b; margin-top:2px;">
+                ${a.folder_count || 0} klasör · ${a.report_count || 0} rapor
+                ${a.last_login_at ? ' · Son Giriş: ' + PortalUI.formatDate(a.last_login_at) : ' · Henüz giriş yapmadı'}
+              </div>
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button type="button" class="btn btn-outline btn-sm" onclick="copyCustomerUsername('${PortalUI.escapeHtml(a.id)}')">Kullanıcı Adı</button>
+              <button type="button" class="btn btn-outline btn-sm" onclick="promptCustomerPassword('${PortalUI.escapeHtml(a.id)}')">Şifre Değiştir</button>
+              <button type="button" class="btn btn-outline btn-sm" onclick="toggleCustomerActive('${PortalUI.escapeHtml(a.id)}', ${a.is_active ? 'false' : 'true'})">${toggleLabel}</button>
+              <button type="button" class="btn btn-danger btn-sm" onclick="deleteCustomerAccount('${PortalUI.escapeHtml(a.id)}')">Sil</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function openReportAsAdmin(slug, mimeType) {
+      try {
+        const res = await fetch('/api/report-file?slug=' + encodeURIComponent(slug), {
+          headers: { 'X-Admin-Key': getAdminKey() }
+        });
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}));
+          PortalUI.toast(d.error || 'Rapor açılamadı', 'error');
+          return;
+        }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(new Blob([blob], { type: mimeType || (res.headers.get('Content-Type') || 'text/html') }));
+        window.open(url, '_blank', 'noopener');
+      } catch {
+        PortalUI.toast('Rapor dosyası yüklenemedi', 'error');
+      }
     }
 
     function renderAdminFolders() {
@@ -237,12 +394,21 @@
         const ownerBadge = companyLabel
           ? `<span class="badge badge-info">🏢 ${PortalUI.escapeHtml(companyLabel)}</span>`
           : '';
-        const pinBadge = f.has_pin
-          ? '<span class="badge badge-warn">🔒 PIN Korumalı</span>'
-          : '<span class="badge badge-info">🔓 Şifresiz Link</span>';
+        const authBadge = f.customer_username
+          ? `<span class="badge badge-ok mono">🛡️ @${PortalUI.escapeHtml(f.customer_username)}</span>`
+          : (f.require_auth
+              ? '<span class="badge badge-bad">🔒 Korumalı (Hesap Atanmamış)</span>'
+              : '<span class="badge badge-warn">⚠️ Hesapsız Eski Klasör</span>');
+        const pinBadge = f.has_pin ? '<span class="badge badge-warn">🔒 PIN</span>' : '';
+
+        const acctOptions = '<option value="">-- Müşteri Hesabı Seç / Değiştir --</option>' +
+          cachedAccounts.map(a =>
+            `<option value="${PortalUI.escapeHtml(a.id)}" ${a.id === f.customer_account_id ? 'selected' : ''}>${PortalUI.escapeHtml(a.company_name)} (@${PortalUI.escapeHtml(a.username)})</option>`
+          ).join('');
 
         const reportsHtml = f.reports.map(r => {
           const rUrl = window.location.origin + '/r/' + encodeURIComponent(r.share_slug);
+          const mime = r.source_type === 'uploaded_pdf' ? 'application/pdf' : 'text/html';
           return `
             <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; padding:8px 10px; background:#fff; border:1px solid #e2e8f0; border-radius:8px; font-size:12px;">
               <div style="min-width:180px; flex:1;">
@@ -252,9 +418,10 @@
                 <span style="color:#64748b; margin-left:6px;">(${PortalUI.formatBytes(r.file_size_bytes)})</span>
               </div>
               <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                <a href="${rUrl}" target="_blank" class="btn btn-outline btn-sm">Aç</a>
-                <button type="button" class="btn btn-outline btn-sm" onclick="PortalUI.copyText('${rUrl}')">Link</button>
-                <button type="button" class="btn btn-danger btn-sm" onclick="deleteReport('${r.id}', '${PortalUI.escapeHtml(r.equipment_name).replace(/'/g, '')}')">Sil</button>
+                <button type="button" class="btn btn-outline btn-sm" onclick="openReportAsAdmin('${PortalUI.escapeHtml(r.share_slug)}', '${mime}')">Yönetici Önizle</button>
+                <a href="${rUrl}" target="_blank" class="btn btn-outline btn-sm">Müşteri Linki</a>
+                <button type="button" class="btn btn-outline btn-sm" onclick="copyReportLink('${PortalUI.escapeHtml(r.share_slug)}')">Kopyala</button>
+                <button type="button" class="btn btn-danger btn-sm" onclick="deleteReport('${PortalUI.escapeHtml(r.id)}')">Sil</button>
               </div>
             </div>
           `;
@@ -266,6 +433,7 @@
               <div>
                 <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                   <strong style="font-size:15px;">${PortalUI.escapeHtml(f.company_name)}</strong>
+                  ${authBadge}
                   ${ownerBadge}
                   ${pinBadge}
                 </div>
@@ -273,11 +441,12 @@
                   ${f.company_branch ? PortalUI.escapeHtml(f.company_branch) + ' · ' : ''}Güncelleme: ${PortalUI.formatDate(f.updated_at)}
                 </div>
               </div>
-              <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                <a href="${folderUrl}" target="_blank" class="btn btn-primary btn-sm">Klasörü Aç</a>
-                <button type="button" class="btn btn-outline btn-sm" onclick="PortalUI.copyText('${folderUrl}')">Müşteri Linkini Kopyala</button>
-                <button type="button" class="btn btn-outline btn-sm" onclick="promptFolderPin('${f.id}', ${f.has_pin ? 'true' : 'false'})">PIN Ayarla</button>
-                <button type="button" class="btn btn-danger btn-sm" onclick="deleteFolder('${f.id}', '${PortalUI.escapeHtml(f.company_name).replace(/'/g, '')}')">Klasörü Sil</button>
+              <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                <select class="select" style="width:210px; padding:6px 8px; font-size:12px;" onchange="assignFolderCustomer('${PortalUI.escapeHtml(f.id)}', this.value)">
+                  ${acctOptions}
+                </select>
+                <button type="button" class="btn btn-outline btn-sm" onclick="copyFolderLink('${PortalUI.escapeHtml(f.share_slug)}')">Linki Kopyala</button>
+                <button type="button" class="btn btn-danger btn-sm" onclick="deleteFolder('${PortalUI.escapeHtml(f.id)}')">Klasörü Sil</button>
               </div>
             </div>
             <div style="display:flex; flex-direction:column; gap:6px;">
@@ -300,8 +469,10 @@
       }
 
       cachedFolders = data.folders || [];
+      cachedAccounts = data.customer_accounts || [];
+
       document.getElementById('adminStats').textContent =
-        `${data.totals.folders} müşteri klasörü · ${data.totals.reports} yayında rapor`;
+        `${data.totals.customers || 0} müşteri hesabı · ${data.totals.folders} klasör · ${data.totals.reports} yayında rapor`;
 
       const sel = document.getElementById('upTargetFolder');
       const prev = sel.value;
@@ -310,27 +481,131 @@
       if (prev) sel.value = prev;
       document.getElementById('newCompanyWrap').style.display = sel.value ? 'none' : 'block';
 
+      const custSel = document.getElementById('upCustomerSelect');
+      const prevCust = custSel.value;
+      custSel.innerHTML = '<option value="">(Yeni veya Kullanıcı Adı ile)</option>' +
+        cachedAccounts.map(a => `<option value="${PortalUI.escapeHtml(a.id)}">${PortalUI.escapeHtml(a.company_name)} (@${PortalUI.escapeHtml(a.username)})</option>`).join('');
+      if (prevCust) custSel.value = prevCust;
+
+      renderCustomerAccounts();
       renderAdminFolders();
     }
 
-    async function promptFolderPin(folderId, hasPin) {
-      const newPin = prompt(hasPin ? 'Yeni PIN kodunu yazın (PIN kaldırmak için boş bırakıp Tamam deyin):' : 'Müşteri için 4-6 haneli PIN şifresi belirleyin:');
-      if (newPin === null) return;
-      const body = { action: 'update-folder', folder_id: folderId };
-      if (newPin.trim() === '') body.clear_pin = true;
-      else body.pin = newPin.trim();
+    document.getElementById('createCustomerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const companyName = document.getElementById('custCompanyName').value.trim();
+      const username = document.getElementById('custUsername').value.trim();
+      const password = document.getElementById('custPassword').value.trim();
+      const btn = document.getElementById('createCustBtn');
+      btn.disabled = true;
+      try {
+        const res = await fetch('/api/admin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Admin-Key': getAdminKey() },
+          body: JSON.stringify({
+            action: 'create-customer',
+            company_name: companyName,
+            username,
+            password
+          })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || 'Hesap oluşturulamadı');
+        PortalUI.toast(`Müşteri hesabı oluşturuldu: @${data.customer.username}`, 'success');
+        document.getElementById('createCustomerForm').reset();
+        document.getElementById('custPassword').value = randomCustomerPassword();
+        custUsernameTouched = false;
+        await loadAdminFolders();
+      } catch (err) {
+        PortalUI.toast(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    function copyCustomerUsername(customerId) {
+      const a = cachedAccounts.find(x => x.id === customerId);
+      if (a && a.username) PortalUI.copyText(a.username, 'Kullanıcı adı kopyalandı');
+    }
+
+    function copyFolderLink(slug) {
+      PortalUI.copyText(window.location.origin + '/p/' + encodeURIComponent(slug));
+    }
+
+    function copyReportLink(slug) {
+      PortalUI.copyText(window.location.origin + '/r/' + encodeURIComponent(slug));
+    }
+
+    async function promptCustomerPassword(customerId) {
+      const acct = cachedAccounts.find(x => x.id === customerId);
+      const companyName = acct ? acct.company_name : 'Müşteri';
+      const nextPwd = prompt(`"${companyName}" hesabı için yeni şifreyi yazın (en az 4 karakter):`, randomCustomerPassword());
+      if (!nextPwd || !nextPwd.trim()) return;
       const res = await fetch('/api/admin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Admin-Key': getAdminKey() },
-        body: JSON.stringify(body)
+        body: JSON.stringify({ action: 'update-customer', customer_id: customerId, password: nextPwd.trim() })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        PortalUI.toast(data.error || 'Şifre güncellenemedi', 'error');
+        return;
+      }
+      PortalUI.toast('Şifre güncellendi! Eski oturumlar kapatıldı.', 'success');
+      await loadAdminFolders();
+    }
+
+    async function toggleCustomerActive(customerId, nextActive) {
+      const res = await fetch('/api/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Key': getAdminKey() },
+        body: JSON.stringify({ action: 'update-customer', customer_id: customerId, is_active: nextActive })
       });
       if (res.ok) {
-        PortalUI.toast('Klasör erişim ayarı güncellendi', 'success');
+        PortalUI.toast(nextActive ? 'Hesap aktif edildi' : 'Hesap pasife alındı', 'success');
         await loadAdminFolders();
       }
     }
 
-    async function deleteReport(reportId, name) {
+    async function deleteCustomerAccount(customerId) {
+      const acct = cachedAccounts.find(x => x.id === customerId);
+      const username = acct ? acct.username : customerId;
+      if (!confirm(`"@${username}" müşteri hesabı silinsin mi? Bağlı klasörler kilitli kalmaya devam eder.`)) return;
+      const res = await fetch('/api/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Key': getAdminKey() },
+        body: JSON.stringify({ action: 'delete-customer', customer_id: customerId })
+      });
+      if (res.ok) {
+        PortalUI.toast('Müşteri hesabı silindi', 'success');
+        await loadAdminFolders();
+      }
+    }
+
+    async function assignFolderCustomer(folderId, customerId) {
+      if (!customerId) return;
+      const res = await fetch('/api/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Key': getAdminKey() },
+        body: JSON.stringify({ action: 'assign-folder-customer', folder_id: folderId, customer_id: customerId })
+      });
+      if (res.ok) {
+        PortalUI.toast('Klasör seçilen firmaya bağlandı', 'success');
+        await loadAdminFolders();
+      } else {
+        PortalUI.toast('Klasör ataması başarısız', 'error');
+      }
+    }
+
+    async function deleteReport(reportId) {
+      let name = reportId;
+      for (const f of cachedFolders) {
+        const rep = (f.reports || []).find(r => r.id === reportId);
+        if (rep) {
+          name = rep.equipment_name || rep.report_no || reportId;
+          break;
+        }
+      }
       if (!confirm(`"${name}" raporu silinsin mi?`)) return;
       const res = await fetch('/api/admin', {
         method: 'POST',
@@ -343,7 +618,9 @@
       }
     }
 
-    async function deleteFolder(folderId, name) {
+    async function deleteFolder(folderId) {
+      const folder = cachedFolders.find(f => f.id === folderId);
+      const name = folder ? folder.company_name : folderId;
       if (!confirm(`"${name}" klasörü ve içindeki TÜM raporlar kalıcı olarak silinsin mi?`)) return;
       const res = await fetch('/api/admin', {
         method: 'POST',
@@ -360,6 +637,9 @@
       e.preventDefault();
       const targetSlug = document.getElementById('upTargetFolder').value;
       const companyName = document.getElementById('upCompanyName').value.trim();
+      const custSelectId = document.getElementById('upCustomerSelect').value;
+      const custUsername = document.getElementById('upCustUsername').value.trim();
+      const custPassword = document.getElementById('upCustPassword').value.trim();
       const equipmentName = document.getElementById('upEquipmentName').value.trim();
       const reportNo = document.getElementById('upReportNo').value.trim();
       const resultStatus = document.getElementById('upResultStatus').value;
@@ -376,6 +656,17 @@
         return;
       }
 
+      let customerPayload = undefined;
+      if (custSelectId) {
+        customerPayload = { id: custSelectId };
+      } else if (custUsername) {
+        customerPayload = {
+          username: custUsername,
+          password: custPassword,
+          company_name: companyName || custUsername
+        };
+      }
+
       const btn = document.getElementById('pdfUploadBtn');
       const prog = document.getElementById('uploadProgressText');
       btn.disabled = true;
@@ -386,6 +677,7 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'X-Admin-Key': getAdminKey() },
           body: JSON.stringify({
+            customer: customerPayload,
             folder: {
               slug: targetSlug || undefined,
               company_name: companyName || 'Müşteri Firma',
@@ -425,9 +717,12 @@
         const compData = await compRes.json();
         if (!compRes.ok || !compData.ok) throw new Error(compData.error || 'Tamamlama hatası');
 
-        prog.textContent = '✓ Yüklendi! Müşteri Linki: ' + compData.folderUrl;
+        const acctMsg = initData.customer ? ` · Hesap: @${initData.customer.username}` : '';
+        prog.textContent = '✓ Yüklendi! Müşteri Linki: ' + compData.folderUrl + acctMsg;
         PortalUI.toast('PDF başarıyla yüklendi ve yayınlandı!', 'success');
         document.getElementById('pdfUploadForm').reset();
+        document.getElementById('upCustUsername').disabled = false;
+        document.getElementById('upCustPassword').disabled = false;
         document.getElementById('upInspectionDate').value = new Date().toLocaleDateString('tr-TR');
         await loadAdminFolders();
       } catch (err) {

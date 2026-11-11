@@ -2,8 +2,11 @@ import {
   handlePreflight,
   sendJson,
   dbSelect,
+  verifyAdminKey,
   extractFolderToken,
-  verifyFolderToken
+  verifyFolderToken,
+  resolveAuthenticatedCustomer,
+  sanitizeCustomerPublic
 } from './_lib/store.js';
 
 export default async function handler(req, res) {
@@ -40,27 +43,82 @@ export default async function handler(req, res) {
 
     const folders = await dbSelect(
       'portal_folders',
-      `id=eq.${encodeURIComponent(report.folder_id)}&select=id,share_slug,work_order_code,company_name,company_branch,company_address,has_pin,branding_json&limit=1`
+      `id=eq.${encodeURIComponent(report.folder_id)}&select=id,share_slug,work_order_code,owner_company_slug,owner_company_name,customer_account_id,require_auth,company_name,company_branch,company_address,has_pin,branding_json&limit=1`
     );
     const folder = folders[0];
     if (!folder) {
       return sendJson(res, 404, { ok: false, error: 'İlişkili firma klasörü bulunamadı' });
     }
 
+    const isAdmin = verifyAdminKey(req);
+    const customer = isAdmin ? null : await resolveAuthenticatedCustomer(req, urlObj);
+    const isCustomerProtected = Boolean(folder.customer_account_id || folder.require_auth);
+
+    if (isCustomerProtected && !isAdmin) {
+      if (!customer) {
+        if (slug) {
+          return sendJson(res, 200, {
+            ok: true,
+            verified: true,
+            requiresAuth: true,
+            authMode: 'customer_login',
+            requiresPin: false,
+            folder: {
+              share_slug: folder.share_slug,
+              branding_json: folder.branding_json || {}
+            },
+            report: {
+              share_slug: report.share_slug
+            }
+          });
+        }
+        // Verification lookup (report_no + verify_code) without session: confirm validity without leaking firm identity
+        return sendJson(res, 200, {
+          ok: true,
+          verified: true,
+          requiresAuth: true,
+          authMode: 'customer_login',
+          requiresPin: false,
+          folder: {
+            branding_json: folder.branding_json || {}
+          },
+          report: {
+            report_no: report.report_no,
+            inspection_date: report.inspection_date,
+            result_status: report.result_status
+          }
+        });
+      }
+
+      if (!folder.customer_account_id || customer.id !== folder.customer_account_id) {
+        return sendJson(res, 403, {
+          ok: false,
+          wrongTenant: true,
+          customer: sanitizeCustomerPublic(customer),
+          error: 'Bu rapor başka bir firmaya aittir. Yalnızca kendi firmanızın raporlarını görüntüleyebilirsiniz.'
+        });
+      }
+    }
+
     const token = extractFolderToken(req, urlObj);
-    const unlocked = !folder.has_pin || Boolean(verifyFolderToken(token, folder.share_slug));
+    const unlocked = isAdmin || !folder.has_pin || Boolean(verifyFolderToken(token, folder.share_slug));
 
     return sendJson(res, 200, {
       ok: true,
       verified: true,
+      requiresAuth: false,
       requiresPin: !unlocked,
+      customer: sanitizeCustomerPublic(customer),
       folder: {
         share_slug: folder.share_slug,
         work_order_code: folder.work_order_code,
+        owner_company_slug: folder.owner_company_slug || '',
+        owner_company_name: folder.owner_company_name || '',
         company_name: folder.company_name,
         company_branch: folder.company_branch,
         company_address: unlocked ? folder.company_address : '',
         has_pin: Boolean(folder.has_pin),
+        require_auth: isCustomerProtected,
         branding_json: folder.branding_json || {}
       },
       report: {

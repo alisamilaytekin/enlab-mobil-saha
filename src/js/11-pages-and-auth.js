@@ -1583,6 +1583,8 @@ function syncCompanyAndDevicesToAllReports() {
 
                 otherFd.measuringDevices = JSON.parse(JSON.stringify(currentFd.measuringDevices));
 
+                otherFd._devicesInitialized = true;
+
             }
 
 
@@ -3403,6 +3405,12 @@ async function renderSettingsPage() {
 
 
 
+            <!-- 2B. KİŞİSEL ÖLÇÜM CİHAZLARI (ÜZERİME ALINANLAR) -->
+
+            ${typeof MeasuringDevicesManager !== 'undefined' ? MeasuringDevicesManager.renderSettingsCardHtml() : ''}
+
+
+
             <!-- 3. ŞİRKET & KURUMSAL LOGO YÖNETİMİ (ÇOKLU ŞİRKET / WHITE-LABEL) -->
 
             <div class="card-craft-white p-3 space-y-2.5">
@@ -3511,7 +3519,7 @@ async function renderSettingsPage() {
 
                     <i class="fa-solid fa-screwdriver-wrench text-slate-600"></i>
 
-                    <span>Varsayılan Test Cihazlarını Düzenle</span>
+                    <span>Mühendis Unvanı & Hızlı Cihaz Ayarları</span>
 
                 </button>
 
@@ -3546,7 +3554,7 @@ async function renderSettingsPage() {
                     <div class="flex items-center justify-between gap-2 flex-wrap">
                         <span class="font-bold text-emerald-950 flex items-center gap-1.5">
                             <i class="fa-solid fa-cloud-check text-emerald-600"></i>
-                            <span>Adres / şifre istemeden tek tıkla yükler</span>
+                            <span>Firma bazlı kullanıcı adı &amp; şifre ile güvenli otomatik yükleme</span>
                         </span>
                         <code id="settingsPortalActiveHost" class="font-mono text-[10px] text-emerald-800 bg-white px-2 py-0.5 rounded border border-emerald-200">${escapeHtml(activeHost)}</code>
                     </div>

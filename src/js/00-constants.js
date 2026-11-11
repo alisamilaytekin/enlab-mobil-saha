@@ -4,7 +4,7 @@
 
 window.HIZLI_RAPOR_CONSTANTS = {
     APP_NAME: 'Hızlı Rapor',
-    VERSION: '0.59',
+    VERSION: '0.60',
     
     // Rapor ve Muayene Durumları
     STATUS: {
@@ -44,6 +44,7 @@ window.HIZLI_RAPOR_CONSTANTS = {
         DEFECT_LIBRARY: 'enlab_defects_library_v1',
         USER_ACCOUNTS: 'enlab_user_accounts_v1',
         CURRENT_USER: 'enlab_current_user_v1',
-        COMPANY_SETTINGS: 'enlab_company_branding_v1'
+        COMPANY_SETTINGS: 'enlab_company_branding_v1',
+        USER_DEVICES: 'enlab_user_devices_v1'
     }
 };

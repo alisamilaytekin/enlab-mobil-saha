@@ -10,16 +10,19 @@
 <body>
   <header class="topbar portal-chrome">
     <div class="topbar-inner">
-      <div class="brand">
+      <a href="/" class="brand">
         <div class="brand-icon">⚡</div>
         <div style="min-width:0">
           <div id="hdrReportTitle" class="brand-title">Rapor Görüntüleyici</div>
           <div id="hdrReportSub" class="brand-sub">Dijital Rapor Doğrulama</div>
         </div>
-      </div>
-      <div style="display:flex; align-items:center; gap:8px;">
-        <a id="backToFolderBtn" href="/" class="btn btn-ghost btn-sm hidden">← Klasöre Dön</a>
+      </a>
+      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        <span id="hdrCustomerChip" class="badge badge-info hidden" style="background:rgba(255,255,255,0.12); color:#e2e8f0; border-color:rgba(255,255,255,0.2);"></span>
+        <a href="/" class="btn btn-ghost btn-sm">← Tüm Raporlarım</a>
+        <a id="backToFolderBtn" href="/" class="btn btn-ghost btn-sm hidden">Klasör</a>
         <button id="topPrintBtn" type="button" class="btn btn-emerald btn-sm hidden" onclick="downloadOrPrintReport()">PDF İndir / Yazdır</button>
+        <button id="hdrLogoutBtn" type="button" class="btn btn-danger btn-sm hidden" onclick="logoutAndReload()">Çıkış</button>
       </div>
     </div>
   </header>
@@ -32,7 +35,42 @@
     <div id="errorState" class="card portal-chrome hidden" style="text-align:center; border-color:#fecaca;">
       <h2 style="margin:0 0 8px 0; color:#991b1b; font-size:18px;">Rapor Bulunamadı</h2>
       <p id="errorMsg" style="margin:0 0 16px 0; color:#475569; font-size:13px;"></p>
-      <a href="/" class="btn btn-dark">Doğrulama Sayfasına Git</a>
+      <a href="/" class="btn btn-dark">Ana Sayfaya Git</a>
+    </div>
+
+    <!-- Yanlış Firma Oturumu Engeli (Multi-Tenant Isolation) -->
+    <div id="wrongTenantState" class="card portal-chrome hidden" style="max-width:480px; margin:24px auto; text-align:center; border-color:#fecaca;">
+      <div style="font-size:30px; margin-bottom:6px;">⛔</div>
+      <h2 style="margin:0 0 8px 0; color:#991b1b; font-size:18px;">Başka Bir Firmaya Ait Rapor</h2>
+      <p id="wrongTenantMsg" style="margin:0 0 14px 0; color:#475569; font-size:13px;"></p>
+      <div id="wrongTenantCurrentUser" style="font-size:12px; color:#64748b; margin-bottom:14px;"></div>
+      <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+        <a href="/" class="btn btn-primary btn-sm">Kendi Raporlarıma Git</a>
+        <button type="button" class="btn btn-outline btn-sm" onclick="switchCustomerAccount()">Farklı Hesapla Giriş Yap</button>
+      </div>
+    </div>
+
+    <!-- Müşteri Kullanıcı Adı + Şifre Giriş Kapısı -->
+    <div id="authGate" class="card portal-chrome hidden" style="max-width:430px; margin:24px auto;">
+      <div style="text-align:center; margin-bottom:14px;">
+        <div style="font-size:28px; margin-bottom:6px;">🛡️</div>
+        <h2 style="margin:0 0 6px 0; font-size:18px;">Müşteri Firma Girişi Gerekli</h2>
+        <div style="font-size:13px; color:#475569;">
+          Rapor yalnızca ilgili firmanın kullanıcı adı ve şifresiyle açılır. Lütfen oturum açın.
+        </div>
+      </div>
+      <form id="authForm" style="display:flex; flex-direction:column; gap:10px;">
+        <div>
+          <label class="label" for="authUsername">Kullanıcı Adı</label>
+          <input id="authUsername" type="text" autocomplete="username" class="input mono" placeholder="Örn: abc-metal" required>
+        </div>
+        <div>
+          <label class="label" for="authPassword">Şifre</label>
+          <input id="authPassword" type="password" autocomplete="current-password" class="input mono" placeholder="••••••" required>
+        </div>
+        <div id="authErrorBox" class="hidden" style="padding:8px 10px; border-radius:8px; background:#fef2f2; border:1px solid #fecaca; color:#991b1b; font-size:12px; font-weight:600;"></div>
+        <button id="authSubmitBtn" type="submit" class="btn btn-primary" style="width:100%;">Giriş Yap ve Raporu Aç</button>
+      </form>
     </div>
 
     <div id="pinGate" class="card portal-chrome hidden" style="max-width:420px; margin:24px auto;">
@@ -92,6 +130,31 @@
     let currentReport = null;
     let currentZoom = 1;
 
+    function renderHeaderCustomer(cust) {
+      const chip = document.getElementById('hdrCustomerChip');
+      const logoutBtn = document.getElementById('hdrLogoutBtn');
+      if (cust) {
+        chip.textContent = '@' + cust.username;
+        chip.classList.remove('hidden');
+        logoutBtn.classList.remove('hidden');
+      } else {
+        chip.classList.add('hidden');
+        logoutBtn.classList.add('hidden');
+      }
+    }
+
+    async function logoutAndReload() {
+      await PortalUI.customerLogout();
+      PortalUI.toast('Oturum kapatıldı', 'info');
+      await loadReport();
+    }
+
+    async function switchCustomerAccount() {
+      await PortalUI.customerLogout();
+      document.getElementById('wrongTenantState').classList.add('hidden');
+      await loadReport();
+    }
+
     function applyScale() {
       const outer = document.getElementById('a4ScaleOuter');
       const inner = document.getElementById('a4ScaleInner');
@@ -127,7 +190,22 @@
     async function loadReport() {
       const loadingEl = document.getElementById('loadingState');
       const errorEl = document.getElementById('errorState');
+      const wrongEl = document.getElementById('wrongTenantState');
+      const authEl = document.getElementById('authGate');
       const pinEl = document.getElementById('pinGate');
+      const bannerEl = document.getElementById('verifiedBanner');
+      const stageEl = document.getElementById('htmlViewerStage');
+      const pdfBoxEl = document.getElementById('pdfViewerBox');
+
+      loadingEl.classList.remove('hidden');
+      errorEl.classList.add('hidden');
+      wrongEl.classList.add('hidden');
+      authEl.classList.add('hidden');
+      pinEl.classList.add('hidden');
+      bannerEl.classList.add('hidden');
+      stageEl.classList.add('hidden');
+      pdfBoxEl.classList.add('hidden');
+      document.getElementById('topPrintBtn').classList.add('hidden');
 
       if (!reportSlug) {
         loadingEl.classList.add('hidden');
@@ -137,8 +215,27 @@
       }
 
       try {
-        const res = await fetch('/api/report?slug=' + encodeURIComponent(reportSlug));
+        // Pre-pass token if folder slug already known in URL/sessionStorage
+        const storedToken = currentFolderSlug ? PortalUI.getFolderToken(currentFolderSlug) : '';
+        const res = await fetch('/api/report?slug=' + encodeURIComponent(reportSlug), {
+          credentials: 'same-origin',
+          headers: storedToken ? { 'X-Folder-Token': storedToken } : {}
+        });
         const data = await res.json();
+
+        renderHeaderCustomer(data.customer || null);
+
+        if (res.status === 403 && data.wrongTenant) {
+          loadingEl.classList.add('hidden');
+          wrongEl.classList.remove('hidden');
+          document.getElementById('wrongTenantMsg').textContent =
+            data.error || 'Bu rapor başka bir firmaya aittir. Yalnızca kendi firmanızın raporlarını görüntüleyebilirsiniz.';
+          document.getElementById('wrongTenantCurrentUser').textContent = data.customer
+            ? `Şu anda giriş yapılan firma: ${data.customer.company_name} (@${data.customer.username})`
+            : '';
+          return;
+        }
+
         if (!res.ok || !data.ok) {
           loadingEl.classList.add('hidden');
           errorEl.classList.remove('hidden');
@@ -146,10 +243,17 @@
           return;
         }
 
-        const f = data.folder;
-        const r = data.report;
-        currentFolderSlug = f.share_slug;
+        const f = data.folder || {};
+        const r = data.report || {};
+        currentFolderSlug = f.share_slug || '';
         currentReport = r;
+
+        if (data.requiresAuth) {
+          loadingEl.classList.add('hidden');
+          authEl.classList.remove('hidden');
+          setTimeout(() => document.getElementById('authUsername').focus(), 100);
+          return;
+        }
 
         document.getElementById('hdrReportTitle').textContent = r.equipment_name || 'Rapor';
         document.getElementById('hdrReportSub').textContent = (f.company_name || '') + ' · ' + (r.report_no || '');
@@ -160,31 +264,31 @@
         backBtn.classList.remove('hidden');
 
         const token = PortalUI.getFolderToken(f.share_slug);
-        if (f.has_pin && !token) {
-          loadingEl.classList.add('hidden');
-          pinEl.classList.remove('hidden');
-          document.getElementById('pinMetaLabel').textContent = `${f.company_name} · ${r.report_no}`;
-          setTimeout(() => document.getElementById('pinInput').focus(), 100);
-          return;
-        }
-
-        // Verify token with report meta endpoint if PIN exists
-        if (f.has_pin) {
-          const checkRes = await fetch('/api/report?slug=' + encodeURIComponent(reportSlug), {
-            headers: { 'X-Folder-Token': token }
-          });
-          const checkData = await checkRes.json();
-          if (checkData.requiresPin) {
-            PortalUI.setFolderToken(f.share_slug, '');
+        if (data.requiresPin && (!token || !storedToken)) {
+          if (f.has_pin && token) {
+            const checkRes = await fetch('/api/report?slug=' + encodeURIComponent(reportSlug), {
+              credentials: 'same-origin',
+              headers: { 'X-Folder-Token': token }
+            });
+            const checkData = await checkRes.json();
+            if (checkData.requiresPin) {
+              PortalUI.setFolderToken(f.share_slug, '');
+              loadingEl.classList.add('hidden');
+              pinEl.classList.remove('hidden');
+              document.getElementById('pinMetaLabel').textContent = `${f.company_name} · ${r.report_no}`;
+              setTimeout(() => document.getElementById('pinInput').focus(), 100);
+              return;
+            }
+          } else {
             loadingEl.classList.add('hidden');
             pinEl.classList.remove('hidden');
             document.getElementById('pinMetaLabel').textContent = `${f.company_name} · ${r.report_no}`;
+            setTimeout(() => document.getElementById('pinInput').focus(), 100);
             return;
           }
         }
 
-        pinEl.classList.add('hidden');
-        document.getElementById('verifiedBanner').classList.remove('hidden');
+        bannerEl.classList.remove('hidden');
         document.getElementById('topPrintBtn').classList.remove('hidden');
 
         const isOk = (r.result_status || 'UYGUN') === 'UYGUN';
@@ -204,13 +308,13 @@
 
         if (r.source_type === 'uploaded_pdf') {
           loadingEl.classList.add('hidden');
-          document.getElementById('pdfViewerBox').classList.remove('hidden');
+          pdfBoxEl.classList.remove('hidden');
           document.getElementById('pdfFrame').src = fileUrlBase;
           document.getElementById('pdfOpenNewTabBtn').href = fileUrlBase;
           document.getElementById('pdfDownloadBtn').href = fileUrlBase + '&download=1';
           document.getElementById('topPrintBtn').textContent = 'PDF İndir';
         } else {
-          const fRes = await fetch(fileUrlBase + '&format=json');
+          const fRes = await fetch(fileUrlBase + '&format=json', { credentials: 'same-origin' });
           const fData = await fRes.json();
           loadingEl.classList.add('hidden');
           if (!fRes.ok || !fData.ok) {
@@ -221,7 +325,7 @@
           const parsed = PortalUI.sanitizeReportHtmlClient(fData.html);
           document.getElementById('dynamicA4Styles').textContent = parsed.styles;
           document.getElementById('a4ScaleInner').innerHTML = parsed.bodyHtml;
-          document.getElementById('htmlViewerStage').classList.remove('hidden');
+          stageEl.classList.remove('hidden');
           document.getElementById('zoomControls').classList.remove('hidden');
           fitToWidth();
 
@@ -230,12 +334,35 @@
             setTimeout(() => window.print(), 400);
           }
         }
-      } catch (err) {
+      } catch {
         loadingEl.classList.add('hidden');
         errorEl.classList.remove('hidden');
         document.getElementById('errorMsg').textContent = 'Sunucu bağlantısı sırasında hata oluştu.';
       }
     }
+
+    document.getElementById('authForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const u = document.getElementById('authUsername').value.trim();
+      const p = document.getElementById('authPassword').value.trim();
+      const btn = document.getElementById('authSubmitBtn');
+      const errBox = document.getElementById('authErrorBox');
+      errBox.classList.add('hidden');
+      btn.disabled = true;
+      btn.textContent = 'Doğrulanıyor...';
+      try {
+        await PortalUI.customerLogin(u, p);
+        document.getElementById('authPassword').value = '';
+        PortalUI.toast('Giriş başarılı!', 'success');
+        await loadReport();
+      } catch (err) {
+        errBox.textContent = err.message || 'Kullanıcı adı veya şifre hatalı!';
+        errBox.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Giriş Yap ve Raporu Aç';
+      }
+    });
 
     document.getElementById('pinForm').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -257,8 +384,6 @@
           return;
         }
         PortalUI.setFolderToken(currentFolderSlug, data.token);
-        document.getElementById('pinGate').classList.add('hidden');
-        document.getElementById('loadingState').classList.remove('hidden');
         await loadReport();
       } catch {
         PortalUI.toast('Bağlantı hatası', 'error');

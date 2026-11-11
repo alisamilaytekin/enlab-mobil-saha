@@ -393,6 +393,9 @@ function rebuildEmailTextFromSelection() {
 
     const portalFolderUrl = wo.portal_folder_url || (selectedReports.find(r => r && r.portal_folder_url) || {}).portal_folder_url || '';
     const portalPin = wo.portal_pin || '';
+    const portalUsername = wo.portal_customer_username || '';
+    const portalPassword = wo.portal_customer_password || '';
+    const portalSiteUrl = (typeof CloudPortal !== 'undefined' && CloudPortal.getConfig) ? CloudPortal.getConfig().portalUrl : 'https://hizli-rapor-portal.vercel.app';
 
     if (selectedReports.length <= 1) {
         const r = selectedReports[0] || insp;
@@ -402,10 +405,15 @@ function rebuildEmailTextFromSelection() {
         const pdfFileName = `${reportNo}_${safeCust}.pdf`;
 
         const portalBlockLines = [];
-        if (portalFolderUrl || r.portal_report_url) {
-            portalBlockLines.push('İNTERNET ÜZERİNDEN RAPOR GÖRÜNTÜLEME:');
+        if (portalFolderUrl || r.portal_report_url || portalUsername) {
+            portalBlockLines.push('İNTERNET ÜZERİNDEN RAPOR GÖRÜNTÜLEME (Yalnızca firmanıza özeldir):');
+            if (portalUsername) {
+                portalBlockLines.push(`- Portal Giriş Adresi: ${portalSiteUrl}`);
+                portalBlockLines.push(`- Müşteri Kullanıcı Adı: ${portalUsername}`);
+                if (portalPassword) portalBlockLines.push(`- Müşteri Şifresi: ${portalPassword}`);
+            }
             if (portalFolderUrl) portalBlockLines.push(`- Müşteri Klasörü: ${portalFolderUrl}`);
-            if (portalPin) portalBlockLines.push(`- Erişim PIN Şifresi: ${portalPin}`);
+            if (portalPin) portalBlockLines.push(`- Ek Erişim PIN Şifresi: ${portalPin}`);
             if (r.portal_report_url) {
                 portalBlockLines.push(`- Doğrudan Rapor Linki: ${r.portal_report_url}${r.portal_verify_code ? ` (Doğrulama Kodu: ${r.portal_verify_code})` : ''}`);
             }
@@ -431,10 +439,15 @@ ENLAB / TEKKOMER Periyodik Kontrol Muayene Kuruluşu`;
         const pdfFileName = `Periyodik_Kontrol_Raporlari_${selectedReports.length}_Adet_${safeCust}.pdf`;
 
         const portalHeaderLines = [];
-        if (portalFolderUrl) {
-            portalHeaderLines.push('İNTERNET ÜZERİNDEN RAPOR KLASÖRÜ:');
-            portalHeaderLines.push(`- Müşteri Klasörü: ${portalFolderUrl}`);
-            if (portalPin) portalHeaderLines.push(`- Erişim PIN Şifresi: ${portalPin}`);
+        if (portalFolderUrl || portalUsername) {
+            portalHeaderLines.push('İNTERNET ÜZERİNDEN RAPOR KLASÖRÜ (Yalnızca firmanıza özeldir):');
+            if (portalUsername) {
+                portalHeaderLines.push(`- Portal Giriş Adresi: ${portalSiteUrl}`);
+                portalHeaderLines.push(`- Müşteri Kullanıcı Adı: ${portalUsername}`);
+                if (portalPassword) portalHeaderLines.push(`- Müşteri Şifresi: ${portalPassword}`);
+            }
+            if (portalFolderUrl) portalHeaderLines.push(`- Müşteri Klasörü: ${portalFolderUrl}`);
+            if (portalPin) portalHeaderLines.push(`- Ek Erişim PIN Şifresi: ${portalPin}`);
         }
         const portalSection = portalHeaderLines.length ? `\n\n${portalHeaderLines.join('\n')}` : '';
 
@@ -484,6 +497,12 @@ function loadInspectionFormDataObject(inspObj) {
     if (!formData.overallResult) formData.overallResult = 'UYGUN';
     if (!formData.grounding) formData.grounding = { details: {}, detected: {}, method: 'Çevrim empedansı', points: [], selectivity: [] };
     if (!formData.generator) formData.generator = { info: {}, equipment: {}, checks: {}, potential: {}, measurements: {}, battery: {}, devices: [] };
+    if (window.MeasuringDevicesManager && typeof window.MeasuringDevicesManager.applyDefaultsToFormData === 'function') {
+        window.MeasuringDevicesManager.applyDefaultsToFormData(formData, inspObj.template_id, false);
+    }
+    if (String(inspObj.template_id) === '2205' && Array.isArray(formData.measuringDevices) && formData.measuringDevices.length && (!formData.generator.devices || !formData.generator.devices.length)) {
+        formData.generator.devices = formData.measuringDevices;
+    }
     return formData;
 }
 
@@ -1269,6 +1288,10 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
     const printArea = document.getElementById('printableReportArea');
 
     if (!insp || !printArea) return;
+
+    if (fd && window.MeasuringDevicesManager && typeof window.MeasuringDevicesManager.applyDefaultsToFormData === 'function') {
+        window.MeasuringDevicesManager.applyDefaultsToFormData(fd, insp.template_id, false);
+    }
 
     const activePdfTheme = getPdfTheme();
 
@@ -2280,11 +2303,65 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
 
 
-        // Block 3: 3. TEST DEĞERLERİ
+        // Block 3: 3. ÖLÇÜM ALETLERİ BİLGİLERİ
+
+        const grdDevList = (fd.measuringDevices && fd.measuringDevices.length) ? fd.measuringDevices : [
+            { name: '', serial: '', calDate: '', validDate: '', certNo: '' }
+        ];
+
+        const grdDevRowsHtml = grdDevList.map(dev => `
+            <tr>
+                <td style="text-align:center;">${escapeHtml(dev.name || '')}</td>
+                <td style="text-align:center;">${escapeHtml(dev.serial || '')}</td>
+                <td style="text-align:center;">${escapeHtml(dev.calDate || '')}</td>
+                <td style="text-align:center;">${escapeHtml(dev.validDate || '')}</td>
+                <td style="text-align:center;">${escapeHtml(dev.certNo || '')}</td>
+            </tr>
+        `).join('');
 
         blocks.push(`
 
-            <div class="tkm-sec-title">3. TEST DEĞERLERİ</div>
+            <div class="tkm-sec-title">3. ÖLÇÜM ALETLERİ BİLGİLERİ</div>
+
+            <table class="tkm-table">
+
+                <colgroup>
+
+                    <col style="width:24%;"><col style="width:17%;"><col style="width:19%;"><col style="width:21%;"><col style="width:19%;">
+
+                </colgroup>
+
+                <thead>
+
+                    <tr>
+
+                        <th style="text-align:center;font-weight:700;">Cihaz Adı</th>
+
+                        <th style="text-align:center;font-weight:700;">Seri No</th>
+
+                        <th style="text-align:center;font-weight:700;">Kalibrasyon Tarihi</th>
+
+                        <th style="text-align:center;font-weight:700;">Kalibrasyon Geçerlilik Tarihi</th>
+
+                        <th style="text-align:center;font-weight:700;">Sertifika No</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>${grdDevRowsHtml}</tbody>
+
+            </table>
+
+        `);
+
+
+
+        // Block 4: 4. TEST DEĞERLERİ
+
+        blocks.push(`
+
+            <div class="tkm-sec-title">4. TEST DEĞERLERİ</div>
 
             <table class="tkm-table">
 
@@ -2338,7 +2415,7 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
 
 
-        // Block 4: 4. KONTROL KRİTERLERİ VE TESTLER (4.1 & 4.2)
+        // Block 5: 5. KONTROL KRİTERLERİ VE TESTLER (5.1 & 5.2)
 
         const pointRowsToRender = points.length ? points : [
 
@@ -2368,9 +2445,9 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
                 chunkHtml += `
 
-                    <div class="tkm-sec-title">4. KONTROL KRİTERLERİ VE TESTLER</div>
+                    <div class="tkm-sec-title">5. KONTROL KRİTERLERİ VE TESTLER</div>
 
-                    <div class="tkm-sub-bar">4.1. ÖLÇÜM METODU</div>
+                    <div class="tkm-sub-bar">5.1. ÖLÇÜM METODU</div>
 
                     <table class="tkm-table" style="margin-bottom:3px;">
 
@@ -2384,7 +2461,7 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
                     </table>
 
-                    <div class="tkm-sub-bar">4.2. SON TÜKETİM NOKTALARINDA DOLAYLI DOKUNMAYA KARŞI KORUMA YETERLİLİĞİ KONTROLÜ</div>
+                    <div class="tkm-sub-bar">5.2. SON TÜKETİM NOKTALARINDA DOLAYLI DOKUNMAYA KARŞI KORUMA YETERLİLİĞİ KONTROLÜ</div>
 
                 `;
 
@@ -2392,7 +2469,7 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
                 chunkHtml += `
 
-                    <div class="tkm-sub-bar">4.2. SON TÜKETİM NOKTALARINDA DOLAYLI DOKUNMAYA KARŞI KORUMA YETERLİLİĞİ KONTROLÜ (Devam)</div>
+                    <div class="tkm-sub-bar">5.2. SON TÜKETİM NOKTALARINDA DOLAYLI DOKUNMAYA KARŞI KORUMA YETERLİLİĞİ KONTROLÜ (Devam)</div>
 
                 `;
 
@@ -2480,7 +2557,7 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
             if (isLastChunk) {
 
-                // Also append 4.3 RCD Selektivite Kontrolü
+                // Also append 5.3 RCD Selektivite Kontrolü
 
                 const selRowsHtml = selectivity.length ? selectivity.map((s, idx) => `
 
@@ -2520,7 +2597,7 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
                 chunkHtml += `
 
-                    <div class="tkm-sub-bar" style="margin-top:3px;">4.3. ARTIK AKIM ANAHTARLARI (RCD) SELEKTİVİTE KONTROLÜ</div>
+                    <div class="tkm-sub-bar" style="margin-top:3px;">5.3. ARTIK AKIM ANAHTARLARI (RCD) SELEKTİVİTE KONTROLÜ</div>
 
                     <table class="tkm-table" style="font-size:6.7pt;">
 
@@ -2570,11 +2647,11 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
 
 
-        // Block 5: 5. KUSUR AÇIKLAMALARI & 6. NOTLAR
+        // Block 6: 6. KUSUR AÇIKLAMALARI & 7. NOTLAR
 
         blocks.push(`
 
-            <div class="tkm-sec-title">5. KUSUR AÇIKLAMALARI</div>
+            <div class="tkm-sec-title">6. KUSUR AÇIKLAMALARI</div>
 
             <table class="tkm-table">
 
@@ -2586,7 +2663,7 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
             </table>
 
-            <div class="tkm-sec-title">6. NOTLAR</div>
+            <div class="tkm-sec-title">7. NOTLAR</div>
 
             <table class="tkm-table">
 
@@ -2612,13 +2689,13 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
 
 
-        // Block 6: 7. SONUÇ VE KANAAT
+        // Block 7: 8. SONUÇ VE KANAAT
 
         const isGroundingSuitable = fd.overallResult !== 'UYGUN DEĞİL';
 
         blocks.push(`
 
-            <div class="tkm-sec-title">7. SONUÇ VE KANAAT</div>
+            <div class="tkm-sec-title">8. SONUÇ VE KANAAT</div>
 
             <table class="tkm-table">
 
@@ -2669,9 +2746,9 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
 
 
-        // Block 7: 8. ONAY
+        // Block 8: 9. ONAY
 
-        blocks.push(buildTkmOnaySection(insp, '8'));
+        blocks.push(buildTkmOnaySection(insp, '9'));
 
 
 
@@ -2769,7 +2846,9 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
         // Block 2: 2. ÖLÇÜM ALETLERİ BİLGİLERİ
 
-        const genDeviceRows = (gen.devices && gen.devices.length) ? gen.devices : [];
+        const genDeviceRows = (fd.measuringDevices && fd.measuringDevices.length)
+            ? fd.measuringDevices
+            : ((gen.devices && gen.devices.length) ? gen.devices : []);
 
 
 

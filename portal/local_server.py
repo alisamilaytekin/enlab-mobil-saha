@@ -28,6 +28,8 @@ FILES_DIR = os.path.join(DATA_DIR, "files")
 DB_PATH = os.path.join(DATA_DIR, "portal.db")
 ENV_PATH = os.path.join(PORTAL_DIR, ".env")
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024  # 50 MB
+CUSTOMER_COOKIE_NAME = "hr_customer_session"
+DUMMY_HASH = "0123456789abcdef0123456789abcdef:" + ("0" * 64)
 
 
 def load_env_file():
@@ -77,6 +79,24 @@ def init_db():
     conn.execute("PRAGMA journal_mode = WAL;")
     conn.executescript(
         """
+        CREATE TABLE IF NOT EXISTS portal_customer_accounts (
+            id TEXT PRIMARY KEY,
+            username TEXT NOT NULL UNIQUE,
+            company_name TEXT NOT NULL,
+            company_key TEXT NOT NULL DEFAULT '',
+            owner_company_slug TEXT NOT NULL DEFAULT '',
+            owner_company_name TEXT NOT NULL DEFAULT '',
+            password_hash TEXT NOT NULL,
+            is_active INTEGER NOT NULL DEFAULT 1,
+            token_version INTEGER NOT NULL DEFAULT 1,
+            last_login_at TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_customer_accounts_owner
+            ON portal_customer_accounts (owner_company_slug, company_key);
+
         CREATE TABLE IF NOT EXISTS portal_folders (
             id TEXT PRIMARY KEY,
             share_slug TEXT NOT NULL UNIQUE,
@@ -84,6 +104,8 @@ def init_db():
             local_wo_id TEXT DEFAULT '',
             owner_company_slug TEXT NOT NULL DEFAULT '',
             owner_company_name TEXT NOT NULL DEFAULT '',
+            customer_account_id TEXT REFERENCES portal_customer_accounts(id) ON DELETE SET NULL,
+            require_auth INTEGER NOT NULL DEFAULT 0,
             company_name TEXT NOT NULL,
             company_branch TEXT DEFAULT '',
             company_address TEXT DEFAULT '',
@@ -130,8 +152,17 @@ def init_db():
         conn.execute("ALTER TABLE portal_folders ADD COLUMN owner_company_slug TEXT NOT NULL DEFAULT ''")
     if "owner_company_name" not in existing_cols:
         conn.execute("ALTER TABLE portal_folders ADD COLUMN owner_company_name TEXT NOT NULL DEFAULT ''")
+    if "customer_account_id" not in existing_cols:
+        conn.execute(
+            "ALTER TABLE portal_folders ADD COLUMN customer_account_id TEXT REFERENCES portal_customer_accounts(id) ON DELETE SET NULL"
+        )
+    if "require_auth" not in existing_cols:
+        conn.execute("ALTER TABLE portal_folders ADD COLUMN require_auth INTEGER NOT NULL DEFAULT 0")
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_folders_owner_company ON portal_folders (owner_company_slug, updated_at DESC)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_folders_customer_account ON portal_folders (customer_account_id, updated_at DESC)"
     )
     conn.commit()
     conn.close()
@@ -166,6 +197,13 @@ def sanitize_company_slug(raw: str) -> str:
     return cleaned.strip("-")[:18].rstrip("-")
 
 
+def normalize_username(raw: str) -> str:
+    replaced = str(raw or "").strip().translate(TR_CHAR_MAP)
+    cleaned = re.sub(r"[^a-z0-9._-]+", "-", replaced.lower())
+    cleaned = re.sub(r"-{2,}", "-", cleaned)
+    return cleaned.strip("-._")[:32].strip("-._")
+
+
 def prefixed_random_slug(company_slug: str, length=8) -> str:
     prefix = sanitize_company_slug(company_slug)
     rand = random_slug(length)
@@ -184,6 +222,24 @@ def verify_folder_write_token(token: str, folder_id: str) -> bool:
     if not TOKEN_SECRET or not folder_id or not token or not isinstance(token, str):
         return False
     expected = sign_folder_write_token(folder_id)
+    try:
+        return hmac.compare_digest(token.strip().encode("utf-8"), expected.encode("utf-8"))
+    except Exception:
+        return False
+
+
+def sign_account_write_token(account_id: str) -> str:
+    if not TOKEN_SECRET or not account_id:
+        return ""
+    return b64url_encode(
+        hmac.new(TOKEN_SECRET.encode("utf-8"), f"acct_write:{account_id}".encode("utf-8"), hashlib.sha256).digest()
+    )
+
+
+def verify_account_write_token(token: str, account_id: str) -> bool:
+    if not TOKEN_SECRET or not account_id or not token or not isinstance(token, str):
+        return False
+    expected = sign_account_write_token(account_id)
     try:
         return hmac.compare_digest(token.strip().encode("utf-8"), expected.encode("utf-8"))
     except Exception:
@@ -265,6 +321,39 @@ def verify_folder_token(token: str, expected_slug: str = ""):
         return None
 
 
+def sign_customer_session_token(account_row) -> str:
+    payload = {
+        "t": "cust",
+        "aid": str(account_row["id"]),
+        "u": str(account_row["username"]),
+        "cv": int(account_row["token_version"] or 1),
+        "exp": int(time.time() * 1000) + 7 * 24 * 60 * 60 * 1000,
+    }
+    payload_b64 = b64url_encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
+    sig = b64url_encode(
+        hmac.new(TOKEN_SECRET.encode("utf-8"), payload_b64.encode("utf-8"), hashlib.sha256).digest()
+    )
+    return f"{payload_b64}.{sig}"
+
+
+def verify_customer_session_token(token: str):
+    if not token or not isinstance(token, str) or "." not in token:
+        return None
+    try:
+        payload_b64, sig = token.split(".", 1)
+        expected_sig = b64url_encode(
+            hmac.new(TOKEN_SECRET.encode("utf-8"), payload_b64.encode("utf-8"), hashlib.sha256).digest()
+        )
+        if not hmac.compare_digest(sig.encode("utf-8"), expected_sig.encode("utf-8")):
+            return None
+        parsed = json.loads(b64url_decode(payload_b64).decode("utf-8"))
+        if not parsed or parsed.get("t") != "cust" or not parsed.get("aid") or int(parsed.get("exp", 0)) < int(time.time() * 1000):
+            return None
+        return parsed
+    except Exception:
+        return None
+
+
 def sign_local_upload(report_id: str, storage_path: str, exp_ts: int) -> str:
     msg = f"upload:{report_id}:{storage_path}:{exp_ts}".encode("utf-8")
     return b64url_encode(hmac.new(TOKEN_SECRET.encode("utf-8"), msg, hashlib.sha256).digest())
@@ -295,12 +384,31 @@ def safe_file_path(storage_path: str) -> str:
 def row_to_folder(row):
     d = dict(row)
     d["has_pin"] = bool(d.get("has_pin"))
+    d["require_auth"] = bool(d.get("require_auth") or d.get("customer_account_id"))
     try:
         d["branding_json"] = json.loads(d.get("branding_json") or "{}")
     except Exception:
         d["branding_json"] = {}
     d.pop("pin_hash", None)
     return d
+
+
+def row_to_customer_public(row):
+    if not row:
+        return None
+    d = dict(row)
+    return {
+        "id": d["id"],
+        "username": d["username"],
+        "company_name": d["company_name"],
+        "company_key": d.get("company_key") or "",
+        "owner_company_slug": d.get("owner_company_slug") or "",
+        "owner_company_name": d.get("owner_company_name") or "",
+        "is_active": bool(d.get("is_active", 1)),
+        "last_login_at": d.get("last_login_at"),
+        "created_at": d.get("created_at"),
+        "updated_at": d.get("updated_at"),
+    }
 
 
 def row_to_report(row):
@@ -320,15 +428,18 @@ class PortalHandler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
         self.send_header(
             "Access-Control-Allow-Headers",
-            "Content-Type, Authorization, X-Admin-Key, X-Folder-Token, X-Folder-Write-Token, X-App-Client",
+            "Content-Type, Authorization, X-Admin-Key, X-Folder-Token, X-Folder-Write-Token, X-Customer-Token, X-Account-Write-Token, X-App-Client",
         )
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
 
-    def send_json(self, status_code: int, payload: dict):
+    def send_json(self, status_code: int, payload: dict, extra_headers=None):
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         self.send_response(status_code)
         self.add_cors_headers()
+        if extra_headers:
+            for k, v in extra_headers:
+                self.send_header(k, v)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
@@ -383,6 +494,70 @@ class PortalHandler(BaseHTTPRequestHandler):
                 return wt.strip()
         return ""
 
+    def extract_account_write_token(self, body=None) -> str:
+        hdr = (self.headers.get("X-Account-Write-Token") or "").strip()
+        if hdr:
+            return hdr
+        if isinstance(body, dict):
+            for key in ("account_write_token", "write_token"):
+                val = body.get(key)
+                if isinstance(val, str) and val.strip():
+                    return val.strip()
+        return ""
+
+    def parse_cookies(self) -> dict:
+        raw = self.headers.get("Cookie") or ""
+        out = {}
+        for part in raw.split(";"):
+            if "=" not in part:
+                continue
+            k, v = part.split("=", 1)
+            k = k.strip()
+            v = v.strip()
+            if k:
+                out[k] = urllib.parse.unquote(v)
+        return out
+
+    def extract_customer_token(self, query_params: dict = None) -> str:
+        hdr = (self.headers.get("X-Customer-Token") or "").strip()
+        if hdr:
+            return hdr
+        if query_params:
+            vals = query_params.get("ct") or []
+            if vals and vals[0].strip():
+                return vals[0].strip()
+        cookies = self.parse_cookies()
+        return (cookies.get(CUSTOMER_COOKIE_NAME) or "").strip()
+
+    def build_session_cookie_header(self, token: str, clear: bool = False) -> str:
+        is_https = self.get_origin().startswith("https://")
+        sec = "; Secure" if is_https else ""
+        if clear:
+            return f"{CUSTOMER_COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0{sec}"
+        return f"{CUSTOMER_COOKIE_NAME}={urllib.parse.quote(token, safe='')}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800{sec}"
+
+    def resolve_authenticated_customer(self, conn, query_params: dict = None):
+        raw = self.extract_customer_token(query_params)
+        if not raw:
+            return None
+        parsed = verify_customer_session_token(raw)
+        if not parsed:
+            return None
+        acct = conn.execute(
+            """
+            SELECT id, username, company_name, company_key, owner_company_slug, owner_company_name,
+                   is_active, token_version, last_login_at, created_at, updated_at
+            FROM portal_customer_accounts
+            WHERE id = ? LIMIT 1
+            """,
+            (parsed["aid"],),
+        ).fetchone()
+        if not acct or not acct["is_active"]:
+            return None
+        if int(acct["token_version"] or 1) != int(parsed.get("cv") or 1):
+            return None
+        return acct
+
     def read_raw_body(self, max_bytes: int):
         cl_hdr = self.headers.get("Content-Length")
         if cl_hdr is not None:
@@ -430,6 +605,8 @@ class PortalHandler(BaseHTTPRequestHandler):
 
         if path == "/api/health":
             return self.handle_health()
+        if path == "/api/customer":
+            return self.handle_customer_get(qs)
         if path == "/api/folder":
             return self.handle_get_folder(qs)
         if path == "/api/report":
@@ -459,6 +636,8 @@ class PortalHandler(BaseHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
 
+        if path == "/api/customer":
+            return self.handle_customer_post()
         if path == "/api/upload-init":
             return self.handle_upload_init()
         if path == "/api/upload-complete":
@@ -503,6 +682,131 @@ class PortalHandler(BaseHTTPRequestHandler):
             },
         )
 
+    def handle_customer_get(self, qs: dict):
+        conn = None
+        try:
+            conn = get_conn()
+            customer = self.resolve_authenticated_customer(conn, qs)
+            if not customer:
+                return self.send_json(401, {"ok": False, "error": "Oturum açılmamış"})
+
+            origin = self.get_origin()
+            folder_rows = conn.execute(
+                """
+                SELECT id, share_slug, work_order_code, owner_company_slug, owner_company_name,
+                       company_name, company_branch, company_address, has_pin, branding_json,
+                       created_at, updated_at
+                FROM portal_folders
+                WHERE customer_account_id = ?
+                ORDER BY updated_at DESC
+                """,
+                (customer["id"],),
+            ).fetchall()
+
+            folder_ids = [r["id"] for r in folder_rows]
+            reports_by_folder = {}
+            total_reports = 0
+            if folder_ids:
+                placeholders = ",".join("?" for _ in folder_ids)
+                rep_rows = conn.execute(
+                    f"""
+                    SELECT id, folder_id, share_slug, verify_code, report_no, equipment_name,
+                           template_code, inspection_date, next_inspection_date, inspector_name,
+                           result_status, source_type, mime_type, file_size_bytes, created_at, updated_at
+                    FROM portal_reports
+                    WHERE folder_id IN ({placeholders}) AND upload_ready = 1
+                    ORDER BY created_at DESC
+                    """,
+                    tuple(folder_ids),
+                ).fetchall()
+                total_reports = len(rep_rows)
+                for rr in rep_rows:
+                    rd = dict(rr)
+                    rd["url"] = f"{origin}/r/{rd['share_slug']}"
+                    reports_by_folder.setdefault(rd["folder_id"], []).append(rd)
+
+            enriched = []
+            for f in folder_rows:
+                fd = row_to_folder(f)
+                fd["url"] = f"{origin}/p/{fd['share_slug']}"
+                fd["reports"] = reports_by_folder.get(fd["id"], [])
+                enriched.append(fd)
+
+            return self.send_json(
+                200,
+                {
+                    "ok": True,
+                    "customer": row_to_customer_public(customer),
+                    "totals": {"folders": len(enriched), "reports": total_reports},
+                    "folders": enriched,
+                },
+            )
+        except Exception as e:
+            return self.send_json(500, {"ok": False, "error": str(e)})
+        finally:
+            if conn:
+                conn.close()
+
+    def handle_customer_post(self):
+        conn = None
+        try:
+            body = self.read_json_body(32 * 1024)
+            action = str(body.get("action") or "login").strip()
+
+            if action == "logout":
+                return self.send_json(
+                    200,
+                    {"ok": True},
+                    extra_headers=[("Set-Cookie", self.build_session_cookie_header("", clear=True))],
+                )
+
+            if action == "login":
+                username = normalize_username(body.get("username") or "")
+                password = str(body.get("password") or "").strip()
+                if not username or not password:
+                    return self.send_json(400, {"ok": False, "error": "Kullanıcı adı ve şifre gereklidir."})
+
+                conn = get_conn()
+                acct = conn.execute(
+                    "SELECT * FROM portal_customer_accounts WHERE username = ? LIMIT 1",
+                    (username,),
+                ).fetchone()
+                hash_to_check = acct["password_hash"] if acct else DUMMY_HASH
+                password_ok = verify_pin(password, hash_to_check)
+
+                if not acct or not password_ok:
+                    return self.send_json(401, {"ok": False, "error": "Kullanıcı adı veya şifre hatalı!"})
+                if not acct["is_active"]:
+                    return self.send_json(
+                        403,
+                        {"ok": False, "error": "Bu firma hesabı pasif durumdadır. Lütfen kontrol kuruluşuyla iletişime geçin."},
+                    )
+
+                now_iso = utc_now_iso()
+                conn.execute(
+                    "UPDATE portal_customer_accounts SET last_login_at = ?, updated_at = ? WHERE id = ?",
+                    (now_iso, now_iso, acct["id"]),
+                )
+                conn.commit()
+                acct = conn.execute(
+                    "SELECT * FROM portal_customer_accounts WHERE id = ? LIMIT 1",
+                    (acct["id"],),
+                ).fetchone()
+
+                token = sign_customer_session_token(acct)
+                return self.send_json(
+                    200,
+                    {"ok": True, "token": token, "customer": row_to_customer_public(acct)},
+                    extra_headers=[("Set-Cookie", self.build_session_cookie_header(token))],
+                )
+
+            return self.send_json(400, {"ok": False, "error": "Bilinmeyen işlem"})
+        except Exception as e:
+            return self.send_json(500, {"ok": False, "error": str(e)})
+        finally:
+            if conn:
+                conn.close()
+
     def handle_upload_init(self):
         provided_admin_key = self.extract_admin_key()
         is_admin = bool(provided_admin_key and self.verify_admin_key())
@@ -516,6 +820,7 @@ class PortalHandler(BaseHTTPRequestHandler):
             body = self.read_json_body(512 * 1024)
             f_in = body.get("folder") or {}
             r_in = body.get("report") or {}
+            c_in = body.get("customer") if isinstance(body.get("customer"), dict) else None
 
             company_name = str(f_in.get("company_name") or "Müşteri Firma").strip()[:200]
             local_wo_id = str(f_in.get("local_wo_id") or "").strip()[:120]
@@ -537,6 +842,157 @@ class PortalHandler(BaseHTTPRequestHandler):
             now = utc_now_iso()
 
             conn = get_conn()
+
+            # 0. Resolve or create customer firm login account
+            customer_row = None
+            customer_created = False
+            if c_in and (c_in.get("id") or c_in.get("username")):
+                if is_admin and c_in.get("id"):
+                    customer_row = conn.execute(
+                        "SELECT * FROM portal_customer_accounts WHERE id = ? LIMIT 1",
+                        (str(c_in.get("id")).strip(),),
+                    ).fetchone()
+                    if not customer_row:
+                        return self.send_json(404, {"ok": False, "error": "Seçilen müşteri hesabı bulunamadı"})
+                elif c_in.get("username"):
+                    req_username = normalize_username(c_in.get("username"))
+                    if not req_username or len(req_username) < 3:
+                        return self.send_json(
+                            400,
+                            {"ok": False, "error": "Müşteri kullanıcı adı en az 3 karakter olmalıdır (harf, rakam, tire)."},
+                        )
+
+                    req_password = str(c_in.get("password") or "").strip()
+                    req_company = str(c_in.get("company_name") or company_name or "Müşteri Firma").strip()[:200]
+                    auto_username = bool(c_in.get("auto_username"))
+                    update_password = bool(c_in.get("update_password"))
+                    acct_write_token = self.extract_account_write_token(c_in) or self.extract_account_write_token(body)
+
+                    existing_acct = conn.execute(
+                        "SELECT * FROM portal_customer_accounts WHERE username = ? LIMIT 1",
+                        (req_username,),
+                    ).fetchone()
+
+                    if existing_acct:
+                        has_acct_token = verify_account_write_token(acct_write_token, existing_acct["id"])
+                        matches_pwd = bool(req_password and verify_pin(req_password, existing_acct["password_hash"]))
+
+                        if is_admin or has_acct_token or matches_pwd:
+                            if not existing_acct["is_active"] and not is_admin:
+                                return self.send_json(
+                                    403,
+                                    {"ok": False, "error": "Bu müşteri hesabı pasif durumda olduğu için yükleme yapılamaz."},
+                                )
+                            if (is_admin or has_acct_token) and update_password and req_password:
+                                if len(req_password) < 4:
+                                    return self.send_json(
+                                        400, {"ok": False, "error": "Müşteri şifresi en az 4 karakter olmalıdır."}
+                                    )
+                                next_ver = int(existing_acct["token_version"] or 1) + 1
+                                conn.execute(
+                                    """
+                                    UPDATE portal_customer_accounts
+                                    SET password_hash = ?, token_version = ?, updated_at = ?
+                                    WHERE id = ?
+                                    """,
+                                    (hash_pin(req_password), next_ver, now, existing_acct["id"]),
+                                )
+                                customer_row = conn.execute(
+                                    "SELECT * FROM portal_customer_accounts WHERE id = ? LIMIT 1",
+                                    (existing_acct["id"],),
+                                ).fetchone()
+                            else:
+                                customer_row = existing_acct
+                        elif auto_username:
+                            if len(req_password) < 4:
+                                return self.send_json(
+                                    400,
+                                    {"ok": False, "error": "Yeni müşteri hesabı için en az 4 karakterli şifre gereklidir."},
+                                )
+                            free_username = ""
+                            for _ in range(6):
+                                candidate_u = normalize_username(f"{req_username[:24]}-{random_slug(4)}")
+                                if len(candidate_u) < 3:
+                                    continue
+                                dup = conn.execute(
+                                    "SELECT id FROM portal_customer_accounts WHERE username = ? LIMIT 1",
+                                    (candidate_u,),
+                                ).fetchone()
+                                if not dup:
+                                    free_username = candidate_u
+                                    break
+                            if not free_username:
+                                return self.send_json(
+                                    409,
+                                    {
+                                        "ok": False,
+                                        "error": "Benzersiz müşteri kullanıcı adı üretilemedi, lütfen farklı bir kullanıcı adı yazın.",
+                                    },
+                                )
+                            new_cid = str(uuid.uuid4())
+                            conn.execute(
+                                """
+                                INSERT INTO portal_customer_accounts
+                                (id, username, company_name, company_key, owner_company_slug, owner_company_name,
+                                 password_hash, is_active, token_version, created_at, updated_at)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, 1, 1, ?, ?)
+                                """,
+                                (
+                                    new_cid,
+                                    free_username,
+                                    req_company,
+                                    sanitize_company_slug(req_company),
+                                    owner_company_slug,
+                                    owner_company_name,
+                                    hash_pin(req_password),
+                                    now,
+                                    now,
+                                ),
+                            )
+                            customer_row = conn.execute(
+                                "SELECT * FROM portal_customer_accounts WHERE id = ? LIMIT 1", (new_cid,)
+                            ).fetchone()
+                            customer_created = True
+                        else:
+                            return self.send_json(
+                                409,
+                                {
+                                    "ok": False,
+                                    "error": "Bu müşteri kullanıcı adı zaten başka bir firmada kayıtlı. Mevcut firmaya eklemek için doğru şifreyi girin ya da farklı bir kullanıcı adı belirleyin.",
+                                },
+                            )
+                    else:
+                        if len(req_password) < 4:
+                            return self.send_json(
+                                400,
+                                {"ok": False, "error": "Yeni müşteri hesabı için en az 4 karakterli şifre gereklidir."},
+                            )
+                        new_cid = str(uuid.uuid4())
+                        conn.execute(
+                            """
+                            INSERT INTO portal_customer_accounts
+                            (id, username, company_name, company_key, owner_company_slug, owner_company_name,
+                             password_hash, is_active, token_version, created_at, updated_at)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, 1, 1, ?, ?)
+                            """,
+                            (
+                                new_cid,
+                                req_username,
+                                req_company,
+                                sanitize_company_slug(req_company),
+                                owner_company_slug,
+                                owner_company_name,
+                                hash_pin(req_password),
+                                now,
+                                now,
+                            ),
+                        )
+                        customer_row = conn.execute(
+                            "SELECT * FROM portal_customer_accounts WHERE id = ? LIMIT 1", (new_cid,)
+                        ).fetchone()
+                        customer_created = True
+
+            # 1. Find or create folder
             folder_row = None
             if req_slug:
                 candidate = conn.execute("SELECT * FROM portal_folders WHERE share_slug = ? LIMIT 1", (req_slug,)).fetchone()
@@ -569,6 +1025,8 @@ class PortalHandler(BaseHTTPRequestHandler):
                 new_brand = json.dumps(branding_json, ensure_ascii=False) if branding_json else folder_row["branding_json"]
                 new_owner_slug = owner_company_slug or folder_row["owner_company_slug"] or ""
                 new_owner_name = owner_company_name or folder_row["owner_company_name"] or ""
+                new_cust_id = customer_row["id"] if customer_row else folder_row["customer_account_id"]
+                new_req_auth = 1 if customer_row else (folder_row["require_auth"] or 0)
 
                 pin_hash = folder_row["pin_hash"]
                 has_pin = folder_row["has_pin"]
@@ -585,6 +1043,7 @@ class PortalHandler(BaseHTTPRequestHandler):
                     SET company_name = ?, company_branch = ?, company_address = ?,
                         contact_email = ?, work_order_code = ?, branding_json = ?,
                         owner_company_slug = ?, owner_company_name = ?,
+                        customer_account_id = ?, require_auth = ?,
                         pin_hash = ?, has_pin = ?, updated_at = ?
                     WHERE id = ?
                     """,
@@ -597,6 +1056,8 @@ class PortalHandler(BaseHTTPRequestHandler):
                         new_brand,
                         new_owner_slug,
                         new_owner_name,
+                        new_cust_id,
+                        new_req_auth,
                         pin_hash,
                         has_pin,
                         now,
@@ -608,13 +1069,16 @@ class PortalHandler(BaseHTTPRequestHandler):
                 share_slug = prefixed_random_slug(owner_company_slug, 8)
                 has_pin = 1 if (pin_mode == "set" and clean_pin) else 0
                 pin_hash = hash_pin(clean_pin) if has_pin else None
+                cust_id = customer_row["id"] if customer_row else None
+                req_auth = 1 if customer_row else 0
                 conn.execute(
                     """
                     INSERT INTO portal_folders
                     (id, share_slug, work_order_code, local_wo_id, owner_company_slug, owner_company_name,
+                     customer_account_id, require_auth,
                      company_name, company_branch, company_address, contact_email, pin_hash, has_pin,
                      branding_json, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         folder_id,
@@ -623,6 +1087,8 @@ class PortalHandler(BaseHTTPRequestHandler):
                         local_wo_id,
                         owner_company_slug,
                         owner_company_name,
+                        cust_id,
+                        req_auth,
                         company_name,
                         str(f_in.get("company_branch") or ""),
                         str(f_in.get("company_address") or ""),
@@ -729,10 +1195,21 @@ class PortalHandler(BaseHTTPRequestHandler):
                         "share_slug": folder_row["share_slug"],
                         "owner_company_slug": folder_row["owner_company_slug"] or "",
                         "owner_company_name": folder_row["owner_company_name"] or "",
+                        "customer_account_id": folder_row["customer_account_id"] or None,
+                        "require_auth": bool(folder_row["require_auth"] or folder_row["customer_account_id"]),
                         "has_pin": bool(folder_row["has_pin"]),
                         "write_token": folder_write_token,
                         "url": f"{origin}/p/{folder_row['share_slug']}",
                     },
+                    "customer": {
+                        "id": customer_row["id"],
+                        "username": customer_row["username"],
+                        "company_name": customer_row["company_name"],
+                        "write_token": sign_account_write_token(customer_row["id"]),
+                        "created": customer_created,
+                    }
+                    if customer_row
+                    else None,
                     "report": {
                         "id": report_row["id"],
                         "share_slug": report_row["share_slug"],
@@ -856,14 +1333,47 @@ class PortalHandler(BaseHTTPRequestHandler):
                 return self.send_json(404, {"ok": False, "error": "Müşteri rapor klasörü bulunamadı"})
 
             folder = row_to_folder(folder_row)
-            if folder["has_pin"]:
+            is_admin = self.verify_admin_key()
+            customer = None if is_admin else self.resolve_authenticated_customer(conn, qs)
+            is_customer_protected = bool(folder.get("customer_account_id") or folder.get("require_auth"))
+
+            if is_customer_protected and not is_admin:
+                if not customer:
+                    return self.send_json(
+                        200,
+                        {
+                            "ok": True,
+                            "requiresAuth": True,
+                            "authMode": "customer_login",
+                            "requiresPin": False,
+                            "folder": {
+                                "share_slug": folder["share_slug"],
+                                "branding_json": folder["branding_json"],
+                            },
+                            "reports": [],
+                        },
+                    )
+                if not folder.get("customer_account_id") or customer["id"] != folder["customer_account_id"]:
+                    return self.send_json(
+                        403,
+                        {
+                            "ok": False,
+                            "wrongTenant": True,
+                            "customer": row_to_customer_public(customer),
+                            "error": "Bu klasör başka bir firmaya aittir. Yalnızca kendi firmanızın raporlarını görüntüleyebilirsiniz.",
+                        },
+                    )
+
+            if folder["has_pin"] and not is_admin:
                 token = self.extract_folder_token(qs)
                 if not verify_folder_token(token, folder["share_slug"]):
                     return self.send_json(
                         200,
                         {
                             "ok": True,
+                            "requiresAuth": False,
                             "requiresPin": True,
+                            "customer": row_to_customer_public(customer),
                             "folder": {
                                 "share_slug": folder["share_slug"],
                                 "company_name": folder["company_name"],
@@ -891,7 +1401,9 @@ class PortalHandler(BaseHTTPRequestHandler):
                 200,
                 {
                     "ok": True,
+                    "requiresAuth": False,
                     "requiresPin": False,
+                    "customer": row_to_customer_public(customer),
                     "folder": folder,
                     "reports": [dict(r) for r in rows],
                 },
@@ -969,22 +1481,77 @@ class PortalHandler(BaseHTTPRequestHandler):
                 return self.send_json(404, {"ok": False, "error": "İlişkili firma klasörü bulunamadı"})
 
             folder = row_to_folder(folder_row)
+            is_admin = self.verify_admin_key()
+            customer = None if is_admin else self.resolve_authenticated_customer(conn, qs)
+            is_customer_protected = bool(folder.get("customer_account_id") or folder.get("require_auth"))
+
+            if is_customer_protected and not is_admin:
+                if not customer:
+                    if slug:
+                        return self.send_json(
+                            200,
+                            {
+                                "ok": True,
+                                "verified": True,
+                                "requiresAuth": True,
+                                "authMode": "customer_login",
+                                "requiresPin": False,
+                                "folder": {
+                                    "share_slug": folder["share_slug"],
+                                    "branding_json": folder["branding_json"],
+                                },
+                                "report": {"share_slug": report["share_slug"]},
+                            },
+                        )
+                    return self.send_json(
+                        200,
+                        {
+                            "ok": True,
+                            "verified": True,
+                            "requiresAuth": True,
+                            "authMode": "customer_login",
+                            "requiresPin": False,
+                            "folder": {"branding_json": folder["branding_json"]},
+                            "report": {
+                                "report_no": report["report_no"],
+                                "inspection_date": report["inspection_date"],
+                                "result_status": report["result_status"],
+                            },
+                        },
+                    )
+
+                if not folder.get("customer_account_id") or customer["id"] != folder["customer_account_id"]:
+                    return self.send_json(
+                        403,
+                        {
+                            "ok": False,
+                            "wrongTenant": True,
+                            "customer": row_to_customer_public(customer),
+                            "error": "Bu rapor başka bir firmaya aittir. Yalnızca kendi firmanızın raporlarını görüntüleyebilirsiniz.",
+                        },
+                    )
+
             token = self.extract_folder_token(qs)
-            unlocked = (not folder["has_pin"]) or bool(verify_folder_token(token, folder["share_slug"]))
+            unlocked = is_admin or (not folder["has_pin"]) or bool(verify_folder_token(token, folder["share_slug"]))
 
             return self.send_json(
                 200,
                 {
                     "ok": True,
                     "verified": True,
+                    "requiresAuth": False,
                     "requiresPin": not unlocked,
+                    "customer": row_to_customer_public(customer),
                     "folder": {
                         "share_slug": folder["share_slug"],
                         "work_order_code": folder["work_order_code"],
+                        "owner_company_slug": folder["owner_company_slug"],
+                        "owner_company_name": folder["owner_company_name"],
                         "company_name": folder["company_name"],
                         "company_branch": folder["company_branch"],
                         "company_address": folder["company_address"] if unlocked else "",
                         "has_pin": folder["has_pin"],
+                        "require_auth": is_customer_protected,
                         "branding_json": folder["branding_json"],
                     },
                     "report": {
@@ -1030,13 +1597,32 @@ class PortalHandler(BaseHTTPRequestHandler):
                 return self.send_json(404, {"ok": False, "error": "Rapor bulunamadı"})
 
             folder = conn.execute(
-                "SELECT id, share_slug, has_pin FROM portal_folders WHERE id = ? LIMIT 1",
+                "SELECT id, share_slug, customer_account_id, require_auth, has_pin FROM portal_folders WHERE id = ? LIMIT 1",
                 (report["folder_id"],),
             ).fetchone()
             if not folder:
                 return self.send_json(404, {"ok": False, "error": "Klasör bulunamadı"})
 
-            if folder["has_pin"]:
+            is_admin = self.verify_admin_key()
+            is_customer_protected = bool(folder["customer_account_id"] or folder["require_auth"])
+            if is_customer_protected and not is_admin:
+                customer = self.resolve_authenticated_customer(conn, qs)
+                if not customer:
+                    return self.send_json(
+                        401,
+                        {"ok": False, "requiresAuth": True, "error": "Bu raporu görüntülemek için firma girişi gereklidir"},
+                    )
+                if not folder["customer_account_id"] or customer["id"] != folder["customer_account_id"]:
+                    return self.send_json(
+                        403,
+                        {
+                            "ok": False,
+                            "wrongTenant": True,
+                            "error": "Bu rapor başka bir firmaya aittir. Yalnızca kendi firmanızın raporlarını görüntüleyebilirsiniz.",
+                        },
+                    )
+
+            if folder["has_pin"] and not is_admin:
                 token = self.extract_folder_token(qs)
                 if not verify_folder_token(token, folder["share_slug"]):
                     return self.send_json(
@@ -1094,6 +1680,14 @@ class PortalHandler(BaseHTTPRequestHandler):
             q = (qs.get("q") or [""])[0].strip().lower()
             origin = self.get_origin()
             conn = get_conn()
+            acct_rows = conn.execute(
+                """
+                SELECT id, username, company_name, company_key, owner_company_slug, owner_company_name,
+                       is_active, last_login_at, created_at, updated_at
+                FROM portal_customer_accounts
+                ORDER BY created_at DESC
+                """
+            ).fetchall()
             folder_rows = conn.execute(
                 "SELECT * FROM portal_folders ORDER BY updated_at DESC"
             ).fetchall()
@@ -1108,6 +1702,15 @@ class PortalHandler(BaseHTTPRequestHandler):
                 """
             ).fetchall()
 
+            acct_by_id = {}
+            folder_counts = {}
+            report_counts = {}
+            for a in acct_rows:
+                ad = row_to_customer_public(a)
+                acct_by_id[ad["id"]] = ad
+                folder_counts[ad["id"]] = 0
+                report_counts[ad["id"]] = 0
+
             by_folder = {}
             for r in report_rows:
                 rd = dict(r)
@@ -1117,9 +1720,24 @@ class PortalHandler(BaseHTTPRequestHandler):
             items = []
             for f in folder_rows:
                 fd = row_to_folder(f)
+                cust = acct_by_id.get(fd.get("customer_account_id"))
+                freps = by_folder.get(fd["id"], [])
+                if cust:
+                    folder_counts[cust["id"]] = folder_counts.get(cust["id"], 0) + 1
+                    report_counts[cust["id"]] = report_counts.get(cust["id"], 0) + len(freps)
+                fd["customer_username"] = cust["username"] if cust else ""
+                fd["customer_company_name"] = cust["company_name"] if cust else ""
+                fd["customer_is_active"] = cust["is_active"] if cust else None
                 fd["url"] = f"{origin}/p/{fd['share_slug']}"
-                fd["reports"] = by_folder.get(fd["id"], [])
+                fd["reports"] = freps
                 items.append(fd)
+
+            enriched_accounts = []
+            for a in acct_rows:
+                ad = dict(acct_by_id[a["id"]])
+                ad["folder_count"] = folder_counts.get(ad["id"], 0)
+                ad["report_count"] = report_counts.get(ad["id"], 0)
+                enriched_accounts.append(ad)
 
             if q:
                 items = [
@@ -1130,6 +1748,7 @@ class PortalHandler(BaseHTTPRequestHandler):
                     or q in (f.get("work_order_code") or "").lower()
                     or q in (f.get("owner_company_name") or "").lower()
                     or q in (f.get("owner_company_slug") or "").lower()
+                    or q in (f.get("customer_username") or "").lower()
                     or any(
                         q in (r.get("equipment_name") or "").lower()
                         or q in (r.get("report_no") or "").lower()
@@ -1137,13 +1756,26 @@ class PortalHandler(BaseHTTPRequestHandler):
                         for r in f["reports"]
                     )
                 ]
+                enriched_accounts = [
+                    a
+                    for a in enriched_accounts
+                    if q in (a.get("username") or "").lower()
+                    or q in (a.get("company_name") or "").lower()
+                    or q in (a.get("owner_company_name") or "").lower()
+                    or q in (a.get("owner_company_slug") or "").lower()
+                ]
 
             return self.send_json(
                 200,
                 {
                     "ok": True,
-                    "totals": {"folders": len(folder_rows), "reports": len(report_rows)},
+                    "totals": {
+                        "folders": len(folder_rows),
+                        "reports": len(report_rows),
+                        "customers": len(acct_rows),
+                    },
                     "folders": items,
+                    "customer_accounts": enriched_accounts,
                 },
             )
         except Exception as e:
@@ -1161,6 +1793,155 @@ class PortalHandler(BaseHTTPRequestHandler):
             body = self.read_json_body(64 * 1024)
             action = str(body.get("action") or "").strip()
             conn = get_conn()
+            now = utc_now_iso()
+
+            if action == "create-customer":
+                username = normalize_username(body.get("username") or "")
+                company_name = str(body.get("company_name") or "").strip()[:200]
+                password = str(body.get("password") or "").strip()
+                owner_slug = sanitize_company_slug(body.get("owner_company_slug") or "")
+                owner_name = str(body.get("owner_company_name") or "").strip()[:120]
+
+                if not username or len(username) < 3:
+                    return self.send_json(400, {"ok": False, "error": "Kullanıcı adı en az 3 karakter olmalıdır."})
+                if not company_name:
+                    return self.send_json(400, {"ok": False, "error": "Firma adı gereklidir."})
+                if len(password) < 4:
+                    return self.send_json(400, {"ok": False, "error": "Şifre en az 4 karakter olmalıdır."})
+
+                dup = conn.execute(
+                    "SELECT id FROM portal_customer_accounts WHERE username = ? LIMIT 1", (username,)
+                ).fetchone()
+                if dup:
+                    return self.send_json(409, {"ok": False, "error": "Bu kullanıcı adı zaten kayıtlı!"})
+
+                cid = str(uuid.uuid4())
+                conn.execute(
+                    """
+                    INSERT INTO portal_customer_accounts
+                    (id, username, company_name, company_key, owner_company_slug, owner_company_name,
+                     password_hash, is_active, token_version, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 1, 1, ?, ?)
+                    """,
+                    (
+                        cid,
+                        username,
+                        company_name,
+                        sanitize_company_slug(company_name),
+                        owner_slug,
+                        owner_name,
+                        hash_pin(password),
+                        now,
+                        now,
+                    ),
+                )
+                conn.commit()
+                created = conn.execute("SELECT * FROM portal_customer_accounts WHERE id = ? LIMIT 1", (cid,)).fetchone()
+                return self.send_json(200, {"ok": True, "customer": row_to_customer_public(created)})
+
+            if action == "update-customer":
+                customer_id = str(body.get("customer_id") or "").strip()
+                if not customer_id:
+                    return self.send_json(400, {"ok": False, "error": "customer_id gerekli"})
+                existing = conn.execute(
+                    "SELECT * FROM portal_customer_accounts WHERE id = ? LIMIT 1", (customer_id,)
+                ).fetchone()
+                if not existing:
+                    return self.send_json(404, {"ok": False, "error": "Müşteri hesabı bulunamadı"})
+
+                username = existing["username"]
+                company_name = existing["company_name"]
+                company_key = existing["company_key"]
+                password_hash = existing["password_hash"]
+                is_active = existing["is_active"]
+                token_version = int(existing["token_version"] or 1)
+                revoke = False
+
+                if body.get("username") is not None:
+                    next_u = normalize_username(body.get("username"))
+                    if not next_u or len(next_u) < 3:
+                        return self.send_json(400, {"ok": False, "error": "Kullanıcı adı en az 3 karakter olmalıdır."})
+                    if next_u != username:
+                        dup = conn.execute(
+                            "SELECT id FROM portal_customer_accounts WHERE username = ? LIMIT 1", (next_u,)
+                        ).fetchone()
+                        if dup and dup["id"] != customer_id:
+                            return self.send_json(
+                                409, {"ok": False, "error": "Bu kullanıcı adı başka bir firmada kullanılıyor!"}
+                            )
+                        username = next_u
+                        revoke = True
+                if body.get("company_name") is not None and str(body.get("company_name")).strip():
+                    company_name = str(body.get("company_name")).strip()[:200]
+                    company_key = sanitize_company_slug(company_name)
+                if body.get("password") is not None and str(body.get("password")).strip():
+                    pwd = str(body.get("password")).strip()
+                    if len(pwd) < 4:
+                        return self.send_json(400, {"ok": False, "error": "Yeni şifre en az 4 karakter olmalıdır."})
+                    password_hash = hash_pin(pwd)
+                    revoke = True
+                if body.get("is_active") is not None:
+                    is_active = 1 if body.get("is_active") else 0
+                    if not is_active:
+                        revoke = True
+                if revoke:
+                    token_version += 1
+
+                conn.execute(
+                    """
+                    UPDATE portal_customer_accounts
+                    SET username = ?, company_name = ?, company_key = ?, password_hash = ?,
+                        is_active = ?, token_version = ?, updated_at = ?
+                    WHERE id = ?
+                    """,
+                    (username, company_name, company_key, password_hash, is_active, token_version, now, customer_id),
+                )
+                conn.commit()
+                updated = conn.execute(
+                    "SELECT * FROM portal_customer_accounts WHERE id = ? LIMIT 1", (customer_id,)
+                ).fetchone()
+                return self.send_json(200, {"ok": True, "customer": row_to_customer_public(updated)})
+
+            if action == "assign-folder-customer":
+                folder_id = str(body.get("folder_id") or "").strip()
+                customer_id = str(body.get("customer_id") or "").strip()
+                if not folder_id:
+                    return self.send_json(400, {"ok": False, "error": "folder_id gerekli"})
+                row = conn.execute("SELECT * FROM portal_folders WHERE id = ? LIMIT 1", (folder_id,)).fetchone()
+                if not row:
+                    return self.send_json(404, {"ok": False, "error": "Klasör bulunamadı"})
+                if customer_id:
+                    cust = conn.execute(
+                        "SELECT id FROM portal_customer_accounts WHERE id = ? LIMIT 1", (customer_id,)
+                    ).fetchone()
+                    if not cust:
+                        return self.send_json(404, {"ok": False, "error": "Müşteri hesabı bulunamadı"})
+                    conn.execute(
+                        "UPDATE portal_folders SET customer_account_id = ?, require_auth = 1, updated_at = ? WHERE id = ?",
+                        (customer_id, now, folder_id),
+                    )
+                else:
+                    req_auth = row["require_auth"]
+                    if body.get("require_auth") is not None:
+                        req_auth = 1 if body.get("require_auth") else 0
+                    conn.execute(
+                        "UPDATE portal_folders SET customer_account_id = NULL, require_auth = ?, updated_at = ? WHERE id = ?",
+                        (req_auth, now, folder_id),
+                    )
+                conn.commit()
+                return self.send_json(200, {"ok": True})
+
+            if action == "delete-customer":
+                customer_id = str(body.get("customer_id") or "").strip()
+                if not customer_id:
+                    return self.send_json(400, {"ok": False, "error": "customer_id gerekli"})
+                conn.execute(
+                    "UPDATE portal_folders SET require_auth = 1, customer_account_id = NULL, updated_at = ? WHERE customer_account_id = ?",
+                    (now, customer_id),
+                )
+                conn.execute("DELETE FROM portal_customer_accounts WHERE id = ?", (customer_id,))
+                conn.commit()
+                return self.send_json(200, {"ok": True})
 
             if action == "update-folder":
                 folder_id = str(body.get("folder_id") or "").strip()
@@ -1174,6 +1955,7 @@ class PortalHandler(BaseHTTPRequestHandler):
                 company_branch = str(body["company_branch"]).strip() if body.get("company_branch") is not None else row["company_branch"]
                 company_address = str(body["company_address"]).strip() if body.get("company_address") is not None else row["company_address"]
                 contact_email = str(body["contact_email"]).strip() if body.get("contact_email") is not None else row["contact_email"]
+                req_auth = (1 if body.get("require_auth") else 0) if body.get("require_auth") is not None else row["require_auth"]
 
                 pin_hash = row["pin_hash"]
                 has_pin = row["has_pin"]
@@ -1188,10 +1970,10 @@ class PortalHandler(BaseHTTPRequestHandler):
                     """
                     UPDATE portal_folders
                     SET company_name = ?, company_branch = ?, company_address = ?,
-                        contact_email = ?, pin_hash = ?, has_pin = ?, updated_at = ?
+                        contact_email = ?, require_auth = ?, pin_hash = ?, has_pin = ?, updated_at = ?
                     WHERE id = ?
                     """,
-                    (company_name, company_branch, company_address, contact_email, pin_hash, has_pin, utc_now_iso(), folder_id),
+                    (company_name, company_branch, company_address, contact_email, req_auth, pin_hash, has_pin, now, folder_id),
                 )
                 conn.commit()
                 return self.send_json(200, {"ok": True})

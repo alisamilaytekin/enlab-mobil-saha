@@ -43,7 +43,9 @@
             calendarEvents,
             qualityRecords,
             quickNotes,
-            portalConfig: {}
+            portalConfig: {},
+            customerPortalAccounts: {},
+            userDevicesCatalog: null
         };
     }
 
@@ -83,6 +85,10 @@
                     }
                     if (!this.state.quickNotes) this.state.quickNotes = [];
                     if (!this.state.portalConfig) this.state.portalConfig = {};
+                    if (!this.state.customerPortalAccounts || typeof this.state.customerPortalAccounts !== 'object') {
+                        this.state.customerPortalAccounts = {};
+                    }
+                    if (this.state.userDevicesCatalog === undefined) this.state.userDevicesCatalog = null;
                 } catch (e) {
                     this.state = buildInitialDatabase();
                 }
@@ -117,6 +123,8 @@
             let customDefects = null;
             let defectLibrary = null;
             let userAccounts = null;
+            let userDevices = null;
+            let currentUserId = '';
             try {
                 for (let i = 0; i < localStorage.length; i++) {
                     const k = localStorage.key(i);
@@ -132,6 +140,9 @@
                 if (rawLib) defectLibrary = JSON.parse(rawLib);
                 const rawUsers = localStorage.getItem('enlab_user_accounts_v1');
                 if (rawUsers) userAccounts = JSON.parse(rawUsers);
+                const rawUserDevs = localStorage.getItem('enlab_user_devices_v1');
+                if (rawUserDevs) userDevices = JSON.parse(rawUserDevs);
+                currentUserId = localStorage.getItem('enlab_current_user_id') || '';
             } catch (e) {}
             return {
                 version: 4,
@@ -142,7 +153,9 @@
                 localForms,
                 customDefects,
                 defectLibrary,
-                userAccounts
+                userAccounts,
+                userDevices,
+                currentUserId
             };
         },
 
@@ -171,6 +184,21 @@
                     if (backupObj.userAccounts) {
                         try {
                             localStorage.setItem('enlab_user_accounts_v1', JSON.stringify(backupObj.userAccounts));
+                        } catch (e) {}
+                    }
+                    if (backupObj.currentUserId && !localStorage.getItem('enlab_current_user_id')) {
+                        try {
+                            localStorage.setItem('enlab_current_user_id', String(backupObj.currentUserId));
+                        } catch (e) {}
+                    }
+                    if (backupObj.userDevices) {
+                        try {
+                            localStorage.setItem('enlab_user_devices_v1', JSON.stringify(backupObj.userDevices));
+                            this.state.userDevicesCatalog = backupObj.userDevices;
+                        } catch (e) {}
+                    } else if (backupObj.db && backupObj.db.userDevicesCatalog) {
+                        try {
+                            localStorage.setItem('enlab_user_devices_v1', JSON.stringify(backupObj.db.userDevicesCatalog));
                         } catch (e) {}
                     }
                     this.save();
@@ -275,6 +303,21 @@
                         const tplObj = allTpls.find(t => String(t.id) === String(tplId)) || { id: tplId, code: 'TKM-FR.318', name: 'Elektrik İç Tesisatı' };
                         const inspId = Date.now() + idx + 1;
                         const rNo = `TKM-26-02-${Math.floor(54300 + Math.random() * 5500)}`;
+                        const inspFormData = {
+                            generalNotes: newWO.field_notes || '',
+                            companyInfo: {
+                                firmName: newWO.company_name,
+                                address: newWO.company_address,
+                                isgKatipNo: newWO.isg_katip_no,
+                                sgkSicilNo: newWO.sgk_sicil_no,
+                                contactEmail: newWO.contact_email || '',
+                                reportNo: rNo,
+                                reportDate: todayStr
+                            }
+                        };
+                        if (window.MeasuringDevicesManager && typeof window.MeasuringDevicesManager.applyDefaultsToFormData === 'function') {
+                            window.MeasuringDevicesManager.applyDefaultsToFormData(inspFormData, tplObj.id, false);
+                        }
                         db.inspections.unshift({
                             id: inspId,
                             work_order_id: newId,
@@ -300,18 +343,7 @@
                             end_date: todayStr,
                             report_date: todayStr,
                             is_mine: 1,
-                            data_json: JSON.stringify({
-                                generalNotes: newWO.field_notes || '',
-                                companyInfo: {
-                                    firmName: newWO.company_name,
-                                    address: newWO.company_address,
-                                    isgKatipNo: newWO.isg_katip_no,
-                                    sgkSicilNo: newWO.sgk_sicil_no,
-                                    contactEmail: newWO.contact_email || '',
-                                    reportNo: rNo,
-                                    reportDate: todayStr
-                                }
-                            })
+                            data_json: JSON.stringify(inspFormData)
                         });
                         createdInspectionIds.push(inspId);
                     });
@@ -346,6 +378,9 @@
                     if (body.portal_folder_slug !== undefined) wo.portal_folder_slug = body.portal_folder_slug;
                     if (body.portal_folder_url !== undefined) wo.portal_folder_url = body.portal_folder_url;
                     if (body.portal_write_token !== undefined) wo.portal_write_token = body.portal_write_token;
+                    if (body.portal_customer_username !== undefined) wo.portal_customer_username = body.portal_customer_username;
+                    if (body.portal_customer_password !== undefined) wo.portal_customer_password = body.portal_customer_password;
+                    if (body.portal_account_write_token !== undefined) wo.portal_account_write_token = body.portal_account_write_token;
                     if (body.portal_pin !== undefined) wo.portal_pin = body.portal_pin;
                     if (body.portal_last_sync !== undefined) wo.portal_last_sync = body.portal_last_sync;
                     this.save();
@@ -416,6 +451,10 @@
                 if (!parsedInitialData.companyInfo.contactEmail) parsedInitialData.companyInfo.contactEmail = wo.contact_email || '';
                 if (!parsedInitialData.companyInfo.reportNo) parsedInitialData.companyInfo.reportNo = reportNo;
                 if (!parsedInitialData.companyInfo.reportDate) parsedInitialData.companyInfo.reportDate = todayStr;
+
+                if (!body.copy_from_id && window.MeasuringDevicesManager && typeof window.MeasuringDevicesManager.applyDefaultsToFormData === 'function') {
+                    window.MeasuringDevicesManager.applyDefaultsToFormData(parsedInitialData, body.template_id || '2201', false);
+                }
 
                 const newInsp = {
                     id: newId,

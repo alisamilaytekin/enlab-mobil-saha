@@ -1,9 +1,14 @@
 import crypto from 'node:crypto';
 
+export const CUSTOMER_COOKIE_NAME = 'hr_customer_session';
+
 export function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Admin-Key, X-Folder-Token, X-Folder-Write-Token, X-App-Client');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'Content-Type, Authorization, X-Admin-Key, X-Folder-Token, X-Folder-Write-Token, X-Customer-Token, X-Account-Write-Token, X-App-Client'
+  );
   res.setHeader('Cache-Control', 'no-store');
 }
 
@@ -88,23 +93,51 @@ export function randomSlug(len = 8) {
   return out;
 }
 
+const TR_CHAR_MAP = {
+  'ç': 'c', 'Ç': 'c',
+  'ğ': 'g', 'Ğ': 'g',
+  'ı': 'i', 'I': 'i',
+  'İ': 'i', 'i': 'i',
+  'ö': 'o', 'Ö': 'o',
+  'ş': 's', 'Ş': 's',
+  'ü': 'u', 'Ü': 'u'
+};
+
 export function sanitizeCompanySlug(raw) {
-  const trMap = {
-    'ç': 'c', 'Ç': 'c',
-    'ğ': 'g', 'Ğ': 'g',
-    'ı': 'i', 'I': 'i',
-    'İ': 'i', 'i': 'i',
-    'ö': 'o', 'Ö': 'o',
-    'ş': 's', 'Ş': 's',
-    'ü': 'u', 'Ü': 'u'
-  };
-  const replaced = String(raw || '').trim().replace(/[çÇğĞıIİiöÖşŞüÜ]/g, ch => trMap[ch] || ch);
+  const replaced = String(raw || '').trim().replace(/[çÇğĞıIİiöÖşŞüÜ]/g, ch => TR_CHAR_MAP[ch] || ch);
   return replaced
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 18)
     .replace(/-+$/g, '');
+}
+
+export function normalizeUsername(raw) {
+  const replaced = String(raw || '').trim().replace(/[çÇğĞıIİiöÖşŞüÜ]/g, ch => TR_CHAR_MAP[ch] || ch);
+  return replaced
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/^[-._]+|[-._]+$/g, '')
+    .slice(0, 32)
+    .replace(/^[-._]+|[-._]+$/g, '');
+}
+
+export function sanitizeCustomerPublic(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    username: row.username,
+    company_name: row.company_name,
+    company_key: row.company_key || '',
+    owner_company_slug: row.owner_company_slug || '',
+    owner_company_name: row.owner_company_name || '',
+    is_active: row.is_active !== false,
+    last_login_at: row.last_login_at || null,
+    created_at: row.created_at || null,
+    updated_at: row.updated_at || null
+  };
 }
 
 export function prefixedRandomSlug(companySlug, len = 8) {
@@ -132,6 +165,34 @@ export function verifyFolderWriteToken(token, folderId) {
 export function extractFolderWriteToken(req, body) {
   const hdr = req.headers['x-folder-write-token'];
   if (typeof hdr === 'string' && hdr.trim()) return hdr.trim();
+  if (body && typeof body.write_token === 'string' && body.write_token.trim()) {
+    return body.write_token.trim();
+  }
+  return '';
+}
+
+export function signAccountWriteToken(accountId) {
+  const { tokenSecret } = getConfig();
+  if (!tokenSecret || !accountId) return '';
+  return crypto.createHmac('sha256', tokenSecret).update(`acct_write:${accountId}`).digest('base64url');
+}
+
+export function verifyAccountWriteToken(token, accountId) {
+  const { tokenSecret } = getConfig();
+  if (!tokenSecret || !accountId || !token || typeof token !== 'string') return false;
+  const expected = signAccountWriteToken(accountId);
+  const a = Buffer.from(token.trim(), 'utf8');
+  const b = Buffer.from(expected, 'utf8');
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
+}
+
+export function extractAccountWriteToken(req, body) {
+  const hdr = req.headers['x-account-write-token'];
+  if (typeof hdr === 'string' && hdr.trim()) return hdr.trim();
+  if (body && typeof body.account_write_token === 'string' && body.account_write_token.trim()) {
+    return body.account_write_token.trim();
+  }
   if (body && typeof body.write_token === 'string' && body.write_token.trim()) {
     return body.write_token.trim();
   }
@@ -166,10 +227,15 @@ export function verifyPin(pin, storedHash) {
   const parts = String(storedHash).split(':');
   if (parts.length !== 2) return false;
   const [salt, expectedHex] = parts;
-  const derived = crypto.scryptSync(String(pin).trim(), salt, 32);
-  const expected = Buffer.from(expectedHex, 'hex');
-  if (derived.length !== expected.length) return false;
-  return crypto.timingSafeEqual(derived, expected);
+  if (!salt || !expectedHex || expectedHex.length % 2 !== 0) return false;
+  try {
+    const derived = crypto.scryptSync(String(pin).trim(), salt, 32);
+    const expected = Buffer.from(expectedHex, 'hex');
+    if (derived.length !== expected.length) return false;
+    return crypto.timingSafeEqual(derived, expected);
+  } catch {
+    return false;
+  }
 }
 
 export function signFolderToken(folderId, slug) {
@@ -215,6 +281,100 @@ export function extractFolderToken(req, urlObj) {
   return '';
 }
 
+export function signCustomerSessionToken(account) {
+  const { tokenSecret } = getConfig();
+  if (!tokenSecret) throw new Error('Sunucu token anahtarı yapılandırılmamış');
+  const payloadObj = {
+    t: 'cust',
+    aid: String(account.id),
+    u: String(account.username),
+    cv: Number(account.token_version || 1),
+    exp: Date.now() + 7 * 24 * 60 * 60 * 1000
+  };
+  const payloadB64 = Buffer.from(JSON.stringify(payloadObj)).toString('base64url');
+  const sig = crypto.createHmac('sha256', tokenSecret).update(payloadB64).digest('base64url');
+  return `${payloadB64}.${sig}`;
+}
+
+export function verifyCustomerSessionToken(token) {
+  const { tokenSecret } = getConfig();
+  if (!tokenSecret || !token || typeof token !== 'string') return null;
+  const dotIdx = token.indexOf('.');
+  if (dotIdx <= 0) return null;
+  const payloadB64 = token.slice(0, dotIdx);
+  const sig = token.slice(dotIdx + 1);
+  const expectedSig = crypto.createHmac('sha256', tokenSecret).update(payloadB64).digest('base64url');
+  const a = Buffer.from(sig, 'utf8');
+  const b = Buffer.from(expectedSig, 'utf8');
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8'));
+    if (!parsed || parsed.t !== 'cust' || !parsed.aid || !parsed.exp || parsed.exp < Date.now()) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function parseCookies(req) {
+  const header = (req && req.headers && req.headers.cookie) || '';
+  const map = {};
+  if (!header || typeof header !== 'string') return map;
+  for (const part of header.split(';')) {
+    const eqIdx = part.indexOf('=');
+    if (eqIdx <= 0) continue;
+    const key = part.slice(0, eqIdx).trim();
+    const val = part.slice(eqIdx + 1).trim();
+    if (!key) continue;
+    try {
+      map[key] = decodeURIComponent(val);
+    } catch {
+      map[key] = val;
+    }
+  }
+  return map;
+}
+
+export function extractCustomerToken(req, urlObj) {
+  const hdr = req.headers['x-customer-token'];
+  if (typeof hdr === 'string' && hdr.trim()) return hdr.trim();
+  if (urlObj && urlObj.searchParams.get('ct')) {
+    return urlObj.searchParams.get('ct').trim();
+  }
+  const cookies = parseCookies(req);
+  if (cookies[CUSTOMER_COOKIE_NAME]) return cookies[CUSTOMER_COOKIE_NAME].trim();
+  return '';
+}
+
+export function setCustomerSessionCookie(res, token, req) {
+  const isHttps = getOrigin(req).startsWith('https://');
+  const cookie = `${CUSTOMER_COOKIE_NAME}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800${isHttps ? '; Secure' : ''}`;
+  res.setHeader('Set-Cookie', cookie);
+}
+
+export function clearCustomerSessionCookie(res, req) {
+  const isHttps = getOrigin(req).startsWith('https://');
+  const cookie = `${CUSTOMER_COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${isHttps ? '; Secure' : ''}`;
+  res.setHeader('Set-Cookie', cookie);
+}
+
+export async function resolveAuthenticatedCustomer(req, urlObj) {
+  const raw = extractCustomerToken(req, urlObj);
+  if (!raw) return null;
+  const parsed = verifyCustomerSessionToken(raw);
+  if (!parsed) return null;
+  const rows = await dbSelect(
+    'portal_customer_accounts',
+    `id=eq.${encodeURIComponent(parsed.aid)}&select=id,username,company_name,company_key,owner_company_slug,owner_company_name,is_active,token_version,last_login_at,created_at,updated_at&limit=1`
+  );
+  const acct = rows[0];
+  if (!acct || acct.is_active === false) return null;
+  if (Number(acct.token_version || 1) !== Number(parsed.cv || 1)) return null;
+  return acct;
+}
+
 export function sanitizeReportHtml(html) {
   if (!html || typeof html !== 'string') return '';
   return html
@@ -232,7 +392,6 @@ function buildSupabaseAuthHeaders(supabaseKey, extra = {}) {
     apikey: supabaseKey,
     ...extra
   };
-  // New opaque Supabase secret keys (sb_secret_...) should NOT be sent as JWT Bearer headers.
   if (!supabaseKey.startsWith('sb_')) {
     headers.Authorization = `Bearer ${supabaseKey}`;
   }
