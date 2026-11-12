@@ -1884,17 +1884,47 @@ async function saveCurrentInspection(manualToast = false) {
 
         const badge = document.getElementById('lastSavedBadge');
 
+        let cloudSaved = false;
+
+        if (window.CloudAppSync) {
+
+            if (manualToast && typeof window.CloudAppSync.pushInspection === 'function') {
+
+                const pushRes = await window.CloudAppSync.pushInspection(insp, fd);
+
+                cloudSaved = Boolean(pushRes && pushRes.ok);
+
+            } else if (!manualToast && typeof window.CloudAppSync.queueInspectionPush === 'function') {
+
+                window.CloudAppSync.queueInspectionPush(insp, fd);
+
+            }
+
+        }
+
         if (badge) {
 
             badge.classList.remove('hidden');
 
             const nowStr = new Date().toLocaleTimeString('tr-TR');
 
-            badge.innerHTML = `<i class="fa-solid fa-cloud-check text-emerald-400 mr-1"></i> Kaydedildi (${nowStr})`;
+            badge.innerHTML = cloudSaved
+
+                ? `<i class="fa-solid fa-cloud-check text-emerald-400 mr-1"></i> Buluta Kaydedildi (${nowStr})`
+
+                : `<i class="fa-solid fa-cloud-check text-emerald-400 mr-1"></i> Kaydedildi (${nowStr})`;
 
         }
 
-        if (manualToast) showToast('Rapor veritabanına ve yerel hafızaya kaydedildi!');
+        if (manualToast) {
+
+            showToast(cloudSaved
+
+                ? 'Rapor hem cihaza hem bulut hesabınıza kaydedildi!'
+
+                : 'Rapor cihaz hafızasına kaydedildi!');
+
+        }
 
     } catch (e) {
 

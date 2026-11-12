@@ -192,3 +192,39 @@ ALTER TABLE public.saas_users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.saas_devices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.saas_user_devices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.saas_work_orders ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================================
+-- 7. SAHA PERSONELİ BULUT RAPOR TASLAKLARI VE ÖLÇÜM VERİLERİ (SAAS CLOUD SYNC)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS public.saas_saved_reports (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES public.saas_tenants(id) ON DELETE CASCADE,
+    work_order_id UUID NOT NULL REFERENCES public.saas_work_orders(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES public.saas_users(id) ON DELETE CASCADE,
+    client_report_key TEXT NOT NULL,
+    template_id TEXT NOT NULL DEFAULT '2201',
+    template_code TEXT NOT NULL DEFAULT 'TKM-FR.318',
+    report_no TEXT NOT NULL DEFAULT '',
+    equipment_name TEXT NOT NULL DEFAULT '',
+    serial_no TEXT NOT NULL DEFAULT '',
+    location TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'Tamamlanacak',
+    result TEXT NOT NULL DEFAULT 'UYGUN',
+    inspection_date TEXT NOT NULL DEFAULT '',
+    portal_report_slug TEXT NOT NULL DEFAULT '',
+    portal_report_url TEXT NOT NULL DEFAULT '',
+    portal_verify_code TEXT NOT NULL DEFAULT '',
+    portal_folder_slug TEXT NOT NULL DEFAULT '',
+    portal_folder_url TEXT NOT NULL DEFAULT '',
+    form_data_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+    client_updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (work_order_id, client_report_key)
+);
+
+CREATE INDEX IF NOT EXISTS idx_saas_saved_reports_user_wo
+    ON public.saas_saved_reports (user_id, work_order_id, updated_at DESC);
+
+ALTER TABLE public.saas_saved_reports ENABLE ROW LEVEL SECURITY;

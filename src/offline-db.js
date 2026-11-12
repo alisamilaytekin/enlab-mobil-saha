@@ -45,7 +45,8 @@
             quickNotes,
             portalConfig: {},
             customerPortalAccounts: {},
-            userDevicesCatalog: null
+            userDevicesCatalog: null,
+            pendingCloudDeletes: []
         };
     }
 
@@ -89,6 +90,7 @@
                         this.state.customerPortalAccounts = {};
                     }
                     if (this.state.userDevicesCatalog === undefined) this.state.userDevicesCatalog = null;
+                    if (!Array.isArray(this.state.pendingCloudDeletes)) this.state.pendingCloudDeletes = [];
                 } catch (e) {
                     this.state = buildInitialDatabase();
                 }
@@ -456,10 +458,16 @@
                     window.MeasuringDevicesManager.applyDefaultsToFormData(parsedInitialData, body.template_id || '2201', false);
                 }
 
+                const nowIso = new Date().toISOString();
+                const isCloudWo = Boolean(wo && wo.cloud_wo_id);
                 const newInsp = {
                     id: newId,
                     work_order_id: Number(woId),
                     work_order_code: wo.code || 'TKM-SAHA',
+                    cloud_wo_id: isCloudWo ? String(wo.cloud_wo_id) : '',
+                    cloud_report_key: isCloudWo ? `insp_${newId}` : '',
+                    cloud_dirty: isCloudWo,
+                    local_updated_at: nowIso,
                     report_no: reportNo,
                     template_id: String(body.template_id || '2201'),
                     template_code: body.template_code || 'TKM-FR.318',
@@ -487,6 +495,9 @@
                     wo.inspection_count = db.inspections.filter(i => String(i.work_order_id) === String(woId)).length;
                 }
                 this.save();
+                if (isCloudWo && window.CloudAppSync && typeof window.CloudAppSync.queueInspectionPush === 'function') {
+                    window.CloudAppSync.queueInspectionPush(newInsp, parsedInitialData);
+                }
                 return { id: newId, report_no: reportNo, inspection: newInsp };
             }
 
@@ -524,13 +535,38 @@
                         if (body.form_data !== undefined) {
                             insp.data_json = typeof body.form_data === 'string' ? body.form_data : JSON.stringify(body.form_data);
                         }
+                        const parentWo = db.workOrders.find(w => String(w.id) === String(insp.work_order_id));
+                        if (parentWo && parentWo.cloud_wo_id && !insp.cloud_wo_id) {
+                            insp.cloud_wo_id = String(parentWo.cloud_wo_id);
+                        }
+                        if (insp.cloud_wo_id && !insp.cloud_report_key) {
+                            insp.cloud_report_key = `insp_${insp.id}`;
+                        }
+                        if (!body._fromCloudSync) {
+                            insp.local_updated_at = new Date().toISOString();
+                            if (insp.cloud_wo_id) insp.cloud_dirty = true;
+                        }
                         this.save();
+                        if (!body._fromCloudSync && insp.cloud_wo_id && body.form_data === undefined &&
+                            window.CloudAppSync && typeof window.CloudAppSync.queueInspectionPush === 'function') {
+                            window.CloudAppSync.queueInspectionPush(insp, null);
+                        }
                     }
                     return { success: true, saved_at: new Date().toLocaleTimeString('tr-TR') };
                 }
                 if (method === 'DELETE') {
+                    if (insp && insp.cloud_wo_id && insp.cloud_report_key) {
+                        if (!Array.isArray(db.pendingCloudDeletes)) db.pendingCloudDeletes = [];
+                        db.pendingCloudDeletes.push({
+                            work_order_id: String(insp.cloud_wo_id),
+                            client_report_key: String(insp.cloud_report_key)
+                        });
+                    }
                     db.inspections = db.inspections.filter(i => String(i.id) !== String(inspId));
                     this.save();
+                    if (insp && insp.cloud_wo_id && window.CloudAppSync && typeof window.CloudAppSync.flushPendingCloudChanges === 'function') {
+                        window.CloudAppSync.flushPendingCloudChanges().catch(() => {});
+                    }
                     return { success: true };
                 }
             }

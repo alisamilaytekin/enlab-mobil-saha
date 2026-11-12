@@ -15621,17 +15621,47 @@ async function saveCurrentInspection(manualToast = false) {
 
         const badge = document.getElementById('lastSavedBadge');
 
+        let cloudSaved = false;
+
+        if (window.CloudAppSync) {
+
+            if (manualToast && typeof window.CloudAppSync.pushInspection === 'function') {
+
+                const pushRes = await window.CloudAppSync.pushInspection(insp, fd);
+
+                cloudSaved = Boolean(pushRes && pushRes.ok);
+
+            } else if (!manualToast && typeof window.CloudAppSync.queueInspectionPush === 'function') {
+
+                window.CloudAppSync.queueInspectionPush(insp, fd);
+
+            }
+
+        }
+
         if (badge) {
 
             badge.classList.remove('hidden');
 
             const nowStr = new Date().toLocaleTimeString('tr-TR');
 
-            badge.innerHTML = `<i class="fa-solid fa-cloud-check text-emerald-400 mr-1"></i> Kaydedildi (${nowStr})`;
+            badge.innerHTML = cloudSaved
+
+                ? `<i class="fa-solid fa-cloud-check text-emerald-400 mr-1"></i> Buluta Kaydedildi (${nowStr})`
+
+                : `<i class="fa-solid fa-cloud-check text-emerald-400 mr-1"></i> Kaydedildi (${nowStr})`;
 
         }
 
-        if (manualToast) showToast('Rapor veritabanına ve yerel hafızaya kaydedildi!');
+        if (manualToast) {
+
+            showToast(cloudSaved
+
+                ? 'Rapor hem cihaza hem bulut hesabınıza kaydedildi!'
+
+                : 'Rapor cihaz hafızasına kaydedildi!');
+
+        }
 
     } catch (e) {
 
@@ -24644,6 +24674,13 @@ ${ramsCss}
         // 5. Persist portal links locally
         persistPortalFieldsLocally(wo, normInsp, initData.folder, initData.report, pinOption);
 
+        // 6. Also persist full editable report JSON to Supabase cloud sync so uninstall/reinstall keeps form data
+        try {
+            await pushInspectionToCloud(normInsp, fd, wo);
+        } catch (syncErr) {
+            console.warn('Cloud report draft backup warning:', syncErr);
+        }
+
         return {
             folderUrl: compData.folderUrl || initData.folder.url,
             folderSlug: compData.folderSlug || initData.folder.share_slug,
@@ -25446,7 +25483,136 @@ ${ramsCss}
         } catch (e) {}
     }
 
-    function syncCloudWorkOrders(cloudWorkOrders, userRecord) {
+    function getInspectionLocalFormData(insp) {
+        if (!insp) return {};
+        if (window.AppState?.currentInspection && String(window.AppState.currentInspection.id) === String(insp.id) && window.AppState.currentFormData) {
+            return window.AppState.currentFormData;
+        }
+        try {
+            const rawLocal = localStorage.getItem(`enlab_insp_${insp.id}`);
+            if (rawLocal) {
+                const parsed = JSON.parse(rawLocal);
+                if (parsed && typeof parsed === 'object') return parsed;
+            }
+        } catch (e) {}
+        try {
+            if (insp.data_json) {
+                const parsed = typeof insp.data_json === 'string' ? JSON.parse(insp.data_json) : insp.data_json;
+                if (parsed && typeof parsed === 'object') return parsed;
+            }
+        } catch (e) {}
+        return {};
+    }
+
+    function isBlankDraftInspection(insp) {
+        if (!insp) return true;
+        if (insp.cloud_dirty) return false;
+        if (insp.status && insp.status !== 'Tamamlanacak' && insp.status !== 'Başlayacak') return false;
+        const fd = getInspectionLocalFormData(insp);
+        if (!fd || typeof fd !== 'object') return true;
+        const hasKeys = (obj) => Boolean(obj && typeof obj === 'object' && Object.keys(obj).some(k => {
+            const v = obj[k];
+            if (v === null || v === undefined || v === '') return false;
+            if (Array.isArray(v)) return v.length > 0;
+            if (typeof v === 'object') return Object.keys(v).length > 0;
+            return true;
+        }));
+        if (hasKeys(fd.answers)) return false;
+        if (hasKeys(fd.tableRows)) return false;
+        if (hasKeys(fd.specializedFields)) return false;
+        if (hasKeys(fd.specializedChecks)) return false;
+        if (Array.isArray(fd.specializedRows) && fd.specializedRows.length > 0) return false;
+        if (Array.isArray(fd.photos) && fd.photos.length > 0) return false;
+        if (String(fd.defectNotes || '').trim()) return false;
+        if (fd.grounding && ((Array.isArray(fd.grounding.points) && fd.grounding.points.length > 0) || hasKeys(fd.grounding.details))) return false;
+        if (fd.generator && ((Array.isArray(fd.generator.devices) && fd.generator.devices.length > 0) || hasKeys(fd.generator.measurements) || hasKeys(fd.generator.checks))) return false;
+        return true;
+    }
+
+    function ensureInspectionCloudIdentity(insp, db, wo) {
+        if (!insp || !db) return '';
+        const targetWo = wo || (db.workOrders || []).find(w => String(w.id) === String(insp.work_order_id));
+        if (!targetWo || !targetWo.cloud_wo_id) return '';
+        insp.cloud_wo_id = String(targetWo.cloud_wo_id);
+        if (!insp.cloud_report_key) {
+            const siblings = (db.inspections || []).filter(i => String(i.work_order_id) === String(targetWo.id) && String(i.id) !== String(insp.id));
+            const tplId = String(insp.template_id || '2201');
+            const defaultSlotKey = `tpl_${tplId}_0`;
+            const slotTaken = siblings.some(s => s.cloud_report_key === defaultSlotKey);
+            insp.cloud_report_key = slotTaken ? `insp_${insp.id}` : defaultSlotKey;
+        }
+        return insp.cloud_report_key;
+    }
+
+    function hydrateInspectionFromSavedReport(targetInsp, sr, userRecord) {
+        if (!targetInsp || !sr) return;
+        const fdObj = sr.form_data_json && typeof sr.form_data_json === 'object' ? sr.form_data_json : {};
+        targetInsp.cloud_wo_id = String(sr.work_order_id || targetInsp.cloud_wo_id || '');
+        targetInsp.cloud_report_key = sr.client_report_key || targetInsp.cloud_report_key || '';
+        targetInsp.template_id = String(sr.template_id || targetInsp.template_id || '2201');
+        targetInsp.template_code = sr.template_code || targetInsp.template_code || 'TKM-FR.318';
+        if (sr.report_no) targetInsp.report_no = sr.report_no;
+        if (sr.equipment_name) targetInsp.equipment_name = sr.equipment_name;
+        if (sr.serial_no !== undefined) targetInsp.serial_no = sr.serial_no || '';
+        if (sr.location !== undefined) targetInsp.location = sr.location || '';
+        if (sr.status) targetInsp.status = sr.status;
+        if (sr.result) targetInsp.result = sr.result;
+        if (sr.inspection_date) targetInsp.inspection_date = sr.inspection_date;
+        if (sr.portal_report_slug) targetInsp.portal_report_slug = sr.portal_report_slug;
+        if (sr.portal_report_url) targetInsp.portal_report_url = sr.portal_report_url;
+        if (sr.portal_verify_code) targetInsp.portal_verify_code = sr.portal_verify_code;
+        if (sr.portal_folder_slug) targetInsp.portal_folder_slug = sr.portal_folder_slug;
+        if (sr.portal_folder_url) targetInsp.portal_folder_url = sr.portal_folder_url;
+        if (userRecord && userRecord.fullName && !targetInsp.inspector) targetInsp.inspector = userRecord.fullName;
+        targetInsp.data_json = JSON.stringify(fdObj);
+        targetInsp.cloud_dirty = false;
+        targetInsp.cloud_synced_at = sr.updated_at || new Date().toISOString();
+        targetInsp.local_updated_at = sr.client_updated_at || sr.updated_at || targetInsp.cloud_synced_at;
+
+        try {
+            localStorage.setItem(`enlab_insp_${targetInsp.id}`, JSON.stringify(fdObj));
+        } catch (e) {}
+
+        if (window.AppState?.currentInspection && String(window.AppState.currentInspection.id) === String(targetInsp.id)) {
+            Object.assign(window.AppState.currentInspection, {
+                report_no: targetInsp.report_no,
+                equipment_name: targetInsp.equipment_name,
+                serial_no: targetInsp.serial_no,
+                location: targetInsp.location,
+                status: targetInsp.status,
+                result: targetInsp.result,
+                inspection_date: targetInsp.inspection_date,
+                portal_report_slug: targetInsp.portal_report_slug,
+                portal_report_url: targetInsp.portal_report_url,
+                portal_verify_code: targetInsp.portal_verify_code,
+                portal_folder_slug: targetInsp.portal_folder_slug,
+                portal_folder_url: targetInsp.portal_folder_url
+            });
+            window.AppState.currentFormData = Object.assign({}, fdObj);
+        }
+    }
+
+    function applyPortalLinksFallback(inspList, wo) {
+        const portalReports = Array.isArray(wo?.portal_reports) ? wo.portal_reports : [];
+        if (!portalReports.length || !Array.isArray(inspList)) return;
+        for (const pr of portalReports) {
+            const match =
+                inspList.find(i => pr.report_no && i.report_no === pr.report_no) ||
+                inspList.find(i => !i.portal_report_url && pr.template_code && i.template_code === pr.template_code);
+            if (match && !match.portal_report_url) {
+                match.portal_report_slug = pr.share_slug || '';
+                match.portal_report_url = pr.report_url || '';
+                match.portal_verify_code = pr.verify_code || '';
+                if (wo.portal_folder_slug) match.portal_folder_slug = wo.portal_folder_slug;
+                if (wo.portal_folder_url) match.portal_folder_url = wo.portal_folder_url;
+                if (pr.report_no && isBlankDraftInspection(match)) {
+                    match.report_no = pr.report_no;
+                }
+            }
+        }
+    }
+
+    function syncCloudWorkOrders(cloudWorkOrders, userRecord, savedReports = []) {
         if (!window.OfflineDB) return { added: 0, updated: 0 };
         window.OfflineDB.init();
         const db = window.OfflineDB.state;
@@ -25460,21 +25626,32 @@ ${ramsCss}
         let added = 0;
         let updated = 0;
 
+        const savedByWo = new Map();
+        (Array.isArray(savedReports) ? savedReports : []).forEach(sr => {
+            const key = String(sr.work_order_id || '');
+            if (!key) return;
+            const arr = savedByWo.get(key) || [];
+            arr.push(sr);
+            savedByWo.set(key, arr);
+        });
+
         // 1. Yönetici tarafından kaldırılan/başkasına devredilen ve henüz yerel değişmemiş klasörleri temizle
         db.workOrders = db.workOrders.filter(localWo => {
             if (!localWo.assigned_by_manager || !localWo.cloud_wo_id) return true;
             if (localWo.assigned_user_cloud_id && uid && String(localWo.assigned_user_cloud_id) !== uid) return true;
             if (cloudIds.has(String(localWo.cloud_wo_id))) return true;
-            // Sadece hiç düzenleme yapılmamış taslakları sil; düzenlenmiş rapor varsa koru
             const childInsps = db.inspections.filter(i => String(i.work_order_id) === String(localWo.id));
-            const hasEdited = childInsps.some(i => i.status && i.status !== 'Tamamlanacak');
+            const hasEdited = childInsps.some(i => !isBlankDraftInspection(i));
             if (hasEdited) return true;
             db.inspections = db.inspections.filter(i => String(i.work_order_id) !== String(localWo.id));
             return false;
         });
 
-        // 2. Gelen iş klasörlerini oluştur / güncelle
+        // 2. Gelen iş klasörlerini ve buluttaki kayıtlı raporları oluştur / güncelle
         list.forEach((wo, idx) => {
+            const woSavedReports = savedByWo.get(String(wo.id)) || [];
+            const savedByKey = new Map(woSavedReports.map(sr => [String(sr.client_report_key), sr]));
+
             const existing = db.workOrders.find(w => String(w.cloud_wo_id) === String(wo.id));
             if (existing) {
                 existing.code = wo.work_order_code || existing.code;
@@ -25485,16 +25662,86 @@ ${ramsCss}
                 existing.sgk_sicil_no = wo.sgk_sicil_no || '';
                 existing.contact_email = wo.contact_email || existing.contact_email || '';
                 if (!existing.field_notes && wo.field_notes) existing.field_notes = wo.field_notes;
+                if (wo.portal_folder_slug && !existing.portal_folder_slug) existing.portal_folder_slug = wo.portal_folder_slug;
+                if (wo.portal_folder_url && !existing.portal_folder_url) existing.portal_folder_url = wo.portal_folder_url;
+                if (wo.portal_write_token && !existing.portal_write_token) existing.portal_write_token = wo.portal_write_token;
                 existing.assigned_user_cloud_id = uid;
                 existing.assigned_to = userRecord.fullName || existing.assigned_to;
                 existing.assigned_by_manager = true;
                 existing.cloud_status = wo.status || 'open';
                 existing.is_open = wo.status === 'completed' ? 0 : 1;
+
+                // Ensure existing child inspections have stable cloud keys
+                const childInsps = db.inspections.filter(i => String(i.work_order_id) === String(existing.id));
+                const seenKeys = new Set();
+                childInsps.forEach(ci => {
+                    ci.cloud_wo_id = String(wo.id);
+                    if (!ci.cloud_report_key) {
+                        const baseKey = `tpl_${String(ci.template_id || '2201')}_0`;
+                        ci.cloud_report_key = !seenKeys.has(baseKey) ? baseKey : `insp_${ci.id}`;
+                    }
+                    seenKeys.add(ci.cloud_report_key);
+                });
+
+                // Reconcile cloud saved reports into existing work order
+                woSavedReports.forEach((sr, sIdx) => {
+                    const currentChildren = db.inspections.filter(i => String(i.work_order_id) === String(existing.id));
+                    let match =
+                        currentChildren.find(i => i.cloud_report_key === sr.client_report_key) ||
+                        currentChildren.find(i => sr.report_no && i.report_no === sr.report_no) ||
+                        (String(sr.client_report_key || '').startsWith('tpl_')
+                            ? currentChildren.find(i => String(i.template_id) === String(sr.template_id) && isBlankDraftInspection(i))
+                            : null);
+
+                    if (match) {
+                        const cloudMs = Date.parse(sr.updated_at || '') || 0;
+                        const localSyncedMs = Date.parse(match.cloud_synced_at || '') || 0;
+                        if ((!match.cloud_dirty && (cloudMs > localSyncedMs || isBlankDraftInspection(match))) || isBlankDraftInspection(match)) {
+                            hydrateInspectionFromSavedReport(match, sr, userRecord);
+                        }
+                    } else {
+                        const newInspId = Date.now() + 3000 + idx * 50 + sIdx;
+                        const newInsp = {
+                            id: newInspId,
+                            work_order_id: existing.id,
+                            work_order_code: existing.code,
+                            cloud_wo_id: String(wo.id),
+                            cloud_report_key: sr.client_report_key,
+                            report_no: sr.report_no || '',
+                            template_id: String(sr.template_id || '2201'),
+                            template_code: sr.template_code || 'TKM-FR.318',
+                            company_name: existing.company_name,
+                            company_branch: existing.company_branch,
+                            address: existing.company_address,
+                            isg_katip_no: existing.isg_katip_no,
+                            sgk_sicil_no: existing.sgk_sicil_no,
+                            equipment_name: sr.equipment_name || 'Rapor',
+                            accreditation: 'AK',
+                            serial_no: sr.serial_no || '',
+                            location: sr.location || '',
+                            inspector: userRecord.fullName || '',
+                            approver: '',
+                            status: sr.status || 'Tamamlanacak',
+                            result: sr.result || 'UYGUN',
+                            inspection_date: sr.inspection_date || todayStr,
+                            end_date: todayStr,
+                            report_date: todayStr,
+                            is_mine: 1,
+                            data_json: '{}'
+                        };
+                        hydrateInspectionFromSavedReport(newInsp, sr, userRecord);
+                        db.inspections.unshift(newInsp);
+                    }
+                });
+
+                const finalChildren = db.inspections.filter(i => String(i.work_order_id) === String(existing.id));
+                applyPortalLinksFallback(finalChildren, wo);
+                existing.inspection_count = finalChildren.length;
                 updated++;
                 return;
             }
 
-            const newWoId = Date.now() + idx + Math.floor(Math.random() * 100);
+            const newWoId = Date.now() + idx * 100 + Math.floor(Math.random() * 50);
             const newWo = {
                 id: newWoId,
                 cloud_wo_id: String(wo.id),
@@ -25510,6 +25757,9 @@ ${ramsCss}
                 sgk_sicil_no: wo.sgk_sicil_no || '',
                 contact_email: wo.contact_email || '',
                 field_notes: wo.field_notes || '',
+                portal_folder_slug: wo.portal_folder_slug || '',
+                portal_folder_url: wo.portal_folder_url || '',
+                portal_write_token: wo.portal_write_token || '',
                 start_date: todayStr,
                 end_date: todayStr,
                 assigned_to: userRecord.fullName || '',
@@ -25523,9 +25773,60 @@ ${ramsCss}
 
             const tpls = Array.isArray(wo.template_ids) ? wo.template_ids : [];
             const prefix = (typeof CompanySettingsManager !== 'undefined' && CompanySettingsManager.getSettings().reportNoPrefix) || 'HZL-';
+            const occCount = {};
+            const consumedSavedKeys = new Set();
+            const createdList = [];
+
             tpls.forEach((tplId, tIdx) => {
-                const meta = resolveTemplateMeta(tplId);
+                const tplStr = String(tplId);
+                const occIdx = occCount[tplStr] || 0;
+                occCount[tplStr] = occIdx + 1;
+                const slotKey = `tpl_${tplStr}_${occIdx}`;
+                const meta = resolveTemplateMeta(tplStr);
                 const inspId = newWoId + 1000 + tIdx * 17 + Math.floor(Math.random() * 10);
+
+                // Check matching saved report by exact slotKey or fallback same template_id
+                let sr = savedByKey.get(slotKey) || null;
+                if (!sr) {
+                    sr = woSavedReports.find(cand => !consumedSavedKeys.has(cand.client_report_key) && String(cand.template_id) === tplStr) || null;
+                }
+
+                if (sr) {
+                    consumedSavedKeys.add(sr.client_report_key);
+                    const restoredInsp = {
+                        id: inspId,
+                        work_order_id: newWoId,
+                        work_order_code: newWo.code,
+                        cloud_wo_id: String(wo.id),
+                        cloud_report_key: sr.client_report_key,
+                        report_no: sr.report_no || `${prefix}${new Date().toISOString().slice(2, 4)}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(54100 + Math.random() * 5800)}`,
+                        template_id: tplStr,
+                        template_code: meta.code,
+                        company_name: newWo.company_name,
+                        company_branch: newWo.company_branch,
+                        address: newWo.company_address,
+                        isg_katip_no: newWo.isg_katip_no,
+                        sgk_sicil_no: newWo.sgk_sicil_no,
+                        equipment_name: sr.equipment_name || meta.name,
+                        accreditation: 'AK',
+                        serial_no: sr.serial_no || '',
+                        location: sr.location || '',
+                        inspector: userRecord.fullName || '',
+                        approver: '',
+                        status: sr.status || 'Tamamlanacak',
+                        result: sr.result || 'UYGUN',
+                        inspection_date: sr.inspection_date || todayStr,
+                        end_date: todayStr,
+                        report_date: todayStr,
+                        is_mine: 1,
+                        data_json: '{}'
+                    };
+                    hydrateInspectionFromSavedReport(restoredInsp, sr, userRecord);
+                    db.inspections.unshift(restoredInsp);
+                    createdList.push(restoredInsp);
+                    return;
+                }
+
                 const reportNo = `${prefix}${new Date().toISOString().slice(2, 4)}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(54100 + Math.random() * 5800)}`;
                 const formData = {
                     companyInfo: {
@@ -25545,6 +25846,9 @@ ${ramsCss}
                     id: inspId,
                     work_order_id: newWoId,
                     work_order_code: newWo.code,
+                    cloud_wo_id: String(wo.id),
+                    cloud_report_key: slotKey,
+                    cloud_dirty: false,
                     report_no: reportNo,
                     template_id: String(meta.id),
                     template_code: meta.code,
@@ -25568,8 +25872,48 @@ ${ramsCss}
                     data_json: JSON.stringify(formData)
                 };
                 db.inspections.unshift(inspObj);
+                createdList.push(inspObj);
             });
-            newWo.inspection_count = tpls.length;
+
+            // Restore any additional saved reports added in the field (e.g. duplicated or extra panels)
+            woSavedReports.forEach((sr, extraIdx) => {
+                if (consumedSavedKeys.has(sr.client_report_key)) return;
+                const extraId = newWoId + 5000 + extraIdx * 13;
+                const extraInsp = {
+                    id: extraId,
+                    work_order_id: newWoId,
+                    work_order_code: newWo.code,
+                    cloud_wo_id: String(wo.id),
+                    cloud_report_key: sr.client_report_key,
+                    report_no: sr.report_no || '',
+                    template_id: String(sr.template_id || '2201'),
+                    template_code: sr.template_code || 'TKM-FR.318',
+                    company_name: newWo.company_name,
+                    company_branch: newWo.company_branch,
+                    address: newWo.company_address,
+                    isg_katip_no: newWo.isg_katip_no,
+                    sgk_sicil_no: newWo.sgk_sicil_no,
+                    equipment_name: sr.equipment_name || 'Rapor',
+                    accreditation: 'AK',
+                    serial_no: sr.serial_no || '',
+                    location: sr.location || '',
+                    inspector: userRecord.fullName || '',
+                    approver: '',
+                    status: sr.status || 'Tamamlanacak',
+                    result: sr.result || 'UYGUN',
+                    inspection_date: sr.inspection_date || todayStr,
+                    end_date: todayStr,
+                    report_date: todayStr,
+                    is_mine: 1,
+                    data_json: '{}'
+                };
+                hydrateInspectionFromSavedReport(extraInsp, sr, userRecord);
+                db.inspections.unshift(extraInsp);
+                createdList.push(extraInsp);
+            });
+
+            applyPortalLinksFallback(createdList, wo);
+            newWo.inspection_count = createdList.length;
             added++;
         });
 
@@ -25607,12 +25951,159 @@ ${ramsCss}
             );
         }
         if (userRecord) {
-            syncCloudWorkOrders(Array.isArray(data.work_orders) ? data.work_orders : [], userRecord);
+            syncCloudWorkOrders(
+                Array.isArray(data.work_orders) ? data.work_orders : [],
+                userRecord,
+                Array.isArray(data.saved_reports) ? data.saved_reports : []
+            );
         }
         if (typeof window.updateHeaderUserWidget === 'function') {
             window.updateHeaderUserWidget();
         }
         return userRecord;
+    }
+
+    async function pushInspectionToCloud(inspRaw, formDataOverride = null, workOrderOverride = null) {
+        if (!inspRaw) return { ok: false, reason: 'no_inspection' };
+        const curUser = (typeof window.AuthManager !== 'undefined' && window.AuthManager.getCurrentUser()) || null;
+        if (!curUser || !curUser.isCloudManaged || !curUser.cloudToken) {
+            return { ok: false, reason: 'no_cloud_session' };
+        }
+        if (navigator.onLine === false) {
+            return { ok: false, reason: 'offline' };
+        }
+        if (!window.OfflineDB) return { ok: false, reason: 'no_db' };
+        window.OfflineDB.init();
+        const db = window.OfflineDB.state;
+        const dbInsp = (db.inspections || []).find(i => String(i.id) === String(inspRaw.id)) || inspRaw;
+        const wo = workOrderOverride || (db.workOrders || []).find(w => String(w.id) === String(dbInsp.work_order_id));
+        if (!wo || !wo.cloud_wo_id) {
+            return { ok: false, reason: 'not_cloud_wo' };
+        }
+        const key = ensureInspectionCloudIdentity(dbInsp, db, wo);
+        if (!key) return { ok: false, reason: 'no_key' };
+
+        const fd = formDataOverride || getInspectionLocalFormData(dbInsp);
+        const cfg = getPortalConfig();
+
+        try {
+            const res = await realFetch(`${cfg.portalUrl}/api/app-sync`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-App-Token': curUser.cloudToken
+                },
+                body: JSON.stringify({
+                    action: 'save-report',
+                    work_order_id: String(wo.cloud_wo_id),
+                    client_report_key: key,
+                    template_id: String(dbInsp.template_id || '2201'),
+                    template_code: dbInsp.template_code || 'TKM-FR.318',
+                    report_no: dbInsp.report_no || '',
+                    equipment_name: dbInsp.equipment_name || '',
+                    serial_no: dbInsp.serial_no || '',
+                    location: dbInsp.location || '',
+                    status: dbInsp.status || 'Tamamlanacak',
+                    result: (fd && fd.overallResult) || dbInsp.result || 'UYGUN',
+                    inspection_date: dbInsp.inspection_date || '',
+                    portal_report_slug: dbInsp.portal_report_slug || '',
+                    portal_report_url: dbInsp.portal_report_url || '',
+                    portal_verify_code: dbInsp.portal_verify_code || '',
+                    portal_folder_slug: dbInsp.portal_folder_slug || wo.portal_folder_slug || '',
+                    portal_folder_url: dbInsp.portal_folder_url || wo.portal_folder_url || '',
+                    form_data_json: fd && typeof fd === 'object' ? fd : {},
+                    client_updated_at: dbInsp.local_updated_at || new Date().toISOString()
+                })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.ok) {
+                return { ok: false, status: res.status, error: data.error || 'Bulut kayıt hatası' };
+            }
+            dbInsp.cloud_dirty = false;
+            dbInsp.cloud_synced_at = (data.report && data.report.updated_at) || new Date().toISOString();
+            if (inspRaw !== dbInsp) {
+                inspRaw.cloud_wo_id = dbInsp.cloud_wo_id;
+                inspRaw.cloud_report_key = dbInsp.cloud_report_key;
+                inspRaw.cloud_dirty = false;
+                inspRaw.cloud_synced_at = dbInsp.cloud_synced_at;
+            }
+            window.OfflineDB.save();
+            return { ok: true, report: data.report };
+        } catch (err) {
+            return { ok: false, networkError: true, error: err && err.message ? err.message : 'Ağ hatası' };
+        }
+    }
+
+    const _cloudPushTimers = new Map();
+    function queueInspectionPush(insp, formData = null) {
+        if (!insp || !insp.id) return;
+        const curUser = (typeof window.AuthManager !== 'undefined' && window.AuthManager.getCurrentUser()) || null;
+        if (!curUser || !curUser.isCloudManaged || !curUser.cloudToken) return;
+        const key = String(insp.id);
+        if (_cloudPushTimers.has(key)) clearTimeout(_cloudPushTimers.get(key));
+        _cloudPushTimers.set(key, setTimeout(() => {
+            _cloudPushTimers.delete(key);
+            pushInspectionToCloud(insp, formData).catch(() => {});
+        }, 3500));
+    }
+
+    async function flushPendingCloudChanges() {
+        const curUser = (typeof window.AuthManager !== 'undefined' && window.AuthManager.getCurrentUser()) || null;
+        if (!curUser || !curUser.isCloudManaged || !curUser.cloudToken || navigator.onLine === false) {
+            return { ok: false, pushed: 0 };
+        }
+        if (!window.OfflineDB) return { ok: false, pushed: 0 };
+        window.OfflineDB.init();
+        const db = window.OfflineDB.state;
+        const cfg = getPortalConfig();
+        let pushed = 0;
+
+        // 1. Flush pending deletes
+        if (Array.isArray(db.pendingCloudDeletes) && db.pendingCloudDeletes.length > 0) {
+            const remaining = [];
+            for (const del of db.pendingCloudDeletes) {
+                try {
+                    const res = await realFetch(`${cfg.portalUrl}/api/app-sync`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-App-Token': curUser.cloudToken
+                        },
+                        body: JSON.stringify({
+                            action: 'delete-report',
+                            work_order_id: del.work_order_id,
+                            client_report_key: del.client_report_key
+                        })
+                    });
+                    if (!res.ok) remaining.push(del);
+                } catch (e) {
+                    remaining.push(del);
+                }
+            }
+            db.pendingCloudDeletes = remaining;
+            window.OfflineDB.save();
+        }
+
+        // 2. Push any dirty or modified local inspections belonging to this user's cloud work orders
+        const uid = String(curUser.cloudId || '');
+        const userCloudWos = new Map(
+            (db.workOrders || [])
+                .filter(w => w.cloud_wo_id && (!w.assigned_user_cloud_id || !uid || String(w.assigned_user_cloud_id) === uid))
+                .map(w => [String(w.id), w])
+        );
+        const dirtyInsps = (db.inspections || []).filter(i => {
+            const wo = userCloudWos.get(String(i.work_order_id));
+            if (!wo) return false;
+            return Boolean(i.cloud_dirty) || (!i.cloud_synced_at && !isBlankDraftInspection(i));
+        });
+
+        for (const insp of dirtyInsps) {
+            const wo = userCloudWos.get(String(insp.work_order_id));
+            const r = await pushInspectionToCloud(insp, null, wo);
+            if (r && r.ok) pushed++;
+        }
+
+        return { ok: true, pushed };
     }
 
     async function loginOnline(username, password) {
@@ -25641,7 +26132,8 @@ ${ramsCss}
                 success: true,
                 user,
                 deviceCount: Array.isArray(data.devices) ? data.devices.length : 0,
-                workOrderCount: Array.isArray(data.work_orders) ? data.work_orders.length : 0
+                workOrderCount: Array.isArray(data.work_orders) ? data.work_orders.length : 0,
+                savedReportCount: Array.isArray(data.saved_reports) ? data.saved_reports.length : 0
             };
         } catch (err) {
             return {
@@ -25667,6 +26159,7 @@ ${ramsCss}
 
         _syncPromise = (async () => {
             try {
+                await flushPendingCloudChanges();
                 const cfg = getPortalConfig();
                 const res = await realFetch(`${cfg.portalUrl}/api/app-sync`, {
                     method: 'GET',
@@ -25679,12 +26172,14 @@ ${ramsCss}
                 }
                 applyCloudSyncPayload(data, null);
                 if (!silent) {
-                    toast(`Güncellendi: ${(data.devices || []).length} cihaz, ${(data.work_orders || []).length} iş klasörü`, 'success');
+                    toast(`Güncellendi: ${(data.devices || []).length} cihaz, ${(data.work_orders || []).length} iş klasörü, ${(data.saved_reports || []).length} kayıtlı rapor`, 'success');
                 }
                 if (window.AppState && window.AppState.currentRoute === 'home' && typeof window.renderHome === 'function') {
                     window.renderHome({ skipSync: true });
                 } else if (window.AppState && window.AppState.currentRoute === 'settings' && typeof window.renderSettingsPage === 'function') {
                     window.renderSettingsPage();
+                } else if (window.AppState && window.AppState.currentRoute === 'work-order-details' && window.AppState.currentWorkOrder?.id && typeof window.renderWorkOrderDetails === 'function') {
+                    window.renderWorkOrderDetails(window.AppState.currentWorkOrder.id, 'inspections');
                 }
                 return { ok: true, devices: (data.devices || []).length, workOrders: (data.work_orders || []).length };
             } catch (err) {
@@ -25697,10 +26192,19 @@ ${ramsCss}
         return _syncPromise;
     }
 
+    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+        window.addEventListener('online', () => {
+            flushPendingCloudChanges().catch(() => {});
+        });
+    }
+
     window.CloudAppSync = {
         loginOnline,
         syncNow,
-        applySyncPayload: applyCloudSyncPayload
+        applySyncPayload: applyCloudSyncPayload,
+        pushInspection: pushInspectionToCloud,
+        queueInspectionPush,
+        flushPendingCloudChanges
     };
 
     window.CloudPortal = {
