@@ -151,13 +151,7 @@ function openAddInspectionModal(workOrderId) {
 
             <div>
 
-                <div class="flex items-center justify-between mb-1">
-
-                    <label class="block font-bold text-slate-800">Ekipman Adı <span class="text-rose-500">*</span></label>
-
-                    <span class="text-[10px] text-rose-500 font-bold bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded">ZORUNLU</span>
-
-                </div>
+                <label class="block font-bold text-slate-800 mb-1">Ekipman Adı <span class="text-rose-500">*</span></label>
 
                 <input type="text" id="newInspEqName" value="" placeholder="Örn: ADP, TDP-1, Jeneratör-1..."
 
@@ -674,13 +668,7 @@ async function renderInspectionsPage(scope = 'all', tab = 'current') {
 
             <div class="px-5 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
 
-                <div>
-
-                    <div class="text-[11px] text-slate-400 font-semibold uppercase">Muayene / ${pageTitle}</div>
-
-                    <h1 class="text-lg font-bold text-slate-800">${pageTitle}</h1>
-
-                </div>
+                <h1 class="text-lg font-bold text-slate-800">${pageTitle}</h1>
 
                 <div class="flex items-center gap-2">
 
@@ -936,13 +924,7 @@ async function renderDocumentsPage(docType = 'internal', tab = 'active') {
 
             <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
 
-                <div>
-
-                    <div class="text-[11px] text-slate-400 font-semibold uppercase">Dokümantasyon / ${pageTitle}</div>
-
-                    <h1 class="text-lg font-bold text-slate-800">${pageTitle}</h1>
-
-                </div>
+                <h1 class="text-lg font-bold text-slate-800">${pageTitle}</h1>
 
             </div>
 
@@ -1186,8 +1168,6 @@ async function renderQualityRecordsPage(tab = 'create') {
 
             <div class="px-5 py-4 border-b border-slate-200">
 
-                <div class="text-[11px] text-slate-400 font-semibold uppercase">Kayıt Yönetimi / Kalite Kayıtları</div>
-
                 <h1 class="text-lg font-bold text-slate-800">Kalite ve Saha Kayıt Yönetimi</h1>
 
             </div>
@@ -1386,8 +1366,6 @@ async function renderStaffPage(tab = 'profile') {
 
             <div class="px-5 py-4 border-b border-slate-200">
 
-                <div class="text-[11px] text-slate-400 font-semibold uppercase">Personel / Benim Sayfam</div>
-
                 <h1 class="text-lg font-bold text-slate-800">Ali Şamil Aytekin - Personel Dosyası</h1>
 
             </div>
@@ -1477,8 +1455,6 @@ async function renderInstrumentsPage(tab = 'active') {
         <div class="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
 
             <div class="px-5 py-4 border-b border-slate-200">
-
-                <div class="text-[11px] text-slate-400 font-semibold uppercase">Cihaz Yönetimi / Referans Cihazlar</div>
 
                 <h1 class="text-lg font-bold text-slate-800">Test ve Ölçüm Cihazları Listesi</h1>
 
@@ -1586,8 +1562,6 @@ async function renderInstrumentUsersPage() {
 
             <div class="px-5 py-4 border-b border-slate-200">
 
-                <div class="text-[11px] text-slate-400 font-semibold uppercase">Cihaz Yönetimi / Cihaz Kullanıcıları</div>
-
                 <h1 class="text-lg font-bold text-slate-800">Personel Cihaz Zimmet Listesi</h1>
 
             </div>
@@ -1671,8 +1645,6 @@ async function renderCalibrationsPage(tab = 'current') {
         <div class="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
 
             <div class="px-5 py-4 border-b border-slate-200">
-
-                <div class="text-[11px] text-slate-400 font-semibold uppercase">Cihaz Yönetimi / Kalibrasyonlar</div>
 
                 <h1 class="text-lg font-bold text-slate-800">Cihaz Kalibrasyon Sertifikaları ve Takibi</h1>
 
@@ -1869,8 +1841,6 @@ async function renderCalendarPage(tab = 'calendar') {
         <div class="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
 
             <div class="px-5 py-4 border-b border-slate-200">
-
-                <div class="text-[11px] text-slate-400 font-semibold uppercase">Takvim / Saha Muayene Programı</div>
 
                 <h1 class="text-lg font-bold text-slate-800">Muayene ve Denetim Takvimi</h1>
 

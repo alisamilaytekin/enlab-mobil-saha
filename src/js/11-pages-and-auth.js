@@ -138,26 +138,6 @@ function openBackupManagerModal() {
 
             <div class="space-y-4">
 
-                <div class="p-3.5 bg-gradient-to-r from-sky-50 to-blue-50 border border-sky-200 rounded-2xl">
-
-                    <div class="flex items-center gap-2.5 text-sky-950 font-bold text-xs mb-1">
-
-                        <i class="fa-solid fa-circle-check text-sky-600 text-sm"></i>
-
-                        <span>%100 Çevrimdışı & Yerel Koruma</span>
-
-                    </div>
-
-                    <p class="text-[11px] text-sky-900 leading-relaxed">
-
-                        Tüm iş emirleriniz, elektrik muayene raporlarınız, ölçüm değerleriniz ve girdiğiniz özel uygunsuzluk cümleleri cihazınızın güvenli depolama alanında saklanmaktadır.
-
-                    </p>
-
-                </div>
-
-
-
                 <!-- İstatistikler -->
 
                 <div class="grid grid-cols-3 gap-2 text-center">
@@ -200,13 +180,7 @@ function openBackupManagerModal() {
 
                             <i class="fa-solid fa-file-arrow-down text-base"></i>
 
-                            <div class="text-left">
-
-                                <div>Tek Tıkla Tam Yedek İndir (JSON)</div>
-
-                                <div class="text-[10px] font-normal text-emerald-100">Tüm raporları ve uygunsuzluk hafızasını tek dosyada indirir</div>
-
-                            </div>
+                            <div class="text-left">Tek Tıkla Tam Yedek İndir (JSON)</div>
 
                         </div>
 
@@ -222,13 +196,7 @@ function openBackupManagerModal() {
 
                             <i class="fa-solid fa-file-arrow-up text-base text-sky-400"></i>
 
-                            <div class="text-left">
-
-                                <div>Yedekten Geri Yükle (JSON İçe Aktar)</div>
-
-                                <div class="text-[10px] font-normal text-slate-300">Daha önce indirilmiş bir yedeği sisteme aktarır</div>
-
-                            </div>
+                            <div class="text-left">Yedekten Geri Yükle (JSON İçe Aktar)</div>
 
                         </div>
 
@@ -1331,12 +1299,6 @@ function openBatchRowGeneratorModal() {
 
         <div class="space-y-3.5 text-xs">
 
-            <p class="text-slate-600 leading-relaxed">
-
-                Tek tıkla ardışık numaralandırılmış hazır ölçüm noktaları üretir ve formül hesaplamalarını otomatik uygular.
-
-            </p>
-
             <div class="grid grid-cols-2 gap-2.5">
 
                 <div>
@@ -2089,25 +2051,15 @@ function renderAuthScreen(activeTab = 'login') {
 
             <!-- BRAND HEADER -->
 
-            <div class="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-5 text-center">
+            <div class="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-4 text-center flex items-center justify-center gap-3">
 
-                <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-amber-400 text-slate-950 text-xl font-black shadow-lg mb-2">
+                <div class="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-amber-400 text-slate-950 text-lg font-black shadow-md shrink-0">
 
                     <i class="fa-solid fa-bolt"></i>
 
                 </div>
 
-                <h1 class="font-black text-base tracking-tight">Hızlı Rapor</h1>
-
-                <p class="text-xs text-slate-300 mt-0.5">Saha Muayene & Periyodik Kontrol Sistemi</p>
-
-                <div class="mt-2.5 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-400/30 text-[10px] font-bold">
-
-                    <i class="fa-solid fa-cloud-arrow-down"></i>
-
-                    <span>Yetkili Saha Personeli Girişi</span>
-
-                </div>
+                <h1 class="font-black text-base tracking-tight">Personel Girişi</h1>
 
             </div>
 
@@ -2116,16 +2068,6 @@ function renderAuthScreen(activeTab = 'login') {
             <!-- FORM AREA -->
 
             <div class="p-4 space-y-4">
-
-                <div class="p-2.5 rounded-xl bg-sky-50 border border-sky-200 text-[11px] text-sky-900 leading-relaxed flex items-start gap-2">
-
-                    <i class="fa-solid fa-circle-info text-sky-600 mt-0.5 shrink-0"></i>
-
-                    <span>Kullanıcı adı ve şifrenizi firma yöneticinizden alabilirsiniz. Giriş yaptığınızda üzerinizdeki <strong>ölçüm cihazları</strong> ve <strong>açık iş klasörleri</strong> otomatik yüklenir.</span>
-
-                </div>
-
-
 
                 ${renderLoginFormHtml(users)}
 
@@ -2149,13 +2091,7 @@ function renderLoginFormHtml(users) {
 
                 <div>
 
-                    <label class="block font-bold text-slate-700 mb-1 flex items-center justify-between">
-
-                        <span>Cihazdaki Kayıtlı Hesaplar:</span>
-
-                        <span class="text-[10px] text-slate-400 font-normal">Hızlı doldurur</span>
-
-                    </label>
+                    <label class="block font-bold text-slate-700 mb-1">Cihazdaki Kayıtlı Hesaplar</label>
 
                     <div class="grid grid-cols-1 gap-1.5 max-h-36 overflow-y-auto p-1 border border-slate-200 rounded-xl bg-slate-50">
 
@@ -2191,7 +2127,7 @@ function renderLoginFormHtml(users) {
 
                 <label class="block font-bold text-slate-700 mb-1">Kullanıcı Adı</label>
 
-                <input type="text" id="loginUsername" placeholder="Yöneticinizin verdiği kullanıcı adı"
+                <input type="text" id="loginUsername" placeholder="Kullanıcı adı"
 
                     class="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:border-sky-500 focus:outline-none bg-white">
 
@@ -2235,7 +2171,7 @@ function renderLoginFormHtml(users) {
 
                 <i class="fa-solid fa-right-to-bracket"></i>
 
-                <span>Giriş Yap ve Cihazları / İşleri Yükle</span>
+                <span>Giriş Yap</span>
 
             </button>
 
@@ -2252,14 +2188,6 @@ function renderRegisterFormHtml() {
     return `
 
         <div class="space-y-3 text-xs">
-
-            <p class="text-slate-500 text-[11px] leading-relaxed">
-
-                Aşağıdaki bilgiler oluşturacağınız resmi periyodik kontrol raporlarının <strong>"Muayene Personeli"</strong> ve onay bölümlerinde otomatik olarak yer alacaktır.
-
-            </p>
-
-
 
             <div>
 
@@ -2621,16 +2549,6 @@ function openUserProfileModal() {
 
 
 
-            <div class="p-3 bg-sky-50 border border-sky-200 rounded-xl text-sky-900 text-[11px] leading-relaxed">
-
-                ${isManaged
-                    ? 'Bu bilgiler firma yöneticiniz tarafından belirlenmiştir ve resmi A4 PDF raporlarının <strong>"Muayene Personeli"</strong> bölümünde basılmaktadır. Güncelleme için firma yöneticinize başvurun.'
-                    : 'Bu bilgiler resmi A4 PDF raporlarının <strong>"Muayene Personeli"</strong> ve onay bölümlerinde basılmaktadır. İhtiyaç halinde buradan güncelleyebilirsiniz.'}
-
-            </div>
-
-
-
             <div>
 
                 <label class="block font-bold text-slate-700 mb-0.5">Adı Soyadı</label>
@@ -2845,14 +2763,6 @@ function openCompanySettingsModal() {
 
         <div class="space-y-4 text-xs">
 
-            <div class="p-3 bg-gradient-to-r from-sky-50 to-blue-50 border border-sky-200 rounded-xl text-sky-900 leading-relaxed">
-
-                Bu alandan şirketinizin <strong>logosunu, adını, akreditasyon bilgilerini ve rapor kodlarını</strong> özelleştirebilirsiniz. Uygulama başka şirketlere verilebilir ve tüm resmi A4 PDF çıktıları buradaki ayarlara göre oluşturulur.
-
-            </div>
-
-
-
             <!-- LOGO AYARLARI -->
 
             <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
@@ -2892,8 +2802,6 @@ function openCompanySettingsModal() {
                             Varsayılan Logoya Dön
 
                         </button>
-
-                        <div class="text-[10px] text-slate-400">Önerilen: Şeffaf arka planlı kare veya yatay logo</div>
 
                     </div>
 
@@ -2983,11 +2891,9 @@ function openCompanySettingsModal() {
 
                         <input type="checkbox" id="cfgShowTurkak" ${s.showTurkakLogo ? 'checked' : ''} class="w-4 h-4 accent-sky-600 rounded">
 
-                        <span>Raporda Akreditasyon Logosu Gösterilsin</span>
+                        <span>Raporda Akreditasyon Logosu Göster</span>
 
                     </label>
-
-                    <span class="text-[10px] text-slate-400">TÜRKAK vb.</span>
 
                 </div>
 
@@ -3091,7 +2997,7 @@ function openCompanySettingsModal() {
 
                         class="w-full border border-slate-300 rounded-lg p-2 text-slate-800 text-[11px] leading-relaxed bg-white focus:outline-none focus:border-sky-500">${escapeHtml(s.footerDisclaimer)}</textarea>
 
-                    <div class="text-[10px] text-slate-400 mt-0.5">{COMPANY_NAME} etiketi otomatik olarak şirket tam adınız ile değiştirilir.</div>
+                    <div class="text-[10px] text-slate-400 mt-0.5"><code>{COMPANY_NAME}</code> = Şirket adı</div>
 
                 </div>
 
@@ -3421,29 +3327,19 @@ async function renderSettingsPage() {
 
         <div class="max-w-2xl mx-auto space-y-2.5 pb-8">
 
-            <!-- 1. ÜST BAŞLIK VE GERİ BUTONU -->
+            <!-- 1. ÜST BAŞLIK -->
 
             <div class="card-craft-white p-2.5 flex items-center justify-between gap-2">
 
-                <div class="flex items-center gap-2.5 min-w-0">
+                <div class="min-w-0">
 
-                    <button onclick="navigateTo('home')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 rounded-xl font-bold text-xs shrink-0 transition border border-slate-200">
+                    <h1 class="font-bold text-slate-900 text-sm sm:text-base truncate flex items-center gap-2">
 
-                        <i class="fa-solid fa-arrow-left mr-1"></i>Ana Sayfa
+                        <i class="fa-solid fa-sliders text-sky-600"></i>
 
-                    </button>
+                        <span>Uygulama & Şirket Ayarları</span>
 
-                    <div class="min-w-0">
-
-                        <h1 class="font-bold text-slate-900 text-sm sm:text-base truncate flex items-center gap-2">
-
-                            <i class="fa-solid fa-sliders text-sky-600"></i>
-
-                            <span>Uygulama & Şirket Ayarları</span>
-
-                        </h1>
-
-                    </div>
+                    </h1>
 
                 </div>
 
@@ -3503,11 +3399,11 @@ async function renderSettingsPage() {
 
                         </div>
 
+                        ${curUser && curUser.ministryRegNo ? `
                         <div class="text-[11px] text-slate-400 mt-0.5 truncate">
-
-                            ${curUser && curUser.ministryRegNo ? `Bakanlık Sicil: ${escapeHtml(curUser.ministryRegNo)}` : 'Raporlara imza atacak personel'}
-
+                            Bakanlık Sicil: ${escapeHtml(curUser.ministryRegNo)}
                         </div>
+                        ` : ''}
 
                     </div>
 
@@ -3518,7 +3414,7 @@ async function renderSettingsPage() {
                 ${isManaged ? `
                     <button type="button" onclick="window.CloudAppSync && window.CloudAppSync.syncNow()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-xs">
                         <i class="fa-solid fa-arrows-rotate"></i>
-                        <span>Buluttan Senkronize Et (İş Klasörleri &amp; Cihazlar)</span>
+                        <span>Buluttan Senkronize Et</span>
                     </button>
                 ` : ''}
 
@@ -3562,11 +3458,9 @@ async function renderSettingsPage() {
 
                         <i class="fa-solid fa-building text-sky-600"></i>
 
-                        <span>Şirket & Marka Bilgileri (Çoklu Şirket)</span>
+                        <span>Şirket & Marka Bilgileri</span>
 
                     </div>
-
-                    <span class="text-[10px] text-slate-400">PDF Rapor Başlığı</span>
 
                 </div>
 
@@ -3603,8 +3497,8 @@ async function renderSettingsPage() {
 
 
                 ${isManaged ? `
-                    <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 text-center">
-                        Firma adı, rapor ön eki ve akreditasyon bilgileri firma yöneticisi web panelinden otomatik gelir.
+                    <div class="p-2 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 text-center">
+                        Firma bilgileri yönetici panelinden gelir.
                     </div>
                 ` : `
                     <button onclick="openCompanySettingsModal()" class="w-full py-2.5 btn-craft-primary active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition">
@@ -3620,7 +3514,7 @@ async function renderSettingsPage() {
 
 
 
-            <!-- 4. RAPOR KODLARI & TEST CİHAZI VARSAYILANLARI -->
+            <!-- 4. RAPOR KODLARI -->
 
             <div class="card-craft-white p-3 space-y-2.5">
 
@@ -3630,11 +3524,9 @@ async function renderSettingsPage() {
 
                         <i class="fa-solid fa-file-invoice text-emerald-600"></i>
 
-                        <span>Rapor Kodları & Test Cihazları</span>
+                        <span>Rapor Kodları</span>
 
                     </div>
-
-                    <span class="text-[10px] text-slate-400">Otomatik Doldurma</span>
 
                 </div>
 
@@ -3660,17 +3552,113 @@ async function renderSettingsPage() {
 
                 </div>
 
+            </div>
 
 
-                <button onclick="openUserSettingsModal()" class="w-full py-2 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 flex items-center justify-center gap-1.5 transition">
 
-                    <i class="fa-solid fa-screwdriver-wrench text-slate-600"></i>
+            <!-- 4B. TARİH, SAAT & GEÇERLİLİK SÜRESİ AYARLARI -->
 
-                    <span>Mühendis Unvanı & Hızlı Cihaz Ayarları</span>
+            ${(() => {
+                const dtPrefs = (typeof ReportDateTimePrefs !== 'undefined') ? ReportDateTimePrefs.get() : { fixedStartTime: '', fixedEndTime: '', validityMonths: { '2201': 12, '2202': 12, '2205': 12, 'default': 12 } };
+                const tpls = Array.isArray(window.ENLAB_REPORT_TEMPLATES) ? window.ENLAB_REPORT_TEMPLATES : [
+                    { id: '2201', name: 'ELEKTRİK İÇ TESİSATI' },
+                    { id: '2202', name: 'ALÇAK GERİLİM TOPRAKLAMA' },
+                    { id: '2205', name: 'JENERATÖR' }
+                ];
+                return `
+            <div class="card-craft-white p-3 space-y-2.5">
 
-                </button>
+                <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+
+                    <div class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+
+                        <i class="fa-solid fa-clock text-sky-600"></i>
+
+                        <span>Tarih, Saat &amp; Geçerlilik Süresi</span>
+
+                    </div>
+
+                    <span id="settingsDateTimeSavedBadge" class="hidden text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">Kaydedildi</span>
+
+                </div>
+
+                <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
+
+                    <div class="flex items-center justify-between gap-2">
+
+                        <span class="font-bold text-slate-700">Sabit Kontrol Saati</span>
+
+                        <button type="button" onclick="clearFixedReportTimesFromSettings()" class="text-[11px] font-bold text-sky-700 hover:underline">Sıfırla (Anlık Saat)</button>
+
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+
+                        <div>
+
+                            <label class="block text-[10px] font-bold text-slate-500 mb-0.5">Sabit Başlangıç Saati</label>
+
+                            <input type="time" id="settingsFixedStartTime" value="${escapeHtml(dtPrefs.fixedStartTime || '')}"
+
+                                onchange="saveReportDateTimePrefsFromSettings()"
+
+                                class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-white">
+
+                        </div>
+
+                        <div>
+
+                            <label class="block text-[10px] font-bold text-slate-500 mb-0.5">Sabit Bitiş Saati</label>
+
+                            <input type="time" id="settingsFixedEndTime" value="${escapeHtml(dtPrefs.fixedEndTime || '')}"
+
+                                onchange="saveReportDateTimePrefsFromSettings()"
+
+                                class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-white">
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="space-y-1.5 text-xs">
+
+                    <div class="font-bold text-slate-700">Rapor Geçerlilik Süresi (Ay)</div>
+
+                    <div class="grid grid-cols-1 gap-1.5">
+
+                        ${tpls.map(t => {
+                            const tid = String(t.id);
+                            const label = (typeof getCleanTemplateTypeLabel === 'function') ? getCleanTemplateTypeLabel(tid, t.code) : (t.name || tid);
+                            const val = dtPrefs.validityMonths[tid] ?? dtPrefs.validityMonths['default'] ?? 12;
+                            return `
+                            <div class="flex items-center justify-between gap-2 p-2 rounded-xl bg-slate-50 border border-slate-200">
+
+                                <span class="font-semibold text-slate-800 truncate">${escapeHtml(label)}</span>
+
+                                <div class="flex items-center gap-1.5 shrink-0">
+
+                                    <input type="number" min="1" max="120" value="${escapeHtml(String(val))}"
+
+                                        onchange="saveReportValidityMonthFromSettings('${escapeForJs(tid)}', this.value)"
+
+                                        class="w-16 border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-center bg-white">
+
+                                    <span class="text-[11px] font-bold text-slate-500">Ay</span>
+
+                                </div>
+
+                            </div>`;
+                        }).join('')}
+
+                    </div>
+
+                </div>
 
             </div>
+                `;
+            })()}
 
 
 
@@ -3689,31 +3677,19 @@ async function renderSettingsPage() {
 
                         <i class="fa-solid fa-globe text-indigo-600"></i>
 
-                        <span>Bulut Müşteri Portalı (Otomatik)</span>
+                        <span>Bulut Müşteri Portalı</span>
 
                     </div>
 
-                    <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">Otomatik Hazır ✓</span>
+                    <code id="settingsPortalActiveHost" class="font-mono text-[10px] text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">${escapeHtml(activeHost)}</code>
 
                 </div>
 
-                <div class="p-2.5 rounded-xl bg-emerald-50/80 border border-emerald-200 space-y-1.5 text-xs">
-                    <div class="flex items-center justify-between gap-2 flex-wrap">
-                        <span class="font-bold text-emerald-950 flex items-center gap-1.5">
-                            <i class="fa-solid fa-cloud-check text-emerald-600"></i>
-                            <span>Firma bazlı kullanıcı adı &amp; şifre ile güvenli otomatik yükleme</span>
-                        </span>
-                        <code id="settingsPortalActiveHost" class="font-mono text-[10px] text-emerald-800 bg-white px-2 py-0.5 rounded border border-emerald-200">${escapeHtml(activeHost)}</code>
-                    </div>
-                    <div class="flex items-center justify-between gap-2 flex-wrap text-[11px] text-slate-700">
-                        <span>Aktif Şirket: <strong class="text-slate-900">${escapeHtml(activeComp.companyName)}</strong></span>
-                        <span class="font-mono text-[10px] bg-white px-2 py-0.5 rounded border border-slate-200 text-indigo-700 font-bold">Ön Ek: /p/${escapeHtml(activeComp.companySlug)}-...</span>
-                    </div>
+                <div class="flex items-center justify-between gap-2 flex-wrap text-[11px] text-slate-700 bg-slate-50 border border-slate-200/80 rounded-xl px-2.5 py-2">
+                    <span>Aktif Şirket: <strong class="text-slate-900">${escapeHtml(activeComp.companyName)}</strong></span>
+                    <span class="font-mono text-[10px] bg-white px-2 py-0.5 rounded border border-slate-200 text-indigo-700 font-bold">/p/${escapeHtml(activeComp.companySlug)}-...</span>
                     ${!activeComp.isCustomized && !isManaged ? `
-                        <div class="pt-1 flex items-center justify-between gap-2 border-t border-emerald-200/70 text-[10px] text-amber-800">
-                            <span>Kendi şirket kısaltmanızla (/p/tkm-...) göndermek için şirket adınızı girin.</span>
-                            <button type="button" onclick="openCompanySettingsModal()" class="font-bold text-indigo-700 underline shrink-0">Şirket Adını Düzenle</button>
-                        </div>
+                        <button type="button" onclick="openCompanySettingsModal()" class="text-[10px] font-bold text-indigo-700 underline shrink-0">Şirket Adını Düzenle</button>
                     ` : ''}
                 </div>
 
@@ -3732,20 +3708,20 @@ async function renderSettingsPage() {
 
                 <div class="pt-1 border-t border-slate-100">
                     <button type="button" onclick="document.getElementById('settingsPortalAdvancedWrap')?.classList.toggle('hidden')" class="w-full py-1.5 px-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 font-semibold text-[11px] flex items-center justify-between border border-slate-200/80 transition">
-                        <span class="flex items-center gap-1.5"><i class="fa-solid fa-sliders text-slate-400"></i> Gelişmiş / Özel Domain &amp; Varsayılan PIN (İsteğe Bağlı)</span>
+                        <span class="flex items-center gap-1.5"><i class="fa-solid fa-sliders text-slate-400"></i> Gelişmiş Ayarlar</span>
                         <i class="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
                     </button>
 
                     <div id="settingsPortalAdvancedWrap" class="hidden mt-2 space-y-2 text-xs p-2.5 rounded-xl bg-slate-50 border border-slate-200">
                         <div>
-                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Özel Alan Adı / Sunucu URL (Boş = Varsayılan Bulut)</label>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Özel Alan Adı / Sunucu URL</label>
                             <input type="url" id="settingsPortalUrl" value="${escapeHtml(pCfg.customPortalUrl || '')}"
                                 placeholder="https://hizli-rapor-portal.vercel.app (varsayılan)"
                                 class="w-full px-3 py-2 border border-slate-200 bg-white rounded-xl font-mono text-xs text-slate-900 focus:border-indigo-500 focus:outline-none">
                         </div>
 
                         <div>
-                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Yönetici Anahtarı (Sadece Kendi Sunucunuz İçin, İsteğe Bağlı)</label>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Yönetici Anahtarı</label>
                             <div class="flex items-center gap-1.5">
                                 <input type="password" id="settingsPortalKey" value="${escapeHtml(pCfg.adminKey || '')}"
                                     placeholder="Varsayılan bulutta boş bırakın"
@@ -3758,9 +3734,9 @@ async function renderSettingsPage() {
                         </div>
 
                         <div>
-                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Varsayılan Müşteri Klasör PIN Şifresi (İsteğe Bağlı)</label>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Varsayılan Müşteri Klasör PIN</label>
                             <input type="text" id="settingsPortalPin" value="${escapeHtml(pCfg.defaultPin || '')}"
-                                placeholder="Örn: 4829 (Boş bırakılırsa şifresiz)"
+                                placeholder="Örn: 4829"
                                 class="w-full px-3 py-2 border border-slate-200 bg-white rounded-xl font-mono text-xs text-slate-900 focus:border-indigo-500 focus:outline-none">
                         </div>
 
@@ -3777,7 +3753,7 @@ async function renderSettingsPage() {
 
 
 
-            <!-- 5. VERİ YEDEKLEME VE KURTARMA MERKEZİ (ANA SAYFADAN BURAYA TAŞINDI) -->
+            <!-- 5. VERİ YEDEKLEME VE KURTARMA MERKEZİ -->
 
             <div class="card-craft-white p-3 space-y-2.5">
 
@@ -3787,21 +3763,11 @@ async function renderSettingsPage() {
 
                         <i class="fa-solid fa-database text-amber-500"></i>
 
-                        <span>Veri Yedekleme ve Kurtarma Merkezi</span>
+                        <span>Veri Yedekleme ve Kurtarma</span>
 
                     </div>
 
-                    <span class="text-[10px] text-emerald-600 font-bold">%100 Yerel Veri</span>
-
                 </div>
-
-
-
-                <p class="text-xs text-slate-600 leading-relaxed">
-
-                    Tüm saha işleriniz, raporlarınız ve ölçüm hafızanız cihazınızda saklanır. Cihaz değişimi veya güvenlik için tek tıkla tam yedek alabilir veya geri yükleyebilirsiniz.
-
-                </p>
 
 
 
@@ -3855,34 +3821,6 @@ async function renderSettingsPage() {
 
             </div>
 
-
-
-            <!-- 6. GÜVENLİK & SİLME KORUMASI BİLGİLENDİRMESİ -->
-
-            <div class="card-craft-white p-3 space-y-1.5">
-
-                <div class="flex items-center gap-2 text-xs font-bold text-slate-800">
-
-                    <i class="fa-solid fa-shield-halved text-rose-500"></i>
-
-                    <span>Şifreli Silme Koruması</span>
-
-                </div>
-
-                <p class="text-xs text-slate-600 leading-relaxed">
-
-                    Saha raporlarının ve iş klasörlerinin kazara silinmesini önlemek amacıyla, tüm silme işlemlerinde aktif personel giriş şifreniz istenmektedir.
-
-                </p>
-
-                <div class="text-[11px] text-slate-500 pt-1">
-
-                    ${isManaged ? 'Şifre değişikliği için firma yöneticinize başvurabilirsiniz.' : 'Şifrenizi yukarıdaki <strong>"Profilimi Düzenle"</strong> butonundan dilediğiniz zaman güncelleyebilirsiniz.'}
-
-                </div>
-
-            </div>
-
         </div>
 
     `;
@@ -3900,6 +3838,44 @@ async function renderSettingsPage() {
 }
 
 window.renderSettingsPage = renderSettingsPage;
+
+function flashSettingsDateTimeSaved() {
+    const b = document.getElementById('settingsDateTimeSavedBadge');
+    if (b) {
+        b.classList.remove('hidden');
+        clearTimeout(window._dtSavedTimer);
+        window._dtSavedTimer = setTimeout(() => b.classList.add('hidden'), 1800);
+    }
+}
+
+function saveReportDateTimePrefsFromSettings() {
+    if (typeof ReportDateTimePrefs === 'undefined') return;
+    const st = document.getElementById('settingsFixedStartTime')?.value || '';
+    const et = document.getElementById('settingsFixedEndTime')?.value || '';
+    ReportDateTimePrefs.save({ fixedStartTime: st, fixedEndTime: et });
+    flashSettingsDateTimeSaved();
+}
+
+function clearFixedReportTimesFromSettings() {
+    if (typeof ReportDateTimePrefs === 'undefined') return;
+    ReportDateTimePrefs.clearFixedTimes();
+    const sEl = document.getElementById('settingsFixedStartTime');
+    const eEl = document.getElementById('settingsFixedEndTime');
+    if (sEl) sEl.value = '';
+    if (eEl) eEl.value = '';
+    flashSettingsDateTimeSaved();
+    showToast('Sabit saat sıfırlandı, anlık giriş saati kullanılacak.');
+}
+
+function saveReportValidityMonthFromSettings(templateId, months) {
+    if (typeof ReportDateTimePrefs === 'undefined') return;
+    ReportDateTimePrefs.setValidityMonth(templateId, months);
+    flashSettingsDateTimeSaved();
+}
+
+window.saveReportDateTimePrefsFromSettings = saveReportDateTimePrefsFromSettings;
+window.clearFixedReportTimesFromSettings = clearFixedReportTimesFromSettings;
+window.saveReportValidityMonthFromSettings = saveReportValidityMonthFromSettings;
 
 window.promptSecurityPasswordConfirmation = promptSecurityPasswordConfirmation;
 

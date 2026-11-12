@@ -3773,10 +3773,16 @@ window.OFFLINE_SEED_DATA = {
               "level": "",
               "options": [
                 "Var",
-                "Yok"
+                "Yok",
+                "Uygun",
+                "Uygunsuz",
+                "Uygulaması Yok"
               ],
               "units": [],
               "optionDescriptions": [
+                "",
+                "",
+                "",
                 "",
                 ""
               ],
@@ -3791,10 +3797,16 @@ window.OFFLINE_SEED_DATA = {
               "level": "",
               "options": [
                 "Var",
-                "Yok"
+                "Yok",
+                "Uygun",
+                "Uygunsuz",
+                "Uygulaması Yok"
               ],
               "units": [],
               "optionDescriptions": [
+                "",
+                "",
+                "",
                 "",
                 ""
               ],
@@ -3809,10 +3821,16 @@ window.OFFLINE_SEED_DATA = {
               "level": "",
               "options": [
                 "Var",
-                "Yok"
+                "Yok",
+                "Uygun",
+                "Uygunsuz",
+                "Uygulaması Yok"
               ],
               "units": [],
               "optionDescriptions": [
+                "",
+                "",
+                "",
                 "",
                 ""
               ],
@@ -3827,10 +3845,16 @@ window.OFFLINE_SEED_DATA = {
               "level": "",
               "options": [
                 "Var",
-                "Yok"
+                "Yok",
+                "Uygun",
+                "Uygunsuz",
+                "Uygulaması Yok"
               ],
               "units": [],
               "optionDescriptions": [
+                "",
+                "",
+                "",
                 "",
                 ""
               ],
@@ -3845,10 +3869,16 @@ window.OFFLINE_SEED_DATA = {
               "level": "",
               "options": [
                 "Var",
-                "Yok"
+                "Yok",
+                "Uygun",
+                "Uygunsuz",
+                "Uygulaması Yok"
               ],
               "units": [],
               "optionDescriptions": [
+                "",
+                "",
+                "",
                 "",
                 ""
               ],
@@ -3863,10 +3893,16 @@ window.OFFLINE_SEED_DATA = {
               "level": "",
               "options": [
                 "Var",
-                "Yok"
+                "Yok",
+                "Uygun",
+                "Uygunsuz",
+                "Uygulaması Yok"
               ],
               "units": [],
               "optionDescriptions": [
+                "",
+                "",
+                "",
                 "",
                 ""
               ],

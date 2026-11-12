@@ -208,9 +208,7 @@ function renderSpecializedTemplateEditor() {
 
                             <div class="min-w-0">
 
-                                <span class="text-[9px] font-bold text-rose-700 uppercase tracking-wide block">Tespit Edilen Uygunsuzluk:</span>
-
-                                <span class="font-medium text-slate-800 text-[11px] leading-snug block">${selectedDefect || 'Henüz uygunsuzluk cümlesi seçilmedi'}</span>
+                                <span class="font-medium text-slate-800 text-[11px] leading-snug block">${selectedDefect || 'Uygunsuzluk cümlesi seçilmedi'}</span>
 
                             </div>
 
@@ -895,7 +893,7 @@ function openPhotoPreviewModal(idx) {
 
             <div class="p-2.5 bg-slate-950 text-slate-300 text-[11px] text-center border-t border-slate-800">
 
-                Tarih: ${photo.date || '-'} | Cihaza / Galeriye indirmek için yukarıdaki butona basınız
+                Tarih: ${photo.date || '-'}
 
             </div>
 
@@ -983,7 +981,7 @@ function renderPhotoSectionUI() {
 
                 <div class="py-4 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-xs">
 
-                    Henüz fotoğraf eklenmedi. Sahadan fotoğraf çekmek veya cihaz galerisinden yüklemek için yukarıdaki butonları kullanabilirsiniz. Eklenen fotoğraflar PDF raporunda yer alır ve daha sonra galeriye kaydedilebilir.
+                    Henüz fotoğraf eklenmedi.
 
                 </div>
 
@@ -1015,7 +1013,7 @@ function renderPhotoSectionUI() {
                             </div>
                             <div class="p-2.5 space-y-2 flex-1 flex flex-col justify-between">
                                 <div>
-                                    <label class="block text-[11px] font-bold text-slate-800 mb-1">Fotoğraf ${photoNum} Açıklaması (Fotonun Altına)</label>
+                                    <label class="block text-[11px] font-bold text-slate-800 mb-1">Açıklama</label>
                                     <input type="text" id="photoCaptionInput_${idx}" value="${(typeof escapeHtml !== 'undefined' ? escapeHtml(curCaption) : curCaption)}"
                                         placeholder="Fotoğraf hakkında açıklama / tespit giriniz..."
                                         oninput="updatePhotoCaption(${idx}, this.value)"

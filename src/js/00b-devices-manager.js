@@ -1105,12 +1105,7 @@
                                     ▼
                                 </button>
                             </div>
-                            ${locked ? `
-                                <span class="px-2 py-1 rounded-lg bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-bold inline-flex items-center gap-1">
-                                    <i class="fa-solid fa-lock text-[9px] text-amber-600"></i>
-                                    <span>Yönetici Ataması</span>
-                                </span>
-                            ` : `
+                            ${locked ? '' : `
                                 <div class="flex items-center gap-1.5 flex-wrap justify-end">
                                     <button type="button" onclick="openDeviceCatalogPickerModal('settings_swap', { oldDeviceId: '${esc(dev.id)}' })"
                                         class="px-2.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-bold text-[11px] flex items-center gap-1 shadow-2xs transition">
@@ -1133,16 +1128,11 @@
                     </div>
                 `;
             }).join('') : `
-                <div class="p-4 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/70 text-center space-y-2">
-                    <div class="w-10 h-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto text-base">
+                <div class="p-4 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/70 text-center space-y-1.5">
+                    <div class="w-9 h-9 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto text-sm">
                         <i class="fa-solid fa-screwdriver-wrench"></i>
                     </div>
-                    <div class="text-xs font-bold text-slate-800">${locked ? 'Yöneticiniz henüz size cihaz atamadı' : 'Henüz üzerinize ölçüm cihazı almadınız'}</div>
-                    <p class="text-[11px] text-slate-500 max-w-sm mx-auto leading-relaxed">
-                        ${locked
-                            ? "Firma yöneticiniz web panelinden size ölçüm cihazı atadığında burada otomatik görünür ve raporlara eklenir. Atama sonrası 'Buluttan Yenile'ye dokunun."
-                            : 'Aşağıdan kendi kullandığınız cihazları (ör. Fluke / UNI-T Termal Kamera, Metrel Test Cihazı, Pensampermetre vb.) seçin; yeni rapor yazarken otomatik eklensinler.'}
-                    </p>
+                    <div class="text-xs font-bold text-slate-800">${locked ? 'Henüz size cihaz atanmadı' : 'Üzerinizde ölçüm cihazı yok'}</div>
                 </div>
             `;
 
@@ -1151,7 +1141,7 @@
                     <div class="flex items-center justify-between border-b border-slate-100 pb-2 gap-2">
                         <div class="text-xs font-bold text-slate-800 flex items-center gap-1.5 min-w-0">
                             <i class="fa-solid fa-screwdriver-wrench text-amber-600 shrink-0"></i>
-                            <span class="truncate">${locked ? 'Ölçüm Cihazlarım (Yönetici Ataması)' : 'Ölçüm Cihazlarım (Üzerime Alınanlar)'}</span>
+                            <span class="truncate">Ölçüm Cihazlarım</span>
                         </div>
                         <div class="flex items-center gap-1.5 shrink-0">
                             ${locked ? `
@@ -1160,7 +1150,7 @@
                                 </span>
                             ` : ''}
                             <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${assigned.length ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}">
-                                ${assigned.length} Aktif Cihaz
+                                ${assigned.length} Cihaz
                             </span>
                         </div>
                     </div>
@@ -1170,7 +1160,7 @@
                             <input type="checkbox" ${autoApply ? 'checked' : ''}
                                 onchange="MeasuringDevicesManager.setAutoApplyEnabled(this.checked); showToast(this.checked ? 'Raporlara otomatik cihaz ekleme açıldı' : 'Otomatik ekleme kapatıldı');"
                                 class="w-4 h-4 rounded border-amber-400 text-amber-600 focus:ring-amber-500 shrink-0">
-                            <span class="leading-snug"><strong>${esc(userName)}</strong> için yeni rapor yazarken otomatik eklensin</span>
+                            <span class="leading-snug">Yeni raporlara otomatik eklensin</span>
                         </label>
                     </div>
 
@@ -1179,27 +1169,24 @@
                     </div>
 
                     ${locked ? `
-                        <div class="pt-1 space-y-2">
+                        <div class="pt-1">
                             <button type="button" onclick="window.CloudAppSync && window.CloudAppSync.syncNow()"
                                 class="w-full py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition">
                                 <i class="fa-solid fa-arrows-rotate"></i>
-                                <span>Buluttan Yenile (Cihazları Güncelle)</span>
+                                <span>Buluttan Yenile</span>
                             </button>
-                            <div class="text-[10px] text-slate-500 text-center">
-                                Cihaz ekleme, çıkarma ve kalibrasyon güncelleme işlemleri yalnızca firma yöneticisi web panelinden yapılır.
-                            </div>
                         </div>
                     ` : `
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                             <button type="button" onclick="openDeviceCatalogPickerModal('settings_assign')"
                                 class="w-full py-2.5 px-3 bg-slate-900 hover:bg-slate-800 active:scale-95 text-amber-400 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition">
                                 <i class="fa-solid fa-list-check"></i>
-                                <span>Havuzdan Cihaz Seç / Üzerime Al (${catalog.length})</span>
+                                <span>Havuzdan Seç (${catalog.length})</span>
                             </button>
                             <button type="button" onclick="openDeviceEditModal(null, { assignByDefault: true, refreshSettings: true })"
                                 class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition">
                                 <i class="fa-solid fa-plus"></i>
-                                <span>Yeni Ölçüm Cihazı Ekle</span>
+                                <span>Yeni Cihaz Ekle</span>
                             </button>
                         </div>
                     `}
@@ -1297,18 +1284,13 @@
         if (mode === 'settings_assign') {
             const assignedCount = MeasuringDevicesManager.getAssignedDeviceIds().length;
             modalTitle = `<i class="fa-solid fa-list-check text-amber-400 mr-2"></i>Üzerime Cihaz Al (${assignedCount} Seçili)`;
-            bannerHtml = `
-                <div class="p-2.5 rounded-xl bg-sky-50 border border-sky-200 text-[11px] text-sky-900">
-                    Kendi çantanızda / üzerinizde taşıdığınız cihazları işaretleyin. Seçilen cihazlar yeni rapor oluştururken otomatik eklenir.
-                </div>
-            `;
             newDeviceContextOpts = { assignByDefault: true, reopenPicker: true };
         } else if (mode === 'settings_swap') {
             const oldDev = MeasuringDevicesManager.getDeviceById(ctx.oldDeviceId);
-            modalTitle = `<i class="fa-solid fa-right-left text-sky-400 mr-2"></i>Cihaz Değiştir (Ayarlar)`;
+            modalTitle = `<i class="fa-solid fa-right-left text-sky-400 mr-2"></i>Cihaz Değiştir`;
             bannerHtml = `
-                <div class="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-950">
-                    <span class="font-semibold">Değiştirilecek Cihaz:</span>
+                <div class="p-2 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-950">
+                    <span class="font-semibold">Değiştirilecek:</span>
                     <strong class="ml-1">${esc(oldDev ? getDeviceDisplayTitle(oldDev) : 'Seçili Cihaz')}</strong>
                     ${oldDev && oldDev.serial ? `<span class="font-mono text-[10px] ml-1">(${esc(oldDev.serial)})</span>` : ''}
                 </div>
@@ -1323,11 +1305,10 @@
             const rowLabel = [row.brand, row.model].filter(Boolean).join(' ') || row.name || `Cihaz #${Number(ctx.rowIdx) + 1}`;
             modalTitle = `<i class="fa-solid fa-right-left text-sky-400 mr-2"></i>Rapordaki Cihazı Değiştir`;
             bannerHtml = `
-                <div class="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-950">
+                <div class="p-2 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-950">
                     <span class="font-semibold">Şu an seçili:</span>
                     <strong class="ml-1">${esc(rowLabel)}</strong>
                     ${row.serial ? `<span class="font-mono text-[10px] ml-1">(${esc(row.serial)})</span>` : ''}
-                    <div class="text-[10px] text-amber-800 mt-0.5">Yeni seçtiğiniz cihaz hemen bu satırın yerine yazılır (örn. Fluke yerine UNI-T).</div>
                 </div>
             `;
             newDeviceContextOpts = {
@@ -1338,15 +1319,14 @@
         } else if (mode === 'report_thermal_swap') {
             const guids = getThermalCameraQuestions();
             const curRow = window.AppState?.currentFormData?.tableRows?.topic_1_0?.[0] || {};
-            const curCamName = curRow[guids[0]] || 'Henüz Seçilmedi';
+            const curCamName = curRow[guids[0]] || 'Seçilmedi';
             const curCamSerial = curRow[guids[1]] || '';
             modalTitle = `<i class="fa-solid fa-temperature-half text-orange-400 mr-2"></i>Termal Kamera Seç / Değiştir`;
             bannerHtml = `
-                <div class="p-2.5 rounded-xl bg-orange-50 border border-orange-200 text-[11px] text-orange-950">
-                    <span class="font-semibold">Bölüm 3 Termal Kamera:</span>
+                <div class="p-2 rounded-xl bg-orange-50 border border-orange-200 text-[11px] text-orange-950">
+                    <span class="font-semibold">Mevcut:</span>
                     <strong class="ml-1">${esc(curCamName)}</strong>
                     ${curCamSerial ? `<span class="font-mono text-[10px] ml-1">(${esc(curCamSerial)})</span>` : ''}
-                    <div class="text-[10px] text-orange-800 mt-0.5">Seçtiğiniz termal kamera Bölüm 3'e ve Bölüm 4'teki termal kamera satırına uygulanır.</div>
                 </div>
             `;
             newDeviceContextOpts = {
@@ -1356,11 +1336,6 @@
             };
         } else if (mode === 'report_add') {
             modalTitle = `<i class="fa-solid fa-plus text-emerald-400 mr-2"></i>Rapora Cihaz Ekle`;
-            bannerHtml = `
-                <div class="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-950">
-                    Üzerinizdeki cihazlardan veya havuzdan dokunarak bu rapora ekleyin.
-                </div>
-            `;
             newDeviceContextOpts = {
                 assignByDefault: false,
                 addReportAfterSave: true
@@ -1706,7 +1681,7 @@
                 <label class="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 cursor-pointer">
                     <input type="checkbox" id="devFormAssignToMe" ${isAssignedNow ? 'checked' : ''}
                         class="w-4 h-4 rounded border-emerald-400 text-emerald-600">
-                    <span class="font-bold text-emerald-950 text-xs">Bu cihaz üzerimde olsun (Yeni raporlara otomatik eklensin)</span>
+                    <span class="font-bold text-emerald-950 text-xs">Üzerimde olsun (Yeni raporlara otomatik eklensin)</span>
                 </label>
 
                 ${isEdit && existing.isCustom ? `
@@ -1896,25 +1871,19 @@
         }
 
         const modalHtml = `
-            <div class="space-y-3 text-xs">
+            <div class="space-y-2.5 text-xs">
                 <div class="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-950">
-                    Raporda şu anda <strong>${curDevices.length} cihaz</strong> kayıtlı. Ayarlardaki üzerinizdeki <strong>${assigned.length} cihaz</strong> nasıl aktarılsın?
+                    Raporda <strong>${curDevices.length}</strong>, üzerinizde <strong>${assigned.length} cihaz</strong> var.
                 </div>
                 <div class="space-y-2">
                     <button type="button" onclick="MeasuringDevicesManager.syncAssignedDevicesToCurrentReport('replace'); closeModal();"
                         class="w-full p-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-left flex items-center justify-between gap-2">
-                        <div>
-                            <div class="text-amber-300">Mevcut Listeyi Yenile (Üzerimdekilerle Değiştir)</div>
-                            <div class="text-[10px] font-normal text-slate-300 mt-0.5">Rapordaki ölçüm aletleri tablosunu ayarlardaki listeyle değiştirir</div>
-                        </div>
+                        <span class="text-amber-300">Mevcut Listeyi Yenile</span>
                         <i class="fa-solid fa-arrows-rotate text-amber-400"></i>
                     </button>
                     <button type="button" onclick="MeasuringDevicesManager.syncAssignedDevicesToCurrentReport('append'); closeModal();"
                         class="w-full p-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-200 font-bold text-left flex items-center justify-between gap-2">
-                        <div>
-                            <div>Eksik Olanları Sona Ekle</div>
-                            <div class="text-[10px] font-normal text-emerald-800 mt-0.5">Mevcut cihazları korur, ayarlardaki eksik cihazları ekler</div>
-                        </div>
+                        <span>Eksik Olanları Sona Ekle</span>
                         <i class="fa-solid fa-plus text-emerald-700"></i>
                     </button>
                 </div>

@@ -216,6 +216,20 @@
             font-weight: 700;
         }
 
+        .tkm-linye-table th {
+            text-transform: none !important;
+            letter-spacing: 0 !important;
+            font-size: 6.35pt !important;
+            line-height: 1.24 !important;
+            padding: 3.5px 2.5px !important;
+            word-break: normal !important;
+            overflow-wrap: break-word !important;
+        }
+
+        .tkm-linye-table td {
+            padding: 2.5px 3px !important;
+        }
+
         .tkm-legend {
             font-size: 6.8pt;
             color: #111111;
@@ -633,6 +647,16 @@
             padding: 2.2px 3.5px !important;
         }
 
+        [data-pdf-theme^="rams_"] .tkm-table.tkm-linye-table th,
+        [data-pdf-theme="modern"] .tkm-table.tkm-linye-table th {
+            text-transform: none !important;
+            letter-spacing: 0 !important;
+            font-size: 6.35pt !important;
+            line-height: 1.24 !important;
+            padding: 3.5px 2.5px !important;
+            word-break: normal !important;
+        }
+
         [data-pdf-theme^="rams_"] .tkm-table td,
         [data-pdf-theme="modern"] .tkm-table td {
             border: 1px solid #e2e8f0 !important;
@@ -959,8 +983,6 @@
 
                     <span id="appHeaderBrandTitle" class="font-black text-xs tracking-tight text-white truncate">Hızlı Rapor</span>
 
-                    <span id="appHeaderBrandSub" class="text-[9px] text-slate-400 font-medium leading-none truncate hidden xs:inline">Saha Kontrol</span>
-
                 </div>
 
             </div>
@@ -1081,7 +1103,6 @@
                     </div>
                     <div>
                         <h3 class="font-bold text-sm tracking-tight text-white">Raporu E-posta ile Gönder</h3>
-                        <p class="text-[10px] text-slate-400">PDF rapor özeti ve paylaşım</p>
                     </div>
                 </div>
                 <button onclick="closeReportEmailModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition active:scale-90">
@@ -1089,34 +1110,18 @@
                 </button>
             </div>
 
-            <div class="p-4 overflow-y-auto space-y-3.5 text-xs">
+            <div class="p-4 overflow-y-auto space-y-3 text-xs">
                 <!-- Quick PDF Save / Attach Card -->
-                <div class="p-3 rounded-xl bg-emerald-950/50 border border-emerald-700/50 text-emerald-200 space-y-2">
-                    <div class="flex items-start justify-between gap-2">
-                        <div class="text-[11px] leading-snug">
-                            <div class="font-bold text-emerald-300 flex items-center gap-1.5">
-                                <i class="fa-solid fa-file-pdf text-emerald-400"></i>
-                                <span>1. Adım: Seçili Rapor(lar)ı PDF Olarak Hazırla</span>
-                            </div>
-                            <div class="text-[10px] text-emerald-200/80 mt-0.5">
-                                Seçtiğiniz tüm raporları tek bir A4 PDF dosyasında birleştirip kaydeder veya otomatik e-posta ekine hazırlar.
-                            </div>
-                        </div>
-                    </div>
-                    <button type="button" onclick="downloadSelectedEmailReportsAsPdf()" class="w-full py-2 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/20 active:scale-95 transition">
-                        <i class="fa-solid fa-file-arrow-down"></i>
-                        <span id="btnDownloadSelectedPdfLabel">Seçili Raporu PDF Olarak Kaydet / Birleştir</span>
-                    </button>
-                </div>
+                <button type="button" onclick="downloadSelectedEmailReportsAsPdf()" class="w-full py-2.5 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/20 active:scale-95 transition">
+                    <i class="fa-solid fa-file-arrow-down"></i>
+                    <span id="btnDownloadSelectedPdfLabel">Seçili Raporu PDF Olarak Kaydet / Birleştir</span>
+                </button>
 
                 <!-- Quick Cloud Portal Link Card -->
                 <div class="p-2.5 rounded-xl bg-sky-950/50 border border-sky-700/50 flex items-center justify-between gap-2">
-                    <div class="min-w-0">
-                        <div class="font-bold text-sky-300 text-[11px] flex items-center gap-1.5">
-                            <i class="fa-solid fa-globe text-sky-400"></i>
-                            <span>Bulut Müşteri Linki Oluştur / Güncelle</span>
-                        </div>
-                        <div class="text-[10px] text-sky-200/80 truncate">Raporu internete yükler ve e-posta metnine link ekler</div>
+                    <div class="font-bold text-sky-300 text-[11px] flex items-center gap-1.5 min-w-0">
+                        <i class="fa-solid fa-globe text-sky-400 shrink-0"></i>
+                        <span class="truncate">Bulut Müşteri Linki Oluştur</span>
                     </div>
                     <button type="button" onclick="closeReportEmailModal(); openPortalUploadModal(AppState.currentWorkOrder?.id || AppState.currentInspection?.work_order_id, getSelectedEmailReportsList().map(r => r.id));"
                         class="px-2.5 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-black text-[11px] shrink-0 active:scale-95 transition">
@@ -1127,7 +1132,7 @@
                 <!-- Recipient Email -->
                 <div>
                     <label class="block text-[11px] font-bold text-slate-300 mb-1">
-                        <i class="fa-solid fa-user-tie text-sky-400 mr-1"></i>Yetkili E-posta Adresi (Alıcı)
+                        <i class="fa-solid fa-user-tie text-sky-400 mr-1"></i>Yetkili E-posta Adresi
                     </label>
                     <input type="email" id="reportEmailRecipient" placeholder="yetkili@firma.com"
                         oninput="onReportEmailRecipientChange(this.value)"
@@ -1138,7 +1143,7 @@
                 <div id="reportEmailMultiSection" class="hidden space-y-1.5">
                     <div class="flex items-center justify-between">
                         <label class="block text-[11px] font-bold text-slate-300">
-                            <i class="fa-solid fa-layer-group text-amber-400 mr-1"></i>Gönderilecek Raporlar (Çoklu Seçim)
+                            <i class="fa-solid fa-layer-group text-amber-400 mr-1"></i>Gönderilecek Raporlar
                         </label>
                         <button type="button" onclick="toggleAllEmailReports(true)" class="text-[10px] font-bold text-sky-400 hover:text-sky-300">
                             Tümünü Seç

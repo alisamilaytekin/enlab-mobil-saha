@@ -1566,34 +1566,17 @@ ${ramsCss}
                     <div class="min-w-0">
                         <div class="text-[10px] uppercase tracking-wider text-sky-300 font-bold">Bulut Müşteri Klasörü</div>
                         <div class="font-bold text-sm truncate">${escapeStr(wo.customer_name || wo.company_name || 'Müşteri Klasörü')}</div>
-                        ${wo.portal_folder_url ? `<div class="text-[10px] text-emerald-300 font-mono truncate mt-0.5"><i class="fa-solid fa-link mr-1"></i>${escapeStr(wo.portal_folder_url)}</div>` : `<div class="text-[10px] text-slate-400 mt-0.5">İlk yüklemede müşteriye özel gizli klasör bağlantısı oluşturulur.</div>`}
+                        ${wo.portal_folder_url ? `<div class="text-[10px] text-emerald-300 font-mono truncate mt-0.5"><i class="fa-solid fa-link mr-1"></i>${escapeStr(wo.portal_folder_url)}</div>` : ''}
                     </div>
                     ${wo.portal_folder_url ? `<button type="button" onclick="CloudPortal.copyText('${escapeStr(wo.portal_folder_url)}')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-300 font-bold text-[11px] shrink-0 border border-slate-700"><i class="fa-regular fa-copy mr-1"></i>Kopyala</button>` : ''}
                 </div>
 
-                <!-- Otomatik Portal & Şirket Kimliği Kartı (Adres/Şifre İstemez) -->
-                <div id="portalQuickSetupBox" class="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 space-y-1.5">
-                    <div class="flex items-center justify-between gap-2">
-                        <div class="min-w-0 flex items-center gap-1.5 text-emerald-900 font-bold">
-                            <i class="fa-solid fa-cloud-check text-emerald-600 shrink-0"></i>
-                            <span>Otomatik Bulut Portalı Hazır ✓</span>
-                        </div>
-                        <span class="text-[10px] font-mono text-emerald-700 truncate max-w-[160px]" title="${escapeStr(cfg.portalUrl)}">${escapeStr(portalHostLabel)}</span>
+                ${!company.isCustomized ? `
+                    <div class="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-2.5 py-2 flex items-center justify-between gap-2">
+                        <span>Şirket kısaltması henüz varsayılan (/p/${escapeStr(company.companySlug)}-...)</span>
+                        <button type="button" onclick="closeModal(); setTimeout(() => { if(typeof openCompanySettingsModal==='function') openCompanySettingsModal(); else navigateTo('settings'); }, 60);" class="font-bold text-amber-950 underline shrink-0">Şirket Adını Ayarla</button>
                     </div>
-                    <div class="flex items-center justify-between gap-2 flex-wrap text-[11px] text-emerald-950">
-                        <span class="flex items-center gap-1 min-w-0">
-                            <i class="fa-solid fa-building text-emerald-700 shrink-0"></i>
-                            <span class="truncate">Şirket: <strong>${escapeStr(company.companyName)}</strong></span>
-                        </span>
-                        <span class="font-mono text-[10px] px-2 py-0.5 rounded bg-white border border-emerald-200 text-emerald-800 shrink-0">Ön Ek: /p/${escapeStr(company.companySlug)}-...</span>
-                    </div>
-                    ${!company.isCustomized ? `
-                        <div class="text-[10px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 flex items-center justify-between gap-2">
-                            <span>Şirket kısaltmanız henüz varsayılan. İsterseniz firma adınızı girin:</span>
-                            <button type="button" onclick="closeModal(); setTimeout(() => { if(typeof openCompanySettingsModal==='function') openCompanySettingsModal(); else navigateTo('settings'); }, 60);" class="font-bold text-amber-950 underline shrink-0">Şirket Adını Ayarla</button>
-                        </div>
-                    ` : ''}
-                </div>
+                ` : ''}
 
                 <!-- Rapor Seçimi -->
                 <div class="space-y-1.5">
@@ -1604,11 +1587,11 @@ ${ramsCss}
                     <div class="max-h-44 overflow-y-auto space-y-1.5 pr-0.5">${reportsHtml}</div>
                 </div>
 
-                <!-- Harici PDF Ekleme (İsteğe Bağlı) -->
+                <!-- Harici PDF Ekleme -->
                 <div class="rounded-xl border border-slate-200 bg-slate-50/70 overflow-hidden">
                     <button type="button" onclick="document.getElementById('portalExtPdfFields').classList.toggle('hidden')"
                         class="w-full px-3 py-2 flex items-center justify-between font-bold text-slate-800 hover:bg-slate-100 transition">
-                        <span class="flex items-center gap-1.5"><i class="fa-solid fa-file-circle-plus text-rose-600"></i> + Hazır PDF Dosyası Ekle (İsteğe Bağlı)</span>
+                        <span class="flex items-center gap-1.5"><i class="fa-solid fa-file-circle-plus text-rose-600"></i> Hazır PDF Dosyası Ekle</span>
                         <i class="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
                     </button>
                     <div id="portalExtPdfFields" class="${reports.length === 0 ? '' : 'hidden'} p-3 pt-1 border-t border-slate-200 space-y-2 bg-white">
@@ -1628,7 +1611,7 @@ ${ramsCss}
                     </div>
                 </div>
 
-                <!-- Müşteri Firma Giriş Bilgileri (Kullanıcı Adı & Şifre ile Firma İzolasyonu) -->
+                <!-- Müşteri Firma Giriş Bilgileri -->
                 <div class="p-3 rounded-xl border border-indigo-200 bg-indigo-50/70 space-y-2">
                     <div class="flex items-center justify-between gap-2 flex-wrap">
                         <label class="font-bold text-slate-900 flex items-center gap-1.5">
@@ -1636,8 +1619,8 @@ ${ramsCss}
                             <span>Müşteri Firma Giriş Bilgileri</span>
                         </label>
                         ${remembered
-                            ? `<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-[10px]">✓ Kayıtlı Firma Hesabı</span>`
-                            : `<span class="px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 border border-sky-200 font-bold text-[10px]">Otomatik Hesap Açılır</span>`}
+                            ? `<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-[10px]">Kayıtlı Hesap</span>`
+                            : ''}
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
@@ -1657,13 +1640,10 @@ ${ramsCss}
                                 class="w-full px-2.5 py-1.5 border border-slate-300 bg-white rounded-lg text-xs font-mono font-bold text-slate-900">
                         </div>
                     </div>
-                    <div class="text-[10px] text-slate-600 leading-snug">
-                        Müşteri <strong class="font-mono">${escapeStr(portalHostLabel)}</strong> adresinden bu bilgilerle giriş yaparak yalnızca kendi firmasına ait raporları görür. Diğer firmaların raporları gizlidir.
-                    </div>
                     ${wo.portal_pin ? `
                         <label class="flex items-center gap-1.5 text-[11px] text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 cursor-pointer">
                             <input type="checkbox" id="portalUploadClearPinCb" checked class="accent-indigo-600">
-                            <span>Eski klasör PIN kilidini (<strong>${escapeStr(wo.portal_pin)}</strong>) kaldır — yalnızca kullanıcı adı &amp; şifre ile açılsın</span>
+                            <span>Eski klasör PIN'ini (<strong>${escapeStr(wo.portal_pin)}</strong>) kaldır</span>
                         </label>
                     ` : ''}
                 </div>
@@ -1929,9 +1909,11 @@ ${ramsCss}
                 resultBox.classList.remove('hidden');
                 toast(`${uploaded.length} rapor internet portalına yüklendi!`, 'success');
 
-                // Refresh work-order details view in background if currently visible
+                // Refresh active view in background
                 if (window.AppState?.currentRoute === 'work-order-details' && typeof window.renderWorkOrderDetails === 'function' && _portalModalState.wo?.id) {
                     window.renderWorkOrderDetails(_portalModalState.wo.id);
+                } else if (window.AppState?.currentRoute === 'home' && typeof window.renderHome === 'function') {
+                    window.renderHome();
                 }
             } else {
                 const msg = errors.join('\n') || 'Yükleme sırasında hata oluştu.';

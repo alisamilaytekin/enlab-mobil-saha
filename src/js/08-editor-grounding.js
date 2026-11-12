@@ -120,8 +120,6 @@ function renderGrounding2202Editor() {
 
                 <span>2. Ekipman ve Tesisat Bilgileri</span>
 
-                <span class="text-[11px] text-slate-300 font-normal">2.1 Etiket & 2.2 Tespit</span>
-
             </div>
 
             <div class="p-3.5 space-y-3 text-xs">
@@ -510,9 +508,9 @@ function renderGrounding2202Editor() {
 
                 ${gd.points.length === 0 ? `
 
-                    <div class="p-8 text-center text-slate-400 bg-white rounded-2xl border border-dashed border-slate-200 text-xs sm:text-sm">
+                    <div class="p-6 text-center text-slate-400 bg-white rounded-2xl border border-dashed border-slate-200 text-xs sm:text-sm">
 
-                        Henüz ölçüm noktası eklenmedi. Ölçülen priz, aydınlatma veya pano noktalarını eklemek için yukarıdaki <strong>+ Nokta Ekle</strong> butonuna dokununuz.
+                        Henüz ölçüm noktası eklenmedi.
 
                     </div>
 
@@ -656,17 +654,11 @@ function renderGrounding2202Editor() {
 
                             <div class="relative space-y-1">
 
-                                <label class="block text-xs font-bold text-slate-700 mb-0.5 flex items-center justify-between">
+                                <label class="block text-xs font-bold text-slate-700 mb-0.5 flex items-center gap-1.5">
 
-                                    <span class="flex items-center gap-1.5">
+                                    <i class="fa-solid fa-tag text-sky-600"></i>
 
-                                        <i class="fa-solid fa-tag text-sky-600"></i>
-
-                                        <span>Ölçüm Noktası / Pano Adı</span>
-
-                                    </span>
-
-                                    <span class="text-xs font-medium text-slate-400">Yazın veya rozete dokunun</span>
+                                    <span>Ölçüm Noktası / Pano Adı</span>
 
                                 </label>
 
@@ -1012,7 +1004,7 @@ function renderGrounding2202Editor() {
 
                     <div class="p-4 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-xs">
 
-                        RCD Selektivite satırı eklenmedi. Rapor PDF çıktısında standart olarak <strong>"Uygulaması Yok"</strong> görünecektir. Tesisinizde selektivite mevcut ise yukarıdaki <strong>+ Selektivite Ekle</strong> butonundan ekleyebilirsiniz.
+                        RCD Selektivite satırı eklenmedi (Varsayılan: Uygulaması Yok).
 
                     </div>
 

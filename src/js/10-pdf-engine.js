@@ -1733,12 +1733,81 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
 
         // Block 3: 2.2. TESPİT EDİLEN BİLGİLER
+        const sec22Questions = area0.topics[1].questions || [];
+        const renderMinistrySec22Table = () => {
+            const dotHtml = (selected, isBad = false) => {
+                const bg = isBad ? '#ffffff' : (selected ? '#0f172a' : '#ffffff');
+                const bd = isBad ? '#be123c' : '#0f172a';
+                const inner = isBad ? '' : '';
+                return `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;border:1.1px solid ${bd};background:${bg};vertical-align:middle;margin-right:4px;box-sizing:border-box;">${inner}</span>`;
+            };
+            const optPairHtml = (guid, optA, optB) => {
+                const cur = String(fd.answers[`q_${guid}`] || '').trim();
+                const selA = cur === optA;
+                const selB = cur === optB;
+                return `
+                    <span style="display:inline-flex;align-items:center;margin-right:16px;font-weight:${selA ? '700' : '400'};color:#111;">${dotHtml(selA)}${optA}</span>
+                    <span style="display:inline-flex;align-items:center;font-weight:${selB ? '700' : '400'};color:#111;">${dotHtml(selB)}${optB}</span>
+                `;
+            };
+
+            const qChange = sec22Questions[0];
+            const qSpd = sec22Questions[1];
+            const qPrevTag = sec22Questions[2];
+            const protectionQs = sec22Questions.slice(3);
+
+            const protectionRowsHtml = protectionQs.map(q => {
+                const cur = String(fd.answers[`q_${q.guid}`] || '').trim();
+                const isSelected = (cur === 'Var' || cur === 'Uygun');
+                const isBad = (cur === 'Uygunsuz' || cur === 'Uygun Değil');
+                const shortTxt = String(q.question || '').replace(/^Tespit edilen bilgiler\s*\([^)]*\)\s*-\s*/i, '').trim();
+                return `
+                    <div style="display:flex;align-items:flex-start;gap:4px;line-height:1.3;margin-bottom:1px;">
+                        <span style="flex-shrink:0;margin-top:2px;">${dotHtml(isSelected, isBad)}</span>
+                        <span style="font-weight:${(isSelected || isBad) ? '700' : '400'};color:${isBad ? '#be123c' : '#111'};">
+                            ${shortTxt}${isBad ? ' <span style="color:#be123c;font-weight:700;">(Uygunsuz)</span>' : ''}
+                        </span>
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <table class="tkm-table">
+                    <colgroup>
+                        <col style="width:43%;">
+                        <col style="width:57%;">
+                    </colgroup>
+                    <tbody>
+                        <tr>
+                            <td style="text-align:left;padding:2.5px 6px;font-weight:600;color:#111;">${qChange ? qChange.question : 'Tesisatta kapsamlı değişiklik var mı? (&gt;%20)'}</td>
+                            <td style="text-align:left;padding:2.5px 6px;">${qChange ? optPairHtml(qChange.guid, 'Var', 'Yok') : ''}</td>
+                        </tr>
+                        <tr>
+                            <td style="text-align:left;padding:2.5px 6px;font-weight:600;color:#111;">${qSpd ? qSpd.question : 'Tesisatta aşırı gerilim koruma cihazları (DKD/SPD) kullanılmış mı?'}</td>
+                            <td style="text-align:left;padding:2.5px 6px;">${qSpd ? optPairHtml(qSpd.guid, 'Evet', 'Hayır') : ''}</td>
+                        </tr>
+                        <tr>
+                            <td style="text-align:left;padding:3px 6px;font-weight:600;vertical-align:middle;color:#111;">
+                                Tespit edilen bilgiler<br>(Doğrudan dokunmaya karşı koruma önlemleri)
+                            </td>
+                            <td style="text-align:left;padding:3px 6px;font-size:6.8pt;">
+                                ${protectionRowsHtml}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="text-align:left;padding:2.5px 6px;font-weight:600;color:#111;">${qPrevTag ? qPrevTag.question : 'Bir önceki periyodik kontrol etiketi var mı?'}</td>
+                            <td style="text-align:left;padding:2.5px 6px;">${qPrevTag ? optPairHtml(qPrevTag.guid, 'Var', 'Yok') : ''}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            `;
+        };
 
         blocks.push(`
 
             <div class="tkm-sub-bar">2.2. TESPİT EDİLEN BİLGİLER</div>
 
-            ${renderOrderedGridTable(area0.topics[1].questions, 3)}
+            ${isRamsTheme(activePdfTheme) ? renderMinistrySec22Table() : renderOrderedGridTable(sec22Questions, 3)}
 
         `);
 
@@ -1872,9 +1941,39 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
                 ? fd.tableRows[tKey]
                 : [createDefaultTopicRow(area3, topic, 1)];
             const chunkSize = 8;
+
+            const topicColWidths = tKey === 'topic_3_3'
+                ? ['2.7%', '14.5%', '7.6%', '5.6%', '7.6%', '8.4%', '6.8%', '7.0%', '7.6%', '7.4%', '7.4%', '6.4%', '6.4%', '4.6%']
+                : tKey === 'topic_3_4'
+                    ? ['3.5%', '25.5%', '14.5%', '14.5%', '18.5%', '16.5%', '7.0%']
+                    : tKey === 'topic_3_5'
+                        ? ['3.5%', '38.5%', '11.5%', '11.5%', '27.0%', '8.0%']
+                        : null;
+
+            const colGroupHtml = (topicColWidths && topicColWidths.length === topic.questions.length + 1)
+                ? `<colgroup>${topicColWidths.map(w => `<col style="width:${w};">`).join('')}</colgroup>`
+                : '';
+
+            const formatPdfTopicHdr = (q) => {
+                let hdr = getShortTopicQuestionLabel(3, topic.index, q.question);
+                if (tKey === 'topic_3_3') {
+                    if (hdr === 'Pano / Linye Tanımı') return 'Pano / Tablo<br>Linye Adı';
+                    if (hdr === 'Sonuç / Değerlendirme') return 'Sonuç';
+                }
+                return hdr;
+            };
+
+            const tableCls = tKey === 'topic_3_3' ? 'tkm-table tkm-linye-table' : 'tkm-table';
+            const thNoStyle = topicColWidths
+                ? 'text-align:center;font-weight:700;'
+                : 'width:24px;text-align:center;font-weight:700;font-size:7pt;';
+            const thDefaultStyle = tKey === 'topic_3_3'
+                ? 'text-align:center;font-weight:700;'
+                : 'text-align:center;font-weight:700;font-size:6.8pt;line-height:1.18;padding:2.8px 3px;';
+
             const ths = topic.questions.map(q => {
-                const hdr = getShortTopicQuestionLabel(3, topic.index, q.question);
-                return `<th style="text-align:center;font-weight:700;font-size:6.8pt;line-height:1.12;padding:2px;">${hdr}</th>`;
+                const hdr = formatPdfTopicHdr(q);
+                return `<th style="${thDefaultStyle}">${hdr}</th>`;
             }).join('');
 
             for (let start = 0; start < allRows.length; start += chunkSize) {
@@ -1882,7 +1981,11 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
                 const trs = slice.map((r, idx) => `
                     <tr>
                         <td style="text-align:center;">${start + idx + 1}</td>
-                        ${topic.questions.map(q => `<td style="text-align:center;font-size:7.1pt;">${q.type === 'YesNo' ? formatSymbolForPrint(r[q.guid] || '') : (r[q.guid] ?? '')}</td>`).join('')}
+                        ${topic.questions.map((q, qIdx) => {
+                            const cellAlign = (qIdx === 0 && (tKey === 'topic_3_3' || tKey === 'topic_3_4' || tKey === 'topic_3_5')) ? 'left' : 'center';
+                            const cellVal = q.type === 'YesNo' ? formatSymbolForPrint(r[q.guid] || '') : (r[q.guid] ?? '');
+                            return `<td style="text-align:${cellAlign};font-size:7.1pt;">${cellVal}</td>`;
+                        }).join('')}
                     </tr>
                 `).join('');
                 const chunkTitle = start === 0 ? subTitle : `${subTitle} (Devamı)`;
@@ -1895,10 +1998,11 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
                 blocks.push(`
                     <div class="tkm-sub-bar">${chunkTitle}</div>
-                    <table class="tkm-table">
+                    <table class="${tableCls}">
+                        ${colGroupHtml}
                         <thead>
                             <tr>
-                                <th style="width:24px;text-align:center;font-weight:700;font-size:7pt;">No</th>
+                                <th style="${thNoStyle}">No</th>
                                 ${ths}
                             </tr>
                         </thead>

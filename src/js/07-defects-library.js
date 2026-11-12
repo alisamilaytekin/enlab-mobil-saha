@@ -126,7 +126,7 @@ function renderNonConformityPickerModalUI() {
 
         <div class="p-6 text-center text-slate-400 text-xs">
 
-            Aradığınız kritere uygun madde bulunamadı. Aşağıdaki kutudan yeni bir madde ekleyebilirsiniz.
+            Uygun madde bulunamadı.
 
         </div>
 
@@ -486,7 +486,7 @@ function renderEvaluationAndFooterSection() {
 
             <div class="flex items-center justify-between border-b border-slate-100 pb-2">
 
-                <span class="font-black text-xs text-slate-800 uppercase tracking-wide">KUSUR, NOT, SONUÇ VE ONAY (BÖLÜM 7 - 9 - 10 - 11)</span>
+                <span class="font-black text-xs text-slate-800 uppercase tracking-wide">7-10. KUSUR, NOT VE SONUÇ</span>
 
                 <div class="flex items-center gap-1.5">
 
@@ -548,7 +548,7 @@ function renderEvaluationAndFooterSection() {
 
                     oninput="AppState.currentFormData.defectNotes=this.value; triggerAutoSave();"
 
-                    placeholder="Uygunsuzluk maddeleri buraya eklenecektir veya yukarıdaki 'Uygunsuzluk Seç / Ekle' butonundan hazır seçebilirsiniz..."
+                    placeholder="Uygunsuzluk açıklamaları..."
 
                     class="w-full border border-slate-300 rounded-xl p-2.5 text-slate-800 leading-relaxed focus:border-sky-500 focus:outline-none font-medium">${fd.defectNotes || ''}</textarea>
 
@@ -564,7 +564,7 @@ function renderEvaluationAndFooterSection() {
 
                     oninput="AppState.currentFormData.generalNotes=this.value; triggerAutoSave();"
 
-                    placeholder="9. NOTLAR: Tesisin proje sorumlusu/çizen bilgileri veya genel saha notlarını buraya yazabilirsiniz (Boş bırakılırsa standart proje bilgisi metni basılır)..."
+                    placeholder="Proje sorumlusu veya saha notları..."
 
                     class="w-full border border-slate-300 rounded-xl p-2.5 text-slate-700 focus:border-sky-500 focus:outline-none">${fd.generalNotes || ''}</textarea>
 
@@ -600,13 +600,11 @@ function renderEvaluationAndFooterSection() {
 
                     <label class="block font-bold text-slate-800 mb-1">Rapor Tarihi</label>
 
-                    <input type="text" value="${AppState.currentInspection?.inspection_date || ''}"
+                    <input type="date" id="editorReportDateInput" value="${escapeHtml((typeof toIsoDate === 'function' ? toIsoDate(AppState.currentInspection?.inspection_date || AppState.currentFormData?.companyInfo?.reportDate) : '') || '')}"
 
-                        placeholder=""
+                        onchange="if(typeof updateReportDateManual === 'function') updateReportDateManual(this.value);"
 
-                        oninput="AppState.currentInspection.inspection_date=this.value; triggerAutoSave();"
-
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-2">
+                        class="w-full border border-slate-300 rounded-lg px-2.5 py-2 bg-white">
 
                 </div>
 
@@ -614,13 +612,11 @@ function renderEvaluationAndFooterSection() {
 
                     <label class="block font-bold text-slate-800 mb-1">Sonraki Kontrol Tarihi</label>
 
-                    <input type="text" value="${fd.nextInspectionDate || ''}"
+                    <input type="date" id="editorNextControlDateInput" value="${escapeHtml((typeof toIsoDate === 'function' ? toIsoDate(fd.nextInspectionDate || AppState.currentFormData?.companyInfo?.nextControlDate) : '') || '')}"
 
-                        placeholder=""
+                        onchange="if(typeof updateReportNextDateManual === 'function') updateReportNextDateManual(this.value);"
 
-                        oninput="AppState.currentFormData.nextInspectionDate=this.value; triggerAutoSave();"
-
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-2">
+                        class="w-full border border-slate-300 rounded-lg px-2.5 py-2 bg-white">
 
                 </div>
 
@@ -722,7 +718,26 @@ function autoCompileDefectNotes() {
 
         });
 
+        if (typeof window.getElectrical22DefectLines === 'function') {
+
+            window.getElectrical22DefectLines(fd).forEach(l => {
+
+                if (!detectedDefects.includes(l)) detectedDefects.push(l);
+
+            });
+
+        }
+
+        const has61Helper = typeof window.getElectrical61DefectLines === 'function';
+        if (has61Helper) {
+            window.getElectrical61DefectLines(fd).forEach(l => {
+                if (!detectedDefects.includes(l)) detectedDefects.push(l);
+            });
+        }
+
         Object.keys(fd.tableRows || {}).forEach(tKey => {
+
+            if (has61Helper && (tKey === 'topic_3_3' || tKey === 'topic_3_4' || tKey === 'topic_3_5')) return;
 
             const rows = fd.tableRows[tKey] || [];
 
@@ -1344,17 +1359,15 @@ function renderLinyeDropdownItems(pIdx, query) {
 
     let headerHtml = `
 
-        <div class="px-3 py-1.5 bg-slate-900 text-white font-bold text-[10px] flex items-center justify-between border-b border-slate-800 sticky top-0 z-10 select-none">
+        <div class="px-3 py-1.5 bg-slate-900 text-white font-bold text-[10px] flex items-center border-b border-slate-800 sticky top-0 z-10 select-none">
 
             <span class="flex items-center gap-1.5">
 
                 <i class="fa-solid fa-bolt text-amber-400"></i>
 
-                <span>Akıllı Pano & Linye Listesi</span>
+                <span>Pano &amp; Linye Listesi</span>
 
             </span>
-
-            <span class="text-[9px] text-sky-300 font-medium">Sık kullanılanlar üstte</span>
 
         </div>
 
@@ -1398,7 +1411,7 @@ function renderLinyeDropdownItems(pIdx, query) {
 
             <div class="p-3 text-center text-slate-400 text-xs bg-white">
 
-                Öneri bulunamadı. Pano adını doğrudan yazabilirsiniz.
+                Öneri bulunamadı.
 
             </div>
 

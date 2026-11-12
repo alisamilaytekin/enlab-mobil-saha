@@ -418,7 +418,158 @@ function ensureCompanyInfo() {
 
     if (fd.companyInfo.nextControlDate === undefined) fd.companyInfo.nextControlDate = fd.nextInspectionDate || '';
 
+    // İlk kez rapora girildiğinde tarih, saat ve sonraki kontrol tarihini otomatik ayarla
+    const ci = fd.companyInfo;
+    if (!ci._dateTimeInitialized) {
+        if (ci.startEndTime && String(ci.startEndTime).trim()) {
+            // Mevcut eski formatlı kaydı koru ve parçalayabildiklerini picker'lara aktar
+            const raw = String(ci.startEndTime).trim();
+            const times = raw.match(/\b(\d{1,2}:\d{2})\b/g) || [];
+            const dates = raw.match(/\b(\d{1,2}\.\d{1,2}\.\d{4})\b/g) || [];
+            ci.controlStartDate = toIsoDate(dates[0] || insp.inspection_date || ci.reportDate) || getLocalTodayIso();
+            ci.controlEndDate = toIsoDate(dates[1] || dates[0] || ci.controlStartDate) || ci.controlStartDate;
+            ci.controlStartTime = times[0] ? times[0].padStart(5, '0') : '';
+            ci.controlEndTime = times[1] ? times[1].padStart(5, '0') : '';
+        } else {
+            const prefs = (typeof ReportDateTimePrefs !== 'undefined') ? ReportDateTimePrefs.get() : { fixedStartTime: '', fixedEndTime: '' };
+            const todayIso = getLocalTodayIso();
+            const startTime = prefs.fixedStartTime || getLocalNowHHMM();
+            const endTime = prefs.fixedEndTime || '';
+            let endIso = todayIso;
+            if (prefs.fixedStartTime && prefs.fixedEndTime && prefs.fixedEndTime < prefs.fixedStartTime) {
+                endIso = addDaysIso(todayIso, 1);
+            }
+            ci.controlStartDate = todayIso;
+            ci.controlStartTime = startTime;
+            ci.controlEndDate = endIso;
+            ci.controlEndTime = endTime;
+            ci.startEndTime = formatStartEndTimeDisplay(todayIso, startTime, endIso, endTime);
+            const trStart = toTrDate(todayIso);
+            ci.reportDate = trStart;
+            insp.inspection_date = trStart;
+            const months = (typeof ReportDateTimePrefs !== 'undefined') ? ReportDateTimePrefs.getValidityMonths(insp.template_id) : 12;
+            const nextTr = toTrDate(addMonthsIso(todayIso, months));
+            fd.nextInspectionDate = nextTr;
+            ci.nextControlDate = nextTr;
+        }
+        ci._dateTimeInitialized = true;
+    } else {
+        if (!ci.controlStartDate) ci.controlStartDate = toIsoDate(insp.inspection_date || ci.reportDate) || getLocalTodayIso();
+        if (!ci.controlEndDate) ci.controlEndDate = ci.controlStartDate;
+        if (!ci.startEndTime) {
+            ci.startEndTime = formatStartEndTimeDisplay(ci.controlStartDate, ci.controlStartTime, ci.controlEndDate, ci.controlEndTime);
+        }
+    }
+
 }
+
+function syncReportNextDateFromStart(baseIso) {
+    const fd = AppState.currentFormData;
+    const insp = AppState.currentInspection;
+    if (!fd || !insp || !baseIso) return;
+    if (!fd.companyInfo) fd.companyInfo = {};
+    const months = (typeof ReportDateTimePrefs !== 'undefined') ? ReportDateTimePrefs.getValidityMonths(insp.template_id) : 12;
+    const nextIso = addMonthsIso(baseIso, months);
+    const nextTr = toTrDate(nextIso);
+    fd.nextInspectionDate = nextTr;
+    fd.companyInfo.nextControlDate = nextTr;
+    const qNext = document.getElementById('editorQuickNextDateInput');
+    if (qNext && qNext.value !== nextIso) qNext.value = nextIso;
+    const sNext = document.getElementById('editorNextControlDateInput');
+    if (sNext && sNext.value !== nextIso) sNext.value = nextIso;
+}
+
+function updateReportDateTimeField(field, value) {
+    ensureCompanyInfo();
+    const ci = AppState.currentFormData.companyInfo;
+    const insp = AppState.currentInspection;
+    ci._dateTimeInitialized = true;
+
+    if (field === 'startDate') {
+        const iso = toIsoDate(value);
+        if (!iso) return;
+        const prevStart = ci.controlStartDate;
+        ci.controlStartDate = iso;
+        if (!ci.controlEndDate || ci.controlEndDate === prevStart || ci.controlEndDate < iso) {
+            ci.controlEndDate = (ci.controlStartTime && ci.controlEndTime && ci.controlEndTime < ci.controlStartTime)
+                ? addDaysIso(iso, 1)
+                : iso;
+            const endDateEl = document.getElementById('editorEndDateInput');
+            if (endDateEl) endDateEl.value = ci.controlEndDate;
+        }
+        const tr = toTrDate(iso);
+        ci.reportDate = tr;
+        if (insp) insp.inspection_date = tr;
+        const repDateEl = document.getElementById('editorReportDateInput');
+        if (repDateEl) repDateEl.value = iso;
+        syncReportNextDateFromStart(iso);
+    } else if (field === 'startTime') {
+        ci.controlStartTime = String(value || '').trim();
+        if (ci.controlStartDate) syncReportNextDateFromStart(ci.controlStartDate);
+    } else if (field === 'endDate') {
+        const iso = toIsoDate(value);
+        if (iso) ci.controlEndDate = iso;
+    } else if (field === 'endTime') {
+        ci.controlEndTime = String(value || '').trim();
+        if (ci.controlStartDate && ci.controlStartTime && ci.controlEndTime && ci.controlEndTime < ci.controlStartTime && ci.controlEndDate === ci.controlStartDate) {
+            ci.controlEndDate = addDaysIso(ci.controlStartDate, 1);
+            const endDateEl = document.getElementById('editorEndDateInput');
+            if (endDateEl) endDateEl.value = ci.controlEndDate;
+        }
+        if (ci.controlStartDate && !AppState.currentFormData.nextInspectionDate) {
+            syncReportNextDateFromStart(ci.controlStartDate);
+        }
+    }
+
+    ci.startEndTime = formatStartEndTimeDisplay(ci.controlStartDate, ci.controlStartTime, ci.controlEndDate, ci.controlEndTime);
+    const previewEl = document.getElementById('editorStartEndPreview');
+    if (previewEl) previewEl.textContent = ci.startEndTime || '-';
+    triggerAutoSave();
+}
+
+function setReportEndTimeNow() {
+    ensureCompanyInfo();
+    const ci = AppState.currentFormData.companyInfo;
+    const nowTime = getLocalNowHHMM();
+    const todayIso = getLocalTodayIso();
+    ci.controlEndTime = nowTime;
+    ci.controlEndDate = todayIso;
+    const endTimeEl = document.getElementById('editorEndTimeInput');
+    if (endTimeEl) endTimeEl.value = nowTime;
+    const endDateEl = document.getElementById('editorEndDateInput');
+    if (endDateEl) endDateEl.value = todayIso;
+    updateReportDateTimeField('endTime', nowTime);
+}
+
+function updateReportDateManual(isoVal) {
+    const iso = toIsoDate(isoVal);
+    if (!iso || !AppState.currentInspection || !AppState.currentFormData) return;
+    ensureCompanyInfo();
+    const tr = toTrDate(iso);
+    AppState.currentInspection.inspection_date = tr;
+    AppState.currentFormData.companyInfo.reportDate = tr;
+    syncReportNextDateFromStart(iso);
+    triggerAutoSave();
+}
+
+function updateReportNextDateManual(isoVal) {
+    const iso = toIsoDate(isoVal);
+    if (!AppState.currentFormData) return;
+    if (!AppState.currentFormData.companyInfo) AppState.currentFormData.companyInfo = {};
+    const tr = iso ? toTrDate(iso) : '';
+    AppState.currentFormData.nextInspectionDate = tr;
+    AppState.currentFormData.companyInfo.nextControlDate = tr;
+    const qNext = document.getElementById('editorQuickNextDateInput');
+    if (qNext && qNext.value !== iso) qNext.value = iso;
+    const sNext = document.getElementById('editorNextControlDateInput');
+    if (sNext && sNext.value !== iso) sNext.value = iso;
+    triggerAutoSave();
+}
+
+window.updateReportDateTimeField = updateReportDateTimeField;
+window.setReportEndTimeNow = setReportEndTimeNow;
+window.updateReportDateManual = updateReportDateManual;
+window.updateReportNextDateManual = updateReportNextDateManual;
 
 
 
@@ -472,20 +623,6 @@ function renderSharedCompanyInfoSection() {
 
                 <div>
 
-                    <label class="block font-bold text-slate-700 mb-1">Rapor / Ekipman Adı</label>
-
-                    <input type="text" value="${escapeHtml(insp.equipment_name || ci.equipmentName || '')}"
-
-                        placeholder=""
-
-                        oninput="updateInspectionName(this.value);"
-
-                        class="w-full border border-amber-300 rounded-lg px-2.5 py-1.5 font-bold text-slate-900 bg-amber-50/50 focus:bg-white focus:border-sky-500 focus:outline-none">
-
-                </div>
-
-                <div>
-
                     <label class="block font-bold text-slate-700 mb-1">Seri No / Pano Kodu</label>
 
                     <input type="text" value="${escapeHtml(ci.serialCode || '')}" placeholder=""
@@ -498,13 +635,105 @@ function renderSharedCompanyInfoSection() {
 
                 <div>
 
-                    <label class="block font-bold text-slate-700 mb-1">Kontrol Saati</label>
+                    <label class="block font-bold text-slate-700 mb-1">Rapor No</label>
 
-                    <input type="text" value="${escapeHtml(ci.startEndTime || '')}" placeholder=""
+                    <input type="text" value="${escapeHtml(ci.reportNo || insp.report_no || '')}" placeholder=""
 
-                        oninput="AppState.currentFormData.companyInfo.startEndTime=this.value; triggerAutoSave();"
+                        oninput="AppState.currentFormData.companyInfo.reportNo=this.value; AppState.currentInspection.report_no=this.value; triggerAutoSave();"
 
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
+                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono bg-white">
+
+                </div>
+
+                <div class="sm:col-span-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+
+                    <div class="flex items-center justify-between gap-2 flex-wrap">
+
+                        <span class="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+
+                            <i class="fa-solid fa-clock text-sky-600"></i>
+
+                            <span>Kontrol Tarih &amp; Saati</span>
+
+                        </span>
+
+                        <span id="editorStartEndPreview" class="text-[11px] font-mono font-semibold text-sky-800 bg-white px-2 py-0.5 rounded border border-slate-200">${escapeHtml(ci.startEndTime || '-')}</span>
+
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+
+                        <div>
+
+                            <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Başlangıç Tarihi</label>
+
+                            <input type="date" id="editorStartDateInput" value="${escapeHtml(toIsoDate(ci.controlStartDate || insp.inspection_date) || getLocalTodayIso())}"
+
+                                onchange="updateReportDateTimeField('startDate', this.value)"
+
+                                class="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-semibold bg-white">
+
+                        </div>
+
+                        <div>
+
+                            <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Başlangıç Saati</label>
+
+                            <input type="time" id="editorStartTimeInput" value="${escapeHtml(ci.controlStartTime || '')}"
+
+                                onchange="updateReportDateTimeField('startTime', this.value)"
+
+                                class="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-semibold bg-white">
+
+                        </div>
+
+                        <div>
+
+                            <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Bitiş Tarihi</label>
+
+                            <input type="date" id="editorEndDateInput" value="${escapeHtml(toIsoDate(ci.controlEndDate || ci.controlStartDate || insp.inspection_date) || getLocalTodayIso())}"
+
+                                onchange="updateReportDateTimeField('endDate', this.value)"
+
+                                class="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-semibold bg-white">
+
+                        </div>
+
+                        <div>
+
+                            <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Bitiş Saati</label>
+
+                            <div class="flex items-center gap-1">
+
+                                <input type="time" id="editorEndTimeInput" value="${escapeHtml(ci.controlEndTime || '')}"
+
+                                    onchange="updateReportDateTimeField('endTime', this.value)"
+
+                                    class="flex-1 min-w-0 border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-semibold bg-white">
+
+                                <button type="button" onclick="setReportEndTimeNow()" class="px-2 py-1.5 bg-sky-100 hover:bg-sky-200 text-sky-800 rounded-lg text-[10px] font-bold shrink-0 border border-sky-200 transition" title="Şu anki saati bitiş saati yap">Şimdi</button>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-slate-200/70">
+
+                        <div>
+
+                            <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Sonraki Periyodik Kontrol (${(typeof ReportDateTimePrefs !== 'undefined') ? ReportDateTimePrefs.getValidityMonths(insp.template_id) : 12} Ay)</label>
+
+                            <input type="date" id="editorQuickNextDateInput" value="${escapeHtml(toIsoDate(AppState.currentFormData.nextInspectionDate || ci.nextControlDate) || '')}"
+
+                                onchange="updateReportNextDateManual(this.value)"
+
+                                class="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-semibold bg-white">
+
+                        </div>
+
+                    </div>
 
                 </div>
 
@@ -532,21 +761,9 @@ function renderSharedCompanyInfoSection() {
 
                 </div>
 
-                <div>
-
-                    <label class="block font-bold text-slate-700 mb-1">Rapor No</label>
-
-                    <input type="text" value="${escapeHtml(ci.reportNo || insp.report_no || '')}" placeholder=""
-
-                        oninput="AppState.currentFormData.companyInfo.reportNo=this.value; AppState.currentInspection.report_no=this.value; triggerAutoSave();"
-
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono bg-white">
-
-                </div>
-
                 <div class="sm:col-span-2">
 
-                    <label class="block font-bold text-slate-700 mb-1"><i class="fa-solid fa-envelope text-sky-600 mr-1"></i>Yetkili E-posta Adresi <span class="text-[10px] text-slate-400 font-normal">(Rapor Gönderimi İçin)</span></label>
+                    <label class="block font-bold text-slate-700 mb-1"><i class="fa-solid fa-envelope text-sky-600 mr-1"></i>Yetkili E-posta Adresi</label>
 
                     <input type="email" value="${escapeHtml(ci.contactEmail || '')}" placeholder="yetkili@firma.com"
 
@@ -785,7 +1002,7 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
                     <button type="button" onclick="addManualMeasuringDeviceRow()"
                         class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1">
                         <i class="fa-solid fa-plus"></i>
-                        <span>+ Boş Satır Ekle</span>
+                        <span>Boş Satır Ekle</span>
                     </button>
                 `}
             </div>

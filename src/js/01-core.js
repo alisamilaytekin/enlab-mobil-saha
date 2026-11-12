@@ -86,6 +86,7 @@ function calculateInspectionProgress(insp, fd) {
 
     return { total, answered, unanswered, defects, percent };
 
+
 }
 
 
@@ -138,6 +139,7 @@ const DEFAULT_COMPANY_BRANDING = {
 
 
 
+
 const CompanySettingsManager = {
 
     STORAGE_KEY: 'enlab_company_branding_v3',
@@ -172,6 +174,7 @@ const CompanySettingsManager = {
 
                     return { ...DEFAULT_COMPANY_BRANDING, ...parsed };
 
+
                 }
 
             } else {
@@ -182,6 +185,7 @@ const CompanySettingsManager = {
 
                 return { ...DEFAULT_COMPANY_BRANDING, ...parsed };
 
+
             }
 
         } catch (e) {
@@ -191,6 +195,7 @@ const CompanySettingsManager = {
         }
 
         return { ...DEFAULT_COMPANY_BRANDING };
+
 
     },
 
@@ -204,17 +209,20 @@ const CompanySettingsManager = {
 
             const merged = { ...current, ...newSettings };
 
+
             localStorage.setItem(this.STORAGE_KEY, JSON.stringify(merged));
 
             this.syncHeaderTitle();
 
             return { success: true, message: 'Şirket ve rapor ayarları başarıyla kaydedildi.' };
 
+
         } catch (e) {
 
             console.error('CompanySettingsManager save error:', e);
 
             return { success: false, message: 'Ayarlar kaydedilemedi: ' + e.message };
+
 
         }
 
@@ -234,9 +242,11 @@ const CompanySettingsManager = {
 
             return { success: true, message: 'Varsayılan şirket ve rapor ayarlarına sıfırlandı.' };
 
+
         } catch (e) {
 
             return { success: false, message: e.message };
+
 
         }
 
@@ -306,10 +316,6 @@ const CompanySettingsManager = {
         if (titleEl) {
             titleEl.innerText = brandName;
         }
-        const subEl = document.getElementById('appHeaderBrandSub');
-        if (subEl) {
-            subEl.innerText = isCustom ? 'Hızlı Rapor' : 'Saha Kontrol';
-        }
         document.title = isCustom ? `${brandName} - Hızlı Rapor` : 'Hızlı Rapor - Saha Muayene & Test';
 
         // 2. Header Logosu: Şirketin yüklediği logo varsa doğrudan onu göster
@@ -356,6 +362,137 @@ const CompanySettingsManager = {
     }
 
 };
+
+const ReportDateTimePrefs = {
+    STORAGE_KEY: 'enlab_report_datetime_prefs_v1',
+    DEFAULTS: {
+        fixedStartTime: '',
+        fixedEndTime: '',
+        validityMonths: {
+            '2201': 12,
+            '2202': 12,
+            '2205': 12,
+            'default': 12
+        }
+    },
+    get() {
+        try {
+            const raw = localStorage.getItem(this.STORAGE_KEY);
+            if (!raw) return JSON.parse(JSON.stringify(this.DEFAULTS));
+            const parsed = JSON.parse(raw);
+            return {
+                fixedStartTime: typeof parsed.fixedStartTime === 'string' ? parsed.fixedStartTime : '',
+                fixedEndTime: typeof parsed.fixedEndTime === 'string' ? parsed.fixedEndTime : '',
+                validityMonths: Object.assign({}, this.DEFAULTS.validityMonths, parsed.validityMonths || {})
+            };
+        } catch (e) {
+            return JSON.parse(JSON.stringify(this.DEFAULTS));
+        }
+    },
+    save(nextPrefs) {
+        const current = this.get();
+        const merged = {
+            fixedStartTime: nextPrefs.fixedStartTime !== undefined ? String(nextPrefs.fixedStartTime || '').trim() : current.fixedStartTime,
+            fixedEndTime: nextPrefs.fixedEndTime !== undefined ? String(nextPrefs.fixedEndTime || '').trim() : current.fixedEndTime,
+            validityMonths: Object.assign({}, current.validityMonths, nextPrefs.validityMonths || {})
+        };
+        try { localStorage.setItem(this.STORAGE_KEY, JSON.stringify(merged)); } catch (e) {}
+        return merged;
+    },
+    getValidityMonths(templateId) {
+        const prefs = this.get();
+        const tid = String(templateId || '').trim();
+        const val = parseInt(prefs.validityMonths[tid] ?? prefs.validityMonths['default'] ?? 12, 10);
+        return (Number.isFinite(val) && val > 0) ? val : 12;
+    },
+    setValidityMonth(templateId, months) {
+        const tid = String(templateId || 'default').trim();
+        const num = parseInt(months, 10);
+        const safe = (Number.isFinite(num) && num >= 1 && num <= 120) ? num : 12;
+        const cur = this.get();
+        cur.validityMonths[tid] = safe;
+        return this.save(cur);
+    },
+    clearFixedTimes() {
+        return this.save({ fixedStartTime: '', fixedEndTime: '' });
+    }
+};
+window.ReportDateTimePrefs = ReportDateTimePrefs;
+
+function getLocalTodayIso() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
+function getLocalNowHHMM() {
+    const d = new Date();
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function toIsoDate(val) {
+    const s = String(val || '').trim();
+    if (!s) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    const m = s.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+    if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+    return '';
+}
+
+function toTrDate(val) {
+    const s = String(val || '').trim();
+    if (!s) return '';
+    if (/^\d{2}\.\d{2}\.\d{4}$/.test(s)) return s;
+    const iso = toIsoDate(s);
+    if (!iso) return s;
+    const [y, m, d] = iso.split('-');
+    return `${d}.${m}.${y}`;
+}
+
+function addDaysIso(isoDate, days) {
+    const iso = toIsoDate(isoDate) || getLocalTodayIso();
+    const [y, m, d] = iso.split('-').map(Number);
+    const dt = new Date(y, m - 1, d + (Number(days) || 0));
+    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+}
+
+function addMonthsIso(isoDate, months) {
+    const iso = toIsoDate(isoDate) || getLocalTodayIso();
+    const [y, m, d] = iso.split('-').map(Number);
+    const totalMonths = (y * 12 + (m - 1)) + (parseInt(months, 10) || 12);
+    const targetY = Math.floor(totalMonths / 12);
+    const targetM = totalMonths % 12;
+    const maxDay = new Date(targetY, targetM + 1, 0).getDate();
+    const targetD = Math.min(d, maxDay);
+    return `${targetY}-${String(targetM + 1).padStart(2, '0')}-${String(targetD).padStart(2, '0')}`;
+}
+
+function formatStartEndTimeDisplay(startIso, startTime, endIso, endTime) {
+    const sDate = toTrDate(startIso);
+    const eDate = toTrDate(endIso || startIso);
+    const st = String(startTime || '').trim();
+    const et = String(endTime || '').trim();
+    if (sDate && st && et) {
+        if (!eDate || eDate === sDate) return `${sDate} ${st} - ${et}`;
+        return `${sDate} ${st} - ${eDate} ${et}`;
+    }
+    if (sDate && st) return `${sDate} ${st}`;
+    if (sDate && et) return `${sDate} - ${et}`;
+    if (sDate) return sDate;
+    if (st && et) return `${st} - ${et}`;
+    return st || et || '';
+}
+
+window.getLocalTodayIso = getLocalTodayIso;
+window.getLocalNowHHMM = getLocalNowHHMM;
+window.toIsoDate = toIsoDate;
+window.toTrDate = toTrDate;
+window.addDaysIso = addDaysIso;
+window.addMonthsIso = addMonthsIso;
+window.formatStartEndTimeDisplay = formatStartEndTimeDisplay;
+
 
 
 
@@ -413,9 +550,11 @@ function compressLogoImage(file, maxDim = 320, callback) {
 
         };
 
+
         img.src = e.target.result;
 
     };
+
 
     reader.readAsDataURL(file);
 
@@ -459,6 +598,7 @@ const AppState = {
 
 };
 
+
 window.AppState = AppState;
 
 
@@ -468,6 +608,7 @@ window.AppState = AppState;
 function normalizeWorkOrder(w) {
 
     if (!w) return {};
+
 
     let files = [];
 
@@ -509,7 +650,9 @@ function normalizeInspection(i) {
 
     if (!i) return {};
 
+
     let formData = {};
+
 
     try {
 
@@ -625,6 +768,7 @@ async function loadInitData() {
 
         const c = data.counts || {};
 
+
         AppState.counts = {
 
             allWorkOrdersOpen: c.allOpenWO ?? c.allWorkOrdersOpen ?? 52,
@@ -643,9 +787,11 @@ async function loadInitData() {
 
         };
 
+
         if (Array.isArray(data.electricalTemplate)) {
 
             AppState.electricalTemplate = { areas: data.electricalTemplate };
+
 
         } else if (data.electricalTemplate && data.electricalTemplate.areas) {
 
@@ -698,6 +844,7 @@ function updateSidebarBadges() {
         if (el) el.textContent = val !== undefined ? val : '';
 
     };
+
 
     setBadge('badge-all-wo', c.allWorkOrdersOpen);
 
@@ -881,6 +1028,7 @@ window.handleAndroidBackButton = function () {
     return 'HANDLED';
 
 };
+
 
 
 
@@ -1218,7 +1366,7 @@ function openImportBackupModal() {
 
         `<div class="space-y-3 text-xs">
 
-            <p class="text-slate-600">Daha önce telefondan veya bilgisayardan aldığınız <strong>.json</strong> uzantılı Hızlı Rapor saha yedek dosyasını seçerek tüm işleri, notları ve raporları yükleyebilirsiniz:</p>
+            <p class="text-slate-600">Yedek <strong>.json</strong> dosyasını seçin:</p>
 
             <input type="file" accept=".json,application/json" onchange="handleBackupFileImport(this)" class="w-full border border-slate-300 rounded-lg p-2.5 bg-slate-50">
 
@@ -1267,6 +1415,7 @@ function handleBackupFileImport(input) {
         }
 
     };
+
 
     reader.readAsText(file);
 
@@ -1414,15 +1563,9 @@ function renderGrayOfflineNotesFolderHtml() {
 
                 <div class="min-w-0 flex-1">
 
-                    <div class="font-bold text-slate-900 text-xs sm:text-sm truncate flex items-center gap-1.5">
+                    <div class="font-bold text-slate-900 text-xs sm:text-sm truncate">
 
-                        <span>Offline Not Alma Klasörü</span>
-
-                    </div>
-
-                    <div class="text-[10px] text-slate-600 truncate mt-0.5 font-medium">
-
-                        <i class="fa-solid fa-pen-to-square mr-1 text-slate-500"></i>İnternetsiz saha notları ve tespitler
+                        Offline Not Alma Klasörü
 
                     </div>
 
@@ -1434,7 +1577,7 @@ function renderGrayOfflineNotesFolderHtml() {
 
                 <span class="px-2 py-0.5 rounded-md bg-slate-700 text-white font-bold text-[10px]">
 
-                    ${noteCount} Not · Offline
+                    ${noteCount} Not
 
                 </span>
 
@@ -1489,42 +1632,6 @@ async function renderHome(opts = {}) {
     container.innerHTML = `
 
         <div class="max-w-2xl mx-auto space-y-2 pb-6">
-            <!-- 0. UYGULAMA KİMLİĞİ VE DİNAMİK ŞİRKET LOGOSU (HIZLI RAPOR) -->
-            <div class="card-craft-white p-3 flex items-center justify-between gap-3">
-                <div class="flex items-center gap-2.5 min-w-0">
-                    <div id="homeBrandLogoWrapper" class="shrink-0">
-                        ${(function(){
-                            const s = (typeof CompanySettingsManager !== 'undefined') ? CompanySettingsManager.getSettings() : DEFAULT_COMPANY_BRANDING;
-                            const isCust = s.companyShortName && s.companyShortName !== 'TEKKOMER' && s.companyShortName !== 'ENLAB' && s.companyShortName !== 'Hızlı Rapor';
-                            const title = isCust ? s.companyShortName : 'Hızlı Rapor';
-                            return s.customCompanyLogo ? 
-                                `<img src="${s.customCompanyLogo}" alt="${escapeHtml(title)}" class="h-10 w-10 object-contain p-1 bg-white rounded-xl border border-slate-200 shadow-2xs">` : 
-                                `<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-500 text-slate-950 flex items-center justify-center font-black text-lg shadow-2xs border border-amber-300">
-                                    <i class="fa-solid fa-bolt-lightning text-slate-950"></i>
-                                </div>`;
-                        })()}
-                    </div>
-                    <div class="min-w-0">
-                        <div class="flex items-center gap-1.5">
-                            <h1 id="homeBrandTitleText" class="font-black text-slate-900 text-sm sm:text-base tracking-tight truncate">${(function(){
-                                const s = (typeof CompanySettingsManager !== 'undefined') ? CompanySettingsManager.getSettings() : DEFAULT_COMPANY_BRANDING;
-                                const isCust = s.companyShortName && s.companyShortName !== 'TEKKOMER' && s.companyShortName !== 'ENLAB' && s.companyShortName !== 'Hızlı Rapor';
-                                return isCust ? s.companyShortName : 'Hızlı Rapor';
-                            })()}</h1>
-                            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-200 shrink-0">Hızlı Rapor</span>
-                        </div>
-                        <div class="text-[11px] text-slate-500 font-medium truncate flex items-center gap-1 mt-0.5">
-                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
-                            <span class="truncate">${escapeHtml(((typeof CompanySettingsManager !== 'undefined') ? CompanySettingsManager.getSettings().companyFullName : '') || 'Saha Muayene & Periyodik Kontrol')}</span>
-                        </div>
-                    </div>
-                </div>
-                <button onclick="navigateTo('settings')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-semibold rounded-lg text-xs flex items-center gap-1.5 transition border border-slate-200 shrink-0" title="Ayarlar ve Ölçüm Cihazlarım">
-                    <i class="fa-solid fa-sliders text-sky-600 text-[11px]"></i>
-                    <span class="hidden sm:inline">${isManaged ? 'Ayarlarım' : 'Şirket Ayarları'}</span>
-                </button>
-            </div>
-
 
             <!-- 1. İŞYERİ ARAMA VE YENİLE / YENİ KLASÖR -->
 
@@ -1592,9 +1699,8 @@ function renderMinimalJobCards(jobs) {
 
     if (!jobs || !jobs.length) {
 
-        return `<div class="bg-white rounded-xl border border-slate-200 p-6 text-center text-slate-500 text-xs space-y-1.5">
-            <div class="font-bold text-slate-700">${isManaged ? 'Size atanmış açık iş klasörü henüz yok' : 'Henüz iş klasörü eklenmedi'}</div>
-            <div class="text-[11px] text-slate-400">${isManaged ? 'Firma yöneticiniz internet panelinden iş açtığında burada otomatik görünür. Kontrol etmek için yukarıdaki <strong>Yenile</strong> butonuna dokunun.' : 'Üstteki <strong>"Yeni Klasör"</strong> butonuna dokunabilirsiniz.'}</div>
+        return `<div class="bg-white rounded-xl border border-slate-200 p-6 text-center text-slate-500 text-xs font-semibold">
+            ${isManaged ? 'Size atanmış açık iş klasörü yok' : 'Henüz iş klasörü yok'}
         </div>`;
 
     }
@@ -1631,6 +1737,18 @@ function renderMinimalJobCards(jobs) {
 
                 <div class="shrink-0 flex items-center gap-1">
 
+                    <button type="button" onclick="openWorkOrderPortalModal('${wo.id}', event)"
+
+                        class="px-2 py-0.5 rounded-md border ${wo.portal_folder_url ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200'} font-bold text-[10px] flex items-center gap-1 active:scale-95 transition"
+
+                        title="Müşteri İnternet Klasörü">
+
+                        <i class="fa-solid fa-globe text-[9px]"></i>
+
+                        <span>Portal</span>
+
+                    </button>
+
                     <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-bold text-[10px]">
 
                         ${count} Rapor
@@ -1657,6 +1775,134 @@ function renderMinimalJobCards(jobs) {
 
 
 
+async function openWorkOrderPortalModal(workOrderId, ev) {
+
+    if (ev && typeof ev.stopPropagation === 'function') ev.stopPropagation();
+
+    let wo = (AppState.workOrdersCache || []).find(w => String(w.id) === String(workOrderId));
+
+    if (!wo) {
+
+        try {
+
+            const res = await fetch(`/api/work-orders/${workOrderId}`);
+
+            const data = await res.json();
+
+            if (data && data.workOrder) wo = normalizeWorkOrder(data.workOrder);
+
+        } catch (e) {}
+
+    }
+
+    if (!wo) {
+
+        showToast('İş emri bulunamadı', 'error');
+
+        return;
+
+    }
+
+
+
+    const hasPortal = Boolean(wo.portal_folder_url);
+
+    const bodyHtml = `
+
+        <div class="space-y-3 text-xs">
+
+            <div class="p-2.5 rounded-xl bg-slate-900 text-white">
+
+                <div class="font-bold text-sm truncate">${escapeHtml(wo.customer_name || 'İş Klasörü')}</div>
+
+                ${wo.customer_branch ? `<div class="text-[11px] text-slate-300 truncate">${escapeHtml(wo.customer_branch)}</div>` : ''}
+
+            </div>
+
+            ${hasPortal ? `
+
+                <div class="p-3 rounded-xl bg-indigo-50 border border-indigo-200 space-y-2">
+
+                    <div class="flex items-center gap-1.5 flex-wrap font-bold text-indigo-900">
+
+                        <i class="fa-solid fa-globe text-indigo-600"></i>
+
+                        <span>Müşteri İnternet Klasörü Hazır</span>
+
+                    </div>
+
+                    <div class="flex items-center gap-1.5 flex-wrap">
+
+                        ${wo.portal_customer_username ? `<span class="px-2 py-0.5 rounded bg-indigo-100 text-indigo-900 border border-indigo-300 font-mono text-[11px]">@${escapeHtml(wo.portal_customer_username)}</span>` : ''}
+
+                        ${wo.portal_customer_password ? `<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 border border-emerald-300 font-mono text-[11px]">Şifre: ${escapeHtml(wo.portal_customer_password)}</span>` : ''}
+
+                        ${wo.portal_pin ? `<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 font-mono text-[11px]">PIN: ${escapeHtml(wo.portal_pin)}</span>` : (!wo.portal_customer_username ? `<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[11px]">Şifresiz</span>` : '')}
+
+                    </div>
+
+                    <div class="text-[11px] font-mono text-indigo-700 break-all bg-white/80 p-2 rounded-lg border border-indigo-200/70">${escapeHtml(wo.portal_folder_url)}</div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5 pt-1">
+
+                        ${wo.portal_customer_username ? `<button type="button" onclick="CloudPortal.copyCustomerLoginInfo('${escapeForJs(wo.id)}')" class="px-2.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1 transition"><i class="fa-solid fa-user-shield"></i><span>Girişi Kopyala</span></button>` : ''}
+
+                        <button type="button" onclick="CloudPortal.copyText('${escapeForJs(wo.portal_folder_url)}')" class="px-2.5 py-2 rounded-lg bg-white hover:bg-indigo-100 text-indigo-800 font-bold text-xs border border-indigo-200 flex items-center justify-center gap-1 transition">
+
+                            <i class="fa-regular fa-copy"></i><span>Linki Kopyala</span>
+
+                        </button>
+
+                        <a href="${escapeHtml(wo.portal_folder_url)}" target="_blank" rel="noopener" class="px-2.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-1 transition">
+
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i><span>Aç</span>
+
+                        </a>
+
+                    </div>
+
+                </div>
+
+            ` : `
+
+                <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center text-slate-500 text-xs">
+
+                    Henüz internet klasörü oluşturulmadı.
+
+                </div>
+
+            `}
+
+        </div>
+
+    `;
+
+
+
+    const footerHtml = `
+
+        <button type="button" onclick="closeModal()" class="px-3.5 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs">Kapat</button>
+
+        <button type="button" onclick="closeModal(); setTimeout(() => openPortalUploadModal('${escapeForJs(wo.id)}'), 50);" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1.5">
+
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+
+            <span>${hasPortal ? 'Rapor Yükle / Güncelle' : 'İnternete Yükle'}</span>
+
+        </button>
+
+    `;
+
+
+
+    openModal('<i class="fa-solid fa-globe mr-2 text-indigo-400"></i>Müşteri İnternet Klasörü', bodyHtml, footerHtml);
+
+}
+
+window.openWorkOrderPortalModal = openWorkOrderPortalModal;
+
+
+
 // ============================================================================
 
 // GÜVENLİK & ŞİFRELİ SİLME DOĞRULAMA SİSTEMİ
@@ -1667,6 +1913,7 @@ function promptSecurityPasswordConfirmation({ title, entityName, message, onConf
 
     const curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || { fullName: 'Yetkili Personel', password: '123' };
 
+
     const modalTitle = `<i class="fa-solid fa-triangle-exclamation text-rose-500 mr-2"></i>${title || 'Silme Onayı'}`;
 
     const modalBody = `
@@ -1675,7 +1922,7 @@ function promptSecurityPasswordConfirmation({ title, entityName, message, onConf
 
             <div class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-900 leading-relaxed">
 
-                <strong>DİKKAT:</strong> <strong>"${entityName || 'Kayıt'}"</strong> kalıcı olarak silinecektir. ${message || 'Bu işlem geri alınamaz.'}
+                <strong>"${entityName || 'Kayıt'}"</strong> kalıcı olarak silinecektir.
 
             </div>
 
@@ -1683,7 +1930,7 @@ function promptSecurityPasswordConfirmation({ title, entityName, message, onConf
 
                 <label class="block font-bold text-slate-700">
 
-                    Silme işlemini onaylamak için <strong>${curUser.fullName}</strong> hesap şifrenizi girin:
+                    <strong>${curUser.fullName}</strong> şifresi:
 
                 </label>
 
@@ -1704,8 +1951,6 @@ function promptSecurityPasswordConfirmation({ title, entityName, message, onConf
                     </button>
 
                 </div>
-
-                <div class="text-[10px] text-slate-400">Şifrenizi "Ayarlar > Profilimi Düzenle" menüsünden değiştirebilirsiniz.</div>
 
             </div>
 

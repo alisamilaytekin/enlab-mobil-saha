@@ -151,8 +151,6 @@ function renderGenerator2205Editor() {
 
                 <span>2. Ekipman ve Muayene Bilgileri</span>
 
-                <span class="text-[11px] text-slate-300 font-normal">3. Muayene & 3.1 Ekipman</span>
-
             </div>
 
             <div class="p-3.5 space-y-3.5 text-xs">
@@ -1321,13 +1319,7 @@ function renderItemDefectPickerModalUI() {
 
             <div>
 
-                <label class="block font-bold text-slate-700 mb-1.5 flex items-center justify-between">
-
-                    <span>Kayıtlı Uygunsuzluk Cümleleri (Birine Dokunun)</span>
-
-                    <span class="text-[10px] text-slate-400 font-normal">Tek dokunuşla seçilir</span>
-
-                </label>
+                <label class="block font-bold text-slate-700 mb-1.5">Kayıtlı Uygunsuzluk Cümleleri</label>
 
                 <div class="space-y-2 max-h-56 overflow-y-auto p-1.5 border border-slate-200 rounded-xl bg-slate-50">
 
@@ -1343,17 +1335,11 @@ function renderItemDefectPickerModalUI() {
 
             <div class="p-3 bg-amber-50/80 border border-amber-200 rounded-xl space-y-2">
 
-                <div class="flex items-center justify-between">
+                <div class="font-bold text-amber-900 text-[11px] flex items-center gap-1.5">
 
-                    <span class="font-bold text-amber-900 text-[11px] flex items-center gap-1.5">
+                    <i class="fa-solid fa-circle-plus text-amber-600"></i>
 
-                        <i class="fa-solid fa-circle-plus text-amber-600"></i>
-
-                        <span>Bu Maddeye Yeni Uygunsuzluk Cümlesi Ekle</span>
-
-                    </span>
-
-                    <span class="text-[10px] text-amber-700">Diğer işlerde de hazır çıkar</span>
+                    <span>Yeni Uygunsuzluk Cümlesi Ekle</span>
 
                 </div>
 
@@ -1553,6 +1539,22 @@ function syncAllDefectsToDefectNotes() {
 
     });
 
+    if (String(AppState.currentInspection?.template_id) === '2201' && typeof window.getElectrical22DefectLines === 'function') {
+
+        window.getElectrical22DefectLines(fd).forEach(l => lines.push(l));
+
+    }
+
+    if (String(AppState.currentInspection?.template_id) === '2201' && typeof window.getElectrical61DefectLines === 'function') {
+
+        window.getElectrical61DefectLines(fd).forEach(l => {
+
+            if (!lines.includes(l)) lines.push(l);
+
+        });
+
+    }
+
 
 
     const cur = (fd.defectNotes || '').trim();
@@ -1575,6 +1577,11 @@ function syncAllDefectsToDefectNotes() {
 
     }
 
+    const defectTa = document.getElementById('defectNotesTextarea');
+    if (defectTa && defectTa.value !== fd.defectNotes) {
+        defectTa.value = fd.defectNotes;
+    }
+
 
 
     triggerAutoSave();
@@ -1588,6 +1595,9 @@ function handleAnswerInput(qKey, value) {
     if (!fd) return;
     if (!fd.answers) fd.answers = {};
     fd.answers[qKey] = value;
+    if (String(AppState.currentInspection?.template_id) === '2201' && typeof window.onElectrical2201AnswerUpdated === 'function') {
+        window.onElectrical2201AnswerUpdated(qKey, value, true);
+    }
     triggerAutoSave();
 }
 window.handleAnswerInput = handleAnswerInput;
@@ -1598,15 +1608,23 @@ function handleAnswerChange(qKey, value, questionTitle = '', isDirectInput = fal
     if (!fd.answers) fd.answers = {};
     fd.answers[qKey] = value;
 
+    const is2201 = String(AppState.currentInspection?.template_id) === '2201';
+    if (is2201 && typeof window.onElectrical2201AnswerUpdated === 'function') {
+        window.onElectrical2201AnswerUpdated(qKey, value, isDirectInput);
+    }
+
     if (isDirectInput) {
         triggerAutoSave();
         return;
     }
 
-    // Direct text entry guard: if not standard choice, only save without re-rendering DOM
+    // Direct text entry guard: if not standard choice, only save (except 2.2 edits which need styling/defect UI sync)
     const standardStatuses = ['Uygun', 'Uygun Değil', 'Kısmen Uygun', 'Uygulaması Yok', 'Görülemedi', 'Muaf', 'Kapsam Dışı', ''];
     if (!standardStatuses.includes(value)) {
         triggerAutoSave();
+        if (is2201 && (value === 'Uygunsuz' || String(questionTitle).includes('Tespit edilen bilgiler'))) {
+            paintInspectionEditorUI();
+        }
         return;
     }
 
@@ -1753,6 +1771,14 @@ function markAllVisualChecksSuitable(onlyUnanswered = true) {
             }
 
         });
+
+    }
+
+
+
+    if (String(insp.template_id) === '2201' && typeof window.syncElectrical2201Section22FromTriggers === 'function') {
+
+        window.syncElectrical2201Section22FromTriggers(null, true);
 
     }
 

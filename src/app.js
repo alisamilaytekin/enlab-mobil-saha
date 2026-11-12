@@ -1157,12 +1157,7 @@ window.HIZLI_RAPOR_CONSTANTS = {
                                     ▼
                                 </button>
                             </div>
-                            ${locked ? `
-                                <span class="px-2 py-1 rounded-lg bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-bold inline-flex items-center gap-1">
-                                    <i class="fa-solid fa-lock text-[9px] text-amber-600"></i>
-                                    <span>Yönetici Ataması</span>
-                                </span>
-                            ` : `
+                            ${locked ? '' : `
                                 <div class="flex items-center gap-1.5 flex-wrap justify-end">
                                     <button type="button" onclick="openDeviceCatalogPickerModal('settings_swap', { oldDeviceId: '${esc(dev.id)}' })"
                                         class="px-2.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-bold text-[11px] flex items-center gap-1 shadow-2xs transition">
@@ -1185,16 +1180,11 @@ window.HIZLI_RAPOR_CONSTANTS = {
                     </div>
                 `;
             }).join('') : `
-                <div class="p-4 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/70 text-center space-y-2">
-                    <div class="w-10 h-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto text-base">
+                <div class="p-4 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/70 text-center space-y-1.5">
+                    <div class="w-9 h-9 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto text-sm">
                         <i class="fa-solid fa-screwdriver-wrench"></i>
                     </div>
-                    <div class="text-xs font-bold text-slate-800">${locked ? 'Yöneticiniz henüz size cihaz atamadı' : 'Henüz üzerinize ölçüm cihazı almadınız'}</div>
-                    <p class="text-[11px] text-slate-500 max-w-sm mx-auto leading-relaxed">
-                        ${locked
-                            ? "Firma yöneticiniz web panelinden size ölçüm cihazı atadığında burada otomatik görünür ve raporlara eklenir. Atama sonrası 'Buluttan Yenile'ye dokunun."
-                            : 'Aşağıdan kendi kullandığınız cihazları (ör. Fluke / UNI-T Termal Kamera, Metrel Test Cihazı, Pensampermetre vb.) seçin; yeni rapor yazarken otomatik eklensinler.'}
-                    </p>
+                    <div class="text-xs font-bold text-slate-800">${locked ? 'Henüz size cihaz atanmadı' : 'Üzerinizde ölçüm cihazı yok'}</div>
                 </div>
             `;
 
@@ -1203,7 +1193,7 @@ window.HIZLI_RAPOR_CONSTANTS = {
                     <div class="flex items-center justify-between border-b border-slate-100 pb-2 gap-2">
                         <div class="text-xs font-bold text-slate-800 flex items-center gap-1.5 min-w-0">
                             <i class="fa-solid fa-screwdriver-wrench text-amber-600 shrink-0"></i>
-                            <span class="truncate">${locked ? 'Ölçüm Cihazlarım (Yönetici Ataması)' : 'Ölçüm Cihazlarım (Üzerime Alınanlar)'}</span>
+                            <span class="truncate">Ölçüm Cihazlarım</span>
                         </div>
                         <div class="flex items-center gap-1.5 shrink-0">
                             ${locked ? `
@@ -1212,7 +1202,7 @@ window.HIZLI_RAPOR_CONSTANTS = {
                                 </span>
                             ` : ''}
                             <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${assigned.length ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}">
-                                ${assigned.length} Aktif Cihaz
+                                ${assigned.length} Cihaz
                             </span>
                         </div>
                     </div>
@@ -1222,7 +1212,7 @@ window.HIZLI_RAPOR_CONSTANTS = {
                             <input type="checkbox" ${autoApply ? 'checked' : ''}
                                 onchange="MeasuringDevicesManager.setAutoApplyEnabled(this.checked); showToast(this.checked ? 'Raporlara otomatik cihaz ekleme açıldı' : 'Otomatik ekleme kapatıldı');"
                                 class="w-4 h-4 rounded border-amber-400 text-amber-600 focus:ring-amber-500 shrink-0">
-                            <span class="leading-snug"><strong>${esc(userName)}</strong> için yeni rapor yazarken otomatik eklensin</span>
+                            <span class="leading-snug">Yeni raporlara otomatik eklensin</span>
                         </label>
                     </div>
 
@@ -1231,27 +1221,24 @@ window.HIZLI_RAPOR_CONSTANTS = {
                     </div>
 
                     ${locked ? `
-                        <div class="pt-1 space-y-2">
+                        <div class="pt-1">
                             <button type="button" onclick="window.CloudAppSync && window.CloudAppSync.syncNow()"
                                 class="w-full py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition">
                                 <i class="fa-solid fa-arrows-rotate"></i>
-                                <span>Buluttan Yenile (Cihazları Güncelle)</span>
+                                <span>Buluttan Yenile</span>
                             </button>
-                            <div class="text-[10px] text-slate-500 text-center">
-                                Cihaz ekleme, çıkarma ve kalibrasyon güncelleme işlemleri yalnızca firma yöneticisi web panelinden yapılır.
-                            </div>
                         </div>
                     ` : `
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                             <button type="button" onclick="openDeviceCatalogPickerModal('settings_assign')"
                                 class="w-full py-2.5 px-3 bg-slate-900 hover:bg-slate-800 active:scale-95 text-amber-400 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition">
                                 <i class="fa-solid fa-list-check"></i>
-                                <span>Havuzdan Cihaz Seç / Üzerime Al (${catalog.length})</span>
+                                <span>Havuzdan Seç (${catalog.length})</span>
                             </button>
                             <button type="button" onclick="openDeviceEditModal(null, { assignByDefault: true, refreshSettings: true })"
                                 class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition">
                                 <i class="fa-solid fa-plus"></i>
-                                <span>Yeni Ölçüm Cihazı Ekle</span>
+                                <span>Yeni Cihaz Ekle</span>
                             </button>
                         </div>
                     `}
@@ -1349,18 +1336,13 @@ window.HIZLI_RAPOR_CONSTANTS = {
         if (mode === 'settings_assign') {
             const assignedCount = MeasuringDevicesManager.getAssignedDeviceIds().length;
             modalTitle = `<i class="fa-solid fa-list-check text-amber-400 mr-2"></i>Üzerime Cihaz Al (${assignedCount} Seçili)`;
-            bannerHtml = `
-                <div class="p-2.5 rounded-xl bg-sky-50 border border-sky-200 text-[11px] text-sky-900">
-                    Kendi çantanızda / üzerinizde taşıdığınız cihazları işaretleyin. Seçilen cihazlar yeni rapor oluştururken otomatik eklenir.
-                </div>
-            `;
             newDeviceContextOpts = { assignByDefault: true, reopenPicker: true };
         } else if (mode === 'settings_swap') {
             const oldDev = MeasuringDevicesManager.getDeviceById(ctx.oldDeviceId);
-            modalTitle = `<i class="fa-solid fa-right-left text-sky-400 mr-2"></i>Cihaz Değiştir (Ayarlar)`;
+            modalTitle = `<i class="fa-solid fa-right-left text-sky-400 mr-2"></i>Cihaz Değiştir`;
             bannerHtml = `
-                <div class="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-950">
-                    <span class="font-semibold">Değiştirilecek Cihaz:</span>
+                <div class="p-2 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-950">
+                    <span class="font-semibold">Değiştirilecek:</span>
                     <strong class="ml-1">${esc(oldDev ? getDeviceDisplayTitle(oldDev) : 'Seçili Cihaz')}</strong>
                     ${oldDev && oldDev.serial ? `<span class="font-mono text-[10px] ml-1">(${esc(oldDev.serial)})</span>` : ''}
                 </div>
@@ -1375,11 +1357,10 @@ window.HIZLI_RAPOR_CONSTANTS = {
             const rowLabel = [row.brand, row.model].filter(Boolean).join(' ') || row.name || `Cihaz #${Number(ctx.rowIdx) + 1}`;
             modalTitle = `<i class="fa-solid fa-right-left text-sky-400 mr-2"></i>Rapordaki Cihazı Değiştir`;
             bannerHtml = `
-                <div class="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-950">
+                <div class="p-2 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-950">
                     <span class="font-semibold">Şu an seçili:</span>
                     <strong class="ml-1">${esc(rowLabel)}</strong>
                     ${row.serial ? `<span class="font-mono text-[10px] ml-1">(${esc(row.serial)})</span>` : ''}
-                    <div class="text-[10px] text-amber-800 mt-0.5">Yeni seçtiğiniz cihaz hemen bu satırın yerine yazılır (örn. Fluke yerine UNI-T).</div>
                 </div>
             `;
             newDeviceContextOpts = {
@@ -1390,15 +1371,14 @@ window.HIZLI_RAPOR_CONSTANTS = {
         } else if (mode === 'report_thermal_swap') {
             const guids = getThermalCameraQuestions();
             const curRow = window.AppState?.currentFormData?.tableRows?.topic_1_0?.[0] || {};
-            const curCamName = curRow[guids[0]] || 'Henüz Seçilmedi';
+            const curCamName = curRow[guids[0]] || 'Seçilmedi';
             const curCamSerial = curRow[guids[1]] || '';
             modalTitle = `<i class="fa-solid fa-temperature-half text-orange-400 mr-2"></i>Termal Kamera Seç / Değiştir`;
             bannerHtml = `
-                <div class="p-2.5 rounded-xl bg-orange-50 border border-orange-200 text-[11px] text-orange-950">
-                    <span class="font-semibold">Bölüm 3 Termal Kamera:</span>
+                <div class="p-2 rounded-xl bg-orange-50 border border-orange-200 text-[11px] text-orange-950">
+                    <span class="font-semibold">Mevcut:</span>
                     <strong class="ml-1">${esc(curCamName)}</strong>
                     ${curCamSerial ? `<span class="font-mono text-[10px] ml-1">(${esc(curCamSerial)})</span>` : ''}
-                    <div class="text-[10px] text-orange-800 mt-0.5">Seçtiğiniz termal kamera Bölüm 3'e ve Bölüm 4'teki termal kamera satırına uygulanır.</div>
                 </div>
             `;
             newDeviceContextOpts = {
@@ -1408,11 +1388,6 @@ window.HIZLI_RAPOR_CONSTANTS = {
             };
         } else if (mode === 'report_add') {
             modalTitle = `<i class="fa-solid fa-plus text-emerald-400 mr-2"></i>Rapora Cihaz Ekle`;
-            bannerHtml = `
-                <div class="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-950">
-                    Üzerinizdeki cihazlardan veya havuzdan dokunarak bu rapora ekleyin.
-                </div>
-            `;
             newDeviceContextOpts = {
                 assignByDefault: false,
                 addReportAfterSave: true
@@ -1758,7 +1733,7 @@ window.HIZLI_RAPOR_CONSTANTS = {
                 <label class="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 cursor-pointer">
                     <input type="checkbox" id="devFormAssignToMe" ${isAssignedNow ? 'checked' : ''}
                         class="w-4 h-4 rounded border-emerald-400 text-emerald-600">
-                    <span class="font-bold text-emerald-950 text-xs">Bu cihaz üzerimde olsun (Yeni raporlara otomatik eklensin)</span>
+                    <span class="font-bold text-emerald-950 text-xs">Üzerimde olsun (Yeni raporlara otomatik eklensin)</span>
                 </label>
 
                 ${isEdit && existing.isCustom ? `
@@ -1948,25 +1923,19 @@ window.HIZLI_RAPOR_CONSTANTS = {
         }
 
         const modalHtml = `
-            <div class="space-y-3 text-xs">
+            <div class="space-y-2.5 text-xs">
                 <div class="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-950">
-                    Raporda şu anda <strong>${curDevices.length} cihaz</strong> kayıtlı. Ayarlardaki üzerinizdeki <strong>${assigned.length} cihaz</strong> nasıl aktarılsın?
+                    Raporda <strong>${curDevices.length}</strong>, üzerinizde <strong>${assigned.length} cihaz</strong> var.
                 </div>
                 <div class="space-y-2">
                     <button type="button" onclick="MeasuringDevicesManager.syncAssignedDevicesToCurrentReport('replace'); closeModal();"
                         class="w-full p-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-left flex items-center justify-between gap-2">
-                        <div>
-                            <div class="text-amber-300">Mevcut Listeyi Yenile (Üzerimdekilerle Değiştir)</div>
-                            <div class="text-[10px] font-normal text-slate-300 mt-0.5">Rapordaki ölçüm aletleri tablosunu ayarlardaki listeyle değiştirir</div>
-                        </div>
+                        <span class="text-amber-300">Mevcut Listeyi Yenile</span>
                         <i class="fa-solid fa-arrows-rotate text-amber-400"></i>
                     </button>
                     <button type="button" onclick="MeasuringDevicesManager.syncAssignedDevicesToCurrentReport('append'); closeModal();"
                         class="w-full p-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-200 font-bold text-left flex items-center justify-between gap-2">
-                        <div>
-                            <div>Eksik Olanları Sona Ekle</div>
-                            <div class="text-[10px] font-normal text-emerald-800 mt-0.5">Mevcut cihazları korur, ayarlardaki eksik cihazları ekler</div>
-                        </div>
+                        <span>Eksik Olanları Sona Ekle</span>
                         <i class="fa-solid fa-plus text-emerald-700"></i>
                     </button>
                 </div>
@@ -2090,6 +2059,7 @@ function calculateInspectionProgress(insp, fd) {
 
     return { total, answered, unanswered, defects, percent };
 
+
 }
 
 
@@ -2142,6 +2112,7 @@ const DEFAULT_COMPANY_BRANDING = {
 
 
 
+
 const CompanySettingsManager = {
 
     STORAGE_KEY: 'enlab_company_branding_v3',
@@ -2176,6 +2147,7 @@ const CompanySettingsManager = {
 
                     return { ...DEFAULT_COMPANY_BRANDING, ...parsed };
 
+
                 }
 
             } else {
@@ -2186,6 +2158,7 @@ const CompanySettingsManager = {
 
                 return { ...DEFAULT_COMPANY_BRANDING, ...parsed };
 
+
             }
 
         } catch (e) {
@@ -2195,6 +2168,7 @@ const CompanySettingsManager = {
         }
 
         return { ...DEFAULT_COMPANY_BRANDING };
+
 
     },
 
@@ -2208,17 +2182,20 @@ const CompanySettingsManager = {
 
             const merged = { ...current, ...newSettings };
 
+
             localStorage.setItem(this.STORAGE_KEY, JSON.stringify(merged));
 
             this.syncHeaderTitle();
 
             return { success: true, message: 'Şirket ve rapor ayarları başarıyla kaydedildi.' };
 
+
         } catch (e) {
 
             console.error('CompanySettingsManager save error:', e);
 
             return { success: false, message: 'Ayarlar kaydedilemedi: ' + e.message };
+
 
         }
 
@@ -2238,9 +2215,11 @@ const CompanySettingsManager = {
 
             return { success: true, message: 'Varsayılan şirket ve rapor ayarlarına sıfırlandı.' };
 
+
         } catch (e) {
 
             return { success: false, message: e.message };
+
 
         }
 
@@ -2310,10 +2289,6 @@ const CompanySettingsManager = {
         if (titleEl) {
             titleEl.innerText = brandName;
         }
-        const subEl = document.getElementById('appHeaderBrandSub');
-        if (subEl) {
-            subEl.innerText = isCustom ? 'Hızlı Rapor' : 'Saha Kontrol';
-        }
         document.title = isCustom ? `${brandName} - Hızlı Rapor` : 'Hızlı Rapor - Saha Muayene & Test';
 
         // 2. Header Logosu: Şirketin yüklediği logo varsa doğrudan onu göster
@@ -2360,6 +2335,137 @@ const CompanySettingsManager = {
     }
 
 };
+
+const ReportDateTimePrefs = {
+    STORAGE_KEY: 'enlab_report_datetime_prefs_v1',
+    DEFAULTS: {
+        fixedStartTime: '',
+        fixedEndTime: '',
+        validityMonths: {
+            '2201': 12,
+            '2202': 12,
+            '2205': 12,
+            'default': 12
+        }
+    },
+    get() {
+        try {
+            const raw = localStorage.getItem(this.STORAGE_KEY);
+            if (!raw) return JSON.parse(JSON.stringify(this.DEFAULTS));
+            const parsed = JSON.parse(raw);
+            return {
+                fixedStartTime: typeof parsed.fixedStartTime === 'string' ? parsed.fixedStartTime : '',
+                fixedEndTime: typeof parsed.fixedEndTime === 'string' ? parsed.fixedEndTime : '',
+                validityMonths: Object.assign({}, this.DEFAULTS.validityMonths, parsed.validityMonths || {})
+            };
+        } catch (e) {
+            return JSON.parse(JSON.stringify(this.DEFAULTS));
+        }
+    },
+    save(nextPrefs) {
+        const current = this.get();
+        const merged = {
+            fixedStartTime: nextPrefs.fixedStartTime !== undefined ? String(nextPrefs.fixedStartTime || '').trim() : current.fixedStartTime,
+            fixedEndTime: nextPrefs.fixedEndTime !== undefined ? String(nextPrefs.fixedEndTime || '').trim() : current.fixedEndTime,
+            validityMonths: Object.assign({}, current.validityMonths, nextPrefs.validityMonths || {})
+        };
+        try { localStorage.setItem(this.STORAGE_KEY, JSON.stringify(merged)); } catch (e) {}
+        return merged;
+    },
+    getValidityMonths(templateId) {
+        const prefs = this.get();
+        const tid = String(templateId || '').trim();
+        const val = parseInt(prefs.validityMonths[tid] ?? prefs.validityMonths['default'] ?? 12, 10);
+        return (Number.isFinite(val) && val > 0) ? val : 12;
+    },
+    setValidityMonth(templateId, months) {
+        const tid = String(templateId || 'default').trim();
+        const num = parseInt(months, 10);
+        const safe = (Number.isFinite(num) && num >= 1 && num <= 120) ? num : 12;
+        const cur = this.get();
+        cur.validityMonths[tid] = safe;
+        return this.save(cur);
+    },
+    clearFixedTimes() {
+        return this.save({ fixedStartTime: '', fixedEndTime: '' });
+    }
+};
+window.ReportDateTimePrefs = ReportDateTimePrefs;
+
+function getLocalTodayIso() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
+function getLocalNowHHMM() {
+    const d = new Date();
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function toIsoDate(val) {
+    const s = String(val || '').trim();
+    if (!s) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    const m = s.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+    if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+    return '';
+}
+
+function toTrDate(val) {
+    const s = String(val || '').trim();
+    if (!s) return '';
+    if (/^\d{2}\.\d{2}\.\d{4}$/.test(s)) return s;
+    const iso = toIsoDate(s);
+    if (!iso) return s;
+    const [y, m, d] = iso.split('-');
+    return `${d}.${m}.${y}`;
+}
+
+function addDaysIso(isoDate, days) {
+    const iso = toIsoDate(isoDate) || getLocalTodayIso();
+    const [y, m, d] = iso.split('-').map(Number);
+    const dt = new Date(y, m - 1, d + (Number(days) || 0));
+    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+}
+
+function addMonthsIso(isoDate, months) {
+    const iso = toIsoDate(isoDate) || getLocalTodayIso();
+    const [y, m, d] = iso.split('-').map(Number);
+    const totalMonths = (y * 12 + (m - 1)) + (parseInt(months, 10) || 12);
+    const targetY = Math.floor(totalMonths / 12);
+    const targetM = totalMonths % 12;
+    const maxDay = new Date(targetY, targetM + 1, 0).getDate();
+    const targetD = Math.min(d, maxDay);
+    return `${targetY}-${String(targetM + 1).padStart(2, '0')}-${String(targetD).padStart(2, '0')}`;
+}
+
+function formatStartEndTimeDisplay(startIso, startTime, endIso, endTime) {
+    const sDate = toTrDate(startIso);
+    const eDate = toTrDate(endIso || startIso);
+    const st = String(startTime || '').trim();
+    const et = String(endTime || '').trim();
+    if (sDate && st && et) {
+        if (!eDate || eDate === sDate) return `${sDate} ${st} - ${et}`;
+        return `${sDate} ${st} - ${eDate} ${et}`;
+    }
+    if (sDate && st) return `${sDate} ${st}`;
+    if (sDate && et) return `${sDate} - ${et}`;
+    if (sDate) return sDate;
+    if (st && et) return `${st} - ${et}`;
+    return st || et || '';
+}
+
+window.getLocalTodayIso = getLocalTodayIso;
+window.getLocalNowHHMM = getLocalNowHHMM;
+window.toIsoDate = toIsoDate;
+window.toTrDate = toTrDate;
+window.addDaysIso = addDaysIso;
+window.addMonthsIso = addMonthsIso;
+window.formatStartEndTimeDisplay = formatStartEndTimeDisplay;
+
 
 
 
@@ -2417,9 +2523,11 @@ function compressLogoImage(file, maxDim = 320, callback) {
 
         };
 
+
         img.src = e.target.result;
 
     };
+
 
     reader.readAsDataURL(file);
 
@@ -2463,6 +2571,7 @@ const AppState = {
 
 };
 
+
 window.AppState = AppState;
 
 
@@ -2472,6 +2581,7 @@ window.AppState = AppState;
 function normalizeWorkOrder(w) {
 
     if (!w) return {};
+
 
     let files = [];
 
@@ -2513,7 +2623,9 @@ function normalizeInspection(i) {
 
     if (!i) return {};
 
+
     let formData = {};
+
 
     try {
 
@@ -2629,6 +2741,7 @@ async function loadInitData() {
 
         const c = data.counts || {};
 
+
         AppState.counts = {
 
             allWorkOrdersOpen: c.allOpenWO ?? c.allWorkOrdersOpen ?? 52,
@@ -2647,9 +2760,11 @@ async function loadInitData() {
 
         };
 
+
         if (Array.isArray(data.electricalTemplate)) {
 
             AppState.electricalTemplate = { areas: data.electricalTemplate };
+
 
         } else if (data.electricalTemplate && data.electricalTemplate.areas) {
 
@@ -2702,6 +2817,7 @@ function updateSidebarBadges() {
         if (el) el.textContent = val !== undefined ? val : '';
 
     };
+
 
     setBadge('badge-all-wo', c.allWorkOrdersOpen);
 
@@ -2885,6 +3001,7 @@ window.handleAndroidBackButton = function () {
     return 'HANDLED';
 
 };
+
 
 
 
@@ -3222,7 +3339,7 @@ function openImportBackupModal() {
 
         `<div class="space-y-3 text-xs">
 
-            <p class="text-slate-600">Daha önce telefondan veya bilgisayardan aldığınız <strong>.json</strong> uzantılı Hızlı Rapor saha yedek dosyasını seçerek tüm işleri, notları ve raporları yükleyebilirsiniz:</p>
+            <p class="text-slate-600">Yedek <strong>.json</strong> dosyasını seçin:</p>
 
             <input type="file" accept=".json,application/json" onchange="handleBackupFileImport(this)" class="w-full border border-slate-300 rounded-lg p-2.5 bg-slate-50">
 
@@ -3271,6 +3388,7 @@ function handleBackupFileImport(input) {
         }
 
     };
+
 
     reader.readAsText(file);
 
@@ -3418,15 +3536,9 @@ function renderGrayOfflineNotesFolderHtml() {
 
                 <div class="min-w-0 flex-1">
 
-                    <div class="font-bold text-slate-900 text-xs sm:text-sm truncate flex items-center gap-1.5">
+                    <div class="font-bold text-slate-900 text-xs sm:text-sm truncate">
 
-                        <span>Offline Not Alma Klasörü</span>
-
-                    </div>
-
-                    <div class="text-[10px] text-slate-600 truncate mt-0.5 font-medium">
-
-                        <i class="fa-solid fa-pen-to-square mr-1 text-slate-500"></i>İnternetsiz saha notları ve tespitler
+                        Offline Not Alma Klasörü
 
                     </div>
 
@@ -3438,7 +3550,7 @@ function renderGrayOfflineNotesFolderHtml() {
 
                 <span class="px-2 py-0.5 rounded-md bg-slate-700 text-white font-bold text-[10px]">
 
-                    ${noteCount} Not · Offline
+                    ${noteCount} Not
 
                 </span>
 
@@ -3493,42 +3605,6 @@ async function renderHome(opts = {}) {
     container.innerHTML = `
 
         <div class="max-w-2xl mx-auto space-y-2 pb-6">
-            <!-- 0. UYGULAMA KİMLİĞİ VE DİNAMİK ŞİRKET LOGOSU (HIZLI RAPOR) -->
-            <div class="card-craft-white p-3 flex items-center justify-between gap-3">
-                <div class="flex items-center gap-2.5 min-w-0">
-                    <div id="homeBrandLogoWrapper" class="shrink-0">
-                        ${(function(){
-                            const s = (typeof CompanySettingsManager !== 'undefined') ? CompanySettingsManager.getSettings() : DEFAULT_COMPANY_BRANDING;
-                            const isCust = s.companyShortName && s.companyShortName !== 'TEKKOMER' && s.companyShortName !== 'ENLAB' && s.companyShortName !== 'Hızlı Rapor';
-                            const title = isCust ? s.companyShortName : 'Hızlı Rapor';
-                            return s.customCompanyLogo ? 
-                                `<img src="${s.customCompanyLogo}" alt="${escapeHtml(title)}" class="h-10 w-10 object-contain p-1 bg-white rounded-xl border border-slate-200 shadow-2xs">` : 
-                                `<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-500 text-slate-950 flex items-center justify-center font-black text-lg shadow-2xs border border-amber-300">
-                                    <i class="fa-solid fa-bolt-lightning text-slate-950"></i>
-                                </div>`;
-                        })()}
-                    </div>
-                    <div class="min-w-0">
-                        <div class="flex items-center gap-1.5">
-                            <h1 id="homeBrandTitleText" class="font-black text-slate-900 text-sm sm:text-base tracking-tight truncate">${(function(){
-                                const s = (typeof CompanySettingsManager !== 'undefined') ? CompanySettingsManager.getSettings() : DEFAULT_COMPANY_BRANDING;
-                                const isCust = s.companyShortName && s.companyShortName !== 'TEKKOMER' && s.companyShortName !== 'ENLAB' && s.companyShortName !== 'Hızlı Rapor';
-                                return isCust ? s.companyShortName : 'Hızlı Rapor';
-                            })()}</h1>
-                            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-200 shrink-0">Hızlı Rapor</span>
-                        </div>
-                        <div class="text-[11px] text-slate-500 font-medium truncate flex items-center gap-1 mt-0.5">
-                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
-                            <span class="truncate">${escapeHtml(((typeof CompanySettingsManager !== 'undefined') ? CompanySettingsManager.getSettings().companyFullName : '') || 'Saha Muayene & Periyodik Kontrol')}</span>
-                        </div>
-                    </div>
-                </div>
-                <button onclick="navigateTo('settings')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-semibold rounded-lg text-xs flex items-center gap-1.5 transition border border-slate-200 shrink-0" title="Ayarlar ve Ölçüm Cihazlarım">
-                    <i class="fa-solid fa-sliders text-sky-600 text-[11px]"></i>
-                    <span class="hidden sm:inline">${isManaged ? 'Ayarlarım' : 'Şirket Ayarları'}</span>
-                </button>
-            </div>
-
 
             <!-- 1. İŞYERİ ARAMA VE YENİLE / YENİ KLASÖR -->
 
@@ -3596,9 +3672,8 @@ function renderMinimalJobCards(jobs) {
 
     if (!jobs || !jobs.length) {
 
-        return `<div class="bg-white rounded-xl border border-slate-200 p-6 text-center text-slate-500 text-xs space-y-1.5">
-            <div class="font-bold text-slate-700">${isManaged ? 'Size atanmış açık iş klasörü henüz yok' : 'Henüz iş klasörü eklenmedi'}</div>
-            <div class="text-[11px] text-slate-400">${isManaged ? 'Firma yöneticiniz internet panelinden iş açtığında burada otomatik görünür. Kontrol etmek için yukarıdaki <strong>Yenile</strong> butonuna dokunun.' : 'Üstteki <strong>"Yeni Klasör"</strong> butonuna dokunabilirsiniz.'}</div>
+        return `<div class="bg-white rounded-xl border border-slate-200 p-6 text-center text-slate-500 text-xs font-semibold">
+            ${isManaged ? 'Size atanmış açık iş klasörü yok' : 'Henüz iş klasörü yok'}
         </div>`;
 
     }
@@ -3635,6 +3710,18 @@ function renderMinimalJobCards(jobs) {
 
                 <div class="shrink-0 flex items-center gap-1">
 
+                    <button type="button" onclick="openWorkOrderPortalModal('${wo.id}', event)"
+
+                        class="px-2 py-0.5 rounded-md border ${wo.portal_folder_url ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200'} font-bold text-[10px] flex items-center gap-1 active:scale-95 transition"
+
+                        title="Müşteri İnternet Klasörü">
+
+                        <i class="fa-solid fa-globe text-[9px]"></i>
+
+                        <span>Portal</span>
+
+                    </button>
+
                     <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-bold text-[10px]">
 
                         ${count} Rapor
@@ -3661,6 +3748,134 @@ function renderMinimalJobCards(jobs) {
 
 
 
+async function openWorkOrderPortalModal(workOrderId, ev) {
+
+    if (ev && typeof ev.stopPropagation === 'function') ev.stopPropagation();
+
+    let wo = (AppState.workOrdersCache || []).find(w => String(w.id) === String(workOrderId));
+
+    if (!wo) {
+
+        try {
+
+            const res = await fetch(`/api/work-orders/${workOrderId}`);
+
+            const data = await res.json();
+
+            if (data && data.workOrder) wo = normalizeWorkOrder(data.workOrder);
+
+        } catch (e) {}
+
+    }
+
+    if (!wo) {
+
+        showToast('İş emri bulunamadı', 'error');
+
+        return;
+
+    }
+
+
+
+    const hasPortal = Boolean(wo.portal_folder_url);
+
+    const bodyHtml = `
+
+        <div class="space-y-3 text-xs">
+
+            <div class="p-2.5 rounded-xl bg-slate-900 text-white">
+
+                <div class="font-bold text-sm truncate">${escapeHtml(wo.customer_name || 'İş Klasörü')}</div>
+
+                ${wo.customer_branch ? `<div class="text-[11px] text-slate-300 truncate">${escapeHtml(wo.customer_branch)}</div>` : ''}
+
+            </div>
+
+            ${hasPortal ? `
+
+                <div class="p-3 rounded-xl bg-indigo-50 border border-indigo-200 space-y-2">
+
+                    <div class="flex items-center gap-1.5 flex-wrap font-bold text-indigo-900">
+
+                        <i class="fa-solid fa-globe text-indigo-600"></i>
+
+                        <span>Müşteri İnternet Klasörü Hazır</span>
+
+                    </div>
+
+                    <div class="flex items-center gap-1.5 flex-wrap">
+
+                        ${wo.portal_customer_username ? `<span class="px-2 py-0.5 rounded bg-indigo-100 text-indigo-900 border border-indigo-300 font-mono text-[11px]">@${escapeHtml(wo.portal_customer_username)}</span>` : ''}
+
+                        ${wo.portal_customer_password ? `<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 border border-emerald-300 font-mono text-[11px]">Şifre: ${escapeHtml(wo.portal_customer_password)}</span>` : ''}
+
+                        ${wo.portal_pin ? `<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 font-mono text-[11px]">PIN: ${escapeHtml(wo.portal_pin)}</span>` : (!wo.portal_customer_username ? `<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[11px]">Şifresiz</span>` : '')}
+
+                    </div>
+
+                    <div class="text-[11px] font-mono text-indigo-700 break-all bg-white/80 p-2 rounded-lg border border-indigo-200/70">${escapeHtml(wo.portal_folder_url)}</div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5 pt-1">
+
+                        ${wo.portal_customer_username ? `<button type="button" onclick="CloudPortal.copyCustomerLoginInfo('${escapeForJs(wo.id)}')" class="px-2.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1 transition"><i class="fa-solid fa-user-shield"></i><span>Girişi Kopyala</span></button>` : ''}
+
+                        <button type="button" onclick="CloudPortal.copyText('${escapeForJs(wo.portal_folder_url)}')" class="px-2.5 py-2 rounded-lg bg-white hover:bg-indigo-100 text-indigo-800 font-bold text-xs border border-indigo-200 flex items-center justify-center gap-1 transition">
+
+                            <i class="fa-regular fa-copy"></i><span>Linki Kopyala</span>
+
+                        </button>
+
+                        <a href="${escapeHtml(wo.portal_folder_url)}" target="_blank" rel="noopener" class="px-2.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-1 transition">
+
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i><span>Aç</span>
+
+                        </a>
+
+                    </div>
+
+                </div>
+
+            ` : `
+
+                <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center text-slate-500 text-xs">
+
+                    Henüz internet klasörü oluşturulmadı.
+
+                </div>
+
+            `}
+
+        </div>
+
+    `;
+
+
+
+    const footerHtml = `
+
+        <button type="button" onclick="closeModal()" class="px-3.5 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs">Kapat</button>
+
+        <button type="button" onclick="closeModal(); setTimeout(() => openPortalUploadModal('${escapeForJs(wo.id)}'), 50);" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1.5">
+
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+
+            <span>${hasPortal ? 'Rapor Yükle / Güncelle' : 'İnternete Yükle'}</span>
+
+        </button>
+
+    `;
+
+
+
+    openModal('<i class="fa-solid fa-globe mr-2 text-indigo-400"></i>Müşteri İnternet Klasörü', bodyHtml, footerHtml);
+
+}
+
+window.openWorkOrderPortalModal = openWorkOrderPortalModal;
+
+
+
 // ============================================================================
 
 // GÜVENLİK & ŞİFRELİ SİLME DOĞRULAMA SİSTEMİ
@@ -3671,6 +3886,7 @@ function promptSecurityPasswordConfirmation({ title, entityName, message, onConf
 
     const curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || { fullName: 'Yetkili Personel', password: '123' };
 
+
     const modalTitle = `<i class="fa-solid fa-triangle-exclamation text-rose-500 mr-2"></i>${title || 'Silme Onayı'}`;
 
     const modalBody = `
@@ -3679,7 +3895,7 @@ function promptSecurityPasswordConfirmation({ title, entityName, message, onConf
 
             <div class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-900 leading-relaxed">
 
-                <strong>DİKKAT:</strong> <strong>"${entityName || 'Kayıt'}"</strong> kalıcı olarak silinecektir. ${message || 'Bu işlem geri alınamaz.'}
+                <strong>"${entityName || 'Kayıt'}"</strong> kalıcı olarak silinecektir.
 
             </div>
 
@@ -3687,7 +3903,7 @@ function promptSecurityPasswordConfirmation({ title, entityName, message, onConf
 
                 <label class="block font-bold text-slate-700">
 
-                    Silme işlemini onaylamak için <strong>${curUser.fullName}</strong> hesap şifrenizi girin:
+                    <strong>${curUser.fullName}</strong> şifresi:
 
                 </label>
 
@@ -3708,8 +3924,6 @@ function promptSecurityPasswordConfirmation({ title, entityName, message, onConf
                     </button>
 
                 </div>
-
-                <div class="text-[10px] text-slate-400">Şifrenizi "Ayarlar > Profilimi Düzenle" menüsünden değiştirebilirsiniz.</div>
 
             </div>
 
@@ -3917,7 +4131,7 @@ function openQuickFieldJobModal() {
 
         return `
 
-        <label class="quick-tpl-item flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white hover:border-sky-500 cursor-pointer transition-all shadow-2xs">
+        <label class="quick-tpl-item flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-sky-500 cursor-pointer transition-all shadow-2xs">
 
             <div class="flex items-center gap-2.5 min-w-0">
 
@@ -3930,12 +4144,6 @@ function openQuickFieldJobModal() {
                 </div>
 
             </div>
-
-            <span class="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded shrink-0">
-
-                Seç
-
-            </span>
 
         </label>
 
@@ -3995,7 +4203,7 @@ function openQuickFieldJobModal() {
 
             <div>
 
-                <label class="block font-bold text-slate-700 mb-1"><i class="fa-solid fa-envelope text-sky-600 mr-1"></i>Yetkili E-posta Adresi <span class="text-[10px] text-slate-400 font-normal">(Rapor Gönderimi İçin)</span></label>
+                <label class="block font-bold text-slate-700 mb-1"><i class="fa-solid fa-envelope text-sky-600 mr-1"></i>Yetkili E-posta Adresi</label>
 
                 <input type="email" id="qjContactEmail" placeholder="yetkili@firma.com"
 
@@ -4005,19 +4213,13 @@ function openQuickFieldJobModal() {
 
             <div>
 
-                <div class="flex items-center justify-between gap-2 mb-1.5">
+                <label class="font-bold text-slate-800 flex items-center gap-1.5 mb-1.5">
 
-                    <label class="font-bold text-slate-800 flex items-center gap-1.5">
+                    <i class="fa-solid fa-bolt text-amber-500"></i>
 
-                        <i class="fa-solid fa-bolt text-amber-500"></i>
+                    <span>Oluşturulacak Raporlar</span>
 
-                        <span>Oluşturulacak Elektrik Raporları</span>
-
-                    </label>
-
-                    <span class="text-[10px] text-slate-400">İstediğinizi seçin</span>
-
-                </div>
+                </label>
 
                 <div id="qjTemplatesGrid" class="space-y-1.5 p-2 border border-slate-200 rounded-xl bg-slate-50 max-h-44 overflow-y-auto">
 
@@ -4244,7 +4446,7 @@ async function renderFieldNotebookPage() {
 
             </div>
 
-            <textarea rows="3" placeholder="Bu işe ait saha notlarınızı buraya yazın (Otomatik kaydedilir)..."
+            <textarea rows="3" placeholder="Saha notları..."
 
                 oninput="saveWorkOrderNotesRealtime('${escapeForJs(w.id)}', this.value)"
 
@@ -4262,7 +4464,7 @@ async function renderFieldNotebookPage() {
 
             <div class="bg-slate-200 rounded-xl border border-slate-300 shadow-xs p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3">
 
-                <div class="flex items-start gap-3">
+                <div class="flex items-center gap-3">
 
                     <button onclick="navigateTo('home')" class="px-2.5 py-1.5 bg-white hover:bg-slate-100 active:scale-95 text-slate-700 rounded-xl font-bold text-xs shrink-0 transition border border-slate-300">
 
@@ -4270,19 +4472,11 @@ async function renderFieldNotebookPage() {
 
                     </button>
 
-                    <div>
+                    <h1 class="text-lg font-black text-slate-900 flex items-center gap-2">
 
-                        <div class="text-[11px] text-slate-600 font-bold uppercase tracking-wider">Çevrimdışı Not Alma Klasörü (Offline)</div>
+                        <i class="fa-solid fa-folder text-slate-600"></i> Offline Not Alma Klasörü
 
-                        <h1 class="text-lg font-black text-slate-900 flex items-center gap-2">
-
-                            <i class="fa-solid fa-folder text-slate-600"></i> Offline Not Alma Klasörü
-
-                        </h1>
-
-                        <p class="text-xs text-slate-600 mt-0.5">İnternetin çekmediği sahalarda aldığınız tüm tespit ve ölçü notları anında cihaz hafızasına kaydedilir.</p>
-
-                    </div>
+                    </h1>
 
                 </div>
 
@@ -4290,7 +4484,7 @@ async function renderFieldNotebookPage() {
 
                     <button onclick="openQuickFieldJobModal()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow flex items-center gap-2">
 
-                        <i class="fa-solid fa-plus"></i> + Yeni İş & Rapor Taslağı Aç
+                        <i class="fa-solid fa-plus"></i> Yeni İş & Rapor Taslağı Aç
 
                     </button>
 
@@ -4310,9 +4504,7 @@ async function renderFieldNotebookPage() {
 
                         <div class="px-4 py-3 bg-slate-700 text-white font-bold text-xs uppercase flex items-center justify-between">
 
-                            <span><i class="fa-solid fa-pen-clip text-slate-200 mr-2"></i>Yeni Offline Saha Notu Ekle</span>
-
-                            <span class="text-[10px] text-slate-300">Otomatik Cihaz Kaydı</span>
+                            <span><i class="fa-solid fa-pen-clip text-slate-200 mr-2"></i>Yeni Saha Notu</span>
 
                         </div>
 
@@ -4332,11 +4524,11 @@ async function renderFieldNotebookPage() {
 
                                 <div>
 
-                                    <label class="block font-bold text-slate-700 mb-1">İlgili İş (Opsiyonel)</label>
+                                    <label class="block font-bold text-slate-700 mb-1">İlgili İş</label>
 
                                     <select id="newNoteWoSelect" class="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white">
 
-                                        <option value="">-- Genel / Bağımsız Offline Not --</option>
+                                        <option value="">-- Genel Not --</option>
 
                                         ${jobOptions}
 
@@ -4528,6 +4720,18 @@ function saveWorkOrderNotesRealtime(woId, notesText) {
 
     }
 
+    const previewEl = document.getElementById(`woFieldNotePreview_${woId}`);
+
+    if (previewEl) {
+
+        const trimmed = (notesText || '').replace(/\n/g, ' ').trim();
+
+        previewEl.textContent = trimmed || 'Not ekle...';
+
+        previewEl.className = trimmed ? 'text-[11px] text-amber-800 font-medium truncate' : 'text-[11px] text-slate-400 truncate';
+
+    }
+
     const statusEl = document.getElementById(`woNoteSaveStatus_${woId}`);
 
     if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-rotate fa-spin mr-1"></i>Kaydediliyor...`;
@@ -4578,6 +4782,60 @@ function saveWorkOrderEmailRealtime(woId, emailText) {
         if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-check text-emerald-600"></i> Kaydedildi`;
     }, 300);
 }
+
+function openWorkOrderFieldNotesModal(woId) {
+
+    const wo = (AppState.currentWorkOrder && String(AppState.currentWorkOrder.id) === String(woId))
+
+        ? AppState.currentWorkOrder
+
+        : (AppState.workOrdersCache || []).find(w => String(w.id) === String(woId)) || { id: woId, field_notes: '' };
+
+    openModal(
+
+        '<i class="fa-solid fa-note-sticky mr-2 text-amber-400"></i>Saha Notu',
+
+        `<div class="space-y-2 text-xs">
+
+            <textarea id="woFieldNotesTextarea_${escapeHtml(woId)}" rows="5"
+
+                oninput="saveWorkOrderNotesRealtime('${escapeForJs(woId)}', this.value)"
+
+                placeholder="Saha notlarınızı buraya yazın..."
+
+                class="w-full border border-slate-300 bg-amber-50/20 rounded-xl p-2.5 text-xs text-slate-900 focus:border-amber-500 focus:outline-none">${escapeHtml(wo.field_notes || '')}</textarea>
+
+            <div class="flex items-center justify-between text-[11px] text-slate-400 min-h-[16px]">
+
+                <span id="woNoteSaveStatus_${escapeHtml(woId)}"></span>
+
+            </div>
+
+        </div>`,
+
+        `<button type="button" onclick="closeModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-lg active:scale-95 transition">Tamam</button>`
+
+    );
+
+    setTimeout(() => {
+
+        const ta = document.getElementById(`woFieldNotesTextarea_${woId}`);
+
+        if (ta) {
+
+            ta.focus();
+
+            ta.setSelectionRange(ta.value.length, ta.value.length);
+
+        }
+
+    }, 100);
+
+}
+
+window.openWorkOrderFieldNotesModal = openWorkOrderFieldNotesModal;
+
+
 
 function appendQuickSnippetToJobNotes(woId, snippet) {
 
@@ -4653,13 +4911,7 @@ async function renderWorkOrdersPage(scope = 'all', tab = 'open') {
 
             <div class="px-5 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
 
-                <div>
-
-                    <div class="text-[11px] text-slate-400 font-semibold uppercase">Muayene / ${pageTitle}</div>
-
-                    <h1 class="text-lg font-bold text-slate-800">${pageTitle}</h1>
-
-                </div>
+                <h1 class="text-lg font-bold text-slate-800">${pageTitle}</h1>
 
                 <div class="flex items-center gap-2">
 
@@ -5027,93 +5279,25 @@ async function renderWorkOrderDetails(workOrderId) {
 
 
 
-            <!-- YÖNETİCİ & SAHA İSTATİSTİKLERİ (KOMPAKT METRİK ŞERİDİ) -->
+            <!-- SAHA NOTU (KOMPAKT BUTON) -->
 
-            <div class="card-craft-white p-2 px-3 flex items-center justify-between text-xs font-semibold">
+            <button type="button" onclick="openWorkOrderFieldNotesModal('${wo.id}')"
 
-                <div class="flex items-center gap-1.5 text-slate-700">
+                class="w-full card-craft-white px-3 py-2 flex items-center justify-between gap-2 hover:border-amber-300 active:scale-[0.99] transition text-left">
 
-                    <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+                <div class="flex items-center gap-2 min-w-0 flex-1">
 
-                    <span>Toplam: <strong class="text-slate-900 font-bold">${inspections.length}</strong></span>
+                    <i class="fa-solid fa-note-sticky text-amber-500 text-xs shrink-0"></i>
 
-                </div>
+                    <span class="font-bold text-xs text-slate-800 shrink-0">Saha Notu</span>
 
-                <div class="flex items-center gap-1.5 text-emerald-700">
-
-                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-
-                    <span>Uygun: <strong class="font-bold">${inspections.filter(i => (i.result_status || 'UYGUN') === 'UYGUN').length}</strong></span>
+                    <span id="woFieldNotePreview_${wo.id}" class="text-[11px] ${wo.field_notes && wo.field_notes.trim() ? 'text-amber-800 font-medium' : 'text-slate-400'} truncate">${wo.field_notes && wo.field_notes.trim() ? escapeHtml(wo.field_notes.replace(/\n/g, ' ').trim()) : 'Not ekle...'}</span>
 
                 </div>
 
-                <div class="flex items-center gap-1.5 text-rose-700">
+                <i class="fa-solid fa-pen text-[10px] text-slate-400 shrink-0"></i>
 
-                    <span class="w-2 h-2 rounded-full bg-rose-500"></span>
-
-                    <span>Kusurlu: <strong class="font-bold">${inspections.filter(i => i.result_status === 'UYGUN DEĞİL').length}</strong></span>
-
-                </div>
-
-            </div>
-
-
-
-            <!-- YETKİLİ E-POSTA ADRESİ (HIZLI RAPOR GÖNDERİMİ İÇİN) -->
-
-            <div class="card-craft-white p-2.5 flex items-center gap-2">
-
-                <div class="flex items-center gap-1.5 text-xs font-bold text-slate-700 shrink-0">
-
-                    <i class="fa-solid fa-envelope text-sky-600"></i>
-
-                    <span>Yetkili E-posta:</span>
-
-                </div>
-
-                <input type="email" id="woContactEmailInput_${wo.id}"
-
-                    value="${escapeHtml(wo.contact_email || '')}"
-
-                    oninput="saveWorkOrderEmailRealtime('${wo.id}', this.value)"
-
-                    placeholder="yetkili@firma.com (Raporların gönderileceği adres)"
-
-                    class="flex-1 min-w-0 border border-slate-200 bg-slate-50/70 focus:bg-white rounded-lg px-2.5 py-1 text-xs text-slate-900 focus:border-sky-500 focus:outline-none">
-
-                <span id="woEmailSaveStatus_${wo.id}" class="text-[10px] text-slate-400 shrink-0 hidden sm:inline">Otomatik</span>
-
-            </div>
-
-
-
-            <!-- NOT DEFTERİ (KOMPAKT) -->
-
-            <div class="card-craft-white p-2.5 space-y-1.5">
-
-                <div class="flex items-center justify-between">
-
-                    <label class="font-bold text-xs text-slate-800 flex items-center gap-1.5">
-
-                        <i class="fa-solid fa-note-sticky text-amber-500"></i>
-
-                        <span>Saha Notları</span>
-
-                    </label>
-
-                    <span id="woNoteSaveStatus_${wo.id}" class="text-[10px] text-slate-400">Otomatik kaydedilir</span>
-
-                </div>
-
-                <textarea id="woFieldNotesTextarea_${wo.id}" rows="2"
-
-                    oninput="saveWorkOrderNotesRealtime('${wo.id}', this.value)"
-
-                    placeholder="Saha notlarınızı buraya yazın..."
-
-                    class="w-full border border-slate-200 bg-amber-50/20 rounded-lg p-2 text-xs text-slate-900 focus:border-amber-400 focus:outline-none">${wo.field_notes || ''}</textarea>
-
-            </div>
+            </button>
 
 
 
@@ -5141,14 +5325,6 @@ async function renderWorkOrderDetails(workOrderId) {
 
                         </button>
 
-                        <button onclick="openMultiReportEmailModal('${wo.id}')" class="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-2xs transition" title="Klasördeki Raporları E-posta ile Gönder">
-
-                            <i class="fa-solid fa-envelope-open-text"></i>
-
-                            <span>Çoklu Rapor Gönder</span>
-
-                        </button>
-
                         <button onclick="openAddInspectionModal('${wo.id}')" class="px-3.5 py-1.5 btn-craft-emerald active:scale-95 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition">
 
                             <i class="fa-solid fa-plus"></i>
@@ -5160,30 +5336,6 @@ async function renderWorkOrderDetails(workOrderId) {
                     </div>
 
                 </div>
-
-                ${wo.portal_folder_url ? `
-                <div class="p-2.5 rounded-xl bg-indigo-50/90 border border-indigo-200 flex items-center justify-between gap-2 flex-wrap">
-                    <div class="min-w-0 flex-1">
-                        <div class="flex items-center gap-1.5 flex-wrap text-[11px] font-bold text-indigo-900">
-                            <i class="fa-solid fa-globe text-indigo-600"></i>
-                            <span>Müşteri İnternet Klasörü Hazır</span>
-                            ${wo.portal_customer_username ? `<span class="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-900 border border-indigo-300 font-mono text-[10px]">🛡️ @${escapeHtml(wo.portal_customer_username)}</span>` : ''}
-                            ${wo.portal_customer_password ? `<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-900 border border-emerald-300 font-mono text-[10px]">Şifre: ${escapeHtml(wo.portal_customer_password)}</span>` : ''}
-                            ${wo.portal_pin ? `<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 font-mono text-[10px]">PIN: ${escapeHtml(wo.portal_pin)}</span>` : (!wo.portal_customer_username ? `<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px]">Şifresiz</span>` : '')}
-                        </div>
-                        <div class="text-[10px] font-mono text-indigo-700 truncate mt-0.5">${escapeHtml(wo.portal_folder_url)}</div>
-                    </div>
-                    <div class="flex items-center gap-1 shrink-0 flex-wrap">
-                        ${wo.portal_customer_username ? `<button type="button" onclick="CloudPortal.copyCustomerLoginInfo('${escapeForJs(wo.id)}')" class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] transition"><i class="fa-solid fa-user-shield mr-1"></i>Girişi Kopyala</button>` : ''}
-                        <button type="button" onclick="CloudPortal.copyText('${escapeForJs(wo.portal_folder_url)}')" class="px-2.5 py-1 rounded-lg bg-white hover:bg-indigo-100 text-indigo-800 font-bold text-[11px] border border-indigo-200 transition">
-                            <i class="fa-regular fa-copy mr-1"></i>Linki Kopyala
-                        </button>
-                        <a href="${escapeHtml(wo.portal_folder_url)}" target="_blank" rel="noopener" class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] transition">
-                            <i class="fa-solid fa-arrow-up-right-from-square mr-1"></i>Aç
-                        </a>
-                    </div>
-                </div>
-                ` : ''}
 
 
 
@@ -5287,7 +5439,7 @@ function renderWoInspectionRows(list, workOrderId) {
 
             <i class="fa-solid fa-folder-open text-slate-300 text-2xl mb-2 block"></i>
 
-            Bu klasörde henüz rapor yok.<br>Üstteki <strong class="text-slate-800 font-bold">+ Rapor Ekle</strong> butonuna dokunarak panolarınızı (ADP, TDP-1 vb.) ekleyin.
+            Bu klasörde henüz rapor yok.
 
         </div>`;
 
@@ -5307,7 +5459,7 @@ function renderWoInspectionRows(list, workOrderId) {
 
             <!-- TIER 1: REPORT TITLE & SUBTITLE -->
 
-            <div onclick="navigateTo('inspection-complete', {id: '${item.id}', templateId: '${item.template_id}'})" class="cursor-pointer">
+            <div>
 
                 <div class="flex items-start justify-between gap-2">
 
@@ -5387,8 +5539,6 @@ function renderWoInspectionRows(list, workOrderId) {
 
                     </button>
 
-                    ${isPublished ? `<button onclick="copyReportPortalLink('${item.id}')" class="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 active:scale-95 text-emerald-700 font-semibold rounded-lg text-xs flex items-center gap-1 transition border border-emerald-200" title="Rapor İnternet Linkini Kopyala"><i class="fa-solid fa-link text-[10px]"></i><span>Link</span></button>` : ''}
-
                 </div>
 
                 <div class="flex items-center gap-0.5 shrink-0">
@@ -5448,8 +5598,6 @@ function openRenameInspectionModal(inspectionId, currentName, workOrderId) {
                     placeholder="Örn: ADP, TDP-1, Jeneratör-1..."
 
                     class="w-full border-2 border-slate-300 focus:border-sky-500 rounded-lg px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none">
-
-                <p class="text-[11px] text-slate-500 mt-1">Bu isim klasör listesinde ve resmi raporda ekipman adı olarak gösterilir.</p>
 
             </div>
 
@@ -5631,19 +5779,13 @@ function openStartInspectionModal(inspectionId) {
 
             <div>
 
-                <label class="block font-bold text-slate-700 mb-1.5">Rapor Şablonu Seçiniz (ENLAB / TKM Formu):</label>
+                <label class="block font-bold text-slate-700 mb-1.5">Rapor Şablonu</label>
 
                 <select id="startModalTemplateSelect" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-xs font-semibold bg-white focus:border-sky-500 focus:outline-none">
 
                     ${optionsHtml}
 
                 </select>
-
-                <p class="text-[11px] text-slate-500 mt-1.5">
-
-                    <i class="fa-solid fa-circle-info text-sky-600 mr-1"></i>Seçtiğiniz şablona göre ilgili teknik ölçüm tabloları, gözle kontrol soruları ve mevzuat kriterleri yüklenecektir.
-
-                </p>
 
             </div>
 
@@ -5839,13 +5981,7 @@ function openAddInspectionModal(workOrderId) {
 
             <div>
 
-                <div class="flex items-center justify-between mb-1">
-
-                    <label class="block font-bold text-slate-800">Ekipman Adı <span class="text-rose-500">*</span></label>
-
-                    <span class="text-[10px] text-rose-500 font-bold bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded">ZORUNLU</span>
-
-                </div>
+                <label class="block font-bold text-slate-800 mb-1">Ekipman Adı <span class="text-rose-500">*</span></label>
 
                 <input type="text" id="newInspEqName" value="" placeholder="Örn: ADP, TDP-1, Jeneratör-1..."
 
@@ -6362,13 +6498,7 @@ async function renderInspectionsPage(scope = 'all', tab = 'current') {
 
             <div class="px-5 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
 
-                <div>
-
-                    <div class="text-[11px] text-slate-400 font-semibold uppercase">Muayene / ${pageTitle}</div>
-
-                    <h1 class="text-lg font-bold text-slate-800">${pageTitle}</h1>
-
-                </div>
+                <h1 class="text-lg font-bold text-slate-800">${pageTitle}</h1>
 
                 <div class="flex items-center gap-2">
 
@@ -6624,13 +6754,7 @@ async function renderDocumentsPage(docType = 'internal', tab = 'active') {
 
             <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
 
-                <div>
-
-                    <div class="text-[11px] text-slate-400 font-semibold uppercase">Dokümantasyon / ${pageTitle}</div>
-
-                    <h1 class="text-lg font-bold text-slate-800">${pageTitle}</h1>
-
-                </div>
+                <h1 class="text-lg font-bold text-slate-800">${pageTitle}</h1>
 
             </div>
 
@@ -6874,8 +6998,6 @@ async function renderQualityRecordsPage(tab = 'create') {
 
             <div class="px-5 py-4 border-b border-slate-200">
 
-                <div class="text-[11px] text-slate-400 font-semibold uppercase">Kayıt Yönetimi / Kalite Kayıtları</div>
-
                 <h1 class="text-lg font-bold text-slate-800">Kalite ve Saha Kayıt Yönetimi</h1>
 
             </div>
@@ -7074,8 +7196,6 @@ async function renderStaffPage(tab = 'profile') {
 
             <div class="px-5 py-4 border-b border-slate-200">
 
-                <div class="text-[11px] text-slate-400 font-semibold uppercase">Personel / Benim Sayfam</div>
-
                 <h1 class="text-lg font-bold text-slate-800">Ali Şamil Aytekin - Personel Dosyası</h1>
 
             </div>
@@ -7165,8 +7285,6 @@ async function renderInstrumentsPage(tab = 'active') {
         <div class="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
 
             <div class="px-5 py-4 border-b border-slate-200">
-
-                <div class="text-[11px] text-slate-400 font-semibold uppercase">Cihaz Yönetimi / Referans Cihazlar</div>
 
                 <h1 class="text-lg font-bold text-slate-800">Test ve Ölçüm Cihazları Listesi</h1>
 
@@ -7274,8 +7392,6 @@ async function renderInstrumentUsersPage() {
 
             <div class="px-5 py-4 border-b border-slate-200">
 
-                <div class="text-[11px] text-slate-400 font-semibold uppercase">Cihaz Yönetimi / Cihaz Kullanıcıları</div>
-
                 <h1 class="text-lg font-bold text-slate-800">Personel Cihaz Zimmet Listesi</h1>
 
             </div>
@@ -7359,8 +7475,6 @@ async function renderCalibrationsPage(tab = 'current') {
         <div class="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
 
             <div class="px-5 py-4 border-b border-slate-200">
-
-                <div class="text-[11px] text-slate-400 font-semibold uppercase">Cihaz Yönetimi / Kalibrasyonlar</div>
 
                 <h1 class="text-lg font-bold text-slate-800">Cihaz Kalibrasyon Sertifikaları ve Takibi</h1>
 
@@ -7557,8 +7671,6 @@ async function renderCalendarPage(tab = 'calendar') {
         <div class="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
 
             <div class="px-5 py-4 border-b border-slate-200">
-
-                <div class="text-[11px] text-slate-400 font-semibold uppercase">Takvim / Saha Muayene Programı</div>
 
                 <h1 class="text-lg font-bold text-slate-800">Muayene ve Denetim Takvimi</h1>
 
@@ -8052,7 +8164,158 @@ function ensureCompanyInfo() {
 
     if (fd.companyInfo.nextControlDate === undefined) fd.companyInfo.nextControlDate = fd.nextInspectionDate || '';
 
+    // İlk kez rapora girildiğinde tarih, saat ve sonraki kontrol tarihini otomatik ayarla
+    const ci = fd.companyInfo;
+    if (!ci._dateTimeInitialized) {
+        if (ci.startEndTime && String(ci.startEndTime).trim()) {
+            // Mevcut eski formatlı kaydı koru ve parçalayabildiklerini picker'lara aktar
+            const raw = String(ci.startEndTime).trim();
+            const times = raw.match(/\b(\d{1,2}:\d{2})\b/g) || [];
+            const dates = raw.match(/\b(\d{1,2}\.\d{1,2}\.\d{4})\b/g) || [];
+            ci.controlStartDate = toIsoDate(dates[0] || insp.inspection_date || ci.reportDate) || getLocalTodayIso();
+            ci.controlEndDate = toIsoDate(dates[1] || dates[0] || ci.controlStartDate) || ci.controlStartDate;
+            ci.controlStartTime = times[0] ? times[0].padStart(5, '0') : '';
+            ci.controlEndTime = times[1] ? times[1].padStart(5, '0') : '';
+        } else {
+            const prefs = (typeof ReportDateTimePrefs !== 'undefined') ? ReportDateTimePrefs.get() : { fixedStartTime: '', fixedEndTime: '' };
+            const todayIso = getLocalTodayIso();
+            const startTime = prefs.fixedStartTime || getLocalNowHHMM();
+            const endTime = prefs.fixedEndTime || '';
+            let endIso = todayIso;
+            if (prefs.fixedStartTime && prefs.fixedEndTime && prefs.fixedEndTime < prefs.fixedStartTime) {
+                endIso = addDaysIso(todayIso, 1);
+            }
+            ci.controlStartDate = todayIso;
+            ci.controlStartTime = startTime;
+            ci.controlEndDate = endIso;
+            ci.controlEndTime = endTime;
+            ci.startEndTime = formatStartEndTimeDisplay(todayIso, startTime, endIso, endTime);
+            const trStart = toTrDate(todayIso);
+            ci.reportDate = trStart;
+            insp.inspection_date = trStart;
+            const months = (typeof ReportDateTimePrefs !== 'undefined') ? ReportDateTimePrefs.getValidityMonths(insp.template_id) : 12;
+            const nextTr = toTrDate(addMonthsIso(todayIso, months));
+            fd.nextInspectionDate = nextTr;
+            ci.nextControlDate = nextTr;
+        }
+        ci._dateTimeInitialized = true;
+    } else {
+        if (!ci.controlStartDate) ci.controlStartDate = toIsoDate(insp.inspection_date || ci.reportDate) || getLocalTodayIso();
+        if (!ci.controlEndDate) ci.controlEndDate = ci.controlStartDate;
+        if (!ci.startEndTime) {
+            ci.startEndTime = formatStartEndTimeDisplay(ci.controlStartDate, ci.controlStartTime, ci.controlEndDate, ci.controlEndTime);
+        }
+    }
+
 }
+
+function syncReportNextDateFromStart(baseIso) {
+    const fd = AppState.currentFormData;
+    const insp = AppState.currentInspection;
+    if (!fd || !insp || !baseIso) return;
+    if (!fd.companyInfo) fd.companyInfo = {};
+    const months = (typeof ReportDateTimePrefs !== 'undefined') ? ReportDateTimePrefs.getValidityMonths(insp.template_id) : 12;
+    const nextIso = addMonthsIso(baseIso, months);
+    const nextTr = toTrDate(nextIso);
+    fd.nextInspectionDate = nextTr;
+    fd.companyInfo.nextControlDate = nextTr;
+    const qNext = document.getElementById('editorQuickNextDateInput');
+    if (qNext && qNext.value !== nextIso) qNext.value = nextIso;
+    const sNext = document.getElementById('editorNextControlDateInput');
+    if (sNext && sNext.value !== nextIso) sNext.value = nextIso;
+}
+
+function updateReportDateTimeField(field, value) {
+    ensureCompanyInfo();
+    const ci = AppState.currentFormData.companyInfo;
+    const insp = AppState.currentInspection;
+    ci._dateTimeInitialized = true;
+
+    if (field === 'startDate') {
+        const iso = toIsoDate(value);
+        if (!iso) return;
+        const prevStart = ci.controlStartDate;
+        ci.controlStartDate = iso;
+        if (!ci.controlEndDate || ci.controlEndDate === prevStart || ci.controlEndDate < iso) {
+            ci.controlEndDate = (ci.controlStartTime && ci.controlEndTime && ci.controlEndTime < ci.controlStartTime)
+                ? addDaysIso(iso, 1)
+                : iso;
+            const endDateEl = document.getElementById('editorEndDateInput');
+            if (endDateEl) endDateEl.value = ci.controlEndDate;
+        }
+        const tr = toTrDate(iso);
+        ci.reportDate = tr;
+        if (insp) insp.inspection_date = tr;
+        const repDateEl = document.getElementById('editorReportDateInput');
+        if (repDateEl) repDateEl.value = iso;
+        syncReportNextDateFromStart(iso);
+    } else if (field === 'startTime') {
+        ci.controlStartTime = String(value || '').trim();
+        if (ci.controlStartDate) syncReportNextDateFromStart(ci.controlStartDate);
+    } else if (field === 'endDate') {
+        const iso = toIsoDate(value);
+        if (iso) ci.controlEndDate = iso;
+    } else if (field === 'endTime') {
+        ci.controlEndTime = String(value || '').trim();
+        if (ci.controlStartDate && ci.controlStartTime && ci.controlEndTime && ci.controlEndTime < ci.controlStartTime && ci.controlEndDate === ci.controlStartDate) {
+            ci.controlEndDate = addDaysIso(ci.controlStartDate, 1);
+            const endDateEl = document.getElementById('editorEndDateInput');
+            if (endDateEl) endDateEl.value = ci.controlEndDate;
+        }
+        if (ci.controlStartDate && !AppState.currentFormData.nextInspectionDate) {
+            syncReportNextDateFromStart(ci.controlStartDate);
+        }
+    }
+
+    ci.startEndTime = formatStartEndTimeDisplay(ci.controlStartDate, ci.controlStartTime, ci.controlEndDate, ci.controlEndTime);
+    const previewEl = document.getElementById('editorStartEndPreview');
+    if (previewEl) previewEl.textContent = ci.startEndTime || '-';
+    triggerAutoSave();
+}
+
+function setReportEndTimeNow() {
+    ensureCompanyInfo();
+    const ci = AppState.currentFormData.companyInfo;
+    const nowTime = getLocalNowHHMM();
+    const todayIso = getLocalTodayIso();
+    ci.controlEndTime = nowTime;
+    ci.controlEndDate = todayIso;
+    const endTimeEl = document.getElementById('editorEndTimeInput');
+    if (endTimeEl) endTimeEl.value = nowTime;
+    const endDateEl = document.getElementById('editorEndDateInput');
+    if (endDateEl) endDateEl.value = todayIso;
+    updateReportDateTimeField('endTime', nowTime);
+}
+
+function updateReportDateManual(isoVal) {
+    const iso = toIsoDate(isoVal);
+    if (!iso || !AppState.currentInspection || !AppState.currentFormData) return;
+    ensureCompanyInfo();
+    const tr = toTrDate(iso);
+    AppState.currentInspection.inspection_date = tr;
+    AppState.currentFormData.companyInfo.reportDate = tr;
+    syncReportNextDateFromStart(iso);
+    triggerAutoSave();
+}
+
+function updateReportNextDateManual(isoVal) {
+    const iso = toIsoDate(isoVal);
+    if (!AppState.currentFormData) return;
+    if (!AppState.currentFormData.companyInfo) AppState.currentFormData.companyInfo = {};
+    const tr = iso ? toTrDate(iso) : '';
+    AppState.currentFormData.nextInspectionDate = tr;
+    AppState.currentFormData.companyInfo.nextControlDate = tr;
+    const qNext = document.getElementById('editorQuickNextDateInput');
+    if (qNext && qNext.value !== iso) qNext.value = iso;
+    const sNext = document.getElementById('editorNextControlDateInput');
+    if (sNext && sNext.value !== iso) sNext.value = iso;
+    triggerAutoSave();
+}
+
+window.updateReportDateTimeField = updateReportDateTimeField;
+window.setReportEndTimeNow = setReportEndTimeNow;
+window.updateReportDateManual = updateReportDateManual;
+window.updateReportNextDateManual = updateReportNextDateManual;
 
 
 
@@ -8106,20 +8369,6 @@ function renderSharedCompanyInfoSection() {
 
                 <div>
 
-                    <label class="block font-bold text-slate-700 mb-1">Rapor / Ekipman Adı</label>
-
-                    <input type="text" value="${escapeHtml(insp.equipment_name || ci.equipmentName || '')}"
-
-                        placeholder=""
-
-                        oninput="updateInspectionName(this.value);"
-
-                        class="w-full border border-amber-300 rounded-lg px-2.5 py-1.5 font-bold text-slate-900 bg-amber-50/50 focus:bg-white focus:border-sky-500 focus:outline-none">
-
-                </div>
-
-                <div>
-
                     <label class="block font-bold text-slate-700 mb-1">Seri No / Pano Kodu</label>
 
                     <input type="text" value="${escapeHtml(ci.serialCode || '')}" placeholder=""
@@ -8132,13 +8381,105 @@ function renderSharedCompanyInfoSection() {
 
                 <div>
 
-                    <label class="block font-bold text-slate-700 mb-1">Kontrol Saati</label>
+                    <label class="block font-bold text-slate-700 mb-1">Rapor No</label>
 
-                    <input type="text" value="${escapeHtml(ci.startEndTime || '')}" placeholder=""
+                    <input type="text" value="${escapeHtml(ci.reportNo || insp.report_no || '')}" placeholder=""
 
-                        oninput="AppState.currentFormData.companyInfo.startEndTime=this.value; triggerAutoSave();"
+                        oninput="AppState.currentFormData.companyInfo.reportNo=this.value; AppState.currentInspection.report_no=this.value; triggerAutoSave();"
 
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
+                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono bg-white">
+
+                </div>
+
+                <div class="sm:col-span-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+
+                    <div class="flex items-center justify-between gap-2 flex-wrap">
+
+                        <span class="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+
+                            <i class="fa-solid fa-clock text-sky-600"></i>
+
+                            <span>Kontrol Tarih &amp; Saati</span>
+
+                        </span>
+
+                        <span id="editorStartEndPreview" class="text-[11px] font-mono font-semibold text-sky-800 bg-white px-2 py-0.5 rounded border border-slate-200">${escapeHtml(ci.startEndTime || '-')}</span>
+
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+
+                        <div>
+
+                            <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Başlangıç Tarihi</label>
+
+                            <input type="date" id="editorStartDateInput" value="${escapeHtml(toIsoDate(ci.controlStartDate || insp.inspection_date) || getLocalTodayIso())}"
+
+                                onchange="updateReportDateTimeField('startDate', this.value)"
+
+                                class="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-semibold bg-white">
+
+                        </div>
+
+                        <div>
+
+                            <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Başlangıç Saati</label>
+
+                            <input type="time" id="editorStartTimeInput" value="${escapeHtml(ci.controlStartTime || '')}"
+
+                                onchange="updateReportDateTimeField('startTime', this.value)"
+
+                                class="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-semibold bg-white">
+
+                        </div>
+
+                        <div>
+
+                            <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Bitiş Tarihi</label>
+
+                            <input type="date" id="editorEndDateInput" value="${escapeHtml(toIsoDate(ci.controlEndDate || ci.controlStartDate || insp.inspection_date) || getLocalTodayIso())}"
+
+                                onchange="updateReportDateTimeField('endDate', this.value)"
+
+                                class="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-semibold bg-white">
+
+                        </div>
+
+                        <div>
+
+                            <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Bitiş Saati</label>
+
+                            <div class="flex items-center gap-1">
+
+                                <input type="time" id="editorEndTimeInput" value="${escapeHtml(ci.controlEndTime || '')}"
+
+                                    onchange="updateReportDateTimeField('endTime', this.value)"
+
+                                    class="flex-1 min-w-0 border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-semibold bg-white">
+
+                                <button type="button" onclick="setReportEndTimeNow()" class="px-2 py-1.5 bg-sky-100 hover:bg-sky-200 text-sky-800 rounded-lg text-[10px] font-bold shrink-0 border border-sky-200 transition" title="Şu anki saati bitiş saati yap">Şimdi</button>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-slate-200/70">
+
+                        <div>
+
+                            <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Sonraki Periyodik Kontrol (${(typeof ReportDateTimePrefs !== 'undefined') ? ReportDateTimePrefs.getValidityMonths(insp.template_id) : 12} Ay)</label>
+
+                            <input type="date" id="editorQuickNextDateInput" value="${escapeHtml(toIsoDate(AppState.currentFormData.nextInspectionDate || ci.nextControlDate) || '')}"
+
+                                onchange="updateReportNextDateManual(this.value)"
+
+                                class="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-semibold bg-white">
+
+                        </div>
+
+                    </div>
 
                 </div>
 
@@ -8166,21 +8507,9 @@ function renderSharedCompanyInfoSection() {
 
                 </div>
 
-                <div>
-
-                    <label class="block font-bold text-slate-700 mb-1">Rapor No</label>
-
-                    <input type="text" value="${escapeHtml(ci.reportNo || insp.report_no || '')}" placeholder=""
-
-                        oninput="AppState.currentFormData.companyInfo.reportNo=this.value; AppState.currentInspection.report_no=this.value; triggerAutoSave();"
-
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono bg-white">
-
-                </div>
-
                 <div class="sm:col-span-2">
 
-                    <label class="block font-bold text-slate-700 mb-1"><i class="fa-solid fa-envelope text-sky-600 mr-1"></i>Yetkili E-posta Adresi <span class="text-[10px] text-slate-400 font-normal">(Rapor Gönderimi İçin)</span></label>
+                    <label class="block font-bold text-slate-700 mb-1"><i class="fa-solid fa-envelope text-sky-600 mr-1"></i>Yetkili E-posta Adresi</label>
 
                     <input type="email" value="${escapeHtml(ci.contactEmail || '')}" placeholder="yetkili@firma.com"
 
@@ -8419,7 +8748,7 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
                     <button type="button" onclick="addManualMeasuringDeviceRow()"
                         class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1">
                         <i class="fa-solid fa-plus"></i>
-                        <span>+ Boş Satır Ekle</span>
+                        <span>Boş Satır Ekle</span>
                     </button>
                 `}
             </div>
@@ -8543,6 +8872,642 @@ function switchEditorTemplate(newTemplateId) {
 // Satır Aralığı: 5947 - 6872 (926 satır)
 // ============================================================================
 
+const ELECTRICAL_22_LINK_RULES = [
+    {
+        guid: '930c427b-c0e1-442c-b4fa-6c8235486d57',
+        shortLabel: 'Gerilim altındaki bölümlerin yalıtılması (iç kapak veya pleksi koruma)',
+        visualGuids: ['d15eb74f-badd-49ea-ba95-ac4230cd5f7f'],
+        defaultWhenEmpty: 'Var',
+        defectText: 'Pano içerisinde gerilim altındaki aktif bölümlere doğrudan dokunmayı önleyen iç kapak veya pleksi koruma bulunmamaktadır (TS HD 60364-4-41).'
+    },
+    {
+        guid: '619a1b60-0c36-4835-9bd6-00318b69832b',
+        shortLabel: 'Mahfaza (IPXY, Pano kilidi, tehlike işareti vb.)',
+        visualGuids: [
+            'af7097ae-e0ff-4069-a64f-a524b6da87c9',
+            'cd8491fb-f0f9-460c-b2e1-4498d74dafbd',
+            'f5e4e4a7-f71f-4d8a-9aca-e67ae12ef9d2'
+        ],
+        defaultWhenEmpty: 'Var',
+        defectText: 'Pano mahfazası (IP koruma, pano kilidi veya elektrik tehlike uyarı işareti) uygun değildir.'
+    },
+    {
+        guid: '4bcb9475-e58b-4cf1-ad73-ea44fe01bc2d',
+        shortLabel: 'Engel',
+        visualGuids: ['36200b35-2f22-4b08-9bf8-27c5f36e1bb1'],
+        defaultWhenEmpty: 'Var',
+        defectText: 'Doğrudan dokunmaya karşı engel koruma önlemi uygun değildir.'
+    },
+    {
+        guid: 'a45cd0bf-7881-465d-9e16-07346cf02e8e',
+        shortLabel: 'El ulaşma uzaklığı dışına yerleştirme',
+        visualGuids: [],
+        defaultWhenEmpty: 'Yok',
+        defectText: 'El ulaşma uzaklığı dışına yerleştirme koruma önlemi uygun değildir.'
+    },
+    {
+        guid: 'f0692f94-58bf-4a0c-9770-c5bf0215db58',
+        shortLabel: 'İlave koruma',
+        visualGuids: [
+            '160910e4-2bdc-4f6b-9ce9-b9fb85b0f877',
+            '44c2419b-ccf2-4111-ba47-bc7bc178c9fa'
+        ],
+        defaultWhenEmpty: 'Var',
+        defectText: 'Tamamlayıcı / ilave koruma (ek potansiyel dengeleme veya pano kapak koruma bağlantısı) uygun değildir.'
+    },
+    {
+        guid: '4ccb36a2-cb3b-41eb-abff-04c9796f01c9',
+        shortLabel: '30 mA RCD (5xI için 40 ms açma zamanı); devre kesicisi <32 A devreler için (TS HD 60364-4-41)',
+        visualGuids: [],
+        defaultWhenEmpty: 'Var',
+        isRcdRule: true,
+        defectText: '<32 A devreler için 30 mA RCD (Kaçak Akım Koruma Rölesi) koruması veya açma testi sonucu uygun değildir.'
+    }
+];
+
+function getElectrical21Guids() {
+    const questions = AppState.electricalTemplate?.areas?.[0]?.topics?.[0]?.questions || [];
+    return questions.map(q => q.guid).filter(Boolean);
+}
+
+function getElectrical22Guids() {
+    return ELECTRICAL_22_LINK_RULES.map(r => r.guid);
+}
+
+function ensureElectrical2201DetailsFromPrevious() {
+    const insp = AppState.currentInspection;
+    const fd = AppState.currentFormData;
+    const sec21Guids = getElectrical21Guids();
+    if (!insp || !fd || String(insp.template_id) !== '2201' || !sec21Guids.length) return;
+    if (!fd.answers || typeof fd.answers !== 'object') fd.answers = {};
+
+    const hasAny21Answer = sec21Guids.some(guid => String(fd.answers[`q_${guid}`] ?? '').trim() !== '');
+    if (hasAny21Answer) {
+        fd._details21Initialized = true;
+        return;
+    }
+    if (fd._details21Initialized) return;
+    if (!insp.work_order_id) return;
+
+    const allInsps = (window.OfflineDB && window.OfflineDB.state && Array.isArray(window.OfflineDB.state.inspections))
+        ? window.OfflineDB.state.inspections
+        : (Array.isArray(AppState.inspectionsCache) ? AppState.inspectionsCache : []);
+
+    const candidates = allInsps.filter(item =>
+        item &&
+        String(item.work_order_id) === String(insp.work_order_id) &&
+        String(item.id) !== String(insp.id) &&
+        String(item.template_id) === '2201'
+    );
+    if (!candidates.length) return;
+
+    const extractFd = (item) => {
+        let sfd = null;
+        try {
+            const rawLocal = localStorage.getItem(`enlab_insp_${item.id}`);
+            if (rawLocal) sfd = JSON.parse(rawLocal);
+        } catch (e) {}
+        if (!sfd && item.form_data && typeof item.form_data === 'object') sfd = item.form_data;
+        if (!sfd && item.data_json) {
+            try { sfd = typeof item.data_json === 'string' ? JSON.parse(item.data_json) : item.data_json; } catch (e) {}
+        }
+        return sfd;
+    };
+
+    const getScore = (item) => {
+        const tsStr = item.local_updated_at || item.updated_at || '';
+        const ts = tsStr ? Date.parse(tsStr) : NaN;
+        if (!Number.isNaN(ts) && ts > 0) return ts;
+        const n = Number(item.id);
+        return Number.isFinite(n) ? n : 0;
+    };
+
+    const withData = [];
+    candidates.forEach((item, idx) => {
+        const sfd = extractFd(item);
+        if (!sfd || !sfd.answers) return;
+        const hasVal = sec21Guids.some(guid => String(sfd.answers[`q_${guid}`] ?? '').trim() !== '');
+        if (hasVal) withData.push({ sfd, score: getScore(item), idx });
+    });
+    if (!withData.length) return;
+
+    withData.sort((a, b) => (b.score !== a.score ? b.score - a.score : a.idx - b.idx));
+    const latestFd = withData[0].sfd;
+
+    let copied = 0;
+    sec21Guids.forEach(guid => {
+        const val = latestFd.answers[`q_${guid}`];
+        if (val !== undefined && String(val).trim() !== '') {
+            fd.answers[`q_${guid}`] = val;
+            copied++;
+        }
+    });
+    if (copied > 0) {
+        fd._details21Initialized = true;
+        if (typeof triggerAutoSave === 'function') triggerAutoSave();
+    }
+}
+
+function evaluateElectrical22RuleStatus(rule, fd) {
+    const answers = fd?.answers || {};
+    if (rule.isRcdRule) {
+        const rows = fd?.tableRows?.topic_3_3 || [];
+        let hasRcdFail = false;
+        rows.forEach(r => {
+            if (!r || typeof r !== 'object') return;
+            const res = String(r['241bf571-43dd-46d1-836d-ecdff0c7acd2'] || '').trim();
+            if (res !== 'Uygun Değil' && res !== 'X') return;
+            const linyeName = String(r['405e297d-cea7-45ec-9c1e-6e2116cfb541'] || '').toLowerCase();
+            const curve = String(r['7f4bdff7-97bd-47dd-8151-7eacc32f5d8e'] || '').toLowerCase();
+            const iDeltaRaw = String(r['e42d31e0-dbc3-4e34-88c2-5e95f8e85636'] || '').replace(',', '.');
+            const iDelta = parseFloat(iDeltaRaw);
+            const inAmp = parseFloat(String(r['bd17d9ca-3087-4406-9f16-867d10642df6'] || '').replace(',', '.'));
+            const isRcdOrSmallBreaker =
+                (!Number.isNaN(iDelta) && iDelta <= 30) ||
+                curve.includes('rccb') || curve.includes('rcd') || curve.includes('kakr') ||
+                linyeName.includes('rcd') || linyeName.includes('kakr') ||
+                (!Number.isNaN(inAmp) && inAmp > 0 && inAmp <= 32);
+            if (isRcdOrSmallBreaker) hasRcdFail = true;
+        });
+        if (hasRcdFail) return 'Uygunsuz';
+        return rule.defaultWhenEmpty;
+    }
+
+    if (!rule.visualGuids || !rule.visualGuids.length) {
+        return rule.defaultWhenEmpty;
+    }
+
+    const vals = rule.visualGuids.map(g => String(answers[`q_${g}`] || '').trim());
+    if (vals.some(v => v === 'Uygun Değil' || v === 'Kısmen Uygun')) {
+        return 'Uygunsuz';
+    }
+    if (vals.some(v => v === 'Uygun')) {
+        return 'Var';
+    }
+    if (vals.every(v => v === 'Uygulaması Yok') && vals.some(Boolean)) {
+        return 'Yok';
+    }
+    return rule.defaultWhenEmpty;
+}
+
+function getElectrical22VisualDetailNotes(rule, fd) {
+    const answers = fd?.answers || {};
+    const sels = fd?.itemDefectSelections || {};
+    const questionsMap = {};
+    (AppState.electricalTemplate?.areas || []).forEach(a => {
+        (a.topics || []).forEach(t => {
+            (t.questions || []).forEach(q => {
+                questionsMap[q.guid] = q.question;
+            });
+        });
+    });
+
+    const parts = [];
+    (rule.visualGuids || []).forEach(vg => {
+        const ans = String(answers[`q_${vg}`] || '').trim();
+        if (ans === 'Uygun Değil' || ans === 'Kısmen Uygun') {
+            const sel = sels[`q_${vg}`];
+            const title = questionsMap[vg] || '';
+            if (sel && sel.sentence) {
+                parts.push(sel.sentence);
+            } else if (title && window.STANDARD_DEFECT_NOTES && window.STANDARD_DEFECT_NOTES[title]) {
+                parts.push(window.STANDARD_DEFECT_NOTES[title]);
+            } else if (title) {
+                parts.push(`${title} uygun değil`);
+            }
+        }
+    });
+    return parts.join(' ');
+}
+
+function getElectrical22DefectLines(fd) {
+    if (!fd || !fd.answers) return [];
+    const lines = [];
+    ELECTRICAL_22_LINK_RULES.forEach(rule => {
+        const val = String(fd.answers[`q_${rule.guid}`] || '').trim();
+        if (val === 'Uygunsuz') {
+            const linkedVisual = getElectrical22VisualDetailNotes(rule, fd);
+            const detail = linkedVisual || rule.defectText;
+            lines.push(`• [2.2 Tespit Edilen Bilgiler - ${rule.shortLabel}]: Uygunsuz (${detail})`);
+        }
+    });
+    return lines;
+}
+window.getElectrical22DefectLines = getElectrical22DefectLines;
+
+function syncElectrical2201Section22FromTriggers(triggeredGuid = null, allowDefectNoteSync = true) {
+    const insp = AppState.currentInspection;
+    const fd = AppState.currentFormData;
+    if (!insp || !fd || String(insp.template_id) !== '2201') return false;
+    if (!fd.answers || typeof fd.answers !== 'object') fd.answers = {};
+    const manualMap = fd._manual22Answers || {};
+    let changed = false;
+
+    const cleanTrigger = triggeredGuid ? String(triggeredGuid).replace(/^q_/, '') : null;
+
+    ELECTRICAL_22_LINK_RULES.forEach(rule => {
+        const qKey = `q_${rule.guid}`;
+        const curVal = String(fd.answers[qKey] || '').trim();
+        const isLinkedTrigger = !cleanTrigger || (rule.visualGuids && rule.visualGuids.includes(cleanTrigger)) || (cleanTrigger === 'topic_3_3' && rule.isRcdRule);
+        if (!isLinkedTrigger) return;
+
+        const nextVal = evaluateElectrical22RuleStatus(rule, fd);
+        const shouldForceDefect = (nextVal === 'Uygunsuz');
+        const wasTriggerUpdated = Boolean(cleanTrigger && ((rule.visualGuids && rule.visualGuids.includes(cleanTrigger)) || (cleanTrigger === 'topic_3_3' && rule.isRcdRule)));
+
+        if (shouldForceDefect || !curVal || (wasTriggerUpdated && !manualMap[rule.guid])) {
+            if (curVal !== nextVal) {
+                fd.answers[qKey] = nextVal;
+                changed = true;
+            }
+        } else if (wasTriggerUpdated && manualMap[rule.guid] && curVal === 'Uygunsuz' && nextVal === 'Var') {
+            // Gözle kontrol düzeltildiyse kilidi çöz ve Var yap
+            delete manualMap[rule.guid];
+            fd.answers[qKey] = nextVal;
+            changed = true;
+        }
+    });
+
+    // DKD/SPD (6.3) -> 2.2 DKD/SPD kullanılmış mı senkronu
+    const dkdVal = String(fd.answers['q_dc17ec9f-90bc-442a-a61b-729215d36fa0'] || '').trim();
+    const sec22DkdKey = 'q_ddb49ead-c7b4-42b9-b449-0cc456ce6fbc';
+    if (dkdVal && !manualMap['ddb49ead-c7b4-42b9-b449-0cc456ce6fbc']) {
+        const targetDkd = dkdVal === 'Mevcut Değil' ? 'Hayır' : 'Evet';
+        if (fd.answers[sec22DkdKey] !== targetDkd) {
+            fd.answers[sec22DkdKey] = targetDkd;
+            changed = true;
+        }
+    }
+
+    if (allowDefectNoteSync && typeof syncAllDefectsToDefectNotes === 'function') {
+        syncAllDefectsToDefectNotes();
+    }
+    return changed;
+}
+window.syncElectrical2201Section22FromTriggers = syncElectrical2201Section22FromTriggers;
+
+function ensureElectrical2201Section22Defaults() {
+    const insp = AppState.currentInspection;
+    const fd = AppState.currentFormData;
+    if (!insp || !fd || String(insp.template_id) !== '2201') return;
+    const changed = syncElectrical2201Section22FromTriggers(null, false);
+    if (changed && typeof triggerAutoSave === 'function') {
+        triggerAutoSave();
+    }
+}
+
+const ELEC_61_GUIDS = {
+    ZX: 'c1229a3e-6354-4c60-a437-3f1b53e90729',
+    ZLN: 'a07f1984-6eb3-48fe-ad63-5b3383d2fe7b',
+    IK3: 'fb491c19-e0ac-49f2-8144-b4719ad1fce5',
+    DKD_TIP: 'dc17ec9f-90bc-442a-a61b-729215d36fa0',
+    V_FF: '38645b9b-e756-4d53-8b3a-e32012f2ba24',
+    V_LN: 'bfe4eebe-fd77-47fa-a152-df2a70f2c73f',
+    V_NPE: 'd4512880-a16c-4f08-ad98-f71be809ba6f',
+    DKD_KA: '675db3c1-9c92-49c2-b54a-3a7fb2b27959'
+};
+
+const ELECTRICAL_61_X_DEFECTS = [
+    {
+        guid: ELEC_61_GUIDS.ZX,
+        line: '• [6.1 Zx Ölçümü]: Panodan ölçülen faz-toprak çevrim empedansı (Zx) ölçümü uygun değildir / değer alınamamıştır (X). Topraklama ve koruma sürekliliği kontrol edilmelidir.'
+    },
+    {
+        guid: ELEC_61_GUIDS.ZLN,
+        line: '• [6.1 ZLN Ölçümü]: Panodan ölçülen faz-nötr çevrim empedansı (ZLN) ölçümü uygun değildir / değer alınamamıştır (X). Bağlantı ve nötr hattı kontrol edilmelidir.'
+    },
+    {
+        guid: ELEC_61_GUIDS.IK3,
+        line: '• [6.1 Kısa Devre Akımı]: Hesaplanan 3 fazlı kısa devre akımı ölçümü/değeri uygun değildir (X).'
+    },
+    {
+        guid: ELEC_61_GUIDS.V_FF,
+        line: '• [6.1 Faz-Faz Gerilim (F-F)]: Faz-Faz şebeke gerilimi ölçümü uygun değildir / enerji tespit edilememiştir (X).'
+    },
+    {
+        guid: ELEC_61_GUIDS.V_LN,
+        line: '• [6.1 Faz-Nötr Gerilim (L-N)]: Faz-Nötr gerilim ölçümü uygun değildir / nötr hattı kontrol edilmelidir (X).'
+    },
+    {
+        guid: ELEC_61_GUIDS.V_NPE,
+        line: '• [6.1 Nötr-Toprak Gerilim (N-PE)]: Nötr-Toprak (N-PE) gerilimi sınır değer dışında veya uygun değildir (X). Toprak-nötr arası gerilimin 1,5 V\'dan düşük olması gerekmektedir.'
+    },
+    {
+        guid: ELEC_61_GUIDS.DKD_KA,
+        line: '• [6.1 DKD Dayanma Akımı]: Aşırı gerilim koruma cihazı (DKD) dayanma akımı ölçümü/değeri uygun değildir (X).'
+    }
+];
+
+const TOPIC_3_3_MEASURED_COLS = {
+    'bd17d9ca-3087-4406-9f16-867d10642df6': 'Nominal Akım In',
+    'ee0ef618-52cb-4dd9-9361-15200dcee077': 'Kesme Kapasitesi Icu',
+    '8e43f81a-34b3-4c8e-9baf-e4161f5ba11e': 'Faz Kesiti',
+    '07697e7d-212a-4c84-be0e-fd64e539b5b0': 'N/PEN Kesiti',
+    'e16540f3-b6b7-486a-8f40-2722add48bb7': 'PE Koruma Kesiti',
+    '16c7e5ea-b08e-4d33-b9f1-49c4ae6c1437': 'İşletme Akımı Ib',
+    'd3bb692d-56ca-4b1b-b609-81198be785b0': 'İletken Akımı Iz',
+    'e42d31e0-dbc3-4e34-88c2-5e95f8e85636': 'RCD IΔ (mA)',
+    '016eca98-d8f9-4a4d-bdfd-36160d324726': 'RCD Açma Süresi TΔ (ms)'
+};
+const TOPIC_3_3_NAME_GUID = '405e297d-cea7-45ec-9c1e-6e2116cfb541';
+const TOPIC_3_3_RES_GUID = '241bf571-43dd-46d1-836d-ecdff0c7acd2';
+const TOPIC_3_4_MEASURED_COLS = {
+    '7a977dd5-098c-4a56-a047-f1fe69cc7ed2': 'Potansiyel Dengeleme Kesiti',
+    '0cee7c0e-d915-4069-825a-b0984512cd08': 'Potansiyel Dengeleme Süreklilik',
+    '4980b506-7bc6-423e-898e-6f89536754f3': 'Tamamlayıcı PD Kesiti',
+    'b4af8cc0-2dad-4768-8fc3-5393757675af': 'Tamamlayıcı PD Süreklilik'
+};
+const TOPIC_3_4_NAME_GUID = '2f743a60-497c-41bc-84aa-a499220310a3';
+const TOPIC_3_4_RES_GUID = 'b21fd22e-6cd7-431c-8949-b67fdc46613c';
+const TOPIC_3_5_MEASURED_COLS = {
+    '8b095f55-b0a3-41c4-b8d9-6a4f4b7c9026': 'Eni',
+    '0f614ecc-406f-46b3-8d63-a759c3e119e7': 'Boyu',
+    '33143091-c517-439e-b79d-6bde5d06143f': 'Zemin İzolasyon Direnci'
+};
+const TOPIC_3_5_NAME_GUID = 'd0096971-113c-4f4c-ac4e-31ba59227c0b';
+const TOPIC_3_5_RES_GUID = '1114914a-a154-4859-93f9-19b22fddc098';
+
+function isElectricalMarkedX(val) {
+    return String(val ?? '').trim().toLowerCase() === 'x';
+}
+
+function parseElectricalNumber(raw) {
+    const clean = String(raw ?? '').trim().replace(',', '.');
+    if (!clean) return NaN;
+    const num = Number(clean);
+    return Number.isFinite(num) ? num : NaN;
+}
+
+function randomElectricalVoltageFF(excludeCurrentVal) {
+    const pool = [393, 394, 395, 396, 397];
+    const curInt = parseInt(String(excludeCurrentVal ?? '').trim(), 10);
+    const filtered = pool.length > 1 && pool.includes(curInt) ? pool.filter(v => v !== curInt) : pool;
+    return filtered[Math.floor(Math.random() * filtered.length)];
+}
+
+function computeElectricalLNFromFF(ffRaw) {
+    if (isElectricalMarkedX(ffRaw)) return null;
+    const ff = parseElectricalNumber(ffRaw);
+    if (!Number.isFinite(ff) || ff <= 0) return null;
+    return String(Math.round(ff / Math.sqrt(3)));
+}
+
+function computeElectricalShortCircuitIk3(zlnRaw, vlnRaw, vffRaw) {
+    if (isElectricalMarkedX(zlnRaw)) return null;
+    const zln = parseElectricalNumber(zlnRaw);
+    if (!Number.isFinite(zln) || zln <= 0) return null;
+    const zEff = zln >= 0.07 ? Math.max(0.001, zln - 0.05) : zln;
+    let uln = (!isElectricalMarkedX(vlnRaw)) ? parseElectricalNumber(vlnRaw) : NaN;
+    if (!Number.isFinite(uln) || uln <= 0) {
+        const ff = (!isElectricalMarkedX(vffRaw)) ? parseElectricalNumber(vffRaw) : NaN;
+        uln = (Number.isFinite(ff) && ff > 0) ? (ff / Math.sqrt(3)) : 230;
+    }
+    const ik3 = uln / (zEff * 1000);
+    if (!Number.isFinite(ik3) || ik3 <= 0) return null;
+    return String(parseFloat(ik3.toFixed(2))).replace('.', ',');
+}
+
+function updateElectricalQuestionDom(qKey, val) {
+    if (typeof document === 'undefined') return;
+    const input = document.querySelector(`[data-qkey="${qKey}"]`);
+    if (input && input.value !== val) {
+        input.value = val;
+    }
+}
+
+function syncElectrical61AutoCalculations(fd, triggerGuid = null) {
+    if (!fd || !fd.answers) return;
+    const ffKey = `q_${ELEC_61_GUIDS.V_FF}`;
+    const lnKey = `q_${ELEC_61_GUIDS.V_LN}`;
+    const zlnKey = `q_${ELEC_61_GUIDS.ZLN}`;
+    const ik3Key = `q_${ELEC_61_GUIDS.IK3}`;
+
+    if (triggerGuid === ELEC_61_GUIDS.V_FF) {
+        fd._voltage61Initialized = true;
+        const lnComputed = computeElectricalLNFromFF(fd.answers[ffKey]);
+        if (lnComputed !== null) {
+            fd.answers[lnKey] = lnComputed;
+            updateElectricalQuestionDom(lnKey, lnComputed);
+        }
+    }
+
+    if (!triggerGuid || triggerGuid === ELEC_61_GUIDS.V_FF || triggerGuid === ELEC_61_GUIDS.V_LN || triggerGuid === ELEC_61_GUIDS.ZLN) {
+        const curIk3 = String(fd.answers[ik3Key] ?? '').trim();
+        if (!isElectricalMarkedX(curIk3)) {
+            const ik3Computed = computeElectricalShortCircuitIk3(fd.answers[zlnKey], fd.answers[lnKey], fd.answers[ffKey]);
+            if (ik3Computed !== null) {
+                fd.answers[ik3Key] = ik3Computed;
+                updateElectricalQuestionDom(ik3Key, ik3Computed);
+            }
+        }
+    }
+}
+
+function randomizeElectrical61Voltage() {
+    const fd = AppState.currentFormData;
+    if (!fd) return;
+    if (!fd.answers || typeof fd.answers !== 'object') fd.answers = {};
+    const ffKey = `q_${ELEC_61_GUIDS.V_FF}`;
+    const nextFF = String(randomElectricalVoltageFF(fd.answers[ffKey]));
+    fd.answers[ffKey] = nextFF;
+    fd._voltage61Initialized = true;
+    updateElectricalQuestionDom(ffKey, nextFF);
+    syncElectrical61AutoCalculations(fd, ELEC_61_GUIDS.V_FF);
+    if (typeof syncAllDefectsToDefectNotes === 'function') {
+        syncAllDefectsToDefectNotes();
+    }
+    if (typeof triggerAutoSave === 'function') {
+        triggerAutoSave();
+    }
+}
+window.randomizeElectrical61Voltage = randomizeElectrical61Voltage;
+
+function ensureElectrical2201VisualChecksDefaults() {
+    const insp = AppState.currentInspection;
+    const fd = AppState.currentFormData;
+    const area2 = AppState.electricalTemplate?.areas?.[2];
+    if (!insp || !fd || String(insp.template_id) !== '2201' || !area2) return;
+    if (!fd.answers || typeof fd.answers !== 'object') fd.answers = {};
+    if (fd._visualDefaultsInitialized) return;
+
+    let filled = 0;
+    (area2.topics || []).forEach(topic => {
+        (topic.questions || []).forEach(q => {
+            if (q.type === 'YesNo') {
+                const qKey = `q_${q.guid}`;
+                if (fd.answers[qKey] === undefined || String(fd.answers[qKey]).trim() === '') {
+                    fd.answers[qKey] = 'Uygun';
+                    filled++;
+                }
+            }
+        });
+    });
+    fd._visualDefaultsInitialized = true;
+    if (filled > 0 && typeof triggerAutoSave === 'function') {
+        triggerAutoSave();
+    }
+}
+
+function ensureElectrical2201Section61Defaults() {
+    const insp = AppState.currentInspection;
+    const fd = AppState.currentFormData;
+    if (!insp || !fd || String(insp.template_id) !== '2201') return;
+    if (!fd.answers || typeof fd.answers !== 'object') fd.answers = {};
+
+    const ffKey = `q_${ELEC_61_GUIDS.V_FF}`;
+    const lnKey = `q_${ELEC_61_GUIDS.V_LN}`;
+    let changed = false;
+
+    if (!fd._voltage61Initialized && !String(fd.answers[ffKey] || '').trim()) {
+        fd.answers[ffKey] = String(randomElectricalVoltageFF());
+        fd._voltage61Initialized = true;
+        changed = true;
+    } else if (String(fd.answers[ffKey] || '').trim()) {
+        fd._voltage61Initialized = true;
+    }
+
+    if (!String(fd.answers[lnKey] || '').trim() && !isElectricalMarkedX(fd.answers[ffKey])) {
+        const lnComputed = computeElectricalLNFromFF(fd.answers[ffKey]);
+        if (lnComputed !== null) {
+            fd.answers[lnKey] = lnComputed;
+            changed = true;
+        }
+    }
+
+    const zlnVal = fd.answers[`q_${ELEC_61_GUIDS.ZLN}`];
+    const ik3Key = `q_${ELEC_61_GUIDS.IK3}`;
+    if (!String(fd.answers[ik3Key] || '').trim() && zlnVal && !isElectricalMarkedX(zlnVal)) {
+        const ik3Computed = computeElectricalShortCircuitIk3(zlnVal, fd.answers[lnKey], fd.answers[ffKey]);
+        if (ik3Computed !== null) {
+            fd.answers[ik3Key] = ik3Computed;
+            changed = true;
+        }
+    }
+
+    if (changed && typeof triggerAutoSave === 'function') {
+        triggerAutoSave();
+    }
+}
+
+function getElectrical61DefectLines(fd) {
+    if (!fd) return [];
+    const lines = [];
+    const answers = fd.answers || {};
+
+    ELECTRICAL_61_X_DEFECTS.forEach(item => {
+        if (isElectricalMarkedX(answers[`q_${item.guid}`])) {
+            lines.push(item.line);
+        }
+    });
+
+    const tr = fd.tableRows || {};
+
+    (tr.topic_3_3 || []).forEach((r, idx) => {
+        if (!r || typeof r !== 'object') return;
+        const rowLabel = String(r[TOPIC_3_3_NAME_GUID] || '').trim() || `Linye #${idx + 1}`;
+        const xCols = [];
+        Object.keys(TOPIC_3_3_MEASURED_COLS).forEach(colGuid => {
+            if (isElectricalMarkedX(r[colGuid])) {
+                xCols.push(TOPIC_3_3_MEASURED_COLS[colGuid]);
+            }
+        });
+        const resVal = String(r[TOPIC_3_3_RES_GUID] || '').trim();
+        if (xCols.length > 0) {
+            lines.push(`• [6.1 Linye - ${rowLabel}]: ${xCols.join(', ')} ölçüm değeri uygun değildir / açma yapmamıştır (X).`);
+        } else if (resVal === 'Uygun Değil' || resVal === 'X') {
+            lines.push(`• [6.1 Linye - ${rowLabel}]: Linye koruma/ölçüm kontrolü uygun değildir (X).`);
+        }
+    });
+
+    (tr.topic_3_4 || []).forEach((r, idx) => {
+        if (!r || typeof r !== 'object') return;
+        const rowLabel = String(r[TOPIC_3_4_NAME_GUID] || '').trim() || `Bölüm #${idx + 1}`;
+        const xCols = [];
+        Object.keys(TOPIC_3_4_MEASURED_COLS).forEach(colGuid => {
+            if (isElectricalMarkedX(r[colGuid])) {
+                xCols.push(TOPIC_3_4_MEASURED_COLS[colGuid]);
+            }
+        });
+        const resVal = String(r[TOPIC_3_4_RES_GUID] || '').trim();
+        if (xCols.length > 0) {
+            lines.push(`• [6.2 Potansiyel Dengeleme - ${rowLabel}]: ${xCols.join(', ')} ölçümü uygun değildir (X).`);
+        } else if (resVal === 'Uygun Değil' || resVal === 'X') {
+            lines.push(`• [6.2 Potansiyel Dengeleme - ${rowLabel}]: Potansiyel dengeleme iletkeni kontrolü uygun değildir (X).`);
+        }
+    });
+
+    (tr.topic_3_5 || []).forEach((r, idx) => {
+        if (!r || typeof r !== 'object') return;
+        const rowLabel = String(r[TOPIC_3_5_NAME_GUID] || '').trim() || `Zemin #${idx + 1}`;
+        const xCols = [];
+        Object.keys(TOPIC_3_5_MEASURED_COLS).forEach(colGuid => {
+            if (isElectricalMarkedX(r[colGuid])) {
+                xCols.push(TOPIC_3_5_MEASURED_COLS[colGuid]);
+            }
+        });
+        const resVal = String(r[TOPIC_3_5_RES_GUID] || '').trim();
+        if (xCols.length > 0 || resVal === 'Uygun Değil' || resVal === 'X') {
+            lines.push(`• [6.3 Zemin İzolasyonu - ${rowLabel}]: Zemin izolasyonunun olmadığı veya yalıtım direncinin (< 50 kΩ) uygun olmadığı tespit edilmiştir.`);
+        }
+    });
+
+    return lines;
+}
+window.getElectrical61DefectLines = getElectrical61DefectLines;
+
+function onElectrical2201AnswerUpdated(qKey, value, isDirectInput = false) {
+    const fd = AppState.currentFormData;
+    if (!fd) return;
+    const cleanGuid = String(qKey || '').replace(/^q_/, '');
+
+    if (getElectrical21Guids().includes(cleanGuid)) {
+        fd._details21Initialized = true;
+        return;
+    }
+
+    if (getElectrical22Guids().includes(cleanGuid) || cleanGuid === 'ddb49ead-c7b4-42b9-b449-0cc456ce6fbc') {
+        if (!fd._manual22Answers || typeof fd._manual22Answers !== 'object') fd._manual22Answers = {};
+        if (String(value || '').trim()) {
+            fd._manual22Answers[cleanGuid] = true;
+        } else {
+            delete fd._manual22Answers[cleanGuid];
+        }
+        if (value === 'Uygunsuz') {
+            fd.overallResult = 'UYGUN DEĞİL';
+            if (AppState.currentInspection) AppState.currentInspection.result_status = 'UYGUN DEĞİL';
+        }
+        if (typeof syncAllDefectsToDefectNotes === 'function') {
+            syncAllDefectsToDefectNotes();
+        }
+        return;
+    }
+
+    if (cleanGuid === ELEC_61_GUIDS.V_FF || cleanGuid === ELEC_61_GUIDS.V_LN || cleanGuid === ELEC_61_GUIDS.ZLN || cleanGuid === ELEC_61_GUIDS.IK3) {
+        syncElectrical61AutoCalculations(fd, cleanGuid);
+    }
+
+    if (ELECTRICAL_61_X_DEFECTS.some(d => d.guid === cleanGuid)) {
+        if (typeof document !== 'undefined') {
+            const el = document.querySelector(`[data-qkey="${qKey}"]`);
+            if (el) {
+                if (isElectricalMarkedX(value)) {
+                    el.classList.add('border-rose-400', 'bg-rose-50/50', 'text-rose-700', 'font-bold');
+                } else {
+                    el.classList.remove('border-rose-400', 'bg-rose-50/50', 'text-rose-700', 'font-bold');
+                }
+            }
+        }
+        if (typeof syncAllDefectsToDefectNotes === 'function') {
+            syncAllDefectsToDefectNotes();
+        }
+    }
+
+    if (!isDirectInput) {
+        syncElectrical2201Section22FromTriggers(cleanGuid, true);
+    }
+}
+window.onElectrical2201AnswerUpdated = onElectrical2201AnswerUpdated;
+
 function ensureThermalCameraDevice() {
 
     const fd = AppState.currentFormData;
@@ -8584,6 +9549,14 @@ function renderElectrical2201Editor() {
     ensureMeasuringDevices();
 
     ensureThermalCameraDevice();
+
+    ensureElectrical2201DetailsFromPrevious();
+
+    ensureElectrical2201VisualChecksDefaults();
+
+    ensureElectrical2201Section61Defaults();
+
+    ensureElectrical2201Section22Defaults();
 
 
 
@@ -8846,9 +9819,7 @@ function renderElectrical2201Topic(area, topic, secNum) {
 
                                 <div class="min-w-0">
 
-                                    <span class="text-[9px] font-bold text-rose-700 uppercase tracking-wide block">Tespit Edilen Uygunsuzluk Cümlesi:</span>
-
-                                    <span class="font-medium text-slate-800 text-[11px] leading-snug block">${selectedDefect || 'Henüz uygunsuzluk cümlesi seçilmedi (seçmek için butona dokunun)'}</span>
+                                    <span class="font-medium text-slate-800 text-[11px] leading-snug block">${selectedDefect || 'Uygunsuzluk cümlesi seçilmedi'}</span>
 
                                 </div>
 
@@ -8998,9 +9969,7 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
 
                             <div class="min-w-0">
 
-                                <span class="text-[9px] font-bold text-rose-700 uppercase tracking-wide block">Uygunsuzluk Cümlesi:</span>
-
-                                <span class="font-medium text-slate-800 text-[11px] leading-snug block">${selectedDefect || 'Henüz cümle seçilmedi'}</span>
+                                <span class="font-medium text-slate-800 text-[11px] leading-snug block">${selectedDefect || 'Uygunsuzluk cümlesi seçilmedi'}</span>
 
                             </div>
 
@@ -9030,17 +9999,29 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
 
     if (q.type === 'MultipleChoice' && Array.isArray(q.options) && q.options.length > 0) {
 
-        const opts = q.options.map(o => `<option value="${o}" ${val === o ? 'selected' : ''}>${o}</option>`).join('');
+        const hasValInOpts = !val || q.options.includes(val);
+        const optsList = hasValInOpts ? q.options : [...q.options, val];
+        const opts = optsList.map(o => `<option value="${escapeHtml(o)}" ${val === o ? 'selected' : ''}>${escapeHtml(o)}</option>`).join('');
+
+        const is22Defect = (areaIdx === 0 && topicIdx === 1 && val === 'Uygunsuz');
+        const cardCls = is22Defect
+            ? 'border-rose-400 bg-rose-50/70'
+            : (areaIdx === 0 && topicIdx === 1 && (val === 'Var' || val === 'Uygun' || val === 'Evet'))
+                ? 'border-emerald-300 bg-emerald-50/30'
+                : 'border-slate-200 bg-slate-50/40';
+        const selCls = is22Defect
+            ? 'border-rose-400 bg-white text-rose-700 font-bold'
+            : 'border-slate-300 bg-white text-slate-900 font-semibold';
 
         return `
 
-            <div class="p-2.5 rounded-lg border border-slate-200 bg-slate-50/40 flex flex-col justify-between">
+            <div class="p-2.5 rounded-lg border ${cardCls} flex flex-col justify-between transition-colors">
 
                 <label class="block text-[11px] font-bold text-slate-700 mb-1 leading-snug">${qTitle}</label>
 
                 <select onchange="handleAnswerChange('${qKey}', this.value, '${qTitle.replace(/'/g, "\\'")}')"
 
-                    class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white font-semibold text-slate-900">
+                    class="w-full border rounded-lg px-2.5 py-1.5 text-xs ${selCls}">
 
                     <option value="">Seçiniz...</option>
 
@@ -9056,19 +10037,27 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
 
 
 
+    const isVFF = q.guid === ELEC_61_GUIDS.V_FF;
+    const is61XField = ELECTRICAL_61_X_DEFECTS.some(d => d.guid === q.guid);
+    const isMarkedX = is61XField && isElectricalMarkedX(val);
+    const xInputCls = isMarkedX ? 'border-rose-400 bg-rose-50/50 text-rose-700 font-bold' : 'border-slate-300 bg-white font-medium';
+
     return `
 
-        <div class="p-2.5 rounded-lg border border-slate-200 bg-slate-50/40 flex flex-col justify-between">
+        <div class="p-2.5 rounded-lg border ${isMarkedX ? 'border-rose-300 bg-rose-50/40' : 'border-slate-200 bg-slate-50/40'} flex flex-col justify-between">
 
-            <label class="block text-[11px] font-bold text-slate-700 mb-1 leading-snug">${qTitle}</label>
+            <div class="flex items-center justify-between gap-2 mb-1">
+                <label class="block text-[11px] font-bold text-slate-700 leading-snug">${qTitle}</label>
+                ${isVFF ? `<button type="button" onclick="randomizeElectrical61Voltage()" class="px-2 py-0.5 rounded-md bg-sky-100 hover:bg-sky-200 active:scale-95 text-sky-800 text-[10px] font-bold shrink-0 transition" title="393-397 V arası rastgele seç">🎲 393-397</button>` : ''}
+            </div>
 
-            <input type="text" value="${String(val || '').replace(/"/g, '&quot;')}"
+            <input type="text" data-qkey="${qKey}" value="${String(val || '').replace(/"/g, '&quot;')}"
 
                 oninput="handleAnswerInput('${qKey}', this.value)"
 
                 placeholder=""
 
-                class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white font-medium focus:border-sky-500 focus:outline-none">
+                class="w-full border rounded-lg px-2.5 py-1.5 text-xs focus:border-sky-500 focus:outline-none ${xInputCls}">
 
         </div>
 
@@ -9174,15 +10163,17 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
 
             if (q.type === 'YesNo') {
 
+                const isNoGood = cellVal === 'Uygun Değil' || cellVal === 'X';
+
                 return `
 
                     <div class="${isSection65 ? 'col-span-full sm:col-span-1' : ''}">
 
                         <label class="block text-[11px] font-bold text-slate-700 mb-1 leading-snug break-words">${labelText}</label>
 
-                        <select onchange="handleTopicTableCell('${tKey}', ${rIdx}, '${q.guid}', this.value)"
+                        <select data-table-cell="${tKey}_${rIdx}_${q.guid}" onchange="handleTopicTableCell('${tKey}', ${rIdx}, '${q.guid}', this.value)"
 
-                            class="w-full border border-slate-300 rounded-lg px-2.5 py-2 text-xs bg-white font-bold text-slate-900 shadow-2xs">
+                            class="w-full border rounded-lg px-2.5 py-2 text-xs font-bold shadow-2xs ${isNoGood ? 'border-rose-400 bg-rose-50 text-rose-700' : 'border-slate-300 bg-white text-slate-900'}">
 
                             <option value="" ${cellVal === '' ? 'selected' : ''}>Seçiniz...</option>
 
@@ -9205,6 +10196,12 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
             // Section 6.4 Pano Adı or Section 6.5 long questions take full width
 
             const spanClass = (qIdx === 0 || isSection65) ? 'col-span-full' : '';
+            const isXTableCell = (tKey === 'topic_3_3' || tKey === 'topic_3_4' || tKey === 'topic_3_5') && isElectricalMarkedX(cellVal);
+            const cellCls = isLockedThermal
+                ? 'border-slate-300 bg-slate-100 text-slate-700 font-medium'
+                : isXTableCell
+                    ? 'border-rose-400 bg-rose-50/60 text-rose-700 font-bold'
+                    : 'border-slate-300 bg-white font-medium';
 
             return `
 
@@ -9212,11 +10209,11 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
 
                     <label class="block text-[11px] font-bold text-slate-700 mb-1 leading-snug break-words">${labelText}</label>
 
-                    <input type="text" value="${String(cellVal).replace(/"/g, '&quot;')}" ${isLockedThermal ? 'readonly' : ''}
+                    <input type="text" data-table-cell="${tKey}_${rIdx}_${q.guid}" value="${String(cellVal).replace(/"/g, '&quot;')}" ${isLockedThermal ? 'readonly' : ''}
 
                         oninput="handleTopicTableCell('${tKey}', ${rIdx}, '${q.guid}', this.value)"
 
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs ${isLockedThermal ? 'bg-slate-100 text-slate-700' : 'bg-white'} focus:border-sky-500 focus:outline-none shadow-2xs font-medium">
+                        class="w-full border rounded-lg px-2.5 py-1.5 text-xs ${cellCls} focus:border-sky-500 focus:outline-none shadow-2xs">
 
                 </div>
 
@@ -9394,6 +10391,60 @@ function handleTopicTableCell(tKey, rowIndex, qGuid, value) {
 
     if (tKey === 'topic_1_0') {
         AppState.currentFormData._thermalInitialized = true;
+    }
+
+    const is2201 = String(AppState.currentInspection?.template_id) === '2201';
+    if (is2201 && (tKey === 'topic_3_3' || tKey === 'topic_3_4' || tKey === 'topic_3_5')) {
+        if (typeof document !== 'undefined') {
+            const cellEl = document.querySelector(`[data-table-cell="${tKey}_${rowIndex}_${qGuid}"]`);
+            if (cellEl && cellEl.tagName === 'INPUT') {
+                if (isElectricalMarkedX(value)) {
+                    cellEl.classList.add('border-rose-400', 'bg-rose-50/60', 'text-rose-700', 'font-bold');
+                } else {
+                    cellEl.classList.remove('border-rose-400', 'bg-rose-50/60', 'text-rose-700', 'font-bold');
+                }
+            }
+        }
+
+        const measuredCols = tKey === 'topic_3_3'
+            ? TOPIC_3_3_MEASURED_COLS
+            : tKey === 'topic_3_4'
+                ? TOPIC_3_4_MEASURED_COLS
+                : TOPIC_3_5_MEASURED_COLS;
+        const resGuid = tKey === 'topic_3_3'
+            ? TOPIC_3_3_RES_GUID
+            : tKey === 'topic_3_4'
+                ? TOPIC_3_4_RES_GUID
+                : TOPIC_3_5_RES_GUID;
+
+        if (measuredCols[qGuid] && isElectricalMarkedX(value)) {
+            rows[rowIndex][resGuid] = 'Uygun Değil';
+            if (typeof document !== 'undefined') {
+                const resEl = document.querySelector(`[data-table-cell="${tKey}_${rowIndex}_${resGuid}"]`);
+                if (resEl) {
+                    resEl.value = 'Uygun Değil';
+                    resEl.classList.add('border-rose-400', 'bg-rose-50', 'text-rose-700');
+                    resEl.classList.remove('border-slate-300', 'bg-white', 'text-slate-900');
+                }
+            }
+        } else if (qGuid === resGuid && typeof document !== 'undefined') {
+            const resEl = document.querySelector(`[data-table-cell="${tKey}_${rowIndex}_${resGuid}"]`);
+            if (resEl) {
+                if (value === 'Uygun Değil' || value === 'X') {
+                    resEl.classList.add('border-rose-400', 'bg-rose-50', 'text-rose-700');
+                    resEl.classList.remove('border-slate-300', 'bg-white', 'text-slate-900');
+                } else {
+                    resEl.classList.remove('border-rose-400', 'bg-rose-50', 'text-rose-700');
+                    resEl.classList.add('border-slate-300', 'bg-white', 'text-slate-900');
+                }
+            }
+        }
+
+        if (tKey === 'topic_3_3' && typeof window.syncElectrical2201Section22FromTriggers === 'function') {
+            window.syncElectrical2201Section22FromTriggers('topic_3_3', true);
+        } else if (typeof syncAllDefectsToDefectNotes === 'function') {
+            syncAllDefectsToDefectNotes();
+        }
     }
 
     triggerAutoSave();
@@ -9775,9 +10826,7 @@ function renderSpecializedTemplateEditor() {
 
                             <div class="min-w-0">
 
-                                <span class="text-[9px] font-bold text-rose-700 uppercase tracking-wide block">Tespit Edilen Uygunsuzluk:</span>
-
-                                <span class="font-medium text-slate-800 text-[11px] leading-snug block">${selectedDefect || 'Henüz uygunsuzluk cümlesi seçilmedi'}</span>
+                                <span class="font-medium text-slate-800 text-[11px] leading-snug block">${selectedDefect || 'Uygunsuzluk cümlesi seçilmedi'}</span>
 
                             </div>
 
@@ -10462,7 +11511,7 @@ function openPhotoPreviewModal(idx) {
 
             <div class="p-2.5 bg-slate-950 text-slate-300 text-[11px] text-center border-t border-slate-800">
 
-                Tarih: ${photo.date || '-'} | Cihaza / Galeriye indirmek için yukarıdaki butona basınız
+                Tarih: ${photo.date || '-'}
 
             </div>
 
@@ -10550,7 +11599,7 @@ function renderPhotoSectionUI() {
 
                 <div class="py-4 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-xs">
 
-                    Henüz fotoğraf eklenmedi. Sahadan fotoğraf çekmek veya cihaz galerisinden yüklemek için yukarıdaki butonları kullanabilirsiniz. Eklenen fotoğraflar PDF raporunda yer alır ve daha sonra galeriye kaydedilebilir.
+                    Henüz fotoğraf eklenmedi.
 
                 </div>
 
@@ -10582,7 +11631,7 @@ function renderPhotoSectionUI() {
                             </div>
                             <div class="p-2.5 space-y-2 flex-1 flex flex-col justify-between">
                                 <div>
-                                    <label class="block text-[11px] font-bold text-slate-800 mb-1">Fotoğraf ${photoNum} Açıklaması (Fotonun Altına)</label>
+                                    <label class="block text-[11px] font-bold text-slate-800 mb-1">Açıklama</label>
                                     <input type="text" id="photoCaptionInput_${idx}" value="${(typeof escapeHtml !== 'undefined' ? escapeHtml(curCaption) : curCaption)}"
                                         placeholder="Fotoğraf hakkında açıklama / tespit giriniz..."
                                         oninput="updatePhotoCaption(${idx}, this.value)"
@@ -10861,7 +11910,7 @@ function renderNonConformityPickerModalUI() {
 
         <div class="p-6 text-center text-slate-400 text-xs">
 
-            Aradığınız kritere uygun madde bulunamadı. Aşağıdaki kutudan yeni bir madde ekleyebilirsiniz.
+            Uygun madde bulunamadı.
 
         </div>
 
@@ -11221,7 +12270,7 @@ function renderEvaluationAndFooterSection() {
 
             <div class="flex items-center justify-between border-b border-slate-100 pb-2">
 
-                <span class="font-black text-xs text-slate-800 uppercase tracking-wide">KUSUR, NOT, SONUÇ VE ONAY (BÖLÜM 7 - 9 - 10 - 11)</span>
+                <span class="font-black text-xs text-slate-800 uppercase tracking-wide">7-10. KUSUR, NOT VE SONUÇ</span>
 
                 <div class="flex items-center gap-1.5">
 
@@ -11283,7 +12332,7 @@ function renderEvaluationAndFooterSection() {
 
                     oninput="AppState.currentFormData.defectNotes=this.value; triggerAutoSave();"
 
-                    placeholder="Uygunsuzluk maddeleri buraya eklenecektir veya yukarıdaki 'Uygunsuzluk Seç / Ekle' butonundan hazır seçebilirsiniz..."
+                    placeholder="Uygunsuzluk açıklamaları..."
 
                     class="w-full border border-slate-300 rounded-xl p-2.5 text-slate-800 leading-relaxed focus:border-sky-500 focus:outline-none font-medium">${fd.defectNotes || ''}</textarea>
 
@@ -11299,7 +12348,7 @@ function renderEvaluationAndFooterSection() {
 
                     oninput="AppState.currentFormData.generalNotes=this.value; triggerAutoSave();"
 
-                    placeholder="9. NOTLAR: Tesisin proje sorumlusu/çizen bilgileri veya genel saha notlarını buraya yazabilirsiniz (Boş bırakılırsa standart proje bilgisi metni basılır)..."
+                    placeholder="Proje sorumlusu veya saha notları..."
 
                     class="w-full border border-slate-300 rounded-xl p-2.5 text-slate-700 focus:border-sky-500 focus:outline-none">${fd.generalNotes || ''}</textarea>
 
@@ -11335,13 +12384,11 @@ function renderEvaluationAndFooterSection() {
 
                     <label class="block font-bold text-slate-800 mb-1">Rapor Tarihi</label>
 
-                    <input type="text" value="${AppState.currentInspection?.inspection_date || ''}"
+                    <input type="date" id="editorReportDateInput" value="${escapeHtml((typeof toIsoDate === 'function' ? toIsoDate(AppState.currentInspection?.inspection_date || AppState.currentFormData?.companyInfo?.reportDate) : '') || '')}"
 
-                        placeholder=""
+                        onchange="if(typeof updateReportDateManual === 'function') updateReportDateManual(this.value);"
 
-                        oninput="AppState.currentInspection.inspection_date=this.value; triggerAutoSave();"
-
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-2">
+                        class="w-full border border-slate-300 rounded-lg px-2.5 py-2 bg-white">
 
                 </div>
 
@@ -11349,13 +12396,11 @@ function renderEvaluationAndFooterSection() {
 
                     <label class="block font-bold text-slate-800 mb-1">Sonraki Kontrol Tarihi</label>
 
-                    <input type="text" value="${fd.nextInspectionDate || ''}"
+                    <input type="date" id="editorNextControlDateInput" value="${escapeHtml((typeof toIsoDate === 'function' ? toIsoDate(fd.nextInspectionDate || AppState.currentFormData?.companyInfo?.nextControlDate) : '') || '')}"
 
-                        placeholder=""
+                        onchange="if(typeof updateReportNextDateManual === 'function') updateReportNextDateManual(this.value);"
 
-                        oninput="AppState.currentFormData.nextInspectionDate=this.value; triggerAutoSave();"
-
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-2">
+                        class="w-full border border-slate-300 rounded-lg px-2.5 py-2 bg-white">
 
                 </div>
 
@@ -11457,7 +12502,26 @@ function autoCompileDefectNotes() {
 
         });
 
+        if (typeof window.getElectrical22DefectLines === 'function') {
+
+            window.getElectrical22DefectLines(fd).forEach(l => {
+
+                if (!detectedDefects.includes(l)) detectedDefects.push(l);
+
+            });
+
+        }
+
+        const has61Helper = typeof window.getElectrical61DefectLines === 'function';
+        if (has61Helper) {
+            window.getElectrical61DefectLines(fd).forEach(l => {
+                if (!detectedDefects.includes(l)) detectedDefects.push(l);
+            });
+        }
+
         Object.keys(fd.tableRows || {}).forEach(tKey => {
+
+            if (has61Helper && (tKey === 'topic_3_3' || tKey === 'topic_3_4' || tKey === 'topic_3_5')) return;
 
             const rows = fd.tableRows[tKey] || [];
 
@@ -12079,17 +13143,15 @@ function renderLinyeDropdownItems(pIdx, query) {
 
     let headerHtml = `
 
-        <div class="px-3 py-1.5 bg-slate-900 text-white font-bold text-[10px] flex items-center justify-between border-b border-slate-800 sticky top-0 z-10 select-none">
+        <div class="px-3 py-1.5 bg-slate-900 text-white font-bold text-[10px] flex items-center border-b border-slate-800 sticky top-0 z-10 select-none">
 
             <span class="flex items-center gap-1.5">
 
                 <i class="fa-solid fa-bolt text-amber-400"></i>
 
-                <span>Akıllı Pano & Linye Listesi</span>
+                <span>Pano &amp; Linye Listesi</span>
 
             </span>
-
-            <span class="text-[9px] text-sky-300 font-medium">Sık kullanılanlar üstte</span>
 
         </div>
 
@@ -12133,7 +13195,7 @@ function renderLinyeDropdownItems(pIdx, query) {
 
             <div class="p-3 text-center text-slate-400 text-xs bg-white">
 
-                Öneri bulunamadı. Pano adını doğrudan yazabilirsiniz.
+                Öneri bulunamadı.
 
             </div>
 
@@ -12392,8 +13454,6 @@ function renderGrounding2202Editor() {
             <div class="px-3.5 py-2.5 bg-slate-800 text-white font-bold text-xs flex items-center justify-between">
 
                 <span>2. Ekipman ve Tesisat Bilgileri</span>
-
-                <span class="text-[11px] text-slate-300 font-normal">2.1 Etiket & 2.2 Tespit</span>
 
             </div>
 
@@ -12783,9 +13843,9 @@ function renderGrounding2202Editor() {
 
                 ${gd.points.length === 0 ? `
 
-                    <div class="p-8 text-center text-slate-400 bg-white rounded-2xl border border-dashed border-slate-200 text-xs sm:text-sm">
+                    <div class="p-6 text-center text-slate-400 bg-white rounded-2xl border border-dashed border-slate-200 text-xs sm:text-sm">
 
-                        Henüz ölçüm noktası eklenmedi. Ölçülen priz, aydınlatma veya pano noktalarını eklemek için yukarıdaki <strong>+ Nokta Ekle</strong> butonuna dokununuz.
+                        Henüz ölçüm noktası eklenmedi.
 
                     </div>
 
@@ -12929,17 +13989,11 @@ function renderGrounding2202Editor() {
 
                             <div class="relative space-y-1">
 
-                                <label class="block text-xs font-bold text-slate-700 mb-0.5 flex items-center justify-between">
+                                <label class="block text-xs font-bold text-slate-700 mb-0.5 flex items-center gap-1.5">
 
-                                    <span class="flex items-center gap-1.5">
+                                    <i class="fa-solid fa-tag text-sky-600"></i>
 
-                                        <i class="fa-solid fa-tag text-sky-600"></i>
-
-                                        <span>Ölçüm Noktası / Pano Adı</span>
-
-                                    </span>
-
-                                    <span class="text-xs font-medium text-slate-400">Yazın veya rozete dokunun</span>
+                                    <span>Ölçüm Noktası / Pano Adı</span>
 
                                 </label>
 
@@ -13285,7 +14339,7 @@ function renderGrounding2202Editor() {
 
                     <div class="p-4 text-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-xs">
 
-                        RCD Selektivite satırı eklenmedi. Rapor PDF çıktısında standart olarak <strong>"Uygulaması Yok"</strong> görünecektir. Tesisinizde selektivite mevcut ise yukarıdaki <strong>+ Selektivite Ekle</strong> butonundan ekleyebilirsiniz.
+                        RCD Selektivite satırı eklenmedi (Varsayılan: Uygulaması Yok).
 
                     </div>
 
@@ -13887,8 +14941,6 @@ function renderGenerator2205Editor() {
             <div class="px-3.5 py-2.5 bg-slate-800 text-white font-bold text-xs flex items-center justify-between">
 
                 <span>2. Ekipman ve Muayene Bilgileri</span>
-
-                <span class="text-[11px] text-slate-300 font-normal">3. Muayene & 3.1 Ekipman</span>
 
             </div>
 
@@ -15058,13 +16110,7 @@ function renderItemDefectPickerModalUI() {
 
             <div>
 
-                <label class="block font-bold text-slate-700 mb-1.5 flex items-center justify-between">
-
-                    <span>Kayıtlı Uygunsuzluk Cümleleri (Birine Dokunun)</span>
-
-                    <span class="text-[10px] text-slate-400 font-normal">Tek dokunuşla seçilir</span>
-
-                </label>
+                <label class="block font-bold text-slate-700 mb-1.5">Kayıtlı Uygunsuzluk Cümleleri</label>
 
                 <div class="space-y-2 max-h-56 overflow-y-auto p-1.5 border border-slate-200 rounded-xl bg-slate-50">
 
@@ -15080,17 +16126,11 @@ function renderItemDefectPickerModalUI() {
 
             <div class="p-3 bg-amber-50/80 border border-amber-200 rounded-xl space-y-2">
 
-                <div class="flex items-center justify-between">
+                <div class="font-bold text-amber-900 text-[11px] flex items-center gap-1.5">
 
-                    <span class="font-bold text-amber-900 text-[11px] flex items-center gap-1.5">
+                    <i class="fa-solid fa-circle-plus text-amber-600"></i>
 
-                        <i class="fa-solid fa-circle-plus text-amber-600"></i>
-
-                        <span>Bu Maddeye Yeni Uygunsuzluk Cümlesi Ekle</span>
-
-                    </span>
-
-                    <span class="text-[10px] text-amber-700">Diğer işlerde de hazır çıkar</span>
+                    <span>Yeni Uygunsuzluk Cümlesi Ekle</span>
 
                 </div>
 
@@ -15290,6 +16330,22 @@ function syncAllDefectsToDefectNotes() {
 
     });
 
+    if (String(AppState.currentInspection?.template_id) === '2201' && typeof window.getElectrical22DefectLines === 'function') {
+
+        window.getElectrical22DefectLines(fd).forEach(l => lines.push(l));
+
+    }
+
+    if (String(AppState.currentInspection?.template_id) === '2201' && typeof window.getElectrical61DefectLines === 'function') {
+
+        window.getElectrical61DefectLines(fd).forEach(l => {
+
+            if (!lines.includes(l)) lines.push(l);
+
+        });
+
+    }
+
 
 
     const cur = (fd.defectNotes || '').trim();
@@ -15312,6 +16368,11 @@ function syncAllDefectsToDefectNotes() {
 
     }
 
+    const defectTa = document.getElementById('defectNotesTextarea');
+    if (defectTa && defectTa.value !== fd.defectNotes) {
+        defectTa.value = fd.defectNotes;
+    }
+
 
 
     triggerAutoSave();
@@ -15325,6 +16386,9 @@ function handleAnswerInput(qKey, value) {
     if (!fd) return;
     if (!fd.answers) fd.answers = {};
     fd.answers[qKey] = value;
+    if (String(AppState.currentInspection?.template_id) === '2201' && typeof window.onElectrical2201AnswerUpdated === 'function') {
+        window.onElectrical2201AnswerUpdated(qKey, value, true);
+    }
     triggerAutoSave();
 }
 window.handleAnswerInput = handleAnswerInput;
@@ -15335,15 +16399,23 @@ function handleAnswerChange(qKey, value, questionTitle = '', isDirectInput = fal
     if (!fd.answers) fd.answers = {};
     fd.answers[qKey] = value;
 
+    const is2201 = String(AppState.currentInspection?.template_id) === '2201';
+    if (is2201 && typeof window.onElectrical2201AnswerUpdated === 'function') {
+        window.onElectrical2201AnswerUpdated(qKey, value, isDirectInput);
+    }
+
     if (isDirectInput) {
         triggerAutoSave();
         return;
     }
 
-    // Direct text entry guard: if not standard choice, only save without re-rendering DOM
+    // Direct text entry guard: if not standard choice, only save (except 2.2 edits which need styling/defect UI sync)
     const standardStatuses = ['Uygun', 'Uygun Değil', 'Kısmen Uygun', 'Uygulaması Yok', 'Görülemedi', 'Muaf', 'Kapsam Dışı', ''];
     if (!standardStatuses.includes(value)) {
         triggerAutoSave();
+        if (is2201 && (value === 'Uygunsuz' || String(questionTitle).includes('Tespit edilen bilgiler'))) {
+            paintInspectionEditorUI();
+        }
         return;
     }
 
@@ -15490,6 +16562,14 @@ function markAllVisualChecksSuitable(onlyUnanswered = true) {
             }
 
         });
+
+    }
+
+
+
+    if (String(insp.template_id) === '2201' && typeof window.syncElectrical2201Section22FromTriggers === 'function') {
+
+        window.syncElectrical2201Section22FromTriggers(null, true);
 
     }
 
@@ -17434,12 +18514,81 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
 
         // Block 3: 2.2. TESPİT EDİLEN BİLGİLER
+        const sec22Questions = area0.topics[1].questions || [];
+        const renderMinistrySec22Table = () => {
+            const dotHtml = (selected, isBad = false) => {
+                const bg = isBad ? '#ffffff' : (selected ? '#0f172a' : '#ffffff');
+                const bd = isBad ? '#be123c' : '#0f172a';
+                const inner = isBad ? '' : '';
+                return `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;border:1.1px solid ${bd};background:${bg};vertical-align:middle;margin-right:4px;box-sizing:border-box;">${inner}</span>`;
+            };
+            const optPairHtml = (guid, optA, optB) => {
+                const cur = String(fd.answers[`q_${guid}`] || '').trim();
+                const selA = cur === optA;
+                const selB = cur === optB;
+                return `
+                    <span style="display:inline-flex;align-items:center;margin-right:16px;font-weight:${selA ? '700' : '400'};color:#111;">${dotHtml(selA)}${optA}</span>
+                    <span style="display:inline-flex;align-items:center;font-weight:${selB ? '700' : '400'};color:#111;">${dotHtml(selB)}${optB}</span>
+                `;
+            };
+
+            const qChange = sec22Questions[0];
+            const qSpd = sec22Questions[1];
+            const qPrevTag = sec22Questions[2];
+            const protectionQs = sec22Questions.slice(3);
+
+            const protectionRowsHtml = protectionQs.map(q => {
+                const cur = String(fd.answers[`q_${q.guid}`] || '').trim();
+                const isSelected = (cur === 'Var' || cur === 'Uygun');
+                const isBad = (cur === 'Uygunsuz' || cur === 'Uygun Değil');
+                const shortTxt = String(q.question || '').replace(/^Tespit edilen bilgiler\s*\([^)]*\)\s*-\s*/i, '').trim();
+                return `
+                    <div style="display:flex;align-items:flex-start;gap:4px;line-height:1.3;margin-bottom:1px;">
+                        <span style="flex-shrink:0;margin-top:2px;">${dotHtml(isSelected, isBad)}</span>
+                        <span style="font-weight:${(isSelected || isBad) ? '700' : '400'};color:${isBad ? '#be123c' : '#111'};">
+                            ${shortTxt}${isBad ? ' <span style="color:#be123c;font-weight:700;">(Uygunsuz)</span>' : ''}
+                        </span>
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <table class="tkm-table">
+                    <colgroup>
+                        <col style="width:43%;">
+                        <col style="width:57%;">
+                    </colgroup>
+                    <tbody>
+                        <tr>
+                            <td style="text-align:left;padding:2.5px 6px;font-weight:600;color:#111;">${qChange ? qChange.question : 'Tesisatta kapsamlı değişiklik var mı? (&gt;%20)'}</td>
+                            <td style="text-align:left;padding:2.5px 6px;">${qChange ? optPairHtml(qChange.guid, 'Var', 'Yok') : ''}</td>
+                        </tr>
+                        <tr>
+                            <td style="text-align:left;padding:2.5px 6px;font-weight:600;color:#111;">${qSpd ? qSpd.question : 'Tesisatta aşırı gerilim koruma cihazları (DKD/SPD) kullanılmış mı?'}</td>
+                            <td style="text-align:left;padding:2.5px 6px;">${qSpd ? optPairHtml(qSpd.guid, 'Evet', 'Hayır') : ''}</td>
+                        </tr>
+                        <tr>
+                            <td style="text-align:left;padding:3px 6px;font-weight:600;vertical-align:middle;color:#111;">
+                                Tespit edilen bilgiler<br>(Doğrudan dokunmaya karşı koruma önlemleri)
+                            </td>
+                            <td style="text-align:left;padding:3px 6px;font-size:6.8pt;">
+                                ${protectionRowsHtml}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="text-align:left;padding:2.5px 6px;font-weight:600;color:#111;">${qPrevTag ? qPrevTag.question : 'Bir önceki periyodik kontrol etiketi var mı?'}</td>
+                            <td style="text-align:left;padding:2.5px 6px;">${qPrevTag ? optPairHtml(qPrevTag.guid, 'Var', 'Yok') : ''}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            `;
+        };
 
         blocks.push(`
 
             <div class="tkm-sub-bar">2.2. TESPİT EDİLEN BİLGİLER</div>
 
-            ${renderOrderedGridTable(area0.topics[1].questions, 3)}
+            ${isRamsTheme(activePdfTheme) ? renderMinistrySec22Table() : renderOrderedGridTable(sec22Questions, 3)}
 
         `);
 
@@ -17573,9 +18722,39 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
                 ? fd.tableRows[tKey]
                 : [createDefaultTopicRow(area3, topic, 1)];
             const chunkSize = 8;
+
+            const topicColWidths = tKey === 'topic_3_3'
+                ? ['2.7%', '14.5%', '7.6%', '5.6%', '7.6%', '8.4%', '6.8%', '7.0%', '7.6%', '7.4%', '7.4%', '6.4%', '6.4%', '4.6%']
+                : tKey === 'topic_3_4'
+                    ? ['3.5%', '25.5%', '14.5%', '14.5%', '18.5%', '16.5%', '7.0%']
+                    : tKey === 'topic_3_5'
+                        ? ['3.5%', '38.5%', '11.5%', '11.5%', '27.0%', '8.0%']
+                        : null;
+
+            const colGroupHtml = (topicColWidths && topicColWidths.length === topic.questions.length + 1)
+                ? `<colgroup>${topicColWidths.map(w => `<col style="width:${w};">`).join('')}</colgroup>`
+                : '';
+
+            const formatPdfTopicHdr = (q) => {
+                let hdr = getShortTopicQuestionLabel(3, topic.index, q.question);
+                if (tKey === 'topic_3_3') {
+                    if (hdr === 'Pano / Linye Tanımı') return 'Pano / Tablo<br>Linye Adı';
+                    if (hdr === 'Sonuç / Değerlendirme') return 'Sonuç';
+                }
+                return hdr;
+            };
+
+            const tableCls = tKey === 'topic_3_3' ? 'tkm-table tkm-linye-table' : 'tkm-table';
+            const thNoStyle = topicColWidths
+                ? 'text-align:center;font-weight:700;'
+                : 'width:24px;text-align:center;font-weight:700;font-size:7pt;';
+            const thDefaultStyle = tKey === 'topic_3_3'
+                ? 'text-align:center;font-weight:700;'
+                : 'text-align:center;font-weight:700;font-size:6.8pt;line-height:1.18;padding:2.8px 3px;';
+
             const ths = topic.questions.map(q => {
-                const hdr = getShortTopicQuestionLabel(3, topic.index, q.question);
-                return `<th style="text-align:center;font-weight:700;font-size:6.8pt;line-height:1.12;padding:2px;">${hdr}</th>`;
+                const hdr = formatPdfTopicHdr(q);
+                return `<th style="${thDefaultStyle}">${hdr}</th>`;
             }).join('');
 
             for (let start = 0; start < allRows.length; start += chunkSize) {
@@ -17583,7 +18762,11 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
                 const trs = slice.map((r, idx) => `
                     <tr>
                         <td style="text-align:center;">${start + idx + 1}</td>
-                        ${topic.questions.map(q => `<td style="text-align:center;font-size:7.1pt;">${q.type === 'YesNo' ? formatSymbolForPrint(r[q.guid] || '') : (r[q.guid] ?? '')}</td>`).join('')}
+                        ${topic.questions.map((q, qIdx) => {
+                            const cellAlign = (qIdx === 0 && (tKey === 'topic_3_3' || tKey === 'topic_3_4' || tKey === 'topic_3_5')) ? 'left' : 'center';
+                            const cellVal = q.type === 'YesNo' ? formatSymbolForPrint(r[q.guid] || '') : (r[q.guid] ?? '');
+                            return `<td style="text-align:${cellAlign};font-size:7.1pt;">${cellVal}</td>`;
+                        }).join('')}
                     </tr>
                 `).join('');
                 const chunkTitle = start === 0 ? subTitle : `${subTitle} (Devamı)`;
@@ -17596,10 +18779,11 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
                 blocks.push(`
                     <div class="tkm-sub-bar">${chunkTitle}</div>
-                    <table class="tkm-table">
+                    <table class="${tableCls}">
+                        ${colGroupHtml}
                         <thead>
                             <tr>
-                                <th style="width:24px;text-align:center;font-weight:700;font-size:7pt;">No</th>
+                                <th style="${thNoStyle}">No</th>
                                 ${ths}
                             </tr>
                         </thead>
@@ -19653,26 +20837,6 @@ function openBackupManagerModal() {
 
             <div class="space-y-4">
 
-                <div class="p-3.5 bg-gradient-to-r from-sky-50 to-blue-50 border border-sky-200 rounded-2xl">
-
-                    <div class="flex items-center gap-2.5 text-sky-950 font-bold text-xs mb-1">
-
-                        <i class="fa-solid fa-circle-check text-sky-600 text-sm"></i>
-
-                        <span>%100 Çevrimdışı & Yerel Koruma</span>
-
-                    </div>
-
-                    <p class="text-[11px] text-sky-900 leading-relaxed">
-
-                        Tüm iş emirleriniz, elektrik muayene raporlarınız, ölçüm değerleriniz ve girdiğiniz özel uygunsuzluk cümleleri cihazınızın güvenli depolama alanında saklanmaktadır.
-
-                    </p>
-
-                </div>
-
-
-
                 <!-- İstatistikler -->
 
                 <div class="grid grid-cols-3 gap-2 text-center">
@@ -19715,13 +20879,7 @@ function openBackupManagerModal() {
 
                             <i class="fa-solid fa-file-arrow-down text-base"></i>
 
-                            <div class="text-left">
-
-                                <div>Tek Tıkla Tam Yedek İndir (JSON)</div>
-
-                                <div class="text-[10px] font-normal text-emerald-100">Tüm raporları ve uygunsuzluk hafızasını tek dosyada indirir</div>
-
-                            </div>
+                            <div class="text-left">Tek Tıkla Tam Yedek İndir (JSON)</div>
 
                         </div>
 
@@ -19737,13 +20895,7 @@ function openBackupManagerModal() {
 
                             <i class="fa-solid fa-file-arrow-up text-base text-sky-400"></i>
 
-                            <div class="text-left">
-
-                                <div>Yedekten Geri Yükle (JSON İçe Aktar)</div>
-
-                                <div class="text-[10px] font-normal text-slate-300">Daha önce indirilmiş bir yedeği sisteme aktarır</div>
-
-                            </div>
+                            <div class="text-left">Yedekten Geri Yükle (JSON İçe Aktar)</div>
 
                         </div>
 
@@ -20846,12 +21998,6 @@ function openBatchRowGeneratorModal() {
 
         <div class="space-y-3.5 text-xs">
 
-            <p class="text-slate-600 leading-relaxed">
-
-                Tek tıkla ardışık numaralandırılmış hazır ölçüm noktaları üretir ve formül hesaplamalarını otomatik uygular.
-
-            </p>
-
             <div class="grid grid-cols-2 gap-2.5">
 
                 <div>
@@ -21604,25 +22750,15 @@ function renderAuthScreen(activeTab = 'login') {
 
             <!-- BRAND HEADER -->
 
-            <div class="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-5 text-center">
+            <div class="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-4 text-center flex items-center justify-center gap-3">
 
-                <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-amber-400 text-slate-950 text-xl font-black shadow-lg mb-2">
+                <div class="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-amber-400 text-slate-950 text-lg font-black shadow-md shrink-0">
 
                     <i class="fa-solid fa-bolt"></i>
 
                 </div>
 
-                <h1 class="font-black text-base tracking-tight">Hızlı Rapor</h1>
-
-                <p class="text-xs text-slate-300 mt-0.5">Saha Muayene & Periyodik Kontrol Sistemi</p>
-
-                <div class="mt-2.5 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-400/30 text-[10px] font-bold">
-
-                    <i class="fa-solid fa-cloud-arrow-down"></i>
-
-                    <span>Yetkili Saha Personeli Girişi</span>
-
-                </div>
+                <h1 class="font-black text-base tracking-tight">Personel Girişi</h1>
 
             </div>
 
@@ -21631,16 +22767,6 @@ function renderAuthScreen(activeTab = 'login') {
             <!-- FORM AREA -->
 
             <div class="p-4 space-y-4">
-
-                <div class="p-2.5 rounded-xl bg-sky-50 border border-sky-200 text-[11px] text-sky-900 leading-relaxed flex items-start gap-2">
-
-                    <i class="fa-solid fa-circle-info text-sky-600 mt-0.5 shrink-0"></i>
-
-                    <span>Kullanıcı adı ve şifrenizi firma yöneticinizden alabilirsiniz. Giriş yaptığınızda üzerinizdeki <strong>ölçüm cihazları</strong> ve <strong>açık iş klasörleri</strong> otomatik yüklenir.</span>
-
-                </div>
-
-
 
                 ${renderLoginFormHtml(users)}
 
@@ -21664,13 +22790,7 @@ function renderLoginFormHtml(users) {
 
                 <div>
 
-                    <label class="block font-bold text-slate-700 mb-1 flex items-center justify-between">
-
-                        <span>Cihazdaki Kayıtlı Hesaplar:</span>
-
-                        <span class="text-[10px] text-slate-400 font-normal">Hızlı doldurur</span>
-
-                    </label>
+                    <label class="block font-bold text-slate-700 mb-1">Cihazdaki Kayıtlı Hesaplar</label>
 
                     <div class="grid grid-cols-1 gap-1.5 max-h-36 overflow-y-auto p-1 border border-slate-200 rounded-xl bg-slate-50">
 
@@ -21706,7 +22826,7 @@ function renderLoginFormHtml(users) {
 
                 <label class="block font-bold text-slate-700 mb-1">Kullanıcı Adı</label>
 
-                <input type="text" id="loginUsername" placeholder="Yöneticinizin verdiği kullanıcı adı"
+                <input type="text" id="loginUsername" placeholder="Kullanıcı adı"
 
                     class="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:border-sky-500 focus:outline-none bg-white">
 
@@ -21750,7 +22870,7 @@ function renderLoginFormHtml(users) {
 
                 <i class="fa-solid fa-right-to-bracket"></i>
 
-                <span>Giriş Yap ve Cihazları / İşleri Yükle</span>
+                <span>Giriş Yap</span>
 
             </button>
 
@@ -21767,14 +22887,6 @@ function renderRegisterFormHtml() {
     return `
 
         <div class="space-y-3 text-xs">
-
-            <p class="text-slate-500 text-[11px] leading-relaxed">
-
-                Aşağıdaki bilgiler oluşturacağınız resmi periyodik kontrol raporlarının <strong>"Muayene Personeli"</strong> ve onay bölümlerinde otomatik olarak yer alacaktır.
-
-            </p>
-
-
 
             <div>
 
@@ -22136,16 +23248,6 @@ function openUserProfileModal() {
 
 
 
-            <div class="p-3 bg-sky-50 border border-sky-200 rounded-xl text-sky-900 text-[11px] leading-relaxed">
-
-                ${isManaged
-                    ? 'Bu bilgiler firma yöneticiniz tarafından belirlenmiştir ve resmi A4 PDF raporlarının <strong>"Muayene Personeli"</strong> bölümünde basılmaktadır. Güncelleme için firma yöneticinize başvurun.'
-                    : 'Bu bilgiler resmi A4 PDF raporlarının <strong>"Muayene Personeli"</strong> ve onay bölümlerinde basılmaktadır. İhtiyaç halinde buradan güncelleyebilirsiniz.'}
-
-            </div>
-
-
-
             <div>
 
                 <label class="block font-bold text-slate-700 mb-0.5">Adı Soyadı</label>
@@ -22360,14 +23462,6 @@ function openCompanySettingsModal() {
 
         <div class="space-y-4 text-xs">
 
-            <div class="p-3 bg-gradient-to-r from-sky-50 to-blue-50 border border-sky-200 rounded-xl text-sky-900 leading-relaxed">
-
-                Bu alandan şirketinizin <strong>logosunu, adını, akreditasyon bilgilerini ve rapor kodlarını</strong> özelleştirebilirsiniz. Uygulama başka şirketlere verilebilir ve tüm resmi A4 PDF çıktıları buradaki ayarlara göre oluşturulur.
-
-            </div>
-
-
-
             <!-- LOGO AYARLARI -->
 
             <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
@@ -22407,8 +23501,6 @@ function openCompanySettingsModal() {
                             Varsayılan Logoya Dön
 
                         </button>
-
-                        <div class="text-[10px] text-slate-400">Önerilen: Şeffaf arka planlı kare veya yatay logo</div>
 
                     </div>
 
@@ -22498,11 +23590,9 @@ function openCompanySettingsModal() {
 
                         <input type="checkbox" id="cfgShowTurkak" ${s.showTurkakLogo ? 'checked' : ''} class="w-4 h-4 accent-sky-600 rounded">
 
-                        <span>Raporda Akreditasyon Logosu Gösterilsin</span>
+                        <span>Raporda Akreditasyon Logosu Göster</span>
 
                     </label>
-
-                    <span class="text-[10px] text-slate-400">TÜRKAK vb.</span>
 
                 </div>
 
@@ -22606,7 +23696,7 @@ function openCompanySettingsModal() {
 
                         class="w-full border border-slate-300 rounded-lg p-2 text-slate-800 text-[11px] leading-relaxed bg-white focus:outline-none focus:border-sky-500">${escapeHtml(s.footerDisclaimer)}</textarea>
 
-                    <div class="text-[10px] text-slate-400 mt-0.5">{COMPANY_NAME} etiketi otomatik olarak şirket tam adınız ile değiştirilir.</div>
+                    <div class="text-[10px] text-slate-400 mt-0.5"><code>{COMPANY_NAME}</code> = Şirket adı</div>
 
                 </div>
 
@@ -22936,29 +24026,19 @@ async function renderSettingsPage() {
 
         <div class="max-w-2xl mx-auto space-y-2.5 pb-8">
 
-            <!-- 1. ÜST BAŞLIK VE GERİ BUTONU -->
+            <!-- 1. ÜST BAŞLIK -->
 
             <div class="card-craft-white p-2.5 flex items-center justify-between gap-2">
 
-                <div class="flex items-center gap-2.5 min-w-0">
+                <div class="min-w-0">
 
-                    <button onclick="navigateTo('home')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 rounded-xl font-bold text-xs shrink-0 transition border border-slate-200">
+                    <h1 class="font-bold text-slate-900 text-sm sm:text-base truncate flex items-center gap-2">
 
-                        <i class="fa-solid fa-arrow-left mr-1"></i>Ana Sayfa
+                        <i class="fa-solid fa-sliders text-sky-600"></i>
 
-                    </button>
+                        <span>Uygulama & Şirket Ayarları</span>
 
-                    <div class="min-w-0">
-
-                        <h1 class="font-bold text-slate-900 text-sm sm:text-base truncate flex items-center gap-2">
-
-                            <i class="fa-solid fa-sliders text-sky-600"></i>
-
-                            <span>Uygulama & Şirket Ayarları</span>
-
-                        </h1>
-
-                    </div>
+                    </h1>
 
                 </div>
 
@@ -23018,11 +24098,11 @@ async function renderSettingsPage() {
 
                         </div>
 
+                        ${curUser && curUser.ministryRegNo ? `
                         <div class="text-[11px] text-slate-400 mt-0.5 truncate">
-
-                            ${curUser && curUser.ministryRegNo ? `Bakanlık Sicil: ${escapeHtml(curUser.ministryRegNo)}` : 'Raporlara imza atacak personel'}
-
+                            Bakanlık Sicil: ${escapeHtml(curUser.ministryRegNo)}
                         </div>
+                        ` : ''}
 
                     </div>
 
@@ -23033,7 +24113,7 @@ async function renderSettingsPage() {
                 ${isManaged ? `
                     <button type="button" onclick="window.CloudAppSync && window.CloudAppSync.syncNow()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-xs">
                         <i class="fa-solid fa-arrows-rotate"></i>
-                        <span>Buluttan Senkronize Et (İş Klasörleri &amp; Cihazlar)</span>
+                        <span>Buluttan Senkronize Et</span>
                     </button>
                 ` : ''}
 
@@ -23077,11 +24157,9 @@ async function renderSettingsPage() {
 
                         <i class="fa-solid fa-building text-sky-600"></i>
 
-                        <span>Şirket & Marka Bilgileri (Çoklu Şirket)</span>
+                        <span>Şirket & Marka Bilgileri</span>
 
                     </div>
-
-                    <span class="text-[10px] text-slate-400">PDF Rapor Başlığı</span>
 
                 </div>
 
@@ -23118,8 +24196,8 @@ async function renderSettingsPage() {
 
 
                 ${isManaged ? `
-                    <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 text-center">
-                        Firma adı, rapor ön eki ve akreditasyon bilgileri firma yöneticisi web panelinden otomatik gelir.
+                    <div class="p-2 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 text-center">
+                        Firma bilgileri yönetici panelinden gelir.
                     </div>
                 ` : `
                     <button onclick="openCompanySettingsModal()" class="w-full py-2.5 btn-craft-primary active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition">
@@ -23135,7 +24213,7 @@ async function renderSettingsPage() {
 
 
 
-            <!-- 4. RAPOR KODLARI & TEST CİHAZI VARSAYILANLARI -->
+            <!-- 4. RAPOR KODLARI -->
 
             <div class="card-craft-white p-3 space-y-2.5">
 
@@ -23145,11 +24223,9 @@ async function renderSettingsPage() {
 
                         <i class="fa-solid fa-file-invoice text-emerald-600"></i>
 
-                        <span>Rapor Kodları & Test Cihazları</span>
+                        <span>Rapor Kodları</span>
 
                     </div>
-
-                    <span class="text-[10px] text-slate-400">Otomatik Doldurma</span>
 
                 </div>
 
@@ -23175,17 +24251,113 @@ async function renderSettingsPage() {
 
                 </div>
 
+            </div>
 
 
-                <button onclick="openUserSettingsModal()" class="w-full py-2 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 flex items-center justify-center gap-1.5 transition">
 
-                    <i class="fa-solid fa-screwdriver-wrench text-slate-600"></i>
+            <!-- 4B. TARİH, SAAT & GEÇERLİLİK SÜRESİ AYARLARI -->
 
-                    <span>Mühendis Unvanı & Hızlı Cihaz Ayarları</span>
+            ${(() => {
+                const dtPrefs = (typeof ReportDateTimePrefs !== 'undefined') ? ReportDateTimePrefs.get() : { fixedStartTime: '', fixedEndTime: '', validityMonths: { '2201': 12, '2202': 12, '2205': 12, 'default': 12 } };
+                const tpls = Array.isArray(window.ENLAB_REPORT_TEMPLATES) ? window.ENLAB_REPORT_TEMPLATES : [
+                    { id: '2201', name: 'ELEKTRİK İÇ TESİSATI' },
+                    { id: '2202', name: 'ALÇAK GERİLİM TOPRAKLAMA' },
+                    { id: '2205', name: 'JENERATÖR' }
+                ];
+                return `
+            <div class="card-craft-white p-3 space-y-2.5">
 
-                </button>
+                <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+
+                    <div class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+
+                        <i class="fa-solid fa-clock text-sky-600"></i>
+
+                        <span>Tarih, Saat &amp; Geçerlilik Süresi</span>
+
+                    </div>
+
+                    <span id="settingsDateTimeSavedBadge" class="hidden text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">Kaydedildi</span>
+
+                </div>
+
+                <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
+
+                    <div class="flex items-center justify-between gap-2">
+
+                        <span class="font-bold text-slate-700">Sabit Kontrol Saati</span>
+
+                        <button type="button" onclick="clearFixedReportTimesFromSettings()" class="text-[11px] font-bold text-sky-700 hover:underline">Sıfırla (Anlık Saat)</button>
+
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+
+                        <div>
+
+                            <label class="block text-[10px] font-bold text-slate-500 mb-0.5">Sabit Başlangıç Saati</label>
+
+                            <input type="time" id="settingsFixedStartTime" value="${escapeHtml(dtPrefs.fixedStartTime || '')}"
+
+                                onchange="saveReportDateTimePrefsFromSettings()"
+
+                                class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-white">
+
+                        </div>
+
+                        <div>
+
+                            <label class="block text-[10px] font-bold text-slate-500 mb-0.5">Sabit Bitiş Saati</label>
+
+                            <input type="time" id="settingsFixedEndTime" value="${escapeHtml(dtPrefs.fixedEndTime || '')}"
+
+                                onchange="saveReportDateTimePrefsFromSettings()"
+
+                                class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-white">
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="space-y-1.5 text-xs">
+
+                    <div class="font-bold text-slate-700">Rapor Geçerlilik Süresi (Ay)</div>
+
+                    <div class="grid grid-cols-1 gap-1.5">
+
+                        ${tpls.map(t => {
+                            const tid = String(t.id);
+                            const label = (typeof getCleanTemplateTypeLabel === 'function') ? getCleanTemplateTypeLabel(tid, t.code) : (t.name || tid);
+                            const val = dtPrefs.validityMonths[tid] ?? dtPrefs.validityMonths['default'] ?? 12;
+                            return `
+                            <div class="flex items-center justify-between gap-2 p-2 rounded-xl bg-slate-50 border border-slate-200">
+
+                                <span class="font-semibold text-slate-800 truncate">${escapeHtml(label)}</span>
+
+                                <div class="flex items-center gap-1.5 shrink-0">
+
+                                    <input type="number" min="1" max="120" value="${escapeHtml(String(val))}"
+
+                                        onchange="saveReportValidityMonthFromSettings('${escapeForJs(tid)}', this.value)"
+
+                                        class="w-16 border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-center bg-white">
+
+                                    <span class="text-[11px] font-bold text-slate-500">Ay</span>
+
+                                </div>
+
+                            </div>`;
+                        }).join('')}
+
+                    </div>
+
+                </div>
 
             </div>
+                `;
+            })()}
 
 
 
@@ -23204,31 +24376,19 @@ async function renderSettingsPage() {
 
                         <i class="fa-solid fa-globe text-indigo-600"></i>
 
-                        <span>Bulut Müşteri Portalı (Otomatik)</span>
+                        <span>Bulut Müşteri Portalı</span>
 
                     </div>
 
-                    <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">Otomatik Hazır ✓</span>
+                    <code id="settingsPortalActiveHost" class="font-mono text-[10px] text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">${escapeHtml(activeHost)}</code>
 
                 </div>
 
-                <div class="p-2.5 rounded-xl bg-emerald-50/80 border border-emerald-200 space-y-1.5 text-xs">
-                    <div class="flex items-center justify-between gap-2 flex-wrap">
-                        <span class="font-bold text-emerald-950 flex items-center gap-1.5">
-                            <i class="fa-solid fa-cloud-check text-emerald-600"></i>
-                            <span>Firma bazlı kullanıcı adı &amp; şifre ile güvenli otomatik yükleme</span>
-                        </span>
-                        <code id="settingsPortalActiveHost" class="font-mono text-[10px] text-emerald-800 bg-white px-2 py-0.5 rounded border border-emerald-200">${escapeHtml(activeHost)}</code>
-                    </div>
-                    <div class="flex items-center justify-between gap-2 flex-wrap text-[11px] text-slate-700">
-                        <span>Aktif Şirket: <strong class="text-slate-900">${escapeHtml(activeComp.companyName)}</strong></span>
-                        <span class="font-mono text-[10px] bg-white px-2 py-0.5 rounded border border-slate-200 text-indigo-700 font-bold">Ön Ek: /p/${escapeHtml(activeComp.companySlug)}-...</span>
-                    </div>
+                <div class="flex items-center justify-between gap-2 flex-wrap text-[11px] text-slate-700 bg-slate-50 border border-slate-200/80 rounded-xl px-2.5 py-2">
+                    <span>Aktif Şirket: <strong class="text-slate-900">${escapeHtml(activeComp.companyName)}</strong></span>
+                    <span class="font-mono text-[10px] bg-white px-2 py-0.5 rounded border border-slate-200 text-indigo-700 font-bold">/p/${escapeHtml(activeComp.companySlug)}-...</span>
                     ${!activeComp.isCustomized && !isManaged ? `
-                        <div class="pt-1 flex items-center justify-between gap-2 border-t border-emerald-200/70 text-[10px] text-amber-800">
-                            <span>Kendi şirket kısaltmanızla (/p/tkm-...) göndermek için şirket adınızı girin.</span>
-                            <button type="button" onclick="openCompanySettingsModal()" class="font-bold text-indigo-700 underline shrink-0">Şirket Adını Düzenle</button>
-                        </div>
+                        <button type="button" onclick="openCompanySettingsModal()" class="text-[10px] font-bold text-indigo-700 underline shrink-0">Şirket Adını Düzenle</button>
                     ` : ''}
                 </div>
 
@@ -23247,20 +24407,20 @@ async function renderSettingsPage() {
 
                 <div class="pt-1 border-t border-slate-100">
                     <button type="button" onclick="document.getElementById('settingsPortalAdvancedWrap')?.classList.toggle('hidden')" class="w-full py-1.5 px-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 font-semibold text-[11px] flex items-center justify-between border border-slate-200/80 transition">
-                        <span class="flex items-center gap-1.5"><i class="fa-solid fa-sliders text-slate-400"></i> Gelişmiş / Özel Domain &amp; Varsayılan PIN (İsteğe Bağlı)</span>
+                        <span class="flex items-center gap-1.5"><i class="fa-solid fa-sliders text-slate-400"></i> Gelişmiş Ayarlar</span>
                         <i class="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
                     </button>
 
                     <div id="settingsPortalAdvancedWrap" class="hidden mt-2 space-y-2 text-xs p-2.5 rounded-xl bg-slate-50 border border-slate-200">
                         <div>
-                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Özel Alan Adı / Sunucu URL (Boş = Varsayılan Bulut)</label>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Özel Alan Adı / Sunucu URL</label>
                             <input type="url" id="settingsPortalUrl" value="${escapeHtml(pCfg.customPortalUrl || '')}"
                                 placeholder="https://hizli-rapor-portal.vercel.app (varsayılan)"
                                 class="w-full px-3 py-2 border border-slate-200 bg-white rounded-xl font-mono text-xs text-slate-900 focus:border-indigo-500 focus:outline-none">
                         </div>
 
                         <div>
-                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Yönetici Anahtarı (Sadece Kendi Sunucunuz İçin, İsteğe Bağlı)</label>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Yönetici Anahtarı</label>
                             <div class="flex items-center gap-1.5">
                                 <input type="password" id="settingsPortalKey" value="${escapeHtml(pCfg.adminKey || '')}"
                                     placeholder="Varsayılan bulutta boş bırakın"
@@ -23273,9 +24433,9 @@ async function renderSettingsPage() {
                         </div>
 
                         <div>
-                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Varsayılan Müşteri Klasör PIN Şifresi (İsteğe Bağlı)</label>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Varsayılan Müşteri Klasör PIN</label>
                             <input type="text" id="settingsPortalPin" value="${escapeHtml(pCfg.defaultPin || '')}"
-                                placeholder="Örn: 4829 (Boş bırakılırsa şifresiz)"
+                                placeholder="Örn: 4829"
                                 class="w-full px-3 py-2 border border-slate-200 bg-white rounded-xl font-mono text-xs text-slate-900 focus:border-indigo-500 focus:outline-none">
                         </div>
 
@@ -23292,7 +24452,7 @@ async function renderSettingsPage() {
 
 
 
-            <!-- 5. VERİ YEDEKLEME VE KURTARMA MERKEZİ (ANA SAYFADAN BURAYA TAŞINDI) -->
+            <!-- 5. VERİ YEDEKLEME VE KURTARMA MERKEZİ -->
 
             <div class="card-craft-white p-3 space-y-2.5">
 
@@ -23302,21 +24462,11 @@ async function renderSettingsPage() {
 
                         <i class="fa-solid fa-database text-amber-500"></i>
 
-                        <span>Veri Yedekleme ve Kurtarma Merkezi</span>
+                        <span>Veri Yedekleme ve Kurtarma</span>
 
                     </div>
 
-                    <span class="text-[10px] text-emerald-600 font-bold">%100 Yerel Veri</span>
-
                 </div>
-
-
-
-                <p class="text-xs text-slate-600 leading-relaxed">
-
-                    Tüm saha işleriniz, raporlarınız ve ölçüm hafızanız cihazınızda saklanır. Cihaz değişimi veya güvenlik için tek tıkla tam yedek alabilir veya geri yükleyebilirsiniz.
-
-                </p>
 
 
 
@@ -23370,34 +24520,6 @@ async function renderSettingsPage() {
 
             </div>
 
-
-
-            <!-- 6. GÜVENLİK & SİLME KORUMASI BİLGİLENDİRMESİ -->
-
-            <div class="card-craft-white p-3 space-y-1.5">
-
-                <div class="flex items-center gap-2 text-xs font-bold text-slate-800">
-
-                    <i class="fa-solid fa-shield-halved text-rose-500"></i>
-
-                    <span>Şifreli Silme Koruması</span>
-
-                </div>
-
-                <p class="text-xs text-slate-600 leading-relaxed">
-
-                    Saha raporlarının ve iş klasörlerinin kazara silinmesini önlemek amacıyla, tüm silme işlemlerinde aktif personel giriş şifreniz istenmektedir.
-
-                </p>
-
-                <div class="text-[11px] text-slate-500 pt-1">
-
-                    ${isManaged ? 'Şifre değişikliği için firma yöneticinize başvurabilirsiniz.' : 'Şifrenizi yukarıdaki <strong>"Profilimi Düzenle"</strong> butonundan dilediğiniz zaman güncelleyebilirsiniz.'}
-
-                </div>
-
-            </div>
-
         </div>
 
     `;
@@ -23415,6 +24537,44 @@ async function renderSettingsPage() {
 }
 
 window.renderSettingsPage = renderSettingsPage;
+
+function flashSettingsDateTimeSaved() {
+    const b = document.getElementById('settingsDateTimeSavedBadge');
+    if (b) {
+        b.classList.remove('hidden');
+        clearTimeout(window._dtSavedTimer);
+        window._dtSavedTimer = setTimeout(() => b.classList.add('hidden'), 1800);
+    }
+}
+
+function saveReportDateTimePrefsFromSettings() {
+    if (typeof ReportDateTimePrefs === 'undefined') return;
+    const st = document.getElementById('settingsFixedStartTime')?.value || '';
+    const et = document.getElementById('settingsFixedEndTime')?.value || '';
+    ReportDateTimePrefs.save({ fixedStartTime: st, fixedEndTime: et });
+    flashSettingsDateTimeSaved();
+}
+
+function clearFixedReportTimesFromSettings() {
+    if (typeof ReportDateTimePrefs === 'undefined') return;
+    ReportDateTimePrefs.clearFixedTimes();
+    const sEl = document.getElementById('settingsFixedStartTime');
+    const eEl = document.getElementById('settingsFixedEndTime');
+    if (sEl) sEl.value = '';
+    if (eEl) eEl.value = '';
+    flashSettingsDateTimeSaved();
+    showToast('Sabit saat sıfırlandı, anlık giriş saati kullanılacak.');
+}
+
+function saveReportValidityMonthFromSettings(templateId, months) {
+    if (typeof ReportDateTimePrefs === 'undefined') return;
+    ReportDateTimePrefs.setValidityMonth(templateId, months);
+    flashSettingsDateTimeSaved();
+}
+
+window.saveReportDateTimePrefsFromSettings = saveReportDateTimePrefsFromSettings;
+window.clearFixedReportTimesFromSettings = clearFixedReportTimesFromSettings;
+window.saveReportValidityMonthFromSettings = saveReportValidityMonthFromSettings;
 
 window.promptSecurityPasswordConfirmation = promptSecurityPasswordConfirmation;
 
@@ -24990,34 +26150,17 @@ ${ramsCss}
                     <div class="min-w-0">
                         <div class="text-[10px] uppercase tracking-wider text-sky-300 font-bold">Bulut Müşteri Klasörü</div>
                         <div class="font-bold text-sm truncate">${escapeStr(wo.customer_name || wo.company_name || 'Müşteri Klasörü')}</div>
-                        ${wo.portal_folder_url ? `<div class="text-[10px] text-emerald-300 font-mono truncate mt-0.5"><i class="fa-solid fa-link mr-1"></i>${escapeStr(wo.portal_folder_url)}</div>` : `<div class="text-[10px] text-slate-400 mt-0.5">İlk yüklemede müşteriye özel gizli klasör bağlantısı oluşturulur.</div>`}
+                        ${wo.portal_folder_url ? `<div class="text-[10px] text-emerald-300 font-mono truncate mt-0.5"><i class="fa-solid fa-link mr-1"></i>${escapeStr(wo.portal_folder_url)}</div>` : ''}
                     </div>
                     ${wo.portal_folder_url ? `<button type="button" onclick="CloudPortal.copyText('${escapeStr(wo.portal_folder_url)}')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-300 font-bold text-[11px] shrink-0 border border-slate-700"><i class="fa-regular fa-copy mr-1"></i>Kopyala</button>` : ''}
                 </div>
 
-                <!-- Otomatik Portal & Şirket Kimliği Kartı (Adres/Şifre İstemez) -->
-                <div id="portalQuickSetupBox" class="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 space-y-1.5">
-                    <div class="flex items-center justify-between gap-2">
-                        <div class="min-w-0 flex items-center gap-1.5 text-emerald-900 font-bold">
-                            <i class="fa-solid fa-cloud-check text-emerald-600 shrink-0"></i>
-                            <span>Otomatik Bulut Portalı Hazır ✓</span>
-                        </div>
-                        <span class="text-[10px] font-mono text-emerald-700 truncate max-w-[160px]" title="${escapeStr(cfg.portalUrl)}">${escapeStr(portalHostLabel)}</span>
+                ${!company.isCustomized ? `
+                    <div class="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-2.5 py-2 flex items-center justify-between gap-2">
+                        <span>Şirket kısaltması henüz varsayılan (/p/${escapeStr(company.companySlug)}-...)</span>
+                        <button type="button" onclick="closeModal(); setTimeout(() => { if(typeof openCompanySettingsModal==='function') openCompanySettingsModal(); else navigateTo('settings'); }, 60);" class="font-bold text-amber-950 underline shrink-0">Şirket Adını Ayarla</button>
                     </div>
-                    <div class="flex items-center justify-between gap-2 flex-wrap text-[11px] text-emerald-950">
-                        <span class="flex items-center gap-1 min-w-0">
-                            <i class="fa-solid fa-building text-emerald-700 shrink-0"></i>
-                            <span class="truncate">Şirket: <strong>${escapeStr(company.companyName)}</strong></span>
-                        </span>
-                        <span class="font-mono text-[10px] px-2 py-0.5 rounded bg-white border border-emerald-200 text-emerald-800 shrink-0">Ön Ek: /p/${escapeStr(company.companySlug)}-...</span>
-                    </div>
-                    ${!company.isCustomized ? `
-                        <div class="text-[10px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 flex items-center justify-between gap-2">
-                            <span>Şirket kısaltmanız henüz varsayılan. İsterseniz firma adınızı girin:</span>
-                            <button type="button" onclick="closeModal(); setTimeout(() => { if(typeof openCompanySettingsModal==='function') openCompanySettingsModal(); else navigateTo('settings'); }, 60);" class="font-bold text-amber-950 underline shrink-0">Şirket Adını Ayarla</button>
-                        </div>
-                    ` : ''}
-                </div>
+                ` : ''}
 
                 <!-- Rapor Seçimi -->
                 <div class="space-y-1.5">
@@ -25028,11 +26171,11 @@ ${ramsCss}
                     <div class="max-h-44 overflow-y-auto space-y-1.5 pr-0.5">${reportsHtml}</div>
                 </div>
 
-                <!-- Harici PDF Ekleme (İsteğe Bağlı) -->
+                <!-- Harici PDF Ekleme -->
                 <div class="rounded-xl border border-slate-200 bg-slate-50/70 overflow-hidden">
                     <button type="button" onclick="document.getElementById('portalExtPdfFields').classList.toggle('hidden')"
                         class="w-full px-3 py-2 flex items-center justify-between font-bold text-slate-800 hover:bg-slate-100 transition">
-                        <span class="flex items-center gap-1.5"><i class="fa-solid fa-file-circle-plus text-rose-600"></i> + Hazır PDF Dosyası Ekle (İsteğe Bağlı)</span>
+                        <span class="flex items-center gap-1.5"><i class="fa-solid fa-file-circle-plus text-rose-600"></i> Hazır PDF Dosyası Ekle</span>
                         <i class="fa-solid fa-chevron-down text-[10px] text-slate-400"></i>
                     </button>
                     <div id="portalExtPdfFields" class="${reports.length === 0 ? '' : 'hidden'} p-3 pt-1 border-t border-slate-200 space-y-2 bg-white">
@@ -25052,7 +26195,7 @@ ${ramsCss}
                     </div>
                 </div>
 
-                <!-- Müşteri Firma Giriş Bilgileri (Kullanıcı Adı & Şifre ile Firma İzolasyonu) -->
+                <!-- Müşteri Firma Giriş Bilgileri -->
                 <div class="p-3 rounded-xl border border-indigo-200 bg-indigo-50/70 space-y-2">
                     <div class="flex items-center justify-between gap-2 flex-wrap">
                         <label class="font-bold text-slate-900 flex items-center gap-1.5">
@@ -25060,8 +26203,8 @@ ${ramsCss}
                             <span>Müşteri Firma Giriş Bilgileri</span>
                         </label>
                         ${remembered
-                            ? `<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-[10px]">✓ Kayıtlı Firma Hesabı</span>`
-                            : `<span class="px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 border border-sky-200 font-bold text-[10px]">Otomatik Hesap Açılır</span>`}
+                            ? `<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-[10px]">Kayıtlı Hesap</span>`
+                            : ''}
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
@@ -25081,13 +26224,10 @@ ${ramsCss}
                                 class="w-full px-2.5 py-1.5 border border-slate-300 bg-white rounded-lg text-xs font-mono font-bold text-slate-900">
                         </div>
                     </div>
-                    <div class="text-[10px] text-slate-600 leading-snug">
-                        Müşteri <strong class="font-mono">${escapeStr(portalHostLabel)}</strong> adresinden bu bilgilerle giriş yaparak yalnızca kendi firmasına ait raporları görür. Diğer firmaların raporları gizlidir.
-                    </div>
                     ${wo.portal_pin ? `
                         <label class="flex items-center gap-1.5 text-[11px] text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 cursor-pointer">
                             <input type="checkbox" id="portalUploadClearPinCb" checked class="accent-indigo-600">
-                            <span>Eski klasör PIN kilidini (<strong>${escapeStr(wo.portal_pin)}</strong>) kaldır — yalnızca kullanıcı adı &amp; şifre ile açılsın</span>
+                            <span>Eski klasör PIN'ini (<strong>${escapeStr(wo.portal_pin)}</strong>) kaldır</span>
                         </label>
                     ` : ''}
                 </div>
@@ -25353,9 +26493,11 @@ ${ramsCss}
                 resultBox.classList.remove('hidden');
                 toast(`${uploaded.length} rapor internet portalına yüklendi!`, 'success');
 
-                // Refresh work-order details view in background if currently visible
+                // Refresh active view in background
                 if (window.AppState?.currentRoute === 'work-order-details' && typeof window.renderWorkOrderDetails === 'function' && _portalModalState.wo?.id) {
                     window.renderWorkOrderDetails(_portalModalState.wo.id);
+                } else if (window.AppState?.currentRoute === 'home' && typeof window.renderHome === 'function') {
+                    window.renderHome();
                 }
             } else {
                 const msg = errors.join('\n') || 'Yükleme sırasında hata oluştu.';

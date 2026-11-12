@@ -24,7 +24,7 @@ function openQuickFieldJobModal() {
 
         return `
 
-        <label class="quick-tpl-item flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-white hover:border-sky-500 cursor-pointer transition-all shadow-2xs">
+        <label class="quick-tpl-item flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-sky-500 cursor-pointer transition-all shadow-2xs">
 
             <div class="flex items-center gap-2.5 min-w-0">
 
@@ -37,12 +37,6 @@ function openQuickFieldJobModal() {
                 </div>
 
             </div>
-
-            <span class="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded shrink-0">
-
-                Seç
-
-            </span>
 
         </label>
 
@@ -102,7 +96,7 @@ function openQuickFieldJobModal() {
 
             <div>
 
-                <label class="block font-bold text-slate-700 mb-1"><i class="fa-solid fa-envelope text-sky-600 mr-1"></i>Yetkili E-posta Adresi <span class="text-[10px] text-slate-400 font-normal">(Rapor Gönderimi İçin)</span></label>
+                <label class="block font-bold text-slate-700 mb-1"><i class="fa-solid fa-envelope text-sky-600 mr-1"></i>Yetkili E-posta Adresi</label>
 
                 <input type="email" id="qjContactEmail" placeholder="yetkili@firma.com"
 
@@ -112,19 +106,13 @@ function openQuickFieldJobModal() {
 
             <div>
 
-                <div class="flex items-center justify-between gap-2 mb-1.5">
+                <label class="font-bold text-slate-800 flex items-center gap-1.5 mb-1.5">
 
-                    <label class="font-bold text-slate-800 flex items-center gap-1.5">
+                    <i class="fa-solid fa-bolt text-amber-500"></i>
 
-                        <i class="fa-solid fa-bolt text-amber-500"></i>
+                    <span>Oluşturulacak Raporlar</span>
 
-                        <span>Oluşturulacak Elektrik Raporları</span>
-
-                    </label>
-
-                    <span class="text-[10px] text-slate-400">İstediğinizi seçin</span>
-
-                </div>
+                </label>
 
                 <div id="qjTemplatesGrid" class="space-y-1.5 p-2 border border-slate-200 rounded-xl bg-slate-50 max-h-44 overflow-y-auto">
 
@@ -351,7 +339,7 @@ async function renderFieldNotebookPage() {
 
             </div>
 
-            <textarea rows="3" placeholder="Bu işe ait saha notlarınızı buraya yazın (Otomatik kaydedilir)..."
+            <textarea rows="3" placeholder="Saha notları..."
 
                 oninput="saveWorkOrderNotesRealtime('${escapeForJs(w.id)}', this.value)"
 
@@ -369,7 +357,7 @@ async function renderFieldNotebookPage() {
 
             <div class="bg-slate-200 rounded-xl border border-slate-300 shadow-xs p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3">
 
-                <div class="flex items-start gap-3">
+                <div class="flex items-center gap-3">
 
                     <button onclick="navigateTo('home')" class="px-2.5 py-1.5 bg-white hover:bg-slate-100 active:scale-95 text-slate-700 rounded-xl font-bold text-xs shrink-0 transition border border-slate-300">
 
@@ -377,19 +365,11 @@ async function renderFieldNotebookPage() {
 
                     </button>
 
-                    <div>
+                    <h1 class="text-lg font-black text-slate-900 flex items-center gap-2">
 
-                        <div class="text-[11px] text-slate-600 font-bold uppercase tracking-wider">Çevrimdışı Not Alma Klasörü (Offline)</div>
+                        <i class="fa-solid fa-folder text-slate-600"></i> Offline Not Alma Klasörü
 
-                        <h1 class="text-lg font-black text-slate-900 flex items-center gap-2">
-
-                            <i class="fa-solid fa-folder text-slate-600"></i> Offline Not Alma Klasörü
-
-                        </h1>
-
-                        <p class="text-xs text-slate-600 mt-0.5">İnternetin çekmediği sahalarda aldığınız tüm tespit ve ölçü notları anında cihaz hafızasına kaydedilir.</p>
-
-                    </div>
+                    </h1>
 
                 </div>
 
@@ -397,7 +377,7 @@ async function renderFieldNotebookPage() {
 
                     <button onclick="openQuickFieldJobModal()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow flex items-center gap-2">
 
-                        <i class="fa-solid fa-plus"></i> + Yeni İş & Rapor Taslağı Aç
+                        <i class="fa-solid fa-plus"></i> Yeni İş & Rapor Taslağı Aç
 
                     </button>
 
@@ -417,9 +397,7 @@ async function renderFieldNotebookPage() {
 
                         <div class="px-4 py-3 bg-slate-700 text-white font-bold text-xs uppercase flex items-center justify-between">
 
-                            <span><i class="fa-solid fa-pen-clip text-slate-200 mr-2"></i>Yeni Offline Saha Notu Ekle</span>
-
-                            <span class="text-[10px] text-slate-300">Otomatik Cihaz Kaydı</span>
+                            <span><i class="fa-solid fa-pen-clip text-slate-200 mr-2"></i>Yeni Saha Notu</span>
 
                         </div>
 
@@ -439,11 +417,11 @@ async function renderFieldNotebookPage() {
 
                                 <div>
 
-                                    <label class="block font-bold text-slate-700 mb-1">İlgili İş (Opsiyonel)</label>
+                                    <label class="block font-bold text-slate-700 mb-1">İlgili İş</label>
 
                                     <select id="newNoteWoSelect" class="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white">
 
-                                        <option value="">-- Genel / Bağımsız Offline Not --</option>
+                                        <option value="">-- Genel Not --</option>
 
                                         ${jobOptions}
 
@@ -635,6 +613,18 @@ function saveWorkOrderNotesRealtime(woId, notesText) {
 
     }
 
+    const previewEl = document.getElementById(`woFieldNotePreview_${woId}`);
+
+    if (previewEl) {
+
+        const trimmed = (notesText || '').replace(/\n/g, ' ').trim();
+
+        previewEl.textContent = trimmed || 'Not ekle...';
+
+        previewEl.className = trimmed ? 'text-[11px] text-amber-800 font-medium truncate' : 'text-[11px] text-slate-400 truncate';
+
+    }
+
     const statusEl = document.getElementById(`woNoteSaveStatus_${woId}`);
 
     if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-rotate fa-spin mr-1"></i>Kaydediliyor...`;
@@ -685,6 +675,60 @@ function saveWorkOrderEmailRealtime(woId, emailText) {
         if (statusEl) statusEl.innerHTML = `<i class="fa-solid fa-check text-emerald-600"></i> Kaydedildi`;
     }, 300);
 }
+
+function openWorkOrderFieldNotesModal(woId) {
+
+    const wo = (AppState.currentWorkOrder && String(AppState.currentWorkOrder.id) === String(woId))
+
+        ? AppState.currentWorkOrder
+
+        : (AppState.workOrdersCache || []).find(w => String(w.id) === String(woId)) || { id: woId, field_notes: '' };
+
+    openModal(
+
+        '<i class="fa-solid fa-note-sticky mr-2 text-amber-400"></i>Saha Notu',
+
+        `<div class="space-y-2 text-xs">
+
+            <textarea id="woFieldNotesTextarea_${escapeHtml(woId)}" rows="5"
+
+                oninput="saveWorkOrderNotesRealtime('${escapeForJs(woId)}', this.value)"
+
+                placeholder="Saha notlarınızı buraya yazın..."
+
+                class="w-full border border-slate-300 bg-amber-50/20 rounded-xl p-2.5 text-xs text-slate-900 focus:border-amber-500 focus:outline-none">${escapeHtml(wo.field_notes || '')}</textarea>
+
+            <div class="flex items-center justify-between text-[11px] text-slate-400 min-h-[16px]">
+
+                <span id="woNoteSaveStatus_${escapeHtml(woId)}"></span>
+
+            </div>
+
+        </div>`,
+
+        `<button type="button" onclick="closeModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-lg active:scale-95 transition">Tamam</button>`
+
+    );
+
+    setTimeout(() => {
+
+        const ta = document.getElementById(`woFieldNotesTextarea_${woId}`);
+
+        if (ta) {
+
+            ta.focus();
+
+            ta.setSelectionRange(ta.value.length, ta.value.length);
+
+        }
+
+    }, 100);
+
+}
+
+window.openWorkOrderFieldNotesModal = openWorkOrderFieldNotesModal;
+
+
 
 function appendQuickSnippetToJobNotes(woId, snippet) {
 
@@ -760,13 +804,7 @@ async function renderWorkOrdersPage(scope = 'all', tab = 'open') {
 
             <div class="px-5 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
 
-                <div>
-
-                    <div class="text-[11px] text-slate-400 font-semibold uppercase">Muayene / ${pageTitle}</div>
-
-                    <h1 class="text-lg font-bold text-slate-800">${pageTitle}</h1>
-
-                </div>
+                <h1 class="text-lg font-bold text-slate-800">${pageTitle}</h1>
 
                 <div class="flex items-center gap-2">
 
@@ -1134,93 +1172,25 @@ async function renderWorkOrderDetails(workOrderId) {
 
 
 
-            <!-- YÖNETİCİ & SAHA İSTATİSTİKLERİ (KOMPAKT METRİK ŞERİDİ) -->
+            <!-- SAHA NOTU (KOMPAKT BUTON) -->
 
-            <div class="card-craft-white p-2 px-3 flex items-center justify-between text-xs font-semibold">
+            <button type="button" onclick="openWorkOrderFieldNotesModal('${wo.id}')"
 
-                <div class="flex items-center gap-1.5 text-slate-700">
+                class="w-full card-craft-white px-3 py-2 flex items-center justify-between gap-2 hover:border-amber-300 active:scale-[0.99] transition text-left">
 
-                    <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+                <div class="flex items-center gap-2 min-w-0 flex-1">
 
-                    <span>Toplam: <strong class="text-slate-900 font-bold">${inspections.length}</strong></span>
+                    <i class="fa-solid fa-note-sticky text-amber-500 text-xs shrink-0"></i>
 
-                </div>
+                    <span class="font-bold text-xs text-slate-800 shrink-0">Saha Notu</span>
 
-                <div class="flex items-center gap-1.5 text-emerald-700">
-
-                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-
-                    <span>Uygun: <strong class="font-bold">${inspections.filter(i => (i.result_status || 'UYGUN') === 'UYGUN').length}</strong></span>
+                    <span id="woFieldNotePreview_${wo.id}" class="text-[11px] ${wo.field_notes && wo.field_notes.trim() ? 'text-amber-800 font-medium' : 'text-slate-400'} truncate">${wo.field_notes && wo.field_notes.trim() ? escapeHtml(wo.field_notes.replace(/\n/g, ' ').trim()) : 'Not ekle...'}</span>
 
                 </div>
 
-                <div class="flex items-center gap-1.5 text-rose-700">
+                <i class="fa-solid fa-pen text-[10px] text-slate-400 shrink-0"></i>
 
-                    <span class="w-2 h-2 rounded-full bg-rose-500"></span>
-
-                    <span>Kusurlu: <strong class="font-bold">${inspections.filter(i => i.result_status === 'UYGUN DEĞİL').length}</strong></span>
-
-                </div>
-
-            </div>
-
-
-
-            <!-- YETKİLİ E-POSTA ADRESİ (HIZLI RAPOR GÖNDERİMİ İÇİN) -->
-
-            <div class="card-craft-white p-2.5 flex items-center gap-2">
-
-                <div class="flex items-center gap-1.5 text-xs font-bold text-slate-700 shrink-0">
-
-                    <i class="fa-solid fa-envelope text-sky-600"></i>
-
-                    <span>Yetkili E-posta:</span>
-
-                </div>
-
-                <input type="email" id="woContactEmailInput_${wo.id}"
-
-                    value="${escapeHtml(wo.contact_email || '')}"
-
-                    oninput="saveWorkOrderEmailRealtime('${wo.id}', this.value)"
-
-                    placeholder="yetkili@firma.com (Raporların gönderileceği adres)"
-
-                    class="flex-1 min-w-0 border border-slate-200 bg-slate-50/70 focus:bg-white rounded-lg px-2.5 py-1 text-xs text-slate-900 focus:border-sky-500 focus:outline-none">
-
-                <span id="woEmailSaveStatus_${wo.id}" class="text-[10px] text-slate-400 shrink-0 hidden sm:inline">Otomatik</span>
-
-            </div>
-
-
-
-            <!-- NOT DEFTERİ (KOMPAKT) -->
-
-            <div class="card-craft-white p-2.5 space-y-1.5">
-
-                <div class="flex items-center justify-between">
-
-                    <label class="font-bold text-xs text-slate-800 flex items-center gap-1.5">
-
-                        <i class="fa-solid fa-note-sticky text-amber-500"></i>
-
-                        <span>Saha Notları</span>
-
-                    </label>
-
-                    <span id="woNoteSaveStatus_${wo.id}" class="text-[10px] text-slate-400">Otomatik kaydedilir</span>
-
-                </div>
-
-                <textarea id="woFieldNotesTextarea_${wo.id}" rows="2"
-
-                    oninput="saveWorkOrderNotesRealtime('${wo.id}', this.value)"
-
-                    placeholder="Saha notlarınızı buraya yazın..."
-
-                    class="w-full border border-slate-200 bg-amber-50/20 rounded-lg p-2 text-xs text-slate-900 focus:border-amber-400 focus:outline-none">${wo.field_notes || ''}</textarea>
-
-            </div>
+            </button>
 
 
 
@@ -1248,14 +1218,6 @@ async function renderWorkOrderDetails(workOrderId) {
 
                         </button>
 
-                        <button onclick="openMultiReportEmailModal('${wo.id}')" class="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-2xs transition" title="Klasördeki Raporları E-posta ile Gönder">
-
-                            <i class="fa-solid fa-envelope-open-text"></i>
-
-                            <span>Çoklu Rapor Gönder</span>
-
-                        </button>
-
                         <button onclick="openAddInspectionModal('${wo.id}')" class="px-3.5 py-1.5 btn-craft-emerald active:scale-95 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition">
 
                             <i class="fa-solid fa-plus"></i>
@@ -1267,30 +1229,6 @@ async function renderWorkOrderDetails(workOrderId) {
                     </div>
 
                 </div>
-
-                ${wo.portal_folder_url ? `
-                <div class="p-2.5 rounded-xl bg-indigo-50/90 border border-indigo-200 flex items-center justify-between gap-2 flex-wrap">
-                    <div class="min-w-0 flex-1">
-                        <div class="flex items-center gap-1.5 flex-wrap text-[11px] font-bold text-indigo-900">
-                            <i class="fa-solid fa-globe text-indigo-600"></i>
-                            <span>Müşteri İnternet Klasörü Hazır</span>
-                            ${wo.portal_customer_username ? `<span class="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-900 border border-indigo-300 font-mono text-[10px]">🛡️ @${escapeHtml(wo.portal_customer_username)}</span>` : ''}
-                            ${wo.portal_customer_password ? `<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-900 border border-emerald-300 font-mono text-[10px]">Şifre: ${escapeHtml(wo.portal_customer_password)}</span>` : ''}
-                            ${wo.portal_pin ? `<span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 font-mono text-[10px]">PIN: ${escapeHtml(wo.portal_pin)}</span>` : (!wo.portal_customer_username ? `<span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px]">Şifresiz</span>` : '')}
-                        </div>
-                        <div class="text-[10px] font-mono text-indigo-700 truncate mt-0.5">${escapeHtml(wo.portal_folder_url)}</div>
-                    </div>
-                    <div class="flex items-center gap-1 shrink-0 flex-wrap">
-                        ${wo.portal_customer_username ? `<button type="button" onclick="CloudPortal.copyCustomerLoginInfo('${escapeForJs(wo.id)}')" class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] transition"><i class="fa-solid fa-user-shield mr-1"></i>Girişi Kopyala</button>` : ''}
-                        <button type="button" onclick="CloudPortal.copyText('${escapeForJs(wo.portal_folder_url)}')" class="px-2.5 py-1 rounded-lg bg-white hover:bg-indigo-100 text-indigo-800 font-bold text-[11px] border border-indigo-200 transition">
-                            <i class="fa-regular fa-copy mr-1"></i>Linki Kopyala
-                        </button>
-                        <a href="${escapeHtml(wo.portal_folder_url)}" target="_blank" rel="noopener" class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] transition">
-                            <i class="fa-solid fa-arrow-up-right-from-square mr-1"></i>Aç
-                        </a>
-                    </div>
-                </div>
-                ` : ''}
 
 
 
@@ -1394,7 +1332,7 @@ function renderWoInspectionRows(list, workOrderId) {
 
             <i class="fa-solid fa-folder-open text-slate-300 text-2xl mb-2 block"></i>
 
-            Bu klasörde henüz rapor yok.<br>Üstteki <strong class="text-slate-800 font-bold">+ Rapor Ekle</strong> butonuna dokunarak panolarınızı (ADP, TDP-1 vb.) ekleyin.
+            Bu klasörde henüz rapor yok.
 
         </div>`;
 
@@ -1414,7 +1352,7 @@ function renderWoInspectionRows(list, workOrderId) {
 
             <!-- TIER 1: REPORT TITLE & SUBTITLE -->
 
-            <div onclick="navigateTo('inspection-complete', {id: '${item.id}', templateId: '${item.template_id}'})" class="cursor-pointer">
+            <div>
 
                 <div class="flex items-start justify-between gap-2">
 
@@ -1494,8 +1432,6 @@ function renderWoInspectionRows(list, workOrderId) {
 
                     </button>
 
-                    ${isPublished ? `<button onclick="copyReportPortalLink('${item.id}')" class="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 active:scale-95 text-emerald-700 font-semibold rounded-lg text-xs flex items-center gap-1 transition border border-emerald-200" title="Rapor İnternet Linkini Kopyala"><i class="fa-solid fa-link text-[10px]"></i><span>Link</span></button>` : ''}
-
                 </div>
 
                 <div class="flex items-center gap-0.5 shrink-0">
@@ -1555,8 +1491,6 @@ function openRenameInspectionModal(inspectionId, currentName, workOrderId) {
                     placeholder="Örn: ADP, TDP-1, Jeneratör-1..."
 
                     class="w-full border-2 border-slate-300 focus:border-sky-500 rounded-lg px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none">
-
-                <p class="text-[11px] text-slate-500 mt-1">Bu isim klasör listesinde ve resmi raporda ekipman adı olarak gösterilir.</p>
 
             </div>
 
@@ -1738,19 +1672,13 @@ function openStartInspectionModal(inspectionId) {
 
             <div>
 
-                <label class="block font-bold text-slate-700 mb-1.5">Rapor Şablonu Seçiniz (ENLAB / TKM Formu):</label>
+                <label class="block font-bold text-slate-700 mb-1.5">Rapor Şablonu</label>
 
                 <select id="startModalTemplateSelect" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-xs font-semibold bg-white focus:border-sky-500 focus:outline-none">
 
                     ${optionsHtml}
 
                 </select>
-
-                <p class="text-[11px] text-slate-500 mt-1.5">
-
-                    <i class="fa-solid fa-circle-info text-sky-600 mr-1"></i>Seçtiğiniz şablona göre ilgili teknik ölçüm tabloları, gözle kontrol soruları ve mevzuat kriterleri yüklenecektir.
-
-                </p>
 
             </div>
 
