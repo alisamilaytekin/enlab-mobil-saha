@@ -85,7 +85,18 @@ def build(target_version=None):
         try: os.remove(old_candidate)
         except Exception: pass
 
-    # 0. JS Modullerini Otomatik Paketle (src/js -> src/app.js)
+    # 0. AndroidManifest kontrolu ve yama (tools/patch_android_manifest.py)
+    manifest_script = os.path.join(TOOLS_DIR, 'patch_android_manifest.py')
+    if os.path.exists(manifest_script):
+        print("[0/3] AndroidManifest.xml uyumluluk kontrolu yapiliyor...")
+        mres = subprocess.run([sys.executable, manifest_script], capture_output=True, text=True, encoding='utf-8')
+        if mres.returncode != 0:
+            print(f"[!] HATA: AndroidManifest yamasi basarisiz:\n{mres.stderr or mres.stdout}")
+            return False
+        for line in (mres.stdout or '').strip().splitlines():
+            print(f"  {line}")
+
+    # 0b. JS Modullerini Otomatik Paketle (src/js -> src/app.js)
     bundle_script = os.path.join(TOOLS_DIR, 'bundle.py')
     if os.path.exists(bundle_script):
         print("[0/3] src/js modulleri paketleniyor (tools/bundle.py)...")

@@ -3,6 +3,8 @@
 Safely patches binary AndroidManifest.xml (AXML) to ensure:
 1. <uses-permission android:name="android.permission.INTERNET" />
 2. <application ... android:usesCleartextTraffic="true"> (so local Wi-Fi http:// tests work on Android 9+)
+3. <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="35" /> (modern Android privacy compliance)
+4. <manifest android:versionCode >= 4>
 """
 import os
 import struct
@@ -15,6 +17,10 @@ MANIFEST_PATH = os.path.join(
 PERM_INTERNET = 'android.permission.INTERNET'
 ATTR_CLEARTEXT = 'usesCleartextTraffic'
 ATTR_CLEARTEXT_RES_ID = 0x010104EC
+ATTR_TARGET_SDK_RES_ID = 0x01010270
+ATTR_VERSION_CODE_RES_ID = 0x0101021B
+TARGET_SDK_VERSION = 35
+MIN_VERSION_CODE = 4
 
 
 def decode_utf16_str(buf, offset):
@@ -262,10 +268,60 @@ def ensure_cleartext_traffic(data):
     return new_data
 
 
+def ensure_modern_sdk_and_version(data, target_sdk=TARGET_SDK_VERSION, min_version_code=MIN_VERSION_CODE):
+    magic, hdr_size, file_size = struct.unpack_from('<HHI', data, 0)
+    assert magic == 0x0003 and hdr_size == 8 and file_size == len(data), 'Invalid AXML header'
+
+    sp_pos, sp_size, _, strings = parse_strings(data)
+    rest_start = sp_pos + sp_size
+    rtype, rhdr, rsize = struct.unpack_from('<HHI', data, rest_start)
+    assert rtype == 0x0180 and rhdr == 8, f'Expected ResourceMap chunk after StringPool, got {hex(rtype)}'
+    res_count = (rsize - rhdr) // 4
+    res_ids = list(struct.unpack_from(f'<{res_count}I', data, rest_start + rhdr))
+
+    out = bytearray(data)
+    pos = rest_start + rsize
+    updated_sdk = False
+
+    manifest_idx = strings.index('manifest')
+    uses_sdk_idx = strings.index('uses-sdk')
+
+    while pos < len(out):
+        ctype, chdr, csize = struct.unpack_from('<HHI', out, pos)
+        if ctype == 0x0102:
+            line, comment, ns, name, astart, asize, acnt, *_ = struct.unpack_from('<IiIIHHHHHH', out, pos + 8)
+            for i in range(acnt):
+                aoff = pos + chdr + astart + i * asize
+                ans, aname, araw, tsz, r0, atype, adata = struct.unpack_from('<IIiHBBI', out, aoff)
+                res_id = res_ids[aname] if aname < len(res_ids) else None
+                if name == uses_sdk_idx and res_id == ATTR_TARGET_SDK_RES_ID:
+                    assert atype == 0x10, f'Expected integer attribute for targetSdkVersion, got {hex(atype)}'
+                    if adata < target_sdk:
+                        struct.pack_into('<i', out, aoff + 8, -1)
+                        struct.pack_into('<I', out, aoff + 16, target_sdk)
+                        print(f'[OK] Updated targetSdkVersion: {adata} -> {target_sdk}')
+                    else:
+                        print(f'[OK] targetSdkVersion already >= {target_sdk} ({adata})')
+                    updated_sdk = True
+                elif name == manifest_idx and res_id == ATTR_VERSION_CODE_RES_ID:
+                    assert atype == 0x10, f'Expected integer attribute for versionCode, got {hex(atype)}'
+                    if adata < min_version_code:
+                        struct.pack_into('<i', out, aoff + 8, -1)
+                        struct.pack_into('<I', out, aoff + 16, min_version_code)
+                        print(f'[OK] Updated versionCode: {adata} -> {min_version_code}')
+                    else:
+                        print(f'[OK] versionCode already >= {min_version_code} ({adata})')
+        pos += csize
+
+    assert updated_sdk, 'Could not find targetSdkVersion attribute in <uses-sdk>'
+    return bytes(out)
+
+
 def patch_manifest():
     orig = open(MANIFEST_PATH, 'rb').read()
     patched = ensure_internet_permission(orig)
     patched = ensure_cleartext_traffic(patched)
+    patched = ensure_modern_sdk_and_version(patched)
     if patched != orig:
         with open(MANIFEST_PATH, 'wb') as f:
             f.write(patched)
