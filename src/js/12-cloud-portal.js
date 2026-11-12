@@ -2020,6 +2020,295 @@ ${ramsCss}
         window.open(urlVal, '_blank', 'noopener');
     }
 
+    // ========================================================================
+    // 7. SAHA PERSONELİ BULUT GİRİŞ & CİHAZ / İŞ KLASÖRÜ SENKRONİZASYONU
+    // ========================================================================
+    function resolveTemplateMeta(tplId) {
+        const idStr = String(tplId || '2201');
+        const list = (window.ENLAB_REPORT_TEMPLATES || []).concat(window.ENLAB_ALL_REPORT_TEMPLATES_BACKUP || []);
+        const found = list.find(t => String(t.id) === idStr);
+        if (found) return { id: found.id, code: found.code || 'TKM-FR.318', name: found.name || 'Elektrik Periyodik Kontrol' };
+        if (idStr === '2202') return { id: '2202', code: 'TKM-FR.317', name: 'ALÇAK GERİLİM TOPRAKLAMA TESİSATI' };
+        if (idStr === '2205') return { id: '2205', code: 'TKM-FR.164', name: 'JENERATÖR PERİYODİK KONTROLÜ' };
+        return { id: '2201', code: 'TKM-FR.318', name: 'ELEKTRİK İÇ TESİSATI GÖZLE KONTROL VE TESTLERİ' };
+    }
+
+    function applyTenantBranding(tenant) {
+        if (!tenant || typeof CompanySettingsManager === 'undefined') return;
+        const b = (tenant.branding_json && typeof tenant.branding_json === 'object') ? tenant.branding_json : {};
+        const patch = {};
+        if (b.companyFullName || tenant.name) patch.companyFullName = b.companyFullName || tenant.name;
+        if (b.companyShortName || tenant.name) patch.companyShortName = b.companyShortName || tenant.name;
+        if (b.companyAddress !== undefined) patch.companyAddress = b.companyAddress;
+        if (b.companyPhone !== undefined) patch.companyPhone = b.companyPhone;
+        if (b.companyEmail !== undefined) patch.companyEmail = b.companyEmail;
+        if (b.reportNoPrefix) patch.reportNoPrefix = b.reportNoPrefix;
+        if (b.accreditationNo !== undefined) patch.accreditationNo = b.accreditationNo;
+        try {
+            CompanySettingsManager.saveSettings(patch);
+            if (typeof CompanySettingsManager.syncHeaderTitle === 'function') {
+                CompanySettingsManager.syncHeaderTitle();
+            }
+        } catch (e) {}
+    }
+
+    function syncCloudWorkOrders(cloudWorkOrders, userRecord) {
+        if (!window.OfflineDB) return { added: 0, updated: 0 };
+        window.OfflineDB.init();
+        const db = window.OfflineDB.state;
+        if (!Array.isArray(db.workOrders)) db.workOrders = [];
+        if (!Array.isArray(db.inspections)) db.inspections = [];
+
+        const list = Array.isArray(cloudWorkOrders) ? cloudWorkOrders : [];
+        const cloudIds = new Set(list.map(w => String(w.id)));
+        const uid = String(userRecord.cloudId || userRecord.id || '');
+        const todayStr = new Date().toLocaleDateString('tr-TR');
+        let added = 0;
+        let updated = 0;
+
+        // 1. Yönetici tarafından kaldırılan/başkasına devredilen ve henüz yerel değişmemiş klasörleri temizle
+        db.workOrders = db.workOrders.filter(localWo => {
+            if (!localWo.assigned_by_manager || !localWo.cloud_wo_id) return true;
+            if (localWo.assigned_user_cloud_id && uid && String(localWo.assigned_user_cloud_id) !== uid) return true;
+            if (cloudIds.has(String(localWo.cloud_wo_id))) return true;
+            // Sadece hiç düzenleme yapılmamış taslakları sil; düzenlenmiş rapor varsa koru
+            const childInsps = db.inspections.filter(i => String(i.work_order_id) === String(localWo.id));
+            const hasEdited = childInsps.some(i => i.status && i.status !== 'Tamamlanacak');
+            if (hasEdited) return true;
+            db.inspections = db.inspections.filter(i => String(i.work_order_id) !== String(localWo.id));
+            return false;
+        });
+
+        // 2. Gelen iş klasörlerini oluştur / güncelle
+        list.forEach((wo, idx) => {
+            const existing = db.workOrders.find(w => String(w.cloud_wo_id) === String(wo.id));
+            if (existing) {
+                existing.code = wo.work_order_code || existing.code;
+                existing.company_name = wo.company_name || existing.company_name;
+                existing.company_branch = wo.company_branch || '';
+                existing.company_address = wo.company_address || '';
+                existing.isg_katip_no = wo.isg_katip_no || '';
+                existing.sgk_sicil_no = wo.sgk_sicil_no || '';
+                existing.contact_email = wo.contact_email || existing.contact_email || '';
+                if (!existing.field_notes && wo.field_notes) existing.field_notes = wo.field_notes;
+                existing.assigned_user_cloud_id = uid;
+                existing.assigned_to = userRecord.fullName || existing.assigned_to;
+                existing.assigned_by_manager = true;
+                existing.cloud_status = wo.status || 'open';
+                existing.is_open = wo.status === 'completed' ? 0 : 1;
+                updated++;
+                return;
+            }
+
+            const newWoId = Date.now() + idx + Math.floor(Math.random() * 100);
+            const newWo = {
+                id: newWoId,
+                cloud_wo_id: String(wo.id),
+                assigned_user_cloud_id: uid,
+                assigned_by_manager: true,
+                cloud_status: wo.status || 'open',
+                code: wo.work_order_code || `HZL-${newWoId}`,
+                proposal_no: 'TKL-SAHA',
+                company_name: wo.company_name || 'İşyeri',
+                company_branch: wo.company_branch || '',
+                company_address: wo.company_address || '',
+                isg_katip_no: wo.isg_katip_no || '',
+                sgk_sicil_no: wo.sgk_sicil_no || '',
+                contact_email: wo.contact_email || '',
+                field_notes: wo.field_notes || '',
+                start_date: todayStr,
+                end_date: todayStr,
+                assigned_to: userRecord.fullName || '',
+                status: 'Açık',
+                is_open: wo.status === 'completed' ? 0 : 1,
+                is_mine: 1,
+                inspection_count: 0,
+                files_json: '[]'
+            };
+            db.workOrders.unshift(newWo);
+
+            const tpls = Array.isArray(wo.template_ids) ? wo.template_ids : [];
+            const prefix = (typeof CompanySettingsManager !== 'undefined' && CompanySettingsManager.getSettings().reportNoPrefix) || 'HZL-';
+            tpls.forEach((tplId, tIdx) => {
+                const meta = resolveTemplateMeta(tplId);
+                const inspId = newWoId + 1000 + tIdx * 17 + Math.floor(Math.random() * 10);
+                const reportNo = `${prefix}${new Date().toISOString().slice(2, 4)}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(54100 + Math.random() * 5800)}`;
+                const formData = {
+                    companyInfo: {
+                        firmName: newWo.company_name,
+                        address: newWo.company_address,
+                        isgKatipNo: newWo.isg_katip_no,
+                        sgkSicilNo: newWo.sgk_sicil_no,
+                        contactEmail: newWo.contact_email,
+                        reportNo,
+                        reportDate: todayStr
+                    }
+                };
+                if (window.MeasuringDevicesManager && typeof window.MeasuringDevicesManager.applyDefaultsToFormData === 'function') {
+                    window.MeasuringDevicesManager.applyDefaultsToFormData(formData, meta.id, false);
+                }
+                const inspObj = {
+                    id: inspId,
+                    work_order_id: newWoId,
+                    work_order_code: newWo.code,
+                    report_no: reportNo,
+                    template_id: String(meta.id),
+                    template_code: meta.code,
+                    company_name: newWo.company_name,
+                    company_branch: newWo.company_branch,
+                    address: newWo.company_address,
+                    isg_katip_no: newWo.isg_katip_no,
+                    sgk_sicil_no: newWo.sgk_sicil_no,
+                    equipment_name: meta.name,
+                    accreditation: 'AK',
+                    serial_no: '',
+                    location: '',
+                    inspector: userRecord.fullName || '',
+                    approver: '',
+                    status: 'Tamamlanacak',
+                    result: 'UYGUN',
+                    inspection_date: todayStr,
+                    end_date: todayStr,
+                    report_date: todayStr,
+                    is_mine: 1,
+                    data_json: JSON.stringify(formData)
+                };
+                db.inspections.unshift(inspObj);
+            });
+            newWo.inspection_count = tpls.length;
+            added++;
+        });
+
+        window.OfflineDB.save();
+        return { added, updated };
+    }
+
+    function applyCloudSyncPayload(data, rawPassword = null) {
+        if (!data || !data.user) return null;
+        let userRecord = null;
+        if (typeof window.AuthManager !== 'undefined' && typeof window.AuthManager.upsertCloudUser === 'function') {
+            userRecord = window.AuthManager.upsertCloudUser({
+                cloudId: data.user.id,
+                tenantId: data.tenant ? data.tenant.id : data.user.tenant_id,
+                tenantName: data.tenant ? data.tenant.name : '',
+                username: data.user.username,
+                password: rawPassword,
+                role: data.user.role || 'inspector',
+                fullName: data.user.full_name,
+                title: data.user.title || 'Elektrik Mühendisi',
+                ministryRegNo: data.user.ministry_reg_no || '',
+                diplomaNoDate: data.user.diploma_no_date || '',
+                emoNo: data.user.emo_no || '',
+                cloudToken: data.token || undefined,
+                lastSyncedAt: data.synced_at || new Date().toISOString()
+            });
+        }
+        if (data.tenant) {
+            applyTenantBranding(data.tenant);
+        }
+        if (window.MeasuringDevicesManager && typeof window.MeasuringDevicesManager.syncCloudDevices === 'function') {
+            window.MeasuringDevicesManager.syncCloudDevices(
+                Array.isArray(data.devices) ? data.devices : [],
+                userRecord ? userRecord.id : null
+            );
+        }
+        if (userRecord) {
+            syncCloudWorkOrders(Array.isArray(data.work_orders) ? data.work_orders : [], userRecord);
+        }
+        if (typeof window.updateHeaderUserWidget === 'function') {
+            window.updateHeaderUserWidget();
+        }
+        return userRecord;
+    }
+
+    async function loginOnline(username, password) {
+        const cfg = getPortalConfig();
+        const url = `${cfg.portalUrl}/api/app-sync`;
+        try {
+            const res = await realFetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'login',
+                    username: String(username || '').trim(),
+                    password: String(password || '').trim()
+                })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.ok) {
+                return {
+                    success: false,
+                    authError: res.status === 400 || res.status === 401 || res.status === 403,
+                    message: data.error || 'Kullanıcı adı veya şifre hatalı!'
+                };
+            }
+            const user = applyCloudSyncPayload(data, String(password || '').trim());
+            return {
+                success: true,
+                user,
+                deviceCount: Array.isArray(data.devices) ? data.devices.length : 0,
+                workOrderCount: Array.isArray(data.work_orders) ? data.work_orders.length : 0
+            };
+        } catch (err) {
+            return {
+                success: false,
+                networkError: true,
+                message: err && err.message ? err.message : 'Sunucuya ulaşılamadı'
+            };
+        }
+    }
+
+    let _syncPromise = null;
+    async function syncNow({ silent = false } = {}) {
+        const curUser = (typeof window.AuthManager !== 'undefined' && window.AuthManager.getCurrentUser()) || null;
+        if (!curUser || !curUser.isCloudManaged || !curUser.cloudToken) {
+            if (!silent) toast('Bulut senkronizasyonu için şirket hesabınızla giriş yapın.', 'warning');
+            return { ok: false, reason: 'no_cloud_session' };
+        }
+        if (navigator.onLine === false) {
+            if (!silent) toast('İnternet bağlantısı yok — çevrimdışı modda çalışılıyor.', 'warning');
+            return { ok: false, reason: 'offline' };
+        }
+        if (_syncPromise) return _syncPromise;
+
+        _syncPromise = (async () => {
+            try {
+                const cfg = getPortalConfig();
+                const res = await realFetch(`${cfg.portalUrl}/api/app-sync`, {
+                    method: 'GET',
+                    headers: { 'X-App-Token': curUser.cloudToken }
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || !data.ok) {
+                    if (!silent) toast(data.error || 'Senkronizasyon başarısız oldu.', 'error');
+                    return { ok: false, status: res.status, error: data.error };
+                }
+                applyCloudSyncPayload(data, null);
+                if (!silent) {
+                    toast(`Güncellendi: ${(data.devices || []).length} cihaz, ${(data.work_orders || []).length} iş klasörü`, 'success');
+                }
+                if (window.AppState && window.AppState.currentRoute === 'home' && typeof window.renderHome === 'function') {
+                    window.renderHome({ skipSync: true });
+                } else if (window.AppState && window.AppState.currentRoute === 'settings' && typeof window.renderSettingsPage === 'function') {
+                    window.renderSettingsPage();
+                }
+                return { ok: true, devices: (data.devices || []).length, workOrders: (data.work_orders || []).length };
+            } catch (err) {
+                if (!silent) toast('İnternet bağlantısı kurulamadı; çevrimdışı veriler korunuyor.', 'warning');
+                return { ok: false, networkError: true };
+            } finally {
+                _syncPromise = null;
+            }
+        })();
+        return _syncPromise;
+    }
+
+    window.CloudAppSync = {
+        loginOnline,
+        syncNow,
+        applySyncPayload: applyCloudSyncPayload
+    };
+
     window.CloudPortal = {
         DEFAULT_PORTAL_URL: DEFAULT_CLOUD_PORTAL_URL,
         getConfig: getPortalConfig,

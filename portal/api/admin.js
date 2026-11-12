@@ -9,6 +9,8 @@ import {
   normalizeUsername,
   sanitizeCompanySlug,
   sanitizeCustomerPublic,
+  sanitizeTenantPublic,
+  sanitizeSaasUserPublic,
   dbSelect,
   dbInsert,
   dbUpdate,
@@ -40,6 +42,14 @@ export default async function handler(req, res) {
       const reports = await dbSelect(
         'portal_reports',
         'upload_ready=eq.true&select=id,folder_id,share_slug,verify_code,report_no,equipment_name,template_code,inspection_date,inspector_name,result_status,source_type,file_size_bytes,created_at,updated_at&order=created_at.desc'
+      );
+      const tenants = await dbSelect(
+        'saas_tenants',
+        'select=id,name,slug,branding_json,is_active,created_at,updated_at&order=created_at.desc'
+      );
+      const saasUsers = await dbSelect(
+        'saas_users',
+        'select=id,tenant_id,username,role,full_name,title,ministry_reg_no,diploma_no_date,emo_no,is_active,last_login_at,created_at,updated_at&order=created_at.desc'
       );
 
       const accountById = new Map();
@@ -111,10 +121,14 @@ export default async function handler(req, res) {
         totals: {
           folders: folders.length,
           reports: reports.length,
-          customers: accounts.length
+          customers: accounts.length,
+          tenants: tenants.length,
+          saas_users: saasUsers.length
         },
         folders: items,
-        customer_accounts: enrichedAccounts
+        customer_accounts: enrichedAccounts,
+        tenants: tenants.map(sanitizeTenantPublic),
+        saas_users: saasUsers.map(sanitizeSaasUserPublic)
       });
     }
 
@@ -289,6 +303,147 @@ export default async function handler(req, res) {
         const reps = await dbSelect('portal_reports', `folder_id=eq.${encodeURIComponent(folderId)}&select=storage_path`);
         await deleteStorageObjects(reps.map(r => r.storage_path));
         await dbDelete('portal_folders', `id=eq.${encodeURIComponent(folderId)}`);
+        return sendJson(res, 200, { ok: true });
+      }
+
+      if (action === 'create-tenant') {
+        const name = String(body.name || '').trim().slice(0, 180);
+        if (!name) return sendJson(res, 400, { ok: false, error: 'Firma adı gereklidir.' });
+        const rawSlug = sanitizeCompanySlug(body.slug || name);
+        let slug = rawSlug || `firma-${Date.now().toString(36)}`;
+        const dupTenant = await dbSelect('saas_tenants', `slug=eq.${encodeURIComponent(slug)}&select=id&limit=1`);
+        if (dupTenant.length) {
+          slug = `${slug}-${Math.floor(100 + Math.random() * 899)}`;
+        }
+
+        const managerUsername = normalizeUsername(body.manager_username || '');
+        const managerPassword = String(body.manager_password || '').trim();
+        const managerFullName = String(body.manager_full_name || '').trim().slice(0, 120);
+        if (managerUsername) {
+          if (managerUsername.length < 3) {
+            return sendJson(res, 400, { ok: false, error: 'Yönetici kullanıcı adı en az 3 karakter olmalıdır.' });
+          }
+          if (managerPassword.length < 4) {
+            return sendJson(res, 400, { ok: false, error: 'Yönetici şifresi en az 4 karakter olmalıdır.' });
+          }
+          const dupUser = await dbSelect('saas_users', `username=eq.${encodeURIComponent(managerUsername)}&select=id&limit=1`);
+          if (dupUser.length) {
+            return sendJson(res, 409, { ok: false, error: 'Bu yönetici kullanıcı adı zaten kullanılıyor!' });
+          }
+        }
+
+        const tenant = await dbInsert('saas_tenants', {
+          id: crypto.randomUUID(),
+          name,
+          slug,
+          branding_json: body.branding_json && typeof body.branding_json === 'object' ? body.branding_json : { companyShortName: name, companyFullName: name },
+          is_active: true
+        });
+
+        let manager = null;
+        if (managerUsername) {
+          manager = await dbInsert('saas_users', {
+            id: crypto.randomUUID(),
+            tenant_id: tenant.id,
+            username: managerUsername,
+            password_hash: hashPin(managerPassword),
+            role: 'manager',
+            full_name: managerFullName || `${name} Yöneticisi`,
+            title: String(body.manager_title || 'Firma Yöneticisi').trim().slice(0, 120),
+            is_active: true,
+            token_version: 1
+          });
+        }
+
+        return sendJson(res, 200, {
+          ok: true,
+          tenant: sanitizeTenantPublic(tenant),
+          manager: manager ? sanitizeSaasUserPublic(manager) : null
+        });
+      }
+
+      if (action === 'update-tenant') {
+        const tenantId = String(body.tenant_id || '').trim();
+        if (!tenantId) return sendJson(res, 400, { ok: false, error: 'tenant_id gerekli' });
+        const patch = { updated_at: new Date().toISOString() };
+        if (body.name !== undefined && String(body.name).trim()) {
+          patch.name = String(body.name).trim().slice(0, 180);
+        }
+        if (body.is_active !== undefined) patch.is_active = Boolean(body.is_active);
+        if (body.branding_json && typeof body.branding_json === 'object') patch.branding_json = body.branding_json;
+        const updated = await dbUpdate('saas_tenants', `id=eq.${encodeURIComponent(tenantId)}`, patch);
+        return sendJson(res, 200, { ok: true, tenant: sanitizeTenantPublic(updated[0] || null) });
+      }
+
+      if (action === 'delete-tenant') {
+        const tenantId = String(body.tenant_id || '').trim();
+        if (!tenantId) return sendJson(res, 400, { ok: false, error: 'tenant_id gerekli' });
+        await dbDelete('saas_tenants', `id=eq.${encodeURIComponent(tenantId)}`);
+        return sendJson(res, 200, { ok: true });
+      }
+
+      if (action === 'create-saas-user') {
+        const tenantId = String(body.tenant_id || '').trim();
+        const username = normalizeUsername(body.username || '');
+        const password = String(body.password || '').trim();
+        const fullName = String(body.full_name || '').trim().slice(0, 120);
+        const role = body.role === 'manager' ? 'manager' : 'inspector';
+        if (!tenantId) return sendJson(res, 400, { ok: false, error: 'tenant_id gerekli' });
+        if (!username || username.length < 3) return sendJson(res, 400, { ok: false, error: 'Kullanıcı adı en az 3 karakter olmalıdır.' });
+        if (password.length < 4) return sendJson(res, 400, { ok: false, error: 'Şifre en az 4 karakter olmalıdır.' });
+        if (!fullName) return sendJson(res, 400, { ok: false, error: 'Ad soyad gereklidir.' });
+
+        const dup = await dbSelect('saas_users', `username=eq.${encodeURIComponent(username)}&select=id&limit=1`);
+        if (dup.length) return sendJson(res, 409, { ok: false, error: 'Bu kullanıcı adı zaten kayıtlı!' });
+
+        const created = await dbInsert('saas_users', {
+          id: crypto.randomUUID(),
+          tenant_id: tenantId,
+          username,
+          password_hash: hashPin(password),
+          role,
+          full_name: fullName,
+          title: String(body.title || (role === 'manager' ? 'Firma Yöneticisi' : 'Elektrik Mühendisi')).trim().slice(0, 120),
+          ministry_reg_no: String(body.ministry_reg_no || '').trim().slice(0, 80),
+          diploma_no_date: String(body.diploma_no_date || '').trim().slice(0, 80),
+          emo_no: String(body.emo_no || '').trim().slice(0, 80),
+          is_active: true,
+          token_version: 1
+        });
+        return sendJson(res, 200, { ok: true, user: sanitizeSaasUserPublic(created) });
+      }
+
+      if (action === 'update-saas-user') {
+        const userId = String(body.user_id || '').trim();
+        if (!userId) return sendJson(res, 400, { ok: false, error: 'user_id gerekli' });
+        const rows = await dbSelect('saas_users', `id=eq.${encodeURIComponent(userId)}&limit=1`);
+        const existing = rows[0];
+        if (!existing) return sendJson(res, 404, { ok: false, error: 'Kullanıcı bulunamadı' });
+
+        const patch = { updated_at: new Date().toISOString() };
+        let revoke = false;
+        if (body.full_name !== undefined && String(body.full_name).trim()) patch.full_name = String(body.full_name).trim().slice(0, 120);
+        if (body.role === 'manager' || body.role === 'inspector') patch.role = body.role;
+        if (body.title !== undefined) patch.title = String(body.title).trim().slice(0, 120);
+        if (body.is_active !== undefined) {
+          patch.is_active = Boolean(body.is_active);
+          if (!patch.is_active) revoke = true;
+        }
+        if (body.password !== undefined && String(body.password).trim()) {
+          const pwd = String(body.password).trim();
+          if (pwd.length < 4) return sendJson(res, 400, { ok: false, error: 'Şifre en az 4 karakter olmalıdır.' });
+          patch.password_hash = hashPin(pwd);
+          revoke = true;
+        }
+        if (revoke) patch.token_version = Number(existing.token_version || 1) + 1;
+        const updated = await dbUpdate('saas_users', `id=eq.${encodeURIComponent(userId)}`, patch);
+        return sendJson(res, 200, { ok: true, user: sanitizeSaasUserPublic(updated[0] || existing) });
+      }
+
+      if (action === 'delete-saas-user') {
+        const userId = String(body.user_id || '').trim();
+        if (!userId) return sendJson(res, 400, { ok: false, error: 'user_id gerekli' });
+        await dbDelete('saas_users', `id=eq.${encodeURIComponent(userId)}`);
         return sendJson(res, 200, { ok: true });
       }
 

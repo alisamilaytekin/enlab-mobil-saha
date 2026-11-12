@@ -573,6 +573,12 @@ window.addEventListener('DOMContentLoaded', async () => {
 
         navigateTo('home');
 
+        if (curUser.isCloudManaged && navigator.onLine !== false && window.CloudAppSync && typeof window.CloudAppSync.syncNow === 'function') {
+
+            window.CloudAppSync.syncNow({ silent: true });
+
+        }
+
     }
 
 
@@ -1057,6 +1063,9 @@ function openUserSettingsModal() {
     const curUser = (typeof AuthManager !== 'undefined' && typeof AuthManager.getCurrentUser === 'function')
         ? AuthManager.getCurrentUser()
         : null;
+    const locked = typeof MeasuringDevicesManager !== 'undefined'
+        && typeof MeasuringDevicesManager.isCloudManaged === 'function'
+        && MeasuringDevicesManager.isCloudManaged();
     const assigned = (typeof MeasuringDevicesManager !== 'undefined' && typeof MeasuringDevicesManager.getAssignedDevices === 'function')
         ? MeasuringDevicesManager.getAssignedDevices()
         : [];
@@ -1076,7 +1085,7 @@ function openUserSettingsModal() {
                 <span class="text-[10px] font-semibold text-emerald-700 shrink-0">${escapeVal(d.category || '')}</span>
             </div>
         `).join('')
-        : `<div class="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-[11px]">Henüz üzerinize alınmış ölçüm cihazı yok. Havuzdan seçerek raporlara otomatik eklenmesini sağlayabilirsiniz.</div>`;
+        : `<div class="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-[11px]">${locked ? 'Yöneticiniz tarafından henüz size ölçüm cihazı atanmadı.' : 'Henüz üzerinize alınmış ölçüm cihazı yok. Havuzdan seçerek raporlara otomatik eklenmesini sağlayabilirsiniz.'}</div>`;
 
     openModal(
 
@@ -1108,19 +1117,29 @@ function openUserSettingsModal() {
 
                 <div class="flex items-center justify-between">
                     <span class="font-bold text-slate-800">Üzerinizdeki Ölçüm Cihazları (${assigned.length})</span>
-                    <button type="button" onclick="closeModal(); openDeviceEditModal(null, { assignByDefault: true, refreshSettings: true });"
-                        class="text-[11px] font-bold text-emerald-700 hover:underline">+ Yeni Cihaz Tanımla</button>
+                    ${locked
+                        ? `<span class="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">Yönetici Ataması</span>`
+                        : `<button type="button" onclick="closeModal(); openDeviceEditModal(null, { assignByDefault: true, refreshSettings: true });" class="text-[11px] font-bold text-emerald-700 hover:underline">+ Yeni Cihaz Tanımla</button>`
+                    }
                 </div>
 
                 <div class="space-y-1.5 max-h-40 overflow-y-auto">
                     ${assignedSummaryHtml}
                 </div>
 
-                <button type="button" onclick="closeModal(); openDeviceCatalogPickerModal('settings_assign');"
-                    class="w-full py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-amber-400 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition">
-                    <i class="fa-solid fa-right-left"></i>
-                    <span>Ölçüm Cihazlarımı Seç / Değiştir (Havuz)</span>
-                </button>
+                ${locked ? `
+                    <button type="button" onclick="window.CloudAppSync && window.CloudAppSync.syncNow();"
+                        class="w-full py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition">
+                        <i class="fa-solid fa-arrows-rotate"></i>
+                        <span>Buluttan Cihazları Güncelle</span>
+                    </button>
+                ` : `
+                    <button type="button" onclick="closeModal(); openDeviceCatalogPickerModal('settings_assign');"
+                        class="w-full py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-amber-400 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition">
+                        <i class="fa-solid fa-right-left"></i>
+                        <span>Ölçüm Cihazlarımı Seç / Değiştir (Havuz)</span>
+                    </button>
+                `}
 
             </div>
 
@@ -1363,7 +1382,75 @@ async function navigateTo(route, params = {}) {
 
 
 
-async function renderHome() {
+function renderGrayOfflineNotesFolderHtml() {
+
+    let noteCount = 0;
+
+    try {
+
+        if (window.OfflineDB) {
+
+            window.OfflineDB.init();
+
+            noteCount = Array.isArray(window.OfflineDB.state?.quickNotes) ? window.OfflineDB.state.quickNotes.length : 0;
+
+        }
+
+    } catch (e) {}
+
+    return `
+
+        <div onclick="navigateTo('field-notebook')"
+
+            class="p-2.5 rounded-xl bg-slate-200/95 hover:bg-slate-300/80 active:scale-[0.99] border border-slate-300 cursor-pointer flex items-center justify-between gap-2.5 transition shadow-2xs">
+
+            <div class="flex items-center gap-2.5 min-w-0 flex-1">
+
+                <div class="w-9 h-9 rounded-lg bg-slate-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+
+                    <i class="fa-solid fa-folder text-sm"></i>
+
+                </div>
+
+                <div class="min-w-0 flex-1">
+
+                    <div class="font-bold text-slate-900 text-xs sm:text-sm truncate flex items-center gap-1.5">
+
+                        <span>Offline Not Alma Klasörü</span>
+
+                    </div>
+
+                    <div class="text-[10px] text-slate-600 truncate mt-0.5 font-medium">
+
+                        <i class="fa-solid fa-pen-to-square mr-1 text-slate-500"></i>İnternetsiz saha notları ve tespitler
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="shrink-0 flex items-center gap-1.5">
+
+                <span class="px-2 py-0.5 rounded-md bg-slate-700 text-white font-bold text-[10px]">
+
+                    ${noteCount} Not · Offline
+
+                </span>
+
+                <i class="fa-solid fa-chevron-right text-slate-500 text-[11px]"></i>
+
+            </div>
+
+        </div>
+
+    `;
+
+}
+
+
+
+async function renderHome(opts = {}) {
 
     const container = document.getElementById('pageContent');
 
@@ -1371,11 +1458,29 @@ async function renderHome() {
 
 
 
+    const curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || null;
+
+    const isManaged = Boolean(curUser && curUser.isCloudManaged);
+
+    const userCloudId = curUser && curUser.cloudId ? String(curUser.cloudId) : '';
+
+
+
     const woRes = await fetch('/api/work-orders');
 
     const rawWOs = await woRes.json();
 
-    const allJobs = (Array.isArray(rawWOs) ? rawWOs : []).map(normalizeWorkOrder);
+    const allJobs = (Array.isArray(rawWOs) ? rawWOs : []).map(normalizeWorkOrder).filter(wo => {
+
+        if (userCloudId && wo.assigned_user_cloud_id) {
+
+            return String(wo.assigned_user_cloud_id) === userCloudId;
+
+        }
+
+        return true;
+
+    });
 
     AppState.workOrdersCache = allJobs;
 
@@ -1414,14 +1519,14 @@ async function renderHome() {
                         </div>
                     </div>
                 </div>
-                <button onclick="navigateTo('settings')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-semibold rounded-lg text-xs flex items-center gap-1.5 transition border border-slate-200 shrink-0" title="Şirket Logosu ve Rapor Ayarları">
+                <button onclick="navigateTo('settings')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-semibold rounded-lg text-xs flex items-center gap-1.5 transition border border-slate-200 shrink-0" title="Ayarlar ve Ölçüm Cihazlarım">
                     <i class="fa-solid fa-sliders text-sky-600 text-[11px]"></i>
-                    <span class="hidden sm:inline">Şirket Ayarları</span>
+                    <span class="hidden sm:inline">${isManaged ? 'Ayarlarım' : 'Şirket Ayarları'}</span>
                 </button>
             </div>
 
 
-            <!-- 1. İŞYERİ ARAMA VE YENİ BAŞLIK AÇMA (SADE & HIZLI SAHA ERİŞİMİ) -->
+            <!-- 1. İŞYERİ ARAMA VE YENİLE / YENİ KLASÖR -->
 
             <div class="flex items-center gap-2 pt-0.5">
 
@@ -1429,21 +1534,33 @@ async function renderHome() {
 
                     class="flex-1 bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-sky-500 shadow-2xs">
 
-                <button onclick="openQuickFieldJobModal()" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-bold text-xs rounded-lg shrink-0 flex items-center gap-1.5 shadow-sm transition">
+                ${isManaged ? `
+                    <button onclick="window.CloudAppSync && window.CloudAppSync.syncNow()" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 active:scale-95 text-amber-300 font-bold text-xs rounded-lg shrink-0 flex items-center gap-1.5 shadow-sm transition" title="Yöneticinin açtığı işleri ve atadığı cihazları internetten çek">
 
-                    <i class="fa-solid fa-plus text-emerald-400"></i>
+                        <i class="fa-solid fa-arrows-rotate"></i>
 
-                    <span>Yeni Klasör</span>
+                        <span>Yenile</span>
 
-                </button>
+                    </button>
+                ` : `
+                    <button onclick="openQuickFieldJobModal()" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-bold text-xs rounded-lg shrink-0 flex items-center gap-1.5 shadow-sm transition">
+
+                        <i class="fa-solid fa-plus text-emerald-400"></i>
+
+                        <span>Yeni Klasör</span>
+
+                    </button>
+                `}
 
             </div>
 
 
 
-            <!-- 2. KLASÖRLER LİSTESİ -->
+            <!-- 2. OFFLINE NOT KLASÖRÜ (GRİ) + İŞ KLASÖRLERİ LİSTESİ -->
 
             <div id="homeJobsList" class="space-y-2 pt-0.5">
+
+                ${renderGrayOfflineNotesFolderHtml()}
 
                 ${renderMinimalJobCards(allJobs)}
 
@@ -1469,9 +1586,16 @@ async function renderHome() {
 
 function renderMinimalJobCards(jobs) {
 
+    const curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || null;
+
+    const isManaged = Boolean(curUser && curUser.isCloudManaged);
+
     if (!jobs || !jobs.length) {
 
-        return `<div class="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-400 text-xs">Henüz başlık eklenmedi. Üstteki <strong>"Yeni Başlık"</strong> butonuna dokunun.</div>`;
+        return `<div class="bg-white rounded-xl border border-slate-200 p-6 text-center text-slate-500 text-xs space-y-1.5">
+            <div class="font-bold text-slate-700">${isManaged ? 'Size atanmış açık iş klasörü henüz yok' : 'Henüz iş klasörü eklenmedi'}</div>
+            <div class="text-[11px] text-slate-400">${isManaged ? 'Firma yöneticiniz internet panelinden iş açtığında burada otomatik görünür. Kontrol etmek için yukarıdaki <strong>Yenile</strong> butonuna dokunun.' : 'Üstteki <strong>"Yeni Klasör"</strong> butonuna dokunabilirsiniz.'}</div>
+        </div>`;
 
     }
 
@@ -1481,6 +1605,8 @@ function renderMinimalJobCards(jobs) {
 
         const count = wo.actual_inspection_count ?? wo.inspection_count ?? 0;
 
+        const lockedFolder = Boolean(wo.assigned_by_manager || isManaged);
+
         return `
 
             <div onclick="navigateTo('work-order-details', {id: '${wo.id}'})"
@@ -1489,7 +1615,13 @@ function renderMinimalJobCards(jobs) {
 
                 <div class="min-w-0 flex-1">
 
-                    <div class="font-bold text-slate-900 text-xs sm:text-sm truncate">${wo.customer_name}</div>
+                    <div class="flex items-center gap-1.5 min-w-0">
+
+                        <span class="font-bold text-slate-900 text-xs sm:text-sm truncate">${wo.customer_name}</span>
+
+                        ${wo.assigned_by_manager ? `<span class="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold text-[9px] shrink-0">İş Emri</span>` : ''}
+
+                    </div>
 
                     ${wo.customer_branch ? `<div class="text-[10px] text-slate-500 truncate mt-0.5">${wo.customer_branch}</div>` : ''}
 
@@ -1505,11 +1637,13 @@ function renderMinimalJobCards(jobs) {
 
                     </span>
 
-                    <button onclick="deleteWorkOrderHeading('${wo.id}', event, '${(wo.customer_name || 'İş Klasörü').replace(/'/g, "\\'")}')" class="p-1.5 text-slate-400 hover:text-rose-600 active:scale-90 rounded-md transition" title="Klasörü Sil">
+                    ${lockedFolder ? '' : `
+                        <button onclick="deleteWorkOrderHeading('${wo.id}', event, '${(wo.customer_name || 'İş Klasörü').replace(/'/g, "\\'")}')" class="p-1.5 text-slate-400 hover:text-rose-600 active:scale-90 rounded-md transition" title="Klasörü Sil">
 
-                        <i class="fa-solid fa-trash-can text-[11px]"></i>
+                            <i class="fa-solid fa-trash-can text-[11px]"></i>
 
-                    </button>
+                        </button>
+                    `}
 
                 </div>
 
@@ -1555,7 +1689,7 @@ function promptSecurityPasswordConfirmation({ title, entityName, message, onConf
 
                 <div class="relative">
 
-                    <input type="password" id="secConfirmPasswordInput" placeholder="Kullanıcı şifreniz (varsayılan: 123)"
+                    <input type="password" id="secConfirmPasswordInput" placeholder="Kullanıcı şifreniz"
 
                         class="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-mono pr-10 focus:outline-none focus:border-rose-500 bg-white"
 
@@ -1677,6 +1811,18 @@ async function deleteWorkOrderHeading(woId, event, folderName) {
 
     if (event) event.stopPropagation();
 
+    const targetWo = (AppState.workOrdersCache || []).find(w => String(w.id) === String(woId));
+
+    const curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || null;
+
+    if ((targetWo && targetWo.assigned_by_manager) || (curUser && curUser.isCloudManaged)) {
+
+        showToast('Yöneticinin açtığı iş klasörü silinemez', 'warning');
+
+        return;
+
+    }
+
     promptSecurityPasswordConfirmation({
 
         title: 'İş Klasörünü Sil',
@@ -1717,9 +1863,15 @@ function filterHomeJobs(query) {
 
     );
 
+    const showOfflineCard = !q || 'offline not alma klasörü saha notları defter'.includes(q);
+
     const listEl = document.getElementById('homeJobsList');
 
-    if (listEl) listEl.innerHTML = renderMinimalJobCards(filtered);
+    if (listEl) {
+
+        listEl.innerHTML = (showOfflineCard ? renderGrayOfflineNotesFolderHtml() : '') + renderMinimalJobCards(filtered);
+
+    }
 
 }
 

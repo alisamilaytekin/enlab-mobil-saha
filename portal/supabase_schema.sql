@@ -97,3 +97,98 @@ ON CONFLICT (id) DO UPDATE SET
     public = false,
     file_size_limit = 52428800,
     allowed_mime_types = ARRAY['text/html', 'application/pdf'];
+
+-- ============================================================================
+-- 6. YAZILIM SAĞLAYICISI / FİRMA YÖNETİMİ / CİHAZ & İŞ EMİRLERİ (SAAS ÇEKİRDEK)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS public.saas_tenants (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    slug TEXT NOT NULL UNIQUE,
+    branding_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_saas_tenants_slug ON public.saas_tenants (slug);
+
+CREATE TABLE IF NOT EXISTS public.saas_users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES public.saas_tenants(id) ON DELETE CASCADE,
+    username TEXT NOT NULL UNIQUE CHECK (char_length(username) >= 3 AND username = LOWER(BTRIM(username))),
+    password_hash TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'inspector' CHECK (role IN ('manager', 'inspector')),
+    full_name TEXT NOT NULL,
+    title TEXT NOT NULL DEFAULT 'Elektrik Mühendisi',
+    ministry_reg_no TEXT NOT NULL DEFAULT '',
+    diploma_no_date TEXT NOT NULL DEFAULT '',
+    emo_no TEXT NOT NULL DEFAULT '',
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    token_version INTEGER NOT NULL DEFAULT 1,
+    last_login_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_saas_users_tenant ON public.saas_users (tenant_id, role, is_active);
+
+CREATE TABLE IF NOT EXISTS public.saas_devices (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES public.saas_tenants(id) ON DELETE CASCADE,
+    category TEXT NOT NULL DEFAULT 'Diğer',
+    code TEXT NOT NULL DEFAULT '',
+    brand TEXT NOT NULL DEFAULT '',
+    model TEXT NOT NULL DEFAULT '',
+    report_name TEXT NOT NULL,
+    thermal_report_name TEXT NOT NULL DEFAULT '',
+    is_thermal BOOLEAN NOT NULL DEFAULT FALSE,
+    serial TEXT NOT NULL DEFAULT '',
+    cal_date TEXT NOT NULL DEFAULT '',
+    valid_date TEXT NOT NULL DEFAULT '',
+    cert_no TEXT NOT NULL DEFAULT '',
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_saas_devices_tenant ON public.saas_devices (tenant_id, is_active, updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS public.saas_user_devices (
+    user_id UUID NOT NULL REFERENCES public.saas_users(id) ON DELETE CASCADE,
+    device_id UUID NOT NULL REFERENCES public.saas_devices(id) ON DELETE CASCADE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, device_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_saas_user_devices_device ON public.saas_user_devices (device_id);
+
+CREATE TABLE IF NOT EXISTS public.saas_work_orders (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES public.saas_tenants(id) ON DELETE CASCADE,
+    assigned_user_id UUID NOT NULL REFERENCES public.saas_users(id) ON DELETE CASCADE,
+    work_order_code TEXT NOT NULL DEFAULT '',
+    company_name TEXT NOT NULL,
+    company_branch TEXT NOT NULL DEFAULT '',
+    company_address TEXT NOT NULL DEFAULT '',
+    isg_katip_no TEXT NOT NULL DEFAULT '',
+    sgk_sicil_no TEXT NOT NULL DEFAULT '',
+    contact_email TEXT NOT NULL DEFAULT '',
+    field_notes TEXT NOT NULL DEFAULT '',
+    template_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+    status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'completed', 'cancelled')),
+    created_by UUID REFERENCES public.saas_users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_saas_work_orders_tenant ON public.saas_work_orders (tenant_id, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_saas_work_orders_user ON public.saas_work_orders (assigned_user_id, status, updated_at DESC);
+
+ALTER TABLE public.saas_tenants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.saas_users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.saas_devices ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.saas_user_devices ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.saas_work_orders ENABLE ROW LEVEL SECURITY;

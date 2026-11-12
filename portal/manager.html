@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Firma Yönetim Paneli - Hızlı Rapor</title>
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    .mgr-tabs { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+    .mgr-tab { padding:9px 14px; border-radius:10px; border:1px solid #cbd5e1; background:#fff; color:#334155; font-weight:700; font-size:13px; cursor:pointer; }
+    .mgr-tab.active { background:#0f172a; color:#fbbf24; border-color:#0f172a; }
+    .modal-backdrop { position:fixed; inset:0; background:rgba(15,23,42,0.6); display:flex; align-items:center; justify-content:center; padding:16px; z-index:60; }
+    .modal-card { background:#fff; border-radius:16px; max-width:560px; width:100%; max-height:88vh; overflow:auto; padding:18px; box-shadow:0 20px 50px rgba(0,0,0,0.3); }
+    .tpl-check { display:flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid #e2e8f0; border-radius:10px; background:#fff; cursor:pointer; font-size:12.5px; font-weight:600; }
+  </style>
+</head>
+<body>
+  <header class="topbar portal-chrome">
+    <div class="topbar-inner">
+      <a href="/yonetim" class="brand">
+        <div class="brand-icon">⚡</div>
+        <div>
+          <div id="mgrHeaderTitle" class="brand-title">Firma Yönetim Paneli</div>
+          <div id="mgrHeaderSub" class="brand-sub">Elemanlar, Ölçüm Cihazları &amp; İş Klasörleri</div>
+        </div>
+      </a>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <span id="mgrUserChip" class="badge badge-info hidden" style="background:rgba(255,255,255,0.12); color:#e2e8f0; border-color:rgba(255,255,255,0.2);"></span>
+        <a href="/" class="btn btn-ghost btn-sm">Müşteri Portalı</a>
+        <button id="mgrLogoutBtn" type="button" class="btn btn-danger btn-sm hidden" onclick="mgrLogout()">Çıkış</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container" style="padding-top:20px; padding-bottom:48px;">
+    <!-- YÖNETİCİ GİRİŞ KARTI -->
+    <section id="mgrLoginCard" class="card" style="max-width:440px; margin:24px auto;">
+      <h2 style="margin:0 0 6px 0; font-size:18px;">Firma Yöneticisi Girişi</h2>
+      <p style="margin:0 0 14px 0; font-size:13px; color:#475569;">
+        Firmanıza tanımlanan yönetici kullanıcı adı ve şifresiyle giriş yaparak elemanlarınıza cihaz atayıp iş klasörü açabilirsiniz.
+      </p>
+      <form id="mgrLoginForm">
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div>
+            <label class="label" for="mgrUsername">Kullanıcı Adı</label>
+            <input id="mgrUsername" type="text" class="input mono" autocomplete="username" placeholder="Örn: tekkomer-yonetici" required>
+          </div>
+          <div>
+            <label class="label" for="mgrPassword">Şifre</label>
+            <input id="mgrPassword" type="password" class="input mono" autocomplete="current-password" placeholder="••••••••" required>
+          </div>
+          <button id="mgrLoginBtn" type="submit" class="btn btn-primary" style="width:100%; margin-top:4px;">Giriş Yap</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- YÖNETİCİ PANELİ -->
+    <div id="mgrDashboard" class="hidden">
+      <div class="card" style="background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%); color:#fff; border-color:#334155; margin-bottom:14px;">
+        <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px;">
+          <div>
+            <div style="font-size:12px; color:#fbbf24; font-weight:800;">🏢 FİRMA YÖNETİM MERKEZİ</div>
+            <h1 id="mgrTenantTitle" style="margin:2px 0 0 0; font-size:20px; color:#fff;">Firma</h1>
+            <div id="mgrStatsLine" style="font-size:12px; color:#cbd5e1; margin-top:4px;">Yükleniyor...</div>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="loadManagerData()">Yenile</button>
+        </div>
+      </div>
+
+      <div class="mgr-tabs">
+        <button type="button" class="mgr-tab active" data-tab="jobs" onclick="switchMgrTab('jobs')">📁 İş Klasörleri Aç &amp; Ata</button>
+        <button type="button" class="mgr-tab" data-tab="users" onclick="switchMgrTab('users')">👷 Elemanlar &amp; Cihaz Zimmeti</button>
+        <button type="button" class="mgr-tab" data-tab="devices" onclick="switchMgrTab('devices')">🔧 Ölçüm Cihazları Havuzu</button>
+        <button type="button" class="mgr-tab" data-tab="branding" onclick="switchMgrTab('branding')">⚙️ Firma Rapor Anteti</button>
+      </div>
+
+      <!-- TAB 1: İŞ KLASÖRLERİ -->
+      <section id="tab_jobs" class="space-y">
+        <div class="card" style="margin-bottom:14px;">
+          <h2 style="margin:0 0 12px 0; font-size:16px;">+ Yeni İş Klasörü Aç ve Elemana Ata</h2>
+          <form id="createWoForm">
+            <div class="grid-3">
+              <div>
+                <label class="label" for="woAssignedUser">Görevli Saha Elemanı *</label>
+                <select id="woAssignedUser" class="select" required></select>
+              </div>
+              <div>
+                <label class="label" for="woCompanyName">Müşteri / İşyeri Adı *</label>
+                <input id="woCompanyName" type="text" class="input" placeholder="Örn: ABC Metal San. Tic. A.Ş." required>
+              </div>
+              <div>
+                <label class="label" for="woCode">İş Emri Kodu (Boş = Otomatik)</label>
+                <input id="woCode" type="text" class="input mono" placeholder="Örn: HZL-261112-101">
+              </div>
+            </div>
+
+            <div class="grid-2" style="margin-top:10px;">
+              <div>
+                <label class="label" for="woBranch">Şube / Tesis Adı</label>
+                <input id="woBranch" type="text" class="input" placeholder="Örn: Gebze OSB Fabrika">
+              </div>
+              <div>
+                <label class="label" for="woAddress">Periyodik Kontrol Adresi</label>
+                <input id="woAddress" type="text" class="input" placeholder="Örn: Dilovası OSB 4. Cad. No:12">
+              </div>
+            </div>
+
+            <div class="grid-3" style="margin-top:10px;">
+              <div>
+                <label class="label" for="woIsgKatip">İSG-KATİP Sözleşme ID</label>
+                <input id="woIsgKatip" type="text" class="input mono">
+              </div>
+              <div>
+                <label class="label" for="woSgkSicil">SGK Sicil No</label>
+                <input id="woSgkSicil" type="text" class="input mono">
+              </div>
+              <div>
+                <label class="label" for="woEmail">Yetkili E-posta</label>
+                <input id="woEmail" type="email" class="input" placeholder="yetkili@firma.com">
+              </div>
+            </div>
+
+            <div style="margin-top:10px;">
+              <label class="label">Oluşturulacak Rapor Taslakları (Elemanın klasöründe hazır açılır)</label>
+              <div class="grid-3">
+                <label class="tpl-check">
+                  <input type="checkbox" name="woTpl" value="2201" checked>
+                  <span>Elektrik İç Tesisatı (TKM-FR.318)</span>
+                </label>
+                <label class="tpl-check">
+                  <input type="checkbox" name="woTpl" value="2202">
+                  <span>Topraklama Tesisatı (TKM-FR.317)</span>
+                </label>
+                <label class="tpl-check">
+                  <input type="checkbox" name="woTpl" value="2205">
+                  <span>Jeneratör Kontrolü (TKM-FR.164)</span>
+                </label>
+              </div>
+            </div>
+
+            <div style="margin-top:10px;">
+              <label class="label" for="woNotes">Yönetici Notu / Saha Talimatı</label>
+              <input id="woNotes" type="text" class="input" placeholder="Örn: Ana pano ve bodrum kat kompanzasyon panosu kontrol edilecek.">
+            </div>
+
+            <div style="margin-top:12px; display:flex; justify-content:flex-end;">
+              <button id="createWoBtn" type="submit" class="btn btn-emerald">İş Klasörünü Aç ve Gönder</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:8px; flex-wrap:wrap;">
+            <h2 style="margin:0; font-size:16px;">Açılan İş Klasörleri</h2>
+            <select id="woFilterUser" class="select" style="width:220px;" onchange="renderWorkOrdersList()">
+              <option value="">Tüm Elemanlar</option>
+            </select>
+          </div>
+          <div id="woListBox" style="display:flex; flex-direction:column; gap:8px;"></div>
+        </div>
+      </section>
+
+      <!-- TAB 2: ELEMANLAR & CİHAZ ZİMMETİ -->
+      <section id="tab_users" class="hidden">
+        <div class="card" style="margin-bottom:14px;">
+          <h2 style="margin:0 0 12px 0; font-size:16px;">+ Yeni Saha Elemanı / Yönetici Ekle</h2>
+          <form id="createUserForm">
+            <div class="grid-3">
+              <div>
+                <label class="label" for="uFullName">Adı Soyadı *</label>
+                <input id="uFullName" type="text" class="input" placeholder="Örn: Ahmet Yılmaz" oninput="autoFillUserUsername()" required>
+              </div>
+              <div>
+                <label class="label" for="uUsername">Kullanıcı Adı *</label>
+                <input id="uUsername" type="text" class="input mono" placeholder="Örn: ahmet-yilmaz" required>
+              </div>
+              <div>
+                <label class="label" for="uPassword">Giriş Şifresi *</label>
+                <div style="display:flex; gap:6px;">
+                  <input id="uPassword" type="text" class="input mono" placeholder="En az 4 karakter" required>
+                  <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('uPassword').value = randomPwd();">Üret</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid-3" style="margin-top:10px;">
+              <div>
+                <label class="label" for="uRole">Yetki Rolü</label>
+                <select id="uRole" class="select">
+                  <option value="inspector">Saha Elemanı (Mühendis / Tekniker)</option>
+                  <option value="manager">Firma Yöneticisi</option>
+                </select>
+              </div>
+              <div>
+                <label class="label" for="uTitle">Meslek / Unvan</label>
+                <input id="uTitle" type="text" class="input" value="Elektrik Mühendisi">
+              </div>
+              <div>
+                <label class="label" for="uMinistry">Bakanlık Kayıt No</label>
+                <input id="uMinistry" type="text" class="input mono" placeholder="Örn: K2023...">
+              </div>
+            </div>
+
+            <div class="grid-2" style="margin-top:10px;">
+              <div>
+                <label class="label" for="uDiploma">Diploma No / Tarihi</label>
+                <input id="uDiploma" type="text" class="input mono" placeholder="Örn: 249538 / 28.09.2022">
+              </div>
+              <div>
+                <label class="label" for="uEmo">EMO / Oda Sicil No</label>
+                <input id="uEmo" type="text" class="input mono" placeholder="Örn: 64215">
+              </div>
+            </div>
+
+            <div style="margin-top:12px; display:flex; justify-content:flex-end;">
+              <button id="createUserBtn" type="submit" class="btn btn-primary">Elemanı Kaydet</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <h2 style="margin:0 0 10px 0; font-size:16px;">Personel Listesi ve Atanmış Ölçüm Cihazları</h2>
+          <div id="usersListBox" style="display:flex; flex-direction:column; gap:10px;"></div>
+        </div>
+      </section>
+
+      <!-- TAB 3: ÖLÇÜM CİHAZLARI HAVUZU -->
+      <section id="tab_devices" class="hidden">
+        <div class="card" style="margin-bottom:14px;">
+          <h2 id="devFormTitle" style="margin:0 0 12px 0; font-size:16px;">+ Firmanın Havuzuna Ölçüm Cihazı Ekle</h2>
+          <form id="deviceForm">
+            <input type="hidden" id="devEditId" value="">
+            <div class="grid-3">
+              <div>
+                <label class="label" for="devCategory">Cihaz Kategorisi *</label>
+                <select id="devCategory" class="select" onchange="onDevCategoryChange()">
+                  <option value="Termal Kamera">Termal Kamera</option>
+                  <option value="Çok Fonksiyonlu Test Cihazı">Çok Fonksiyonlu Test Cihazı</option>
+                  <option value="Multimetre">Multimetre</option>
+                  <option value="Pensampermetre">Pensampermetre</option>
+                  <option value="Dijital Işık Ölçer">Dijital Işık Ölçer</option>
+                  <option value="Kumpas">Kumpas</option>
+                  <option value="Dijital Ses Seviyesi Ölçer">Dijital Ses Seviyesi Ölçer</option>
+                  <option value="Lazer Mesafe Ölçer">Lazer Mesafe Ölçer</option>
+                  <option value="Diğer">Diğer</option>
+                </select>
+              </div>
+              <div>
+                <label class="label" for="devBrand">Marka *</label>
+                <input id="devBrand" type="text" class="input" placeholder="Örn: Fluke, UNI-T, Metrel" required>
+              </div>
+              <div>
+                <label class="label" for="devModel">Model *</label>
+                <input id="devModel" type="text" class="input" placeholder="Örn: UTi165A, MI 3102 BT" required>
+              </div>
+            </div>
+
+            <div class="grid-3" style="margin-top:10px;">
+              <div>
+                <label class="label" for="devCode">Cihaz Kodu</label>
+                <input id="devCode" type="text" class="input mono" placeholder="Örn: C.105">
+              </div>
+              <div>
+                <label class="label" for="devSerial">Seri Numarası *</label>
+                <input id="devSerial" type="text" class="input mono" placeholder="Örn: 201266702" required>
+              </div>
+              <div>
+                <label class="label" for="devReportName">Rapor Tablosundaki Adı</label>
+                <input id="devReportName" type="text" class="input" value="Termal Kamera">
+              </div>
+            </div>
+
+            <div class="grid-3" style="margin-top:10px;">
+              <div>
+                <label class="label" for="devCalDate">Kalibrasyon Tarihi</label>
+                <input id="devCalDate" type="text" class="input mono" placeholder="GG.AA.YYYY">
+              </div>
+              <div>
+                <label class="label" for="devValidDate">Geçerlilik Tarihi</label>
+                <input id="devValidDate" type="text" class="input mono" placeholder="GG.AA.YYYY">
+              </div>
+              <div>
+                <label class="label" for="devCertNo">Kalibrasyon Sertifika No</label>
+                <input id="devCertNo" type="text" class="input mono" placeholder="Örn: 0074K-0626-01712">
+              </div>
+            </div>
+
+            <div id="devThermalWrap" style="margin-top:10px;">
+              <label class="label" for="devThermalName">Bölüm 3 Termal Kamera Adı (Elektrik İç Tesisat için)</label>
+              <input id="devThermalName" type="text" class="input" placeholder="Boş bırakılırsa Marka + Model kullanılır (örn: UNI-T UTi165A)">
+            </div>
+
+            <div style="margin-top:12px; display:flex; justify-content:flex-end; gap:8px;">
+              <button id="devCancelEditBtn" type="button" class="btn btn-outline hidden" onclick="resetDeviceForm()">Düzenlemeyi İptal Et</button>
+              <button id="devSubmitBtn" type="submit" class="btn btn-emerald">Cihazı Havuza Kaydet</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <h2 style="margin:0 0 10px 0; font-size:16px;">Firmanın Kayıtlı Ölçüm Cihazları</h2>
+          <div id="devicesListBox" style="display:flex; flex-direction:column; gap:8px;"></div>
+        </div>
+      </section>
+
+      <!-- TAB 4: FİRMA ANTETİ -->
+      <section id="tab_branding" class="hidden">
+        <div class="card">
+          <h2 style="margin:0 0 8px 0; font-size:16px;">Firma Rapor Anteti &amp; Varsayılanları</h2>
+          <p style="margin:0 0 14px 0; font-size:12.5px; color:#64748b;">
+            Burada kaydettiğiniz firma bilgileri saha elemanlarınızın uygulamasına girişte otomatik aktarılır.
+          </p>
+          <form id="brandingForm">
+            <div class="grid-2">
+              <div>
+                <label class="label" for="brFullName">Tam Firma Ünvanı</label>
+                <input id="brFullName" type="text" class="input">
+              </div>
+              <div>
+                <label class="label" for="brShortName">Kısa Firma Adı (Başlık)</label>
+                <input id="brShortName" type="text" class="input">
+              </div>
+            </div>
+            <div class="grid-3" style="margin-top:10px;">
+              <div>
+                <label class="label" for="brPrefix">Rapor No Ön Eki</label>
+                <input id="brPrefix" type="text" class="input mono" placeholder="Örn: TKM-">
+              </div>
+              <div>
+                <label class="label" for="brAccredNo">Akreditasyon No</label>
+                <input id="brAccredNo" type="text" class="input mono" placeholder="Örn: AB-0227-M">
+              </div>
+              <div>
+                <label class="label" for="brPhone">Telefon</label>
+                <input id="brPhone" type="text" class="input">
+              </div>
+            </div>
+            <div class="grid-2" style="margin-top:10px;">
+              <div>
+                <label class="label" for="brEmail">Firma E-posta</label>
+                <input id="brEmail" type="email" class="input">
+              </div>
+              <div>
+                <label class="label" for="brAddress">Firma Adresi</label>
+                <input id="brAddress" type="text" class="input">
+              </div>
+            </div>
+            <div style="margin-top:12px; display:flex; justify-content:flex-end;">
+              <button id="saveBrandingBtn" type="submit" class="btn btn-primary">Antet Bilgilerini Kaydet</button>
+            </div>
+          </form>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- CİHAZ ZİMMET MODALI -->
+  <div id="assignModal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <div>
+          <h3 id="assignModalTitle" style="margin:0; font-size:16px;">Elemana Cihaz Ata</h3>
+          <div style="font-size:12px; color:#64748b;">İşaretlenen cihazlar elemanın uygulamasına otomatik yüklenir ve formlara eklenir.</div>
+        </div>
+        <button type="button" class="btn btn-outline btn-sm" onclick="closeAssignModal()">Kapat</button>
+      </div>
+      <div id="assignDevicesCheckList" style="display:flex; flex-direction:column; gap:8px; margin-bottom:14px;"></div>
+      <div style="display:flex; justify-content:flex-end; gap:8px;">
+        <button type="button" class="btn btn-outline" onclick="closeAssignModal()">Vazgeç</button>
+        <button id="saveAssignBtn" type="button" class="btn btn-emerald" onclick="saveUserDeviceAssignments()">Zimmeti Kaydet</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/portal.js"></script>
+  <script>
+    const MGR_TOKEN_KEY = 'hr_mgr_token';
+    let state = { manager: null, tenant: null, users: [], devices: [], assignments: {}, work_orders: [] };
+    let uUsernameTouched = false;
+    let assignTargetUserId = null;
+
+    function getMgrToken() {
+      try { return localStorage.getItem(MGR_TOKEN_KEY) || ''; } catch { return ''; }
+    }
+    function setMgrToken(t) {
+      try {
+        if (t) localStorage.setItem(MGR_TOKEN_KEY, t);
+        else localStorage.removeItem(MGR_TOKEN_KEY);
+      } catch {}
+    }
+
+    function randomPwd() {
+      const c = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+      let out = '';
+      for (let i = 0; i < 6; i++) out += c[Math.floor(Math.random() * c.length)];
+      return out;
+    }
+
+    function slugifyUser(raw) {
+      const tr = { 'ç':'c','Ç':'c','ğ':'g','Ğ':'g','ı':'i','I':'i','İ':'i','i':'i','ö':'o','Ö':'o','ş':'s','Ş':'s','ü':'u','Ü':'u' };
+      return String(raw || '').trim()
+        .replace(/[çÇğĞıIİiöÖşŞüÜ]/g, ch => tr[ch] || ch)
+        .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24).replace(/-+$/g, '');
+    }
+
+    function autoFillUserUsername() {
+      if (uUsernameTouched) return;
+      document.getElementById('uUsername').value = slugifyUser(document.getElementById('uFullName').value);
+    }
+    document.getElementById('uUsername').addEventListener('input', () => {
+      uUsernameTouched = Boolean(document.getElementById('uUsername').value.trim());
+    });
+
+    async function apiMgr(method, body = null) {
+      const headers = { 'X-Manager-Token': getMgrToken() };
+      if (body) headers['Content-Type'] = 'application/json';
+      const res = await fetch('/api/manager', {
+        method,
+        credentials: 'same-origin',
+        headers,
+        body: body ? JSON.stringify(body) : undefined
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        if (res.status === 401) {
+          setMgrToken('');
+          document.getElementById('mgrDashboard').classList.add('hidden');
+          document.getElementById('mgrLoginCard').classList.remove('hidden');
+          document.getElementById('mgrLogoutBtn').classList.add('hidden');
+          document.getElementById('mgrUserChip').classList.add('hidden');
+        }
+        throw new Error(data.error || 'İşlem başarısız');
+      }
+      return data;
+    }
+
+    function switchMgrTab(tab) {
+      document.querySelectorAll('.mgr-tab').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
+      });
+      ['jobs', 'users', 'devices', 'branding'].forEach(t => {
+        document.getElementById('tab_' + t).classList.toggle('hidden', t !== tab);
+      });
+    }
+
+    async function mgrLogout() {
+      await fetch('/api/manager', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'logout' })
+      }).catch(() => {});
+      setMgrToken('');
+      location.reload();
+    }
+
+    async function loadManagerData() {
+      const data = await apiMgr('GET');
+      state = data;
+      document.getElementById('mgrLoginCard').classList.add('hidden');
+      document.getElementById('mgrDashboard').classList.remove('hidden');
+      document.getElementById('mgrLogoutBtn').classList.remove('hidden');
+      const chip = document.getElementById('mgrUserChip');
+      chip.textContent = `${data.manager.full_name} (@${data.manager.username})`;
+      chip.classList.remove('hidden');
+
+      document.getElementById('mgrHeaderTitle').textContent = `${data.tenant.name} — Yönetim`;
+      document.getElementById('mgrTenantTitle').textContent = data.tenant.name;
+      const inspCount = (data.users || []).filter(u => u.role === 'inspector').length;
+      document.getElementById('mgrStatsLine').textContent =
+        `${data.users.length} personel (${inspCount} saha elemanı) · ${data.devices.length} ölçüm cihazı · ${data.work_orders.length} iş klasörü`;
+
+      if (!document.getElementById('uPassword').value) {
+        document.getElementById('uPassword').value = randomPwd();
+      }
+
+      fillUserSelects();
+      fillBrandingForm();
+      renderUsersList();
+      renderDevicesList();
+      renderWorkOrdersList();
+    }
+
+    function fillUserSelects() {
+      const activeUsers = (state.users || []).filter(u => u.is_active);
+      const opts = '<option value="">-- Saha Elemanı Seçin --</option>' +
+        activeUsers.map(u => `<option value="${PortalUI.escapeHtml(u.id)}">${PortalUI.escapeHtml(u.full_name)} (@${PortalUI.escapeHtml(u.username)})${u.role === 'manager' ? ' [Yönetici]' : ''}</option>`).join('');
+      document.getElementById('woAssignedUser').innerHTML = opts;
+
+      const filterSel = document.getElementById('woFilterUser');
+      const prevFilter = filterSel.value;
+      filterSel.innerHTML = '<option value="">Tüm Elemanlar</option>' +
+        (state.users || []).map(u => `<option value="${PortalUI.escapeHtml(u.id)}">${PortalUI.escapeHtml(u.full_name)}</option>`).join('');
+      filterSel.value = prevFilter;
+    }
+
+    function fillBrandingForm() {
+      const b = (state.tenant && state.tenant.branding_json) || {};
+      document.getElementById('brFullName').value = b.companyFullName || state.tenant.name || '';
+      document.getElementById('brShortName').value = b.companyShortName || state.tenant.name || '';
+      document.getElementById('brPrefix').value = b.reportNoPrefix || 'HZL-';
+      document.getElementById('brAccredNo').value = b.accreditationNo || '';
+      document.getElementById('brPhone').value = b.companyPhone || '';
+      document.getElementById('brEmail').value = b.companyEmail || '';
+      document.getElementById('brAddress').value = b.companyAddress || '';
+    }
+
+    function renderUsersList() {
+      const box = document.getElementById('usersListBox');
+      const devMap = new Map((state.devices || []).map(d => [String(d.id), d]));
+      if (!state.users.length) {
+        box.innerHTML = '<div class="card-muted" style="text-align:center;color:#64748b;">Henüz personel yok.</div>';
+        return;
+      }
+      box.innerHTML = state.users.map(u => {
+        const devIds = state.assignments[u.id] || [];
+        const assignedBadges = devIds.map(did => {
+          const d = devMap.get(String(did));
+          if (!d) return '';
+          return `<span class="badge badge-info">${PortalUI.escapeHtml(d.code ? d.code + ' ' : '')}${PortalUI.escapeHtml(d.brand)} ${PortalUI.escapeHtml(d.model)}${d.serial ? ' (' + PortalUI.escapeHtml(d.serial) + ')' : ''}</span>`;
+        }).filter(Boolean).join(' ');
+        const roleBadge = u.role === 'manager'
+          ? '<span class="badge badge-warn">Yönetici</span>'
+          : '<span class="badge badge-info">Saha Elemanı</span>';
+        const activeBadge = u.is_active
+          ? '<span class="badge badge-ok">Aktif</span>'
+          : '<span class="badge badge-bad">Pasif</span>';
+
+        return `
+          <div class="card-muted" style="padding:12px;">
+            <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px;">
+              <div style="min-width:220px; flex:1;">
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                  <strong style="font-size:14px;">${PortalUI.escapeHtml(u.full_name)}</strong>
+                  <span class="mono" style="font-size:12px; color:#0369a1;">@${PortalUI.escapeHtml(u.username)}</span>
+                  ${roleBadge}
+                  ${activeBadge}
+                </div>
+                <div style="font-size:12px; color:#64748b; margin-top:3px;">
+                  ${PortalUI.escapeHtml(u.title || '')}
+                  ${u.emo_no ? ' · EMO: ' + PortalUI.escapeHtml(u.emo_no) : ''}
+                  ${u.ministry_reg_no ? ' · Bakanlık: ' + PortalUI.escapeHtml(u.ministry_reg_no) : ''}
+                </div>
+              </div>
+              <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                <button type="button" class="btn btn-primary btn-sm" onclick="openAssignModal('${PortalUI.escapeHtml(u.id)}')">🔧 Cihaz Ata (${devIds.length})</button>
+                <button type="button" class="btn btn-outline btn-sm" onclick="resetEmployeePassword('${PortalUI.escapeHtml(u.id)}', '${PortalUI.escapeHtml(u.username)}')">Şifre Değiştir</button>
+                ${u.id !== state.manager.id ? `
+                  <button type="button" class="btn btn-outline btn-sm" onclick="toggleUserActive('${PortalUI.escapeHtml(u.id)}', ${u.is_active ? 'false' : 'true'})">${u.is_active ? 'Pasife Al' : 'Aktif Et'}</button>
+                  <button type="button" class="btn btn-danger btn-sm" onclick="deleteUser('${PortalUI.escapeHtml(u.id)}', '${PortalUI.escapeHtml(u.full_name)}')">Sil</button>
+                ` : ''}
+              </div>
+            </div>
+            <div style="margin-top:8px; display:flex; flex-wrap:wrap; gap:6px;">
+              ${assignedBadges || '<span style="font-size:12px; color:#94a3b8;">Henüz cihaz zimmetlenmemiş.</span>'}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderDevicesList() {
+      const box = document.getElementById('devicesListBox');
+      if (!state.devices.length) {
+        box.innerHTML = '<div class="card-muted" style="text-align:center;color:#64748b;">Henüz ölçüm cihazı eklenmemiş.</div>';
+        return;
+      }
+      box.innerHTML = state.devices.map(d => {
+        return `
+          <div class="card-muted" style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px;">
+            <div style="min-width:220px; flex:1;">
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                ${d.code ? `<span class="badge mono">${PortalUI.escapeHtml(d.code)}</span>` : ''}
+                <strong style="font-size:14px;">${PortalUI.escapeHtml(d.brand)} ${PortalUI.escapeHtml(d.model)}</strong>
+                <span class="badge badge-info">${PortalUI.escapeHtml(d.category)}</span>
+                ${d.isThermal ? '<span class="badge badge-warn">Termal</span>' : ''}
+              </div>
+              <div style="font-size:12px; color:#64748b; margin-top:3px;">
+                Seri: <strong class="mono">${PortalUI.escapeHtml(d.serial || '-')}</strong>
+                · Kal: <span class="mono">${PortalUI.escapeHtml(d.calDate || '-')}</span>
+                · Geç: <span class="mono">${PortalUI.escapeHtml(d.validDate || '-')}</span>
+                ${d.certNo ? ' · Sertifika: <span class="mono">' + PortalUI.escapeHtml(d.certNo) + '</span>' : ''}
+              </div>
+            </div>
+            <div style="display:flex; gap:6px;">
+              <button type="button" class="btn btn-outline btn-sm" onclick="editDevice('${PortalUI.escapeHtml(d.id)}')">Düzenle</button>
+              <button type="button" class="btn btn-danger btn-sm" onclick="deleteDevice('${PortalUI.escapeHtml(d.id)}')">Sil</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderWorkOrdersList() {
+      const box = document.getElementById('woListBox');
+      const filterUid = document.getElementById('woFilterUser').value;
+      const userMap = new Map((state.users || []).map(u => [String(u.id), u]));
+      const list = (state.work_orders || []).filter(w => !filterUid || String(w.assigned_user_id) === String(filterUid));
+      if (!list.length) {
+        box.innerHTML = '<div class="card-muted" style="text-align:center;color:#64748b;">Henüz açılmış iş klasörü yok.</div>';
+        return;
+      }
+      const statusLabels = {
+        open: ['Açık / Bekliyor', 'badge-info'],
+        in_progress: ['Sahada / Devam Ediyor', 'badge-warn'],
+        completed: ['Tamamlandı', 'badge-ok'],
+        cancelled: ['İptal', 'badge-bad']
+      };
+      box.innerHTML = list.map(w => {
+        const u = userMap.get(String(w.assigned_user_id));
+        const st = statusLabels[w.status] || statusLabels.open;
+        const tpls = Array.isArray(w.template_ids) ? w.template_ids.join(', ') : '';
+        return `
+          <div class="card-muted" style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px;">
+            <div style="min-width:220px; flex:1;">
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <span class="badge mono">${PortalUI.escapeHtml(w.work_order_code)}</span>
+                <strong style="font-size:14px;">${PortalUI.escapeHtml(w.company_name)}</strong>
+                <span class="badge ${st[1]}">${st[0]}</span>
+              </div>
+              <div style="font-size:12px; color:#64748b; margin-top:3px;">
+                👷 <strong>${PortalUI.escapeHtml(u ? u.full_name : 'Atanmamış')}</strong>
+                ${w.company_branch ? ' · ' + PortalUI.escapeHtml(w.company_branch) : ''}
+                ${w.company_address ? ' · ' + PortalUI.escapeHtml(w.company_address) : ''}
+                ${tpls ? ' · Şablonlar: <span class="mono">' + PortalUI.escapeHtml(tpls) + '</span>' : ''}
+              </div>
+              ${w.field_notes ? `<div style="font-size:12px; color:#92400e; margin-top:4px;">📝 ${PortalUI.escapeHtml(w.field_notes)}</div>` : ''}
+            </div>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <select class="select" style="width:140px; padding:5px 8px; font-size:12px;" onchange="changeWoStatus('${PortalUI.escapeHtml(w.id)}', this.value)">
+                <option value="open" ${w.status === 'open' ? 'selected' : ''}>Açık</option>
+                <option value="in_progress" ${w.status === 'in_progress' ? 'selected' : ''}>Devam Ediyor</option>
+                <option value="completed" ${w.status === 'completed' ? 'selected' : ''}>Tamamlandı</option>
+              </select>
+              <button type="button" class="btn btn-danger btn-sm" onclick="deleteWorkOrder('${PortalUI.escapeHtml(w.id)}')">Sil</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ---- LOGIN ----
+    document.getElementById('mgrLoginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('mgrLoginBtn');
+      btn.disabled = true;
+      btn.textContent = 'Giriş yapılıyor...';
+      try {
+        const res = await fetch('/api/manager', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'login',
+            username: document.getElementById('mgrUsername').value.trim(),
+            password: document.getElementById('mgrPassword').value.trim()
+          })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || 'Giriş başarısız');
+        setMgrToken(data.token);
+        await loadManagerData();
+      } catch (err) {
+        PortalUI.toast(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Giriş Yap';
+      }
+    });
+
+    // ---- WORK ORDERS ----
+    document.getElementById('createWoForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('createWoBtn');
+      btn.disabled = true;
+      try {
+        const tplIds = Array.from(document.querySelectorAll('input[name="woTpl"]:checked')).map(c => c.value);
+        await apiMgr('POST', {
+          action: 'create-work-order',
+          assigned_user_id: document.getElementById('woAssignedUser').value,
+          company_name: document.getElementById('woCompanyName').value.trim(),
+          work_order_code: document.getElementById('woCode').value.trim(),
+          company_branch: document.getElementById('woBranch').value.trim(),
+          company_address: document.getElementById('woAddress').value.trim(),
+          isg_katip_no: document.getElementById('woIsgKatip').value.trim(),
+          sgk_sicil_no: document.getElementById('woSgkSicil').value.trim(),
+          contact_email: document.getElementById('woEmail').value.trim(),
+          field_notes: document.getElementById('woNotes').value.trim(),
+          template_ids: tplIds
+        });
+        PortalUI.toast('İş klasörü açıldı ve elemana atandı!', 'success');
+        document.getElementById('createWoForm').reset();
+        document.querySelector('input[name="woTpl"][value="2201"]').checked = true;
+        await loadManagerData();
+      } catch (err) {
+        PortalUI.toast(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    async function changeWoStatus(woId, status) {
+      try {
+        await apiMgr('POST', { action: 'update-work-order', work_order_id: woId, status });
+        PortalUI.toast('İş durumu güncellendi', 'success');
+        await loadManagerData();
+      } catch (err) {
+        PortalUI.toast(err.message, 'error');
+      }
+    }
+
+    async function deleteWorkOrder(woId) {
+      if (!confirm('Bu iş klasörü silinsin mi?')) return;
+      try {
+        await apiMgr('POST', { action: 'delete-work-order', work_order_id: woId });
+        PortalUI.toast('İş klasörü silindi', 'success');
+        await loadManagerData();
+      } catch (err) {
+        PortalUI.toast(err.message, 'error');
+      }
+    }
+
+    // ---- USERS ----
+    document.getElementById('createUserForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('createUserBtn');
+      btn.disabled = true;
+      try {
+        await apiMgr('POST', {
+          action: 'create-user',
+          full_name: document.getElementById('uFullName').value.trim(),
+          username: document.getElementById('uUsername').value.trim(),
+          password: document.getElementById('uPassword').value.trim(),
+          role: document.getElementById('uRole').value,
+          title: document.getElementById('uTitle').value.trim(),
+          ministry_reg_no: document.getElementById('uMinistry').value.trim(),
+          diploma_no_date: document.getElementById('uDiploma').value.trim(),
+          emo_no: document.getElementById('uEmo').value.trim()
+        });
+        PortalUI.toast('Personel eklendi!', 'success');
+        document.getElementById('createUserForm').reset();
+        document.getElementById('uTitle').value = 'Elektrik Mühendisi';
+        document.getElementById('uPassword').value = randomPwd();
+        uUsernameTouched = false;
+        await loadManagerData();
+      } catch (err) {
+        PortalUI.toast(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    async function resetEmployeePassword(userId, username) {
+      const pwd = prompt(`@${username} için yeni şifre girin (en az 4 karakter):`, '');
+      if (!pwd || pwd.trim().length < 4) return;
+      try {
+        await apiMgr('POST', { action: 'update-user', user_id: userId, password: pwd.trim() });
+        PortalUI.toast('Şifre güncellendi', 'success');
+      } catch (err) {
+        PortalUI.toast(err.message, 'error');
+      }
+    }
+
+    async function toggleUserActive(userId, nextActive) {
+      try {
+        await apiMgr('POST', { action: 'update-user', user_id: userId, is_active: nextActive });
+        PortalUI.toast(nextActive ? 'Personel aktif edildi' : 'Personel pasife alındı', 'success');
+        await loadManagerData();
+      } catch (err) {
+        PortalUI.toast(err.message, 'error');
+      }
+    }
+
+    async function deleteUser(userId, fullName) {
+      if (!confirm(`"${fullName}" silinsin mi?`)) return;
+      try {
+        await apiMgr('POST', { action: 'delete-user', user_id: userId });
+        PortalUI.toast('Personel silindi', 'success');
+        await loadManagerData();
+      } catch (err) {
+        PortalUI.toast(err.message, 'error');
+      }
+    }
+
+    // ---- DEVICES ----
+    function onDevCategoryChange() {
+      const cat = document.getElementById('devCategory').value;
+      const isTherm = cat.toLowerCase().includes('termal');
+      document.getElementById('devThermalWrap').style.display = isTherm ? 'block' : 'none';
+      if (!document.getElementById('devEditId').value) {
+        document.getElementById('devReportName').value = cat === 'Diğer' ? '' : cat;
+      }
+    }
+
+    function resetDeviceForm() {
+      document.getElementById('deviceForm').reset();
+      document.getElementById('devEditId').value = '';
+      document.getElementById('devFormTitle').textContent = '+ Firmanın Havuzuna Ölçüm Cihazı Ekle';
+      document.getElementById('devSubmitBtn').textContent = 'Cihazı Havuza Kaydet';
+      document.getElementById('devCancelEditBtn').classList.add('hidden');
+      onDevCategoryChange();
+    }
+
+    function editDevice(deviceId) {
+      const d = (state.devices || []).find(x => String(x.id) === String(deviceId));
+      if (!d) return;
+      document.getElementById('devEditId').value = d.id;
+      document.getElementById('devCategory').value = d.category || 'Diğer';
+      document.getElementById('devBrand').value = d.brand || '';
+      document.getElementById('devModel').value = d.model || '';
+      document.getElementById('devCode').value = d.code || '';
+      document.getElementById('devSerial').value = d.serial || '';
+      document.getElementById('devReportName').value = d.reportName || '';
+      document.getElementById('devCalDate').value = d.calDate || '';
+      document.getElementById('devValidDate').value = d.validDate || '';
+      document.getElementById('devCertNo').value = d.certNo || '';
+      document.getElementById('devThermalName').value = d.thermalReportName || '';
+      onDevCategoryChange();
+      document.getElementById('devFormTitle').textContent = 'Ölçüm Cihazını Düzenle';
+      document.getElementById('devSubmitBtn').textContent = 'Değişiklikleri Kaydet';
+      document.getElementById('devCancelEditBtn').classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    document.getElementById('deviceForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('devSubmitBtn');
+      btn.disabled = true;
+      const editId = document.getElementById('devEditId').value.trim();
+      try {
+        await apiMgr('POST', {
+          action: editId ? 'update-device' : 'create-device',
+          device_id: editId || undefined,
+          category: document.getElementById('devCategory').value,
+          brand: document.getElementById('devBrand').value.trim(),
+          model: document.getElementById('devModel').value.trim(),
+          code: document.getElementById('devCode').value.trim(),
+          serial: document.getElementById('devSerial').value.trim(),
+          report_name: document.getElementById('devReportName').value.trim(),
+          cal_date: document.getElementById('devCalDate').value.trim(),
+          valid_date: document.getElementById('devValidDate').value.trim(),
+          cert_no: document.getElementById('devCertNo').value.trim(),
+          thermal_report_name: document.getElementById('devThermalName').value.trim()
+        });
+        PortalUI.toast(editId ? 'Cihaz güncellendi!' : 'Cihaz havuza eklendi!', 'success');
+        resetDeviceForm();
+        await loadManagerData();
+      } catch (err) {
+        PortalUI.toast(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    async function deleteDevice(deviceId) {
+      if (!confirm('Bu cihaz havuzdan silinsin mi?')) return;
+      try {
+        await apiMgr('POST', { action: 'delete-device', device_id: deviceId });
+        PortalUI.toast('Cihaz silindi', 'success');
+        await loadManagerData();
+      } catch (err) {
+        PortalUI.toast(err.message, 'error');
+      }
+    }
+
+    // ---- ASSIGN DEVICES TO USER ----
+    function openAssignModal(userId) {
+      const user = (state.users || []).find(u => String(u.id) === String(userId));
+      if (!user) return;
+      assignTargetUserId = userId;
+      const assignedSet = new Set((state.assignments[userId] || []).map(String));
+      document.getElementById('assignModalTitle').textContent = `${user.full_name} — Cihaz Zimmeti`;
+      const listEl = document.getElementById('assignDevicesCheckList');
+      if (!state.devices.length) {
+        listEl.innerHTML = '<div class="card-muted" style="text-align:center;color:#64748b;">Önce "Ölçüm Cihazları Havuzu" sekmesinden cihaz ekleyin.</div>';
+      } else {
+        listEl.innerHTML = state.devices.map(d => `
+          <label class="tpl-check" style="justify-content:space-between;">
+            <span style="display:flex; align-items:center; gap:8px;">
+              <input type="checkbox" name="assignDevChk" value="${PortalUI.escapeHtml(d.id)}" ${assignedSet.has(String(d.id)) ? 'checked' : ''}>
+              <span>
+                <strong>${PortalUI.escapeHtml(d.brand)} ${PortalUI.escapeHtml(d.model)}</strong>
+                <span style="color:#64748b; font-size:11.5px;"> · ${PortalUI.escapeHtml(d.category)} · Seri: ${PortalUI.escapeHtml(d.serial || '-')}</span>
+              </span>
+            </span>
+            ${d.code ? `<span class="badge mono">${PortalUI.escapeHtml(d.code)}</span>` : ''}
+          </label>
+        `).join('');
+      }
+      document.getElementById('assignModal').classList.remove('hidden');
+    }
+
+    function closeAssignModal() {
+      assignTargetUserId = null;
+      document.getElementById('assignModal').classList.add('hidden');
+    }
+
+    async function saveUserDeviceAssignments() {
+      if (!assignTargetUserId) return;
+      const btn = document.getElementById('saveAssignBtn');
+      btn.disabled = true;
+      try {
+        const deviceIds = Array.from(document.querySelectorAll('input[name="assignDevChk"]:checked')).map(c => c.value);
+        await apiMgr('POST', {
+          action: 'set-user-devices',
+          user_id: assignTargetUserId,
+          device_ids: deviceIds
+        });
+        PortalUI.toast('Cihaz atamaları kaydedildi!', 'success');
+        closeAssignModal();
+        await loadManagerData();
+      } catch (err) {
+        PortalUI.toast(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // ---- BRANDING ----
+    document.getElementById('brandingForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('saveBrandingBtn');
+      btn.disabled = true;
+      try {
+        await apiMgr('POST', {
+          action: 'update-tenant-branding',
+          companyFullName: document.getElementById('brFullName').value.trim(),
+          companyShortName: document.getElementById('brShortName').value.trim(),
+          reportNoPrefix: document.getElementById('brPrefix').value.trim(),
+          accreditationNo: document.getElementById('brAccredNo').value.trim(),
+          companyPhone: document.getElementById('brPhone').value.trim(),
+          companyEmail: document.getElementById('brEmail').value.trim(),
+          companyAddress: document.getElementById('brAddress').value.trim()
+        });
+        PortalUI.toast('Firma anteti kaydedildi!', 'success');
+        await loadManagerData();
+      } catch (err) {
+        PortalUI.toast(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    (async () => {
+      try {
+        await loadManagerData();
+      } catch {}
+    })();
+  </script>
+</body>
+</html>

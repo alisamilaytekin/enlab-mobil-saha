@@ -521,9 +521,53 @@ window.HIZLI_RAPOR_CONSTANTS = {
 
             if (!Array.isArray(state.catalog)) state.catalog = getDefaultCatalog();
             if (!state.assignmentsByUser || typeof state.assignmentsByUser !== 'object') state.assignmentsByUser = {};
+            if (!state.cloudDevicesByUser || typeof state.cloudDevicesByUser !== 'object') state.cloudDevicesByUser = {};
+            if (!state.cloudManagedByUser || typeof state.cloudManagedByUser !== 'object') state.cloudManagedByUser = {};
             if (state.autoApplyEnabled === undefined) state.autoApplyEnabled = true;
 
             return state;
+        },
+
+        isCloudManaged(userId = null) {
+            const uid = userId || this.getCurrentUserId();
+            try {
+                if (typeof AuthManager !== 'undefined' && typeof AuthManager.getCurrentUser === 'function') {
+                    const u = AuthManager.getCurrentUser();
+                    if (u && (!userId || String(u.id) === String(uid)) && u.isCloudManaged) {
+                        return true;
+                    }
+                }
+            } catch (e) {}
+            const s = this.loadState();
+            return Boolean(s.cloudManagedByUser && s.cloudManagedByUser[uid]);
+        },
+
+        syncCloudDevices(cloudDevices, userId = null) {
+            const s = this.loadState();
+            const uid = userId || this.getCurrentUserId();
+            const cleanList = (Array.isArray(cloudDevices) ? cloudDevices : []).map(d => ({
+                id: String(d.id || ('cloud_' + (d.cloudId || Date.now()))),
+                cloudId: d.cloudId || '',
+                category: String(d.category || 'Diğer').trim() || 'Diğer',
+                code: String(d.code || '').trim(),
+                brand: String(d.brand || '').trim(),
+                model: String(d.model || '').trim(),
+                reportName: String(d.reportName || d.category || 'Ölçüm Cihazı').trim(),
+                thermalReportName: String(d.thermalReportName || '').trim(),
+                isThermal: Boolean(d.isThermal),
+                serial: String(d.serial || '').trim(),
+                calDate: String(d.calDate || '').trim(),
+                validDate: String(d.validDate || '').trim(),
+                certNo: String(d.certNo || '').trim(),
+                isCustom: false,
+                lockedByManager: true
+            }));
+            s.cloudDevicesByUser[uid] = cleanList;
+            s.cloudManagedByUser[uid] = true;
+            s.assignmentsByUser[uid] = cleanList.map(d => String(d.id));
+            s.autoApplyEnabled = true;
+            this.saveState(s);
+            return cleanList;
         },
 
         saveState(state) {
@@ -544,8 +588,12 @@ window.HIZLI_RAPOR_CONSTANTS = {
             }
         },
 
-        getCatalog() {
+        getCatalog(userId = null) {
             const s = this.loadState();
+            const uid = userId || this.getCurrentUserId();
+            if (this.isCloudManaged(uid)) {
+                return Array.isArray(s.cloudDevicesByUser[uid]) ? s.cloudDevicesByUser[uid] : [];
+            }
             return s.catalog;
         },
 
@@ -567,6 +615,14 @@ window.HIZLI_RAPOR_CONSTANTS = {
         getAssignedDeviceIds(userId = null) {
             const s = this.loadState();
             const uid = userId || this.getCurrentUserId();
+            if (this.isCloudManaged(uid)) {
+                const cloudDevs = Array.isArray(s.cloudDevicesByUser[uid]) ? s.cloudDevicesByUser[uid] : [];
+                const validSet = new Set(cloudDevs.map(d => String(d.id)));
+                const storedIds = Array.isArray(s.assignmentsByUser[uid])
+                    ? s.assignmentsByUser[uid].map(String).filter(id => validSet.has(id))
+                    : [];
+                return storedIds.length === cloudDevs.length ? storedIds : cloudDevs.map(d => String(d.id));
+            }
             const ids = s.assignmentsByUser[uid];
             if (Array.isArray(ids)) return ids;
             // Fallback: varsa default anahtarını kontrol et
@@ -579,7 +635,7 @@ window.HIZLI_RAPOR_CONSTANTS = {
         setAssignedDeviceIds(ids, userId = null) {
             const s = this.loadState();
             const uid = userId || this.getCurrentUserId();
-            const validIdSet = new Set(s.catalog.map(d => String(d.id)));
+            const validIdSet = new Set(this.getCatalog(uid).map(d => String(d.id)));
             const deduped = [];
             (Array.isArray(ids) ? ids : []).forEach(id => {
                 const sid = String(id);
@@ -591,9 +647,8 @@ window.HIZLI_RAPOR_CONSTANTS = {
         },
 
         getAssignedDevices(userId = null) {
-            const s = this.loadState();
             const ids = this.getAssignedDeviceIds(userId);
-            const map = new Map(s.catalog.map(d => [String(d.id), d]));
+            const map = new Map(this.getCatalog(userId).map(d => [String(d.id), d]));
             return ids.map(id => map.get(String(id))).filter(Boolean);
         },
 
@@ -1043,6 +1098,7 @@ window.HIZLI_RAPOR_CONSTANTS = {
         renderSettingsCardHtml() {
             const curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || null;
             const userName = curUser ? curUser.fullName : 'Aktif Personel';
+            const locked = this.isCloudManaged();
             const assigned = this.getAssignedDevices();
             const catalog = this.getCatalog();
             const autoApply = this.isAutoApplyEnabled();
@@ -1101,23 +1157,30 @@ window.HIZLI_RAPOR_CONSTANTS = {
                                     ▼
                                 </button>
                             </div>
-                            <div class="flex items-center gap-1.5 flex-wrap justify-end">
-                                <button type="button" onclick="openDeviceCatalogPickerModal('settings_swap', { oldDeviceId: '${esc(dev.id)}' })"
-                                    class="px-2.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-bold text-[11px] flex items-center gap-1 shadow-2xs transition">
-                                    <i class="fa-solid fa-right-left"></i>
-                                    <span>Değiştir</span>
-                                </button>
-                                <button type="button" onclick="openDeviceEditModal('${esc(dev.id)}', { refreshSettings: true })"
-                                    class="px-2.5 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 active:scale-95 text-slate-800 font-bold text-[11px] flex items-center gap-1 transition">
-                                    <i class="fa-solid fa-pen"></i>
-                                    <span>Düzenle</span>
-                                </button>
-                                <button type="button" onclick="MeasuringDevicesManager.handleUnassignFromSettings('${esc(dev.id)}')"
-                                    class="px-2 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-700 border border-rose-200 font-bold text-[11px] flex items-center gap-1 transition" title="Üzerimden Çıkar">
-                                    <i class="fa-solid fa-xmark"></i>
-                                    <span>Çıkar</span>
-                                </button>
-                            </div>
+                            ${locked ? `
+                                <span class="px-2 py-1 rounded-lg bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-bold inline-flex items-center gap-1">
+                                    <i class="fa-solid fa-lock text-[9px] text-amber-600"></i>
+                                    <span>Yönetici Ataması</span>
+                                </span>
+                            ` : `
+                                <div class="flex items-center gap-1.5 flex-wrap justify-end">
+                                    <button type="button" onclick="openDeviceCatalogPickerModal('settings_swap', { oldDeviceId: '${esc(dev.id)}' })"
+                                        class="px-2.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-bold text-[11px] flex items-center gap-1 shadow-2xs transition">
+                                        <i class="fa-solid fa-right-left"></i>
+                                        <span>Değiştir</span>
+                                    </button>
+                                    <button type="button" onclick="openDeviceEditModal('${esc(dev.id)}', { refreshSettings: true })"
+                                        class="px-2.5 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 active:scale-95 text-slate-800 font-bold text-[11px] flex items-center gap-1 transition">
+                                        <i class="fa-solid fa-pen"></i>
+                                        <span>Düzenle</span>
+                                    </button>
+                                    <button type="button" onclick="MeasuringDevicesManager.handleUnassignFromSettings('${esc(dev.id)}')"
+                                        class="px-2 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-700 border border-rose-200 font-bold text-[11px] flex items-center gap-1 transition" title="Üzerimden Çıkar">
+                                        <i class="fa-solid fa-xmark"></i>
+                                        <span>Çıkar</span>
+                                    </button>
+                                </div>
+                            `}
                         </div>
                     </div>
                 `;
@@ -1126,9 +1189,11 @@ window.HIZLI_RAPOR_CONSTANTS = {
                     <div class="w-10 h-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto text-base">
                         <i class="fa-solid fa-screwdriver-wrench"></i>
                     </div>
-                    <div class="text-xs font-bold text-slate-800">Henüz üzerinize ölçüm cihazı almadınız</div>
+                    <div class="text-xs font-bold text-slate-800">${locked ? 'Yöneticiniz henüz size cihaz atamadı' : 'Henüz üzerinize ölçüm cihazı almadınız'}</div>
                     <p class="text-[11px] text-slate-500 max-w-sm mx-auto leading-relaxed">
-                        Aşağıdan kendi kullandığınız cihazları (ör. Fluke / UNI-T Termal Kamera, Metrel Test Cihazı, Pensampermetre vb.) seçin; yeni rapor yazarken otomatik eklensinler.
+                        ${locked
+                            ? "Firma yöneticiniz web panelinden size ölçüm cihazı atadığında burada otomatik görünür ve raporlara eklenir. Atama sonrası 'Buluttan Yenile'ye dokunun."
+                            : 'Aşağıdan kendi kullandığınız cihazları (ör. Fluke / UNI-T Termal Kamera, Metrel Test Cihazı, Pensampermetre vb.) seçin; yeni rapor yazarken otomatik eklensinler.'}
                     </p>
                 </div>
             `;
@@ -1138,11 +1203,18 @@ window.HIZLI_RAPOR_CONSTANTS = {
                     <div class="flex items-center justify-between border-b border-slate-100 pb-2 gap-2">
                         <div class="text-xs font-bold text-slate-800 flex items-center gap-1.5 min-w-0">
                             <i class="fa-solid fa-screwdriver-wrench text-amber-600 shrink-0"></i>
-                            <span class="truncate">Ölçüm Cihazlarım (Üzerime Alınanlar)</span>
+                            <span class="truncate">${locked ? 'Ölçüm Cihazlarım (Yönetici Ataması)' : 'Ölçüm Cihazlarım (Üzerime Alınanlar)'}</span>
                         </div>
-                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${assigned.length ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}">
-                            ${assigned.length} Aktif Cihaz
-                        </span>
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            ${locked ? `
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                    <i class="fa-solid fa-cloud mr-0.5"></i>Yönetici Ataması
+                                </span>
+                            ` : ''}
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${assigned.length ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}">
+                                ${assigned.length} Aktif Cihaz
+                            </span>
+                        </div>
                     </div>
 
                     <div class="flex items-center justify-between gap-2 p-2 rounded-xl bg-amber-50/80 border border-amber-200/80 text-[11px]">
@@ -1158,18 +1230,31 @@ window.HIZLI_RAPOR_CONSTANTS = {
                         ${cardsHtml}
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                        <button type="button" onclick="openDeviceCatalogPickerModal('settings_assign')"
-                            class="w-full py-2.5 px-3 bg-slate-900 hover:bg-slate-800 active:scale-95 text-amber-400 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition">
-                            <i class="fa-solid fa-list-check"></i>
-                            <span>Havuzdan Cihaz Seç / Üzerime Al (${catalog.length})</span>
-                        </button>
-                        <button type="button" onclick="openDeviceEditModal(null, { assignByDefault: true, refreshSettings: true })"
-                            class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition">
-                            <i class="fa-solid fa-plus"></i>
-                            <span>Yeni Ölçüm Cihazı Ekle</span>
-                        </button>
-                    </div>
+                    ${locked ? `
+                        <div class="pt-1 space-y-2">
+                            <button type="button" onclick="window.CloudAppSync && window.CloudAppSync.syncNow()"
+                                class="w-full py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition">
+                                <i class="fa-solid fa-arrows-rotate"></i>
+                                <span>Buluttan Yenile (Cihazları Güncelle)</span>
+                            </button>
+                            <div class="text-[10px] text-slate-500 text-center">
+                                Cihaz ekleme, çıkarma ve kalibrasyon güncelleme işlemleri yalnızca firma yöneticisi web panelinden yapılır.
+                            </div>
+                        </div>
+                    ` : `
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                            <button type="button" onclick="openDeviceCatalogPickerModal('settings_assign')"
+                                class="w-full py-2.5 px-3 bg-slate-900 hover:bg-slate-800 active:scale-95 text-amber-400 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition">
+                                <i class="fa-solid fa-list-check"></i>
+                                <span>Havuzdan Cihaz Seç / Üzerime Al (${catalog.length})</span>
+                            </button>
+                            <button type="button" onclick="openDeviceEditModal(null, { assignByDefault: true, refreshSettings: true })"
+                                class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition">
+                                <i class="fa-solid fa-plus"></i>
+                                <span>Yeni Ölçüm Cihazı Ekle</span>
+                            </button>
+                        </div>
+                    `}
                 </div>
             `;
         },
@@ -1183,6 +1268,12 @@ window.HIZLI_RAPOR_CONSTANTS = {
         },
 
         handleUnassignFromSettings(deviceId) {
+            if (this.isCloudManaged()) {
+                if (typeof window.showToast === 'function') {
+                    window.showToast('Cihaz atamaları yalnızca firma yöneticisi tarafından değiştirilebilir', 'warning');
+                }
+                return;
+            }
             const dev = this.getDeviceById(deviceId);
             this.unassignDevice(deviceId);
             if (typeof window.renderSettingsPage === 'function' && window.AppState && window.AppState.currentRoute === 'settings') {
@@ -1242,6 +1333,13 @@ window.HIZLI_RAPOR_CONSTANTS = {
     function renderDeviceCatalogPickerModal() {
         const mode = _pickerState.mode;
         const ctx = _pickerState.context;
+        const locked = MeasuringDevicesManager.isCloudManaged();
+        if (locked && (mode === 'settings_assign' || mode === 'settings_swap')) {
+            if (typeof window.showToast === 'function') {
+                window.showToast('Cihaz atamaları yalnızca firma yöneticisi web panelinden yapılabilir.', 'warning');
+            }
+            return;
+        }
         const catalog = MeasuringDevicesManager.getCatalog();
 
         let modalTitle = '<i class="fa-solid fa-screwdriver-wrench text-amber-400 mr-2"></i>Ölçüm Cihazı Havuzu';
@@ -1356,11 +1454,13 @@ window.HIZLI_RAPOR_CONSTANTS = {
                             placeholder="Marka, model, kod veya seri no ara (ör. Fluke, UNI-T, Metrel)..."
                             class="w-full border border-slate-300 rounded-xl pl-8 pr-3 py-2 text-xs font-medium bg-white focus:border-sky-500 focus:outline-none">
                     </div>
-                    <button type="button" onclick="openDeviceEditModal(null, window._activeNewDeviceCtxOpts || {})"
-                        class="px-2.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs shrink-0 flex items-center gap-1 shadow-xs">
-                        <i class="fa-solid fa-plus"></i>
-                        <span>Yeni</span>
-                    </button>
+                    ${locked ? '' : `
+                        <button type="button" onclick="openDeviceEditModal(null, window._activeNewDeviceCtxOpts || {})"
+                            class="px-2.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs shrink-0 flex items-center gap-1 shadow-xs">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>Yeni</span>
+                        </button>
+                    `}
                 </div>
 
                 <div class="flex items-center gap-1.5 overflow-x-auto pb-1">
@@ -1385,6 +1485,7 @@ window.HIZLI_RAPOR_CONSTANTS = {
     function buildDevicePickerListHtml() {
         const mode = _pickerState.mode;
         const ctx = _pickerState.context;
+        const locked = MeasuringDevicesManager.isCloudManaged();
         const q = (_pickerState.searchQuery || '').trim().toLowerCase();
         const catFilter = _pickerState.categoryFilter;
         const assignedIds = new Set(MeasuringDevicesManager.getAssignedDeviceIds().map(String));
@@ -1409,12 +1510,14 @@ window.HIZLI_RAPOR_CONSTANTS = {
         if (!items.length) {
             return `
                 <div class="p-6 text-center border border-dashed border-slate-200 rounded-xl bg-slate-50 space-y-2">
-                    <div class="text-xs font-bold text-slate-600">Aramaya uygun cihaz bulunamadı</div>
-                    <button type="button" onclick="openDeviceEditModal(null, window._activeNewDeviceCtxOpts || {})"
-                        class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-xs inline-flex items-center gap-1">
-                        <i class="fa-solid fa-plus"></i>
-                        <span>Yeni Cihaz Olarak Ekle</span>
-                    </button>
+                    <div class="text-xs font-bold text-slate-600">${locked ? 'Üzerinize atanmış uygun cihaz bulunamadı' : 'Aramaya uygun cihaz bulunamadı'}</div>
+                    ${locked ? '<div class="text-[11px] text-slate-500">Yöneticinizden web paneli üzerinden cihaz ataması isteyebilirsiniz.</div>' : `
+                        <button type="button" onclick="openDeviceEditModal(null, window._activeNewDeviceCtxOpts || {})"
+                            class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-xs inline-flex items-center gap-1">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>Yeni Cihaz Olarak Ekle</span>
+                        </button>
+                    `}
                 </div>
             `;
         }
@@ -1491,10 +1594,12 @@ window.HIZLI_RAPOR_CONSTANTS = {
                         </div>
                     </div>
                     <div class="flex items-center gap-1 shrink-0">
-                        <button type="button" onclick="openDeviceEditModal('${esc(dev.id)}', { reopenPicker: true })"
-                            class="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 text-[11px]" title="Cihaz Bilgilerini Düzenle">
-                            <i class="fa-solid fa-pen"></i>
-                        </button>
+                        ${locked ? '' : `
+                            <button type="button" onclick="openDeviceEditModal('${esc(dev.id)}', { reopenPicker: true })"
+                                class="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 text-[11px]" title="Cihaz Bilgilerini Düzenle">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                        `}
                         ${primaryActionHtml}
                     </div>
                 </div>
@@ -1503,6 +1608,12 @@ window.HIZLI_RAPOR_CONSTANTS = {
     }
 
     function handlePickerToggleAssign(deviceId) {
+        if (MeasuringDevicesManager.isCloudManaged()) {
+            if (typeof window.showToast === 'function') {
+                window.showToast('Cihaz atamaları yalnızca firma yöneticisi tarafından değiştirilebilir', 'warning');
+            }
+            return;
+        }
         const assigned = MeasuringDevicesManager.toggleAssignment(deviceId);
         const dev = MeasuringDevicesManager.getDeviceById(deviceId);
         renderDeviceCatalogPickerModal();
@@ -1515,6 +1626,12 @@ window.HIZLI_RAPOR_CONSTANTS = {
     }
 
     function handlePickerSelectSwapSettings(oldDeviceId, newDeviceId) {
+        if (MeasuringDevicesManager.isCloudManaged()) {
+            if (typeof window.showToast === 'function') {
+                window.showToast('Cihaz atamaları yalnızca firma yöneticisi tarafından değiştirilebilir', 'warning');
+            }
+            return;
+        }
         const oldDev = MeasuringDevicesManager.getDeviceById(oldDeviceId);
         const newDev = MeasuringDevicesManager.getDeviceById(newDeviceId);
         MeasuringDevicesManager.swapAssignedDevice(oldDeviceId, newDeviceId);
@@ -1530,6 +1647,12 @@ window.HIZLI_RAPOR_CONSTANTS = {
     let _editModalOptions = {};
 
     function openDeviceEditModal(deviceId = null, options = {}) {
+        if (MeasuringDevicesManager.isCloudManaged()) {
+            if (typeof window.showToast === 'function') {
+                window.showToast('Cihaz ekleme ve düzenleme yalnızca firma yöneticisi web panelinden yapılabilir.', 'warning');
+            }
+            return;
+        }
         _editModalOptions = options || {};
         const existing = deviceId ? MeasuringDevicesManager.getDeviceById(deviceId) : null;
         const isEdit = Boolean(existing);
@@ -2454,6 +2577,12 @@ window.addEventListener('DOMContentLoaded', async () => {
 
         navigateTo('home');
 
+        if (curUser.isCloudManaged && navigator.onLine !== false && window.CloudAppSync && typeof window.CloudAppSync.syncNow === 'function') {
+
+            window.CloudAppSync.syncNow({ silent: true });
+
+        }
+
     }
 
 
@@ -2938,6 +3067,9 @@ function openUserSettingsModal() {
     const curUser = (typeof AuthManager !== 'undefined' && typeof AuthManager.getCurrentUser === 'function')
         ? AuthManager.getCurrentUser()
         : null;
+    const locked = typeof MeasuringDevicesManager !== 'undefined'
+        && typeof MeasuringDevicesManager.isCloudManaged === 'function'
+        && MeasuringDevicesManager.isCloudManaged();
     const assigned = (typeof MeasuringDevicesManager !== 'undefined' && typeof MeasuringDevicesManager.getAssignedDevices === 'function')
         ? MeasuringDevicesManager.getAssignedDevices()
         : [];
@@ -2957,7 +3089,7 @@ function openUserSettingsModal() {
                 <span class="text-[10px] font-semibold text-emerald-700 shrink-0">${escapeVal(d.category || '')}</span>
             </div>
         `).join('')
-        : `<div class="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-[11px]">Henüz üzerinize alınmış ölçüm cihazı yok. Havuzdan seçerek raporlara otomatik eklenmesini sağlayabilirsiniz.</div>`;
+        : `<div class="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-[11px]">${locked ? 'Yöneticiniz tarafından henüz size ölçüm cihazı atanmadı.' : 'Henüz üzerinize alınmış ölçüm cihazı yok. Havuzdan seçerek raporlara otomatik eklenmesini sağlayabilirsiniz.'}</div>`;
 
     openModal(
 
@@ -2989,19 +3121,29 @@ function openUserSettingsModal() {
 
                 <div class="flex items-center justify-between">
                     <span class="font-bold text-slate-800">Üzerinizdeki Ölçüm Cihazları (${assigned.length})</span>
-                    <button type="button" onclick="closeModal(); openDeviceEditModal(null, { assignByDefault: true, refreshSettings: true });"
-                        class="text-[11px] font-bold text-emerald-700 hover:underline">+ Yeni Cihaz Tanımla</button>
+                    ${locked
+                        ? `<span class="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">Yönetici Ataması</span>`
+                        : `<button type="button" onclick="closeModal(); openDeviceEditModal(null, { assignByDefault: true, refreshSettings: true });" class="text-[11px] font-bold text-emerald-700 hover:underline">+ Yeni Cihaz Tanımla</button>`
+                    }
                 </div>
 
                 <div class="space-y-1.5 max-h-40 overflow-y-auto">
                     ${assignedSummaryHtml}
                 </div>
 
-                <button type="button" onclick="closeModal(); openDeviceCatalogPickerModal('settings_assign');"
-                    class="w-full py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-amber-400 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition">
-                    <i class="fa-solid fa-right-left"></i>
-                    <span>Ölçüm Cihazlarımı Seç / Değiştir (Havuz)</span>
-                </button>
+                ${locked ? `
+                    <button type="button" onclick="window.CloudAppSync && window.CloudAppSync.syncNow();"
+                        class="w-full py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition">
+                        <i class="fa-solid fa-arrows-rotate"></i>
+                        <span>Buluttan Cihazları Güncelle</span>
+                    </button>
+                ` : `
+                    <button type="button" onclick="closeModal(); openDeviceCatalogPickerModal('settings_assign');"
+                        class="w-full py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-amber-400 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition">
+                        <i class="fa-solid fa-right-left"></i>
+                        <span>Ölçüm Cihazlarımı Seç / Değiştir (Havuz)</span>
+                    </button>
+                `}
 
             </div>
 
@@ -3244,7 +3386,75 @@ async function navigateTo(route, params = {}) {
 
 
 
-async function renderHome() {
+function renderGrayOfflineNotesFolderHtml() {
+
+    let noteCount = 0;
+
+    try {
+
+        if (window.OfflineDB) {
+
+            window.OfflineDB.init();
+
+            noteCount = Array.isArray(window.OfflineDB.state?.quickNotes) ? window.OfflineDB.state.quickNotes.length : 0;
+
+        }
+
+    } catch (e) {}
+
+    return `
+
+        <div onclick="navigateTo('field-notebook')"
+
+            class="p-2.5 rounded-xl bg-slate-200/95 hover:bg-slate-300/80 active:scale-[0.99] border border-slate-300 cursor-pointer flex items-center justify-between gap-2.5 transition shadow-2xs">
+
+            <div class="flex items-center gap-2.5 min-w-0 flex-1">
+
+                <div class="w-9 h-9 rounded-lg bg-slate-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+
+                    <i class="fa-solid fa-folder text-sm"></i>
+
+                </div>
+
+                <div class="min-w-0 flex-1">
+
+                    <div class="font-bold text-slate-900 text-xs sm:text-sm truncate flex items-center gap-1.5">
+
+                        <span>Offline Not Alma Klasörü</span>
+
+                    </div>
+
+                    <div class="text-[10px] text-slate-600 truncate mt-0.5 font-medium">
+
+                        <i class="fa-solid fa-pen-to-square mr-1 text-slate-500"></i>İnternetsiz saha notları ve tespitler
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="shrink-0 flex items-center gap-1.5">
+
+                <span class="px-2 py-0.5 rounded-md bg-slate-700 text-white font-bold text-[10px]">
+
+                    ${noteCount} Not · Offline
+
+                </span>
+
+                <i class="fa-solid fa-chevron-right text-slate-500 text-[11px]"></i>
+
+            </div>
+
+        </div>
+
+    `;
+
+}
+
+
+
+async function renderHome(opts = {}) {
 
     const container = document.getElementById('pageContent');
 
@@ -3252,11 +3462,29 @@ async function renderHome() {
 
 
 
+    const curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || null;
+
+    const isManaged = Boolean(curUser && curUser.isCloudManaged);
+
+    const userCloudId = curUser && curUser.cloudId ? String(curUser.cloudId) : '';
+
+
+
     const woRes = await fetch('/api/work-orders');
 
     const rawWOs = await woRes.json();
 
-    const allJobs = (Array.isArray(rawWOs) ? rawWOs : []).map(normalizeWorkOrder);
+    const allJobs = (Array.isArray(rawWOs) ? rawWOs : []).map(normalizeWorkOrder).filter(wo => {
+
+        if (userCloudId && wo.assigned_user_cloud_id) {
+
+            return String(wo.assigned_user_cloud_id) === userCloudId;
+
+        }
+
+        return true;
+
+    });
 
     AppState.workOrdersCache = allJobs;
 
@@ -3295,14 +3523,14 @@ async function renderHome() {
                         </div>
                     </div>
                 </div>
-                <button onclick="navigateTo('settings')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-semibold rounded-lg text-xs flex items-center gap-1.5 transition border border-slate-200 shrink-0" title="Şirket Logosu ve Rapor Ayarları">
+                <button onclick="navigateTo('settings')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-semibold rounded-lg text-xs flex items-center gap-1.5 transition border border-slate-200 shrink-0" title="Ayarlar ve Ölçüm Cihazlarım">
                     <i class="fa-solid fa-sliders text-sky-600 text-[11px]"></i>
-                    <span class="hidden sm:inline">Şirket Ayarları</span>
+                    <span class="hidden sm:inline">${isManaged ? 'Ayarlarım' : 'Şirket Ayarları'}</span>
                 </button>
             </div>
 
 
-            <!-- 1. İŞYERİ ARAMA VE YENİ BAŞLIK AÇMA (SADE & HIZLI SAHA ERİŞİMİ) -->
+            <!-- 1. İŞYERİ ARAMA VE YENİLE / YENİ KLASÖR -->
 
             <div class="flex items-center gap-2 pt-0.5">
 
@@ -3310,21 +3538,33 @@ async function renderHome() {
 
                     class="flex-1 bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-sky-500 shadow-2xs">
 
-                <button onclick="openQuickFieldJobModal()" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-bold text-xs rounded-lg shrink-0 flex items-center gap-1.5 shadow-sm transition">
+                ${isManaged ? `
+                    <button onclick="window.CloudAppSync && window.CloudAppSync.syncNow()" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 active:scale-95 text-amber-300 font-bold text-xs rounded-lg shrink-0 flex items-center gap-1.5 shadow-sm transition" title="Yöneticinin açtığı işleri ve atadığı cihazları internetten çek">
 
-                    <i class="fa-solid fa-plus text-emerald-400"></i>
+                        <i class="fa-solid fa-arrows-rotate"></i>
 
-                    <span>Yeni Klasör</span>
+                        <span>Yenile</span>
 
-                </button>
+                    </button>
+                ` : `
+                    <button onclick="openQuickFieldJobModal()" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-bold text-xs rounded-lg shrink-0 flex items-center gap-1.5 shadow-sm transition">
+
+                        <i class="fa-solid fa-plus text-emerald-400"></i>
+
+                        <span>Yeni Klasör</span>
+
+                    </button>
+                `}
 
             </div>
 
 
 
-            <!-- 2. KLASÖRLER LİSTESİ -->
+            <!-- 2. OFFLINE NOT KLASÖRÜ (GRİ) + İŞ KLASÖRLERİ LİSTESİ -->
 
             <div id="homeJobsList" class="space-y-2 pt-0.5">
+
+                ${renderGrayOfflineNotesFolderHtml()}
 
                 ${renderMinimalJobCards(allJobs)}
 
@@ -3350,9 +3590,16 @@ async function renderHome() {
 
 function renderMinimalJobCards(jobs) {
 
+    const curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || null;
+
+    const isManaged = Boolean(curUser && curUser.isCloudManaged);
+
     if (!jobs || !jobs.length) {
 
-        return `<div class="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-400 text-xs">Henüz başlık eklenmedi. Üstteki <strong>"Yeni Başlık"</strong> butonuna dokunun.</div>`;
+        return `<div class="bg-white rounded-xl border border-slate-200 p-6 text-center text-slate-500 text-xs space-y-1.5">
+            <div class="font-bold text-slate-700">${isManaged ? 'Size atanmış açık iş klasörü henüz yok' : 'Henüz iş klasörü eklenmedi'}</div>
+            <div class="text-[11px] text-slate-400">${isManaged ? 'Firma yöneticiniz internet panelinden iş açtığında burada otomatik görünür. Kontrol etmek için yukarıdaki <strong>Yenile</strong> butonuna dokunun.' : 'Üstteki <strong>"Yeni Klasör"</strong> butonuna dokunabilirsiniz.'}</div>
+        </div>`;
 
     }
 
@@ -3362,6 +3609,8 @@ function renderMinimalJobCards(jobs) {
 
         const count = wo.actual_inspection_count ?? wo.inspection_count ?? 0;
 
+        const lockedFolder = Boolean(wo.assigned_by_manager || isManaged);
+
         return `
 
             <div onclick="navigateTo('work-order-details', {id: '${wo.id}'})"
@@ -3370,7 +3619,13 @@ function renderMinimalJobCards(jobs) {
 
                 <div class="min-w-0 flex-1">
 
-                    <div class="font-bold text-slate-900 text-xs sm:text-sm truncate">${wo.customer_name}</div>
+                    <div class="flex items-center gap-1.5 min-w-0">
+
+                        <span class="font-bold text-slate-900 text-xs sm:text-sm truncate">${wo.customer_name}</span>
+
+                        ${wo.assigned_by_manager ? `<span class="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold text-[9px] shrink-0">İş Emri</span>` : ''}
+
+                    </div>
 
                     ${wo.customer_branch ? `<div class="text-[10px] text-slate-500 truncate mt-0.5">${wo.customer_branch}</div>` : ''}
 
@@ -3386,11 +3641,13 @@ function renderMinimalJobCards(jobs) {
 
                     </span>
 
-                    <button onclick="deleteWorkOrderHeading('${wo.id}', event, '${(wo.customer_name || 'İş Klasörü').replace(/'/g, "\\'")}')" class="p-1.5 text-slate-400 hover:text-rose-600 active:scale-90 rounded-md transition" title="Klasörü Sil">
+                    ${lockedFolder ? '' : `
+                        <button onclick="deleteWorkOrderHeading('${wo.id}', event, '${(wo.customer_name || 'İş Klasörü').replace(/'/g, "\\'")}')" class="p-1.5 text-slate-400 hover:text-rose-600 active:scale-90 rounded-md transition" title="Klasörü Sil">
 
-                        <i class="fa-solid fa-trash-can text-[11px]"></i>
+                            <i class="fa-solid fa-trash-can text-[11px]"></i>
 
-                    </button>
+                        </button>
+                    `}
 
                 </div>
 
@@ -3436,7 +3693,7 @@ function promptSecurityPasswordConfirmation({ title, entityName, message, onConf
 
                 <div class="relative">
 
-                    <input type="password" id="secConfirmPasswordInput" placeholder="Kullanıcı şifreniz (varsayılan: 123)"
+                    <input type="password" id="secConfirmPasswordInput" placeholder="Kullanıcı şifreniz"
 
                         class="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-mono pr-10 focus:outline-none focus:border-rose-500 bg-white"
 
@@ -3558,6 +3815,18 @@ async function deleteWorkOrderHeading(woId, event, folderName) {
 
     if (event) event.stopPropagation();
 
+    const targetWo = (AppState.workOrdersCache || []).find(w => String(w.id) === String(woId));
+
+    const curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || null;
+
+    if ((targetWo && targetWo.assigned_by_manager) || (curUser && curUser.isCloudManaged)) {
+
+        showToast('Yöneticinin açtığı iş klasörü silinemez', 'warning');
+
+        return;
+
+    }
+
     promptSecurityPasswordConfirmation({
 
         title: 'İş Klasörünü Sil',
@@ -3598,9 +3867,15 @@ function filterHomeJobs(query) {
 
     );
 
+    const showOfflineCard = !q || 'offline not alma klasörü saha notları defter'.includes(q);
+
     const listEl = document.getElementById('homeJobsList');
 
-    if (listEl) listEl.innerHTML = renderMinimalJobCards(filtered);
+    if (listEl) {
+
+        listEl.innerHTML = (showOfflineCard ? renderGrayOfflineNotesFolderHtml() : '') + renderMinimalJobCards(filtered);
+
+    }
 
 }
 
@@ -3623,6 +3898,16 @@ function filterHomeJobs(query) {
 // ============================================================================
 
 function openQuickFieldJobModal() {
+
+    const _curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || null;
+
+    if (_curUser && _curUser.isCloudManaged) {
+
+        showToast('Yeni iş klasörleri yalnızca firma yöneticisi web panelinden açılabilir.', 'warning');
+
+        return;
+
+    }
 
     const templates = window.ENLAB_REPORT_TEMPLATES || [];
 
@@ -3851,6 +4136,12 @@ async function renderFieldNotebookPage() {
 
     const container = document.getElementById('pageContent');
 
+    const curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || null;
+
+    const isManaged = Boolean(curUser && curUser.isCloudManaged);
+
+    const userCloudId = curUser && curUser.cloudId ? String(curUser.cloudId) : '';
+
     const [woRes, notesRes] = await Promise.all([
 
         fetch('/api/work-orders'),
@@ -3859,27 +4150,33 @@ async function renderFieldNotebookPage() {
 
     ]);
 
-    const wos = (await woRes.json()).map(normalizeWorkOrder);
+    const wos = (await woRes.json()).map(normalizeWorkOrder).filter(w => {
+
+        if (userCloudId && w.assigned_user_cloud_id) return String(w.assigned_user_cloud_id) === userCloudId;
+
+        return true;
+
+    });
 
     const quickNotes = await notesRes.json();
 
 
 
-    const jobOptions = wos.map(w => `<option value="${w.id}" data-name="${w.customer_name}">${w.customer_name} (${w.work_order_no})</option>`).join('');
+    const jobOptions = wos.map(w => `<option value="${escapeHtml(w.id)}" data-name="${escapeHtml(w.customer_name)}">${escapeHtml(w.customer_name)} (${escapeHtml(w.work_order_no)})</option>`).join('');
 
 
 
     const quickNotesHtml = (quickNotes || []).map(n => `
 
-        <div class="bg-amber-50/70 rounded-xl border border-amber-200 p-4 space-y-2.5 shadow-2xs">
+        <div class="bg-slate-200/80 rounded-xl border border-slate-300 p-4 space-y-2.5 shadow-2xs">
 
             <div class="flex flex-wrap items-start justify-between gap-2">
 
                 <div>
 
-                    <h3 class="font-black text-slate-900 text-sm">${n.title || 'Saha Notu'}</h3>
+                    <h3 class="font-black text-slate-900 text-sm">${escapeHtml(n.title || 'Saha Notu')}</h3>
 
-                    <div class="text-[11px] text-amber-800 font-semibold">${n.job_name || 'Genel Saha Notu'} · <span class="font-mono">${n.updated_at || ''}</span></div>
+                    <div class="text-[11px] text-slate-600 font-semibold">${escapeHtml(n.job_name || 'Genel Offline Not')} · <span class="font-mono">${escapeHtml(n.updated_at || '')}</span></div>
 
                 </div>
 
@@ -3887,7 +4184,7 @@ async function renderFieldNotebookPage() {
 
                     ${n.work_order_id ? `
 
-                        <button onclick="navigateTo('work-order-details', {id: '${n.work_order_id}', tab: 'inspections'})" class="px-2.5 py-1 bg-sky-600 hover:bg-sky-700 text-white rounded text-[11px] font-bold">
+                        <button onclick="navigateTo('work-order-details', {id: '${escapeForJs(n.work_order_id)}', tab: 'inspections'})" class="px-2.5 py-1 bg-slate-700 hover:bg-slate-800 text-white rounded text-[11px] font-bold">
 
                             İşe Git →
 
@@ -3895,11 +4192,15 @@ async function renderFieldNotebookPage() {
 
                     ` : ''}
 
-                    <button onclick="convertQuickNoteToJob(${n.id})" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-bold" title="Bu nottan yeni iş ve rapor taslağı oluştur">
+                    ${isManaged ? '' : `
 
-                        <i class="fa-solid fa-file-circle-plus mr-1"></i>Rapor Taslağına Dönüştür
+                        <button onclick="convertQuickNoteToJob(${n.id})" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-bold" title="Bu nottan yeni iş ve rapor taslağı oluştur">
 
-                    </button>
+                            <i class="fa-solid fa-file-circle-plus mr-1"></i>Rapor Taslağına Dönüştür
+
+                        </button>
+
+                    `}
 
                     <button onclick="deleteQuickNote(${n.id})" class="px-2 py-1 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded text-[11px] font-bold">
 
@@ -3913,7 +4214,7 @@ async function renderFieldNotebookPage() {
 
             <textarea rows="4" oninput="updateExistingQuickNote(${n.id}, this.value)"
 
-                class="w-full border border-amber-300 bg-white rounded-lg p-2.5 text-xs text-slate-800 font-medium focus:border-sky-500 focus:outline-none">${n.content || ''}</textarea>
+                class="w-full border border-slate-300 bg-white rounded-lg p-2.5 text-xs text-slate-800 font-medium focus:border-slate-500 focus:outline-none">${escapeHtml(n.content || '')}</textarea>
 
         </div>
 
@@ -3923,21 +4224,21 @@ async function renderFieldNotebookPage() {
 
     const jobsWithNotesHtml = wos.slice(0, 10).map(w => `
 
-        <div class="bg-white rounded-xl border border-slate-200 p-4 space-y-2 shadow-2xs">
+        <div class="bg-slate-100 rounded-xl border border-slate-300 p-4 space-y-2 shadow-2xs">
 
             <div class="flex flex-wrap items-center justify-between gap-2">
 
                 <div>
 
-                    <span class="font-mono text-[11px] font-bold text-sky-700">${w.work_order_no}</span>
+                    <span class="font-mono text-[11px] font-bold text-slate-600">${escapeHtml(w.work_order_no)}</span>
 
-                    <h4 class="font-bold text-slate-900 text-xs sm:text-sm">${w.customer_name} ${w.customer_branch ? `- ${w.customer_branch}` : ''}</h4>
+                    <h4 class="font-bold text-slate-900 text-xs sm:text-sm">${escapeHtml(w.customer_name)} ${w.customer_branch ? `- ${escapeHtml(w.customer_branch)}` : ''}</h4>
 
                 </div>
 
-                <button onclick="navigateTo('work-order-details', {id: '${w.id}', tab: 'inspections'})" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold">
+                <button onclick="navigateTo('work-order-details', {id: '${escapeForJs(w.id)}', tab: 'inspections'})" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white rounded-lg text-xs font-bold">
 
-                    İşi & Raporları Aç (${w.actual_inspection_count ?? 0}) →
+                    İşi &amp; Raporları Aç (${w.actual_inspection_count ?? 0}) →
 
                 </button>
 
@@ -3945,9 +4246,9 @@ async function renderFieldNotebookPage() {
 
             <textarea rows="3" placeholder="Bu işe ait saha notlarınızı buraya yazın (Otomatik kaydedilir)..."
 
-                oninput="saveWorkOrderNotesRealtime('${w.id}', this.value)"
+                oninput="saveWorkOrderNotesRealtime('${escapeForJs(w.id)}', this.value)"
 
-                class="w-full border border-slate-300 bg-amber-50/30 rounded-lg p-2.5 text-xs text-slate-800 focus:border-amber-500 focus:outline-none">${w.field_notes || ''}</textarea>
+                class="w-full border border-slate-300 bg-white rounded-lg p-2.5 text-xs text-slate-800 focus:border-slate-500 focus:outline-none">${escapeHtml(w.field_notes || '')}</textarea>
 
         </div>
 
@@ -3957,97 +4258,125 @@ async function renderFieldNotebookPage() {
 
     container.innerHTML = `
 
-        <div class="bg-white rounded-xl border border-slate-200 shadow-xs p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3">
+        <div class="max-w-4xl mx-auto space-y-4 pb-6">
 
-            <div>
+            <div class="bg-slate-200 rounded-xl border border-slate-300 shadow-xs p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3">
 
-                <div class="text-[11px] text-amber-600 font-bold uppercase tracking-wider">Çevrimdışı Saha Not Defteri (Offline)</div>
+                <div class="flex items-start gap-3">
 
-                <h1 class="text-lg font-black text-slate-900 flex items-center gap-2">
+                    <button onclick="navigateTo('home')" class="px-2.5 py-1.5 bg-white hover:bg-slate-100 active:scale-95 text-slate-700 rounded-xl font-bold text-xs shrink-0 transition border border-slate-300">
 
-                    <i class="fa-solid fa-book-open text-amber-500"></i> Saha Not Defterim & Hızlı Tespitler
+                        <i class="fa-solid fa-arrow-left mr-1"></i>Geri
 
-                </h1>
+                    </button>
 
-                <p class="text-xs text-slate-500 mt-0.5">İnternetin çekmediği yerlerde (Teknosa vb.) aldığınız tüm notlar anında cihaz hafızasına kaydedilir ve istediğiniz zaman resmi A4 rapora aktarılır.</p>
+                    <div>
 
-            </div>
+                        <div class="text-[11px] text-slate-600 font-bold uppercase tracking-wider">Çevrimdışı Not Alma Klasörü (Offline)</div>
 
-            <button onclick="openQuickFieldJobModal()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow flex items-center gap-2">
+                        <h1 class="text-lg font-black text-slate-900 flex items-center gap-2">
 
-                <i class="fa-solid fa-plus"></i> + Yeni İş & Rapor Taslağı Aç
+                            <i class="fa-solid fa-folder text-slate-600"></i> Offline Not Alma Klasörü
 
-            </button>
+                        </h1>
 
-        </div>
-
-
-
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
-
-            <!-- Left: Add New Standalone Note + Quick Notes List -->
-
-            <div class="lg:col-span-6 space-y-4">
-
-                <div class="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-
-                    <div class="px-4 py-3 bg-slate-900 text-white font-bold text-xs uppercase flex items-center justify-between">
-
-                        <span><i class="fa-solid fa-pen-clip text-amber-400 mr-2"></i>Yeni Hızlı Saha Notu Ekle</span>
-
-                        <span class="text-[10px] text-emerald-400">Otomatik Cihaz Kaydı</span>
+                        <p class="text-xs text-slate-600 mt-0.5">İnternetin çekmediği sahalarda aldığınız tüm tespit ve ölçü notları anında cihaz hafızasına kaydedilir.</p>
 
                     </div>
 
-                    <div class="p-4 space-y-3 text-xs">
+                </div>
 
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                ${isManaged ? '' : `
 
-                            <div>
+                    <button onclick="openQuickFieldJobModal()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow flex items-center gap-2">
 
-                                <label class="block font-bold text-slate-700 mb-1">Not Başlığı / Mahal</label>
+                        <i class="fa-solid fa-plus"></i> + Yeni İş & Rapor Taslağı Aç
 
-                                <input type="text" id="newNoteTitle" placeholder="Örn: Teknosa Bodrum Ana Pano Ölçümleri"
+                    </button>
 
-                                    class="w-full border border-slate-300 rounded-lg px-3 py-2 font-semibold">
+                `}
+
+            </div>
+
+
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+                <!-- Left: Add New Standalone Note + Quick Notes List -->
+
+                <div class="lg:col-span-6 space-y-4">
+
+                    <div class="bg-slate-100 rounded-xl border border-slate-300 shadow-xs overflow-hidden">
+
+                        <div class="px-4 py-3 bg-slate-700 text-white font-bold text-xs uppercase flex items-center justify-between">
+
+                            <span><i class="fa-solid fa-pen-clip text-slate-200 mr-2"></i>Yeni Offline Saha Notu Ekle</span>
+
+                            <span class="text-[10px] text-slate-300">Otomatik Cihaz Kaydı</span>
+
+                        </div>
+
+                        <div class="p-4 space-y-3 text-xs">
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+                                <div>
+
+                                    <label class="block font-bold text-slate-700 mb-1">Not Başlığı / Mahal</label>
+
+                                    <input type="text" id="newNoteTitle" placeholder="Örn: Bodrum Ana Pano Ölçümleri"
+
+                                        class="w-full border border-slate-300 bg-white rounded-lg px-3 py-2 font-semibold">
+
+                                </div>
+
+                                <div>
+
+                                    <label class="block font-bold text-slate-700 mb-1">İlgili İş (Opsiyonel)</label>
+
+                                    <select id="newNoteWoSelect" class="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white">
+
+                                        <option value="">-- Genel / Bağımsız Offline Not --</option>
+
+                                        ${jobOptions}
+
+                                    </select>
+
+                                </div>
 
                             </div>
 
                             <div>
 
-                                <label class="block font-bold text-slate-700 mb-1">İlgili İş (Opsiyonel)</label>
+                                <label class="block font-bold text-slate-700 mb-1">Saha Notu İçeriği</label>
 
-                                <select id="newNoteWoSelect" class="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white">
+                                <textarea id="newNoteContent" rows="4" placeholder="Panolar, kablo kesitleri, topraklama dirençleri, eksiklikler..."
 
-                                    <option value="">-- Genel / Bağımsız Not --</option>
+                                    class="w-full border border-slate-300 bg-white rounded-lg p-3 font-medium focus:border-slate-500 focus:outline-none"></textarea>
 
-                                    ${jobOptions}
+                            </div>
 
-                                </select>
+                            <div class="flex justify-end">
+
+                                <button onclick="createNewQuickNote()" class="px-4 py-2 bg-slate-700 hover:bg-slate-800 text-white font-black rounded-lg shadow-xs flex items-center gap-1.5">
+
+                                    <i class="fa-solid fa-floppy-disk"></i> Notu Kaydet
+
+                                </button>
 
                             </div>
 
                         </div>
 
-                        <div>
+                    </div>
 
-                            <label class="block font-bold text-slate-700 mb-1">Saha Notu İçeriği</label>
 
-                            <textarea id="newNoteContent" rows="4" placeholder="Panolar, kablo kesitleri, topraklama dirençleri, eksiklikler..."
 
-                                class="w-full border border-slate-300 rounded-lg p-3 font-medium focus:border-sky-500 focus:outline-none"></textarea>
+                    <div class="space-y-3">
 
-                        </div>
+                        <h2 class="font-bold text-xs uppercase text-slate-600 px-1">Kayıtlı Offline Notlarım (${quickNotes.length})</h2>
 
-                        <div class="flex justify-end">
-
-                            <button onclick="createNewQuickNote()" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-lg shadow-xs flex items-center gap-1.5">
-
-                                <i class="fa-solid fa-floppy-disk"></i> Notu Kaydet
-
-                            </button>
-
-                        </div>
+                        ${quickNotesHtml || '<div class="p-6 bg-slate-100 rounded-xl border border-slate-300 text-center text-xs text-slate-500">Henüz bağımsız hızlı not eklenmemiş.</div>'}
 
                     </div>
 
@@ -4055,25 +4384,15 @@ async function renderFieldNotebookPage() {
 
 
 
-                <div class="space-y-3">
+                <!-- Right: Per-Job Notebook Cards -->
 
-                    <h2 class="font-bold text-xs uppercase text-slate-500 px-1">Kayıtlı Hızlı Notlarım (${quickNotes.length})</h2>
+                <div class="lg:col-span-6 space-y-3">
 
-                    ${quickNotesHtml || '<div class="p-6 bg-white rounded-xl border border-slate-200 text-center text-xs text-slate-400">Henüz bağımsız hızlı not eklenmemiş.</div>'}
+                    <h2 class="font-bold text-xs uppercase text-slate-600 px-1">İş Klasörlerine Ait Saha Notları</h2>
+
+                    ${jobsWithNotesHtml || '<div class="p-6 bg-slate-100 rounded-xl border border-slate-300 text-center text-xs text-slate-500">Size atanmış iş klasörü bulunmuyor.</div>'}
 
                 </div>
-
-            </div>
-
-
-
-            <!-- Right: Per-Job Notebook Cards -->
-
-            <div class="lg:col-span-6 space-y-3">
-
-                <h2 class="font-bold text-xs uppercase text-slate-500 px-1">İşlere Ait Saha Not Defterleri</h2>
-
-                ${jobsWithNotesHtml}
 
             </div>
 
@@ -4162,6 +4481,16 @@ async function deleteQuickNote(noteId) {
 
 
 async function convertQuickNoteToJob(noteId) {
+
+    const _curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || null;
+
+    if (_curUser && _curUser.isCloudManaged) {
+
+        showToast('İş klasörleri yalnızca firma yöneticisi web panelinden açılabilir.', 'warning');
+
+        return;
+
+    }
 
     const res = await fetch('/api/quick-notes');
 
@@ -4284,6 +4613,12 @@ async function renderWorkOrdersPage(scope = 'all', tab = 'open') {
 
     const container = document.getElementById('pageContent');
 
+    const curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || null;
+
+    const isManaged = Boolean(curUser && curUser.isCloudManaged);
+
+    const userCloudId = curUser && curUser.cloudId ? String(curUser.cloudId) : '';
+
     const pageTitle = scope === 'my' ? 'Benim İş Emirlerim' : 'Tüm İş Emirleri';
 
     const routeName = scope === 'my' ? 'my-work-orders' : 'all-work-orders';
@@ -4294,7 +4629,13 @@ async function renderWorkOrdersPage(scope = 'all', tab = 'open') {
 
     const rawList = await res.json();
 
-    const allNormalized = (Array.isArray(rawList) ? rawList : (rawList.workOrders || [])).map(normalizeWorkOrder);
+    const allNormalized = (Array.isArray(rawList) ? rawList : (rawList.workOrders || [])).map(normalizeWorkOrder).filter(w => {
+
+        if (userCloudId && w.assigned_user_cloud_id) return String(w.assigned_user_cloud_id) === userCloudId;
+
+        return true;
+
+    });
 
 
 
@@ -4326,11 +4667,15 @@ async function renderWorkOrdersPage(scope = 'all', tab = 'open') {
 
                         class="border border-slate-300 rounded-lg px-3 py-1.5 text-xs w-64 focus:outline-none focus:border-sky-500">
 
-                    <button onclick="openNewWorkOrderModal()" class="px-3.5 py-2 bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs rounded-lg flex items-center gap-1.5">
+                    ${isManaged ? '' : `
 
-                        <i class="fa-solid fa-plus"></i> Yeni İş Emri Ekle
+                        <button onclick="openNewWorkOrderModal()" class="px-3.5 py-2 bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs rounded-lg flex items-center gap-1.5">
 
-                    </button>
+                            <i class="fa-solid fa-plus"></i> Yeni İş Emri Ekle
+
+                        </button>
+
+                    `}
 
                 </div>
 
@@ -4495,6 +4840,16 @@ function filterWorkOrdersTable() {
 
 
 function openNewWorkOrderModal() {
+
+    const _curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || null;
+
+    if (_curUser && _curUser.isCloudManaged) {
+
+        showToast('Yeni iş emirleri yalnızca firma yöneticisi web panelinden oluşturulabilir.', 'warning');
+
+        return;
+
+    }
 
     openModal(
 
@@ -7894,6 +8249,10 @@ function syncGeneratorMeasuringDevicesRef() {
 }
 
 function addManualMeasuringDeviceRow() {
+    if (window.MeasuringDevicesManager && typeof window.MeasuringDevicesManager.isCloudManaged === 'function' && window.MeasuringDevicesManager.isCloudManaged()) {
+        showToast('Yalnızca firma yöneticinizin atadığı ölçüm cihazlarını kullanabilirsiniz.', 'warning');
+        return;
+    }
     const fd = AppState.currentFormData;
     if (!fd) return;
     if (!Array.isArray(fd.measuringDevices)) fd.measuringDevices = [];
@@ -7915,6 +8274,9 @@ function removeMeasuringDeviceRow(dIdx) {
 }
 
 function updateMeasuringDeviceCell(dIdx, field, val) {
+    if (window.MeasuringDevicesManager && typeof window.MeasuringDevicesManager.isCloudManaged === 'function' && window.MeasuringDevicesManager.isCloudManaged()) {
+        return;
+    }
     const fd = AppState.currentFormData;
     if (!fd || !Array.isArray(fd.measuringDevices) || !fd.measuringDevices[dIdx]) return;
     fd.measuringDevices[dIdx][field] = val;
@@ -7936,6 +8298,7 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
     const devices = fd.measuringDevices;
     const mgr = window.MeasuringDevicesManager || null;
     const hasCatalogUi = Boolean(mgr);
+    const isLockedManaged = Boolean(mgr && typeof mgr.isCloudManaged === 'function' && mgr.isCloudManaged());
 
     const cardsHtml = devices.length ? devices.map((dev, dIdx) => {
         const subLabel = [dev.brand, dev.model].filter(Boolean).join(' ').trim();
@@ -7976,11 +8339,11 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
 
                                 <label class="block text-xs font-bold text-slate-700">Cihaz Adı</label>
 
-                                <input type="text" value="${escapeHtml(dev.name || '')}" placeholder=""
+                                <input type="text" value="${escapeHtml(dev.name || '')}" placeholder="" ${isLockedManaged ? 'readonly' : ''}
 
                                     oninput="updateMeasuringDeviceCell(${dIdx}, 'name', this.value)"
 
-                                    class="w-full px-2 py-1.5 border border-slate-300 rounded-lg bg-white font-semibold">
+                                    class="w-full px-2 py-1.5 border border-slate-300 rounded-lg ${isLockedManaged ? 'bg-slate-100 text-slate-700' : 'bg-white'} font-semibold">
 
                             </div>
 
@@ -7988,11 +8351,11 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
 
                                 <label class="block text-xs font-bold text-slate-700">Seri No</label>
 
-                                <input type="text" value="${escapeHtml(dev.serial || '')}" placeholder=""
+                                <input type="text" value="${escapeHtml(dev.serial || '')}" placeholder="" ${isLockedManaged ? 'readonly' : ''}
 
                                     oninput="updateMeasuringDeviceCell(${dIdx}, 'serial', this.value)"
 
-                                    class="w-full px-2 py-1.5 border border-slate-300 rounded-lg bg-white">
+                                    class="w-full px-2 py-1.5 border border-slate-300 rounded-lg ${isLockedManaged ? 'bg-slate-100 text-slate-700' : 'bg-white'}">
 
                             </div>
 
@@ -8000,11 +8363,11 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
 
                                 <label class="block text-xs font-bold text-slate-700">Sertifika No</label>
 
-                                <input type="text" value="${escapeHtml(dev.certNo || '')}" placeholder=""
+                                <input type="text" value="${escapeHtml(dev.certNo || '')}" placeholder="" ${isLockedManaged ? 'readonly' : ''}
 
                                     oninput="updateMeasuringDeviceCell(${dIdx}, 'certNo', this.value)"
 
-                                    class="w-full px-2 py-1.5 border border-slate-300 rounded-lg bg-white">
+                                    class="w-full px-2 py-1.5 border border-slate-300 rounded-lg ${isLockedManaged ? 'bg-slate-100 text-slate-700' : 'bg-white'}">
 
                             </div>
 
@@ -8012,11 +8375,11 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
 
                                 <label class="block text-xs font-bold text-slate-700">Kalibrasyon Tarihi</label>
 
-                                <input type="text" value="${escapeHtml(dev.calDate || '')}" placeholder=""
+                                <input type="text" value="${escapeHtml(dev.calDate || '')}" placeholder="" ${isLockedManaged ? 'readonly' : ''}
 
                                     oninput="updateMeasuringDeviceCell(${dIdx}, 'calDate', this.value)"
 
-                                    class="w-full px-2 py-1.5 border border-slate-300 rounded-lg bg-white">
+                                    class="w-full px-2 py-1.5 border border-slate-300 rounded-lg ${isLockedManaged ? 'bg-slate-100 text-slate-700' : 'bg-white'}">
 
                             </div>
 
@@ -8024,11 +8387,11 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
 
                                 <label class="block text-xs font-bold text-slate-700">Geçerlilik Tarihi</label>
 
-                                <input type="text" value="${escapeHtml(dev.validDate || '')}" placeholder=""
+                                <input type="text" value="${escapeHtml(dev.validDate || '')}" placeholder="" ${isLockedManaged ? 'readonly' : ''}
 
                                     oninput="updateMeasuringDeviceCell(${dIdx}, 'validDate', this.value)"
 
-                                    class="w-full px-2 py-1.5 border border-slate-300 rounded-lg bg-white">
+                                    class="w-full px-2 py-1.5 border border-slate-300 rounded-lg ${isLockedManaged ? 'bg-slate-100 text-slate-700' : 'bg-white'}">
 
                             </div>
 
@@ -8052,11 +8415,13 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
                         <span>Havuzdan Cihaz Ekle</span>
                     </button>
                 ` : ''}
-                <button type="button" onclick="addManualMeasuringDeviceRow()"
-                    class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1">
-                    <i class="fa-solid fa-plus"></i>
-                    <span>+ Boş Satır Ekle</span>
-                </button>
+                ${isLockedManaged ? '' : `
+                    <button type="button" onclick="addManualMeasuringDeviceRow()"
+                        class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>+ Boş Satır Ekle</span>
+                    </button>
+                `}
             </div>
         </div>
     `;
@@ -8080,18 +8445,20 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
                         <button type="button" onclick="openReportAddDeviceModal()"
                             class="px-2 py-1 bg-sky-500 hover:bg-sky-400 active:scale-95 text-slate-950 font-bold rounded-lg text-[11px] flex items-center gap-1 shadow-2xs transition">
                             <i class="fa-solid fa-list-check"></i>
-                            <span>Havuzdan Ekle</span>
+                            <span>${isLockedManaged ? 'Atanan Cihazlardan Ekle' : 'Havuzdan Ekle'}</span>
                         </button>
                     ` : ''}
-                    <button type="button" onclick="addManualMeasuringDeviceRow()"
+                    ${isLockedManaged ? '' : `
+                        <button type="button" onclick="addManualMeasuringDeviceRow()"
 
-                        class="px-2 py-1 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-slate-950 font-bold rounded-lg text-[11px] flex items-center gap-1 shadow-2xs transition">
+                            class="px-2 py-1 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-slate-950 font-bold rounded-lg text-[11px] flex items-center gap-1 shadow-2xs transition">
 
-                        <i class="fa-solid fa-plus"></i>
+                            <i class="fa-solid fa-plus"></i>
 
-                        <span>Manuel</span>
+                            <span>Manuel</span>
 
-                    </button>
+                        </button>
+                    `}
                 </div>
 
             </div>
@@ -8765,6 +9132,12 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
 
     const rows = fd.tableRows[tKey];
 
+    const isThermalSection = (area.index === 1 && topic.index === 0);
+
+    const mgr = window.MeasuringDevicesManager || null;
+
+    const isLockedThermal = Boolean(isThermalSection && mgr && typeof mgr.isCloudManaged === 'function' && mgr.isCloudManaged());
+
     const isSection64 = area.index === 3 && topic.index === 3;
 
     const isSection65 = area.index === 3 && topic.index === 4;
@@ -8839,11 +9212,11 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
 
                     <label class="block text-[11px] font-bold text-slate-700 mb-1 leading-snug break-words">${labelText}</label>
 
-                    <input type="text" value="${String(cellVal).replace(/"/g, '&quot;')}"
+                    <input type="text" value="${String(cellVal).replace(/"/g, '&quot;')}" ${isLockedThermal ? 'readonly' : ''}
 
                         oninput="handleTopicTableCell('${tKey}', ${rIdx}, '${q.guid}', this.value)"
 
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white focus:border-sky-500 focus:outline-none shadow-2xs font-medium">
+                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs ${isLockedThermal ? 'bg-slate-100 text-slate-700' : 'bg-white'} focus:border-sky-500 focus:outline-none shadow-2xs font-medium">
 
                 </div>
 
@@ -8895,9 +9268,6 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
 
 
 
-    const isThermalSection = (area.index === 1 && topic.index === 0);
-
-    const mgr = window.MeasuringDevicesManager || null;
     let thermalToolbarHtml = '';
     if (isThermalSection) {
         const firstGuid = topic.questions?.[0]?.guid;
@@ -8948,11 +9318,15 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
 
                 <div class="font-bold text-xs text-slate-900 leading-snug flex-1">${subNum}. ${topic.name}</div>
 
-                <button onclick="addTopicTableRow('${tKey}', ${area.index}, ${topic.index})" class="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-xs shrink-0 shadow-2xs">
+                ${isLockedThermal ? '' : `
 
-                    + Satır Ekle
+                    <button onclick="addTopicTableRow('${tKey}', ${area.index}, ${topic.index})" class="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-xs shrink-0 shadow-2xs">
 
-                </button>
+                        + Satır Ekle
+
+                    </button>
+
+                `}
 
             </div>
 
@@ -20860,45 +21234,13 @@ const AuthManager = {
 
                 const list = JSON.parse(raw);
 
-                if (Array.isArray(list) && list.length > 0) return list;
+                if (Array.isArray(list)) return list;
 
             }
 
         } catch (e) {}
 
-
-
-        // Standart Varsayılan Mühendis Hesabı
-
-        const defaultUsers = [
-
-            {
-
-                id: 'usr_alisamil',
-
-                username: 'alisamil',
-
-                password: '123',
-
-                fullName: 'Ali Şamil Aytekin',
-
-                title: 'Elektrik Mühendisi',
-
-                ministryRegNo: 'K2023224376',
-
-                diplomaNoDate: '249538 / 28.09.2022',
-
-                emoNo: '64215',
-
-                createdAt: '2026-01-01'
-
-            }
-
-        ];
-
-        this.saveUsers(defaultUsers);
-
-        return defaultUsers;
+        return [];
 
     },
 
@@ -20931,6 +21273,84 @@ const AuthManager = {
         }
 
         return null;
+
+    },
+
+
+
+    upsertCloudUser(data) {
+
+        const users = this.getUsers();
+
+        const cloudId = String(data.cloudId || data.id || '').trim();
+
+        const uname = String(data.username || '').trim();
+
+        const localId = 'cloud_' + cloudId;
+
+        const idx = users.findIndex(u =>
+            (cloudId && String(u.cloudId) === cloudId)
+            || String(u.id) === localId
+            || (uname && String(u.username || '').trim().toLowerCase() === uname.toLowerCase())
+        );
+
+        const existing = idx >= 0 ? users[idx] : {};
+
+        const record = {
+
+            id: localId,
+
+            cloudId,
+
+            tenantId: String(data.tenantId || existing.tenantId || ''),
+
+            tenantName: String(data.tenantName || existing.tenantName || ''),
+
+            username: uname || existing.username || '',
+
+            password: (data.password !== null && data.password !== undefined && data.password !== '')
+                ? String(data.password).trim()
+                : (existing.password || ''),
+
+            role: String(data.role || existing.role || 'inspector'),
+
+            fullName: String(data.fullName || existing.fullName || uname).trim(),
+
+            title: String(data.title || existing.title || 'Elektrik Mühendisi').trim(),
+
+            ministryRegNo: String(data.ministryRegNo !== undefined ? data.ministryRegNo : (existing.ministryRegNo || '')).trim(),
+
+            diplomaNoDate: String(data.diplomaNoDate !== undefined ? data.diplomaNoDate : (existing.diplomaNoDate || '')).trim(),
+
+            emoNo: String(data.emoNo !== undefined ? data.emoNo : (existing.emoNo || '')).trim(),
+
+            cloudToken: data.cloudToken || existing.cloudToken || '',
+
+            isCloudManaged: true,
+
+            lastSyncedAt: data.lastSyncedAt || new Date().toISOString(),
+
+            createdAt: existing.createdAt || new Date().toISOString()
+
+        };
+
+        if (idx >= 0) {
+
+            users[idx] = record;
+
+        } else {
+
+            users.push(record);
+
+        }
+
+        this.saveUsers(users);
+
+        localStorage.setItem(this.STORAGE_SESSION_KEY, record.id);
+
+        if (typeof updateHeaderUserWidget === 'function') updateHeaderUserWidget();
+
+        return record;
 
     },
 
@@ -21168,9 +21588,9 @@ function renderAuthScreen(activeTab = 'login') {
 
                 <div class="mt-2.5 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-400/30 text-[10px] font-bold">
 
-                    <i class="fa-solid fa-shield-halved"></i>
+                    <i class="fa-solid fa-cloud-arrow-down"></i>
 
-                    <span>%100 Çevrimdışı Yetkili Personel Sistemi</span>
+                    <span>Yetkili Saha Personeli Girişi</span>
 
                 </div>
 
@@ -21178,33 +21598,21 @@ function renderAuthScreen(activeTab = 'login') {
 
 
 
-            <!-- TABS -->
+            <!-- FORM AREA -->
 
             <div class="p-4 space-y-4">
 
-                <div class="grid grid-cols-2 p-1 bg-slate-100 rounded-xl gap-1 text-xs font-bold">
+                <div class="p-2.5 rounded-xl bg-sky-50 border border-sky-200 text-[11px] text-sky-900 leading-relaxed flex items-start gap-2">
 
-                    <button onclick="renderAuthScreen('login')"
+                    <i class="fa-solid fa-circle-info text-sky-600 mt-0.5 shrink-0"></i>
 
-                        class="py-2.5 rounded-lg transition ${activeTab === 'login' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}">
-
-                        <i class="fa-solid fa-right-to-bracket mr-1"></i> Giriş Yap
-
-                    </button>
-
-                    <button onclick="renderAuthScreen('register')"
-
-                        class="py-2.5 rounded-lg transition ${activeTab === 'register' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}">
-
-                        <i class="fa-solid fa-user-plus mr-1"></i> Yeni Hesap Oluştur
-
-                    </button>
+                    <span>Kullanıcı adı ve şifrenizi firma yöneticinizden alabilirsiniz. Giriş yaptığınızda üzerinizdeki <strong>ölçüm cihazları</strong> ve <strong>açık iş klasörleri</strong> otomatik yüklenir.</span>
 
                 </div>
 
 
 
-                ${activeTab === 'login' ? renderLoginFormHtml(users) : renderRegisterFormHtml()}
+                ${renderLoginFormHtml(users)}
 
             </div>
 
@@ -21228,7 +21636,7 @@ function renderLoginFormHtml(users) {
 
                     <label class="block font-bold text-slate-700 mb-1 flex items-center justify-between">
 
-                        <span>Kayıtlı Mühendis / Personel Seçin:</span>
+                        <span>Cihazdaki Kayıtlı Hesaplar:</span>
 
                         <span class="text-[10px] text-slate-400 font-normal">Hızlı doldurur</span>
 
@@ -21246,7 +21654,7 @@ function renderLoginFormHtml(users) {
 
                                     <div class="font-bold text-slate-900 truncate">${escapeHtml(u.fullName)}</div>
 
-                                    <div class="text-[10px] text-slate-500 truncate">${escapeHtml(u.title || 'Mühendis')}</div>
+                                    <div class="text-[10px] text-slate-500 truncate">${escapeHtml(u.tenantName || u.title || 'Mühendis')}</div>
 
                                 </div>
 
@@ -21268,7 +21676,7 @@ function renderLoginFormHtml(users) {
 
                 <label class="block font-bold text-slate-700 mb-1">Kullanıcı Adı</label>
 
-                <input type="text" id="loginUsername" placeholder="Kullanıcı adınızı girin"
+                <input type="text" id="loginUsername" placeholder="Yöneticinizin verdiği kullanıcı adı"
 
                     class="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:border-sky-500 focus:outline-none bg-white">
 
@@ -21298,19 +21706,21 @@ function renderLoginFormHtml(users) {
 
                 </div>
 
-                <p class="text-[10px] text-slate-400 mt-1">Varsayılan demo şifresi: <strong>123</strong></p>
-
             </div>
 
 
 
-            <button type="button" onclick="handleLoginSubmit()"
+            <div id="loginSyncStatus" class="hidden p-2.5 rounded-xl text-[11px] font-semibold"></div>
+
+
+
+            <button type="button" id="loginSubmitBtn" onclick="handleLoginSubmit()"
 
                 class="w-full py-3 bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-1.5">
 
                 <i class="fa-solid fa-right-to-bracket"></i>
 
-                <span>Giriş Yap ve Raporlara Başla</span>
+                <span>Giriş Yap ve Cihazları / İşleri Yükle</span>
 
             </button>
 
@@ -21494,27 +21904,105 @@ function togglePasswordVisibility(inputId, btn) {
 
 
 
-function handleLoginSubmit() {
+async function handleLoginSubmit() {
 
-    const u = document.getElementById('loginUsername')?.value;
+    const u = (document.getElementById('loginUsername')?.value || '').trim();
 
-    const p = document.getElementById('loginPassword')?.value;
+    const p = (document.getElementById('loginPassword')?.value || '').trim();
 
     if (!u || !p) return showToast('Lütfen kullanıcı adı ve şifre girin', 'warning');
 
 
 
-    const res = AuthManager.login(u, p);
+    const btn = document.getElementById('loginSubmitBtn');
 
-    if (res.success) {
+    const statusEl = document.getElementById('loginSyncStatus');
 
-        showToast(`Hoş geldiniz, ${res.user.fullName}!`);
+    const setStatus = (msg, cls) => {
 
-        navigateTo('home');
+        if (!statusEl) return;
 
-    } else {
+        statusEl.textContent = msg;
 
-        showToast(res.message, 'error');
+        statusEl.className = `p-2.5 rounded-xl text-[11px] font-semibold ${cls}`;
+
+        statusEl.classList.remove('hidden');
+
+    };
+
+
+
+    if (btn) {
+
+        btn.disabled = true;
+
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i><span>Buluta bağlanılıyor...</span>';
+
+    }
+
+    setStatus('Firma hesabınız doğrulanıyor, cihazlarınız ve iş klasörleriniz alınıyor...', 'bg-sky-50 text-sky-800 border border-sky-200');
+
+
+
+    try {
+
+        if (window.CloudAppSync && typeof window.CloudAppSync.loginOnline === 'function') {
+
+            const cloudRes = await window.CloudAppSync.loginOnline(u, p);
+
+            if (cloudRes.success) {
+
+                showToast(`Hoş geldiniz, ${cloudRes.user?.fullName || u}! (${cloudRes.deviceCount} cihaz, ${cloudRes.workOrderCount} iş klasörü)`);
+
+                navigateTo('home');
+
+                return;
+
+            }
+
+            if (cloudRes.authError) {
+
+                setStatus(cloudRes.message || 'Kullanıcı adı veya şifre hatalı!', 'bg-rose-50 text-rose-800 border border-rose-200');
+
+                showToast(cloudRes.message || 'Kullanıcı adı veya şifre hatalı!', 'error');
+
+                return;
+
+            }
+
+        }
+
+
+
+        // Yalnızca sunucuya ulaşılamadığında (çevrimdışı) daha önce giriş yapılmış yerel hesaba düş
+
+        const res = AuthManager.login(u, p);
+
+        if (res.success) {
+
+            showToast(`Çevrimdışı giriş yapıldı: ${res.user.fullName}`, 'info');
+
+            navigateTo('home');
+
+        } else {
+
+            const offlineMsg = 'İnternete ulaşılamadı ve bu cihazda kayıtlı çevrimdışı oturum bulunamadı. İlk girişte internet bağlantısı gereklidir.';
+
+            setStatus(offlineMsg, 'bg-amber-50 text-amber-900 border border-amber-200');
+
+            showToast(offlineMsg, 'error');
+
+        }
+
+    } finally {
+
+        if (btn) {
+
+            btn.disabled = false;
+
+            btn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i><span>Giriş Yap ve Cihazları / İşleri Yükle</span>';
+
+        }
 
     }
 
@@ -21572,6 +22060,8 @@ function openUserProfileModal() {
 
     if (!user) return renderAuthScreen('login');
 
+    const isManaged = Boolean(user.isCloudManaged);
+
 
 
     openModal(
@@ -21618,7 +22108,9 @@ function openUserProfileModal() {
 
             <div class="p-3 bg-sky-50 border border-sky-200 rounded-xl text-sky-900 text-[11px] leading-relaxed">
 
-                Bu bilgiler resmi A4 PDF raporlarının <strong>"Muayene Personeli"</strong> ve onay bölümlerinde basılmaktadır. İhtiyaç halinde buradan güncelleyebilirsiniz.
+                ${isManaged
+                    ? 'Bu bilgiler firma yöneticiniz tarafından belirlenmiştir ve resmi A4 PDF raporlarının <strong>"Muayene Personeli"</strong> bölümünde basılmaktadır. Güncelleme için firma yöneticinize başvurun.'
+                    : 'Bu bilgiler resmi A4 PDF raporlarının <strong>"Muayene Personeli"</strong> ve onay bölümlerinde basılmaktadır. İhtiyaç halinde buradan güncelleyebilirsiniz.'}
 
             </div>
 
@@ -21628,9 +22120,9 @@ function openUserProfileModal() {
 
                 <label class="block font-bold text-slate-700 mb-0.5">Adı Soyadı</label>
 
-                <input type="text" id="profFullName" value="${escapeHtml(user.fullName || '')}"
+                <input type="text" id="profFullName" value="${escapeHtml(user.fullName || '')}" ${isManaged ? 'readonly' : ''}
 
-                    class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-bold text-slate-900 bg-white">
+                    class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-bold text-slate-900 ${isManaged ? 'bg-slate-100 text-slate-600' : 'bg-white'}">
 
             </div>
 
@@ -21642,9 +22134,9 @@ function openUserProfileModal() {
 
                     <label class="block font-bold text-slate-700 mb-0.5">Meslek / Unvan</label>
 
-                    <input type="text" id="profTitle" value="${escapeHtml(user.title || 'Elektrik Mühendisi')}"
+                    <input type="text" id="profTitle" value="${escapeHtml(user.title || 'Elektrik Mühendisi')}" ${isManaged ? 'readonly' : ''}
 
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-semibold bg-white">
+                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-semibold ${isManaged ? 'bg-slate-100 text-slate-600' : 'bg-white'}">
 
                 </div>
 
@@ -21652,9 +22144,9 @@ function openUserProfileModal() {
 
                     <label class="block font-bold text-slate-700 mb-0.5">Bakanlık Kayıt No</label>
 
-                    <input type="text" id="profMinistry" value="${escapeHtml(user.ministryRegNo || '')}"
+                    <input type="text" id="profMinistry" value="${escapeHtml(user.ministryRegNo || '')}" ${isManaged ? 'readonly' : ''}
 
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono bg-white">
+                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono ${isManaged ? 'bg-slate-100 text-slate-600' : 'bg-white'}">
 
                 </div>
 
@@ -21668,9 +22160,9 @@ function openUserProfileModal() {
 
                     <label class="block font-bold text-slate-700 mb-0.5">Diploma No / Tarih</label>
 
-                    <input type="text" id="profDiploma" value="${escapeHtml(user.diplomaNoDate || '')}"
+                    <input type="text" id="profDiploma" value="${escapeHtml(user.diplomaNoDate || '')}" ${isManaged ? 'readonly' : ''}
 
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono bg-white">
+                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono ${isManaged ? 'bg-slate-100 text-slate-600' : 'bg-white'}">
 
                 </div>
 
@@ -21678,9 +22170,9 @@ function openUserProfileModal() {
 
                     <label class="block font-bold text-slate-700 mb-0.5">EMO / Oda Sicil No</label>
 
-                    <input type="text" id="profEmo" value="${escapeHtml(user.emoNo || '')}"
+                    <input type="text" id="profEmo" value="${escapeHtml(user.emoNo || '')}" ${isManaged ? 'readonly' : ''}
 
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono bg-white">
+                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono ${isManaged ? 'bg-slate-100 text-slate-600' : 'bg-white'}">
 
                 </div>
 
@@ -21688,6 +22180,7 @@ function openUserProfileModal() {
 
 
 
+            ${isManaged ? '' : `
             <div>
 
                 <label class="block font-bold text-slate-700 mb-0.5">Şifre Değiştir (İsteğe Bağlı)</label>
@@ -21697,6 +22190,7 @@ function openUserProfileModal() {
                     class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono bg-white">
 
             </div>
+            `}
 
         </div>
 
@@ -21706,11 +22200,13 @@ function openUserProfileModal() {
 
         <button onclick="closeModal()" class="px-3 py-2 bg-slate-200 text-slate-800 font-bold text-xs rounded-lg">Kapat</button>
 
+        ${isManaged ? '' : `
         <button onclick="saveUserProfileSubmit('${user.id}')" class="px-4 py-2 bg-emerald-600 active:bg-emerald-700 text-white font-bold text-xs rounded-lg active:scale-95 shadow-sm">
 
             <i class="fa-solid fa-floppy-disk mr-1"></i>Bilgileri Kaydet
 
         </button>
+        `}
 
         `
 
@@ -21793,6 +22289,16 @@ window.updateHeaderUserWidget = updateHeaderUserWidget;
 // ============================================================================
 
 function openCompanySettingsModal() {
+
+    const curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || null;
+
+    if (curUser && curUser.isCloudManaged) {
+
+        showToast('Firma ve rapor antet bilgileri yalnızca firma yöneticisi web panelinden değiştirilebilir.', 'warning');
+
+        return;
+
+    }
 
     const s = CompanySettingsManager.getSettings();
 
@@ -22378,6 +22884,8 @@ async function renderSettingsPage() {
 
     const curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || null;
 
+    const isManaged = Boolean(curUser && curUser.isCloudManaged);
+
     const branding = (typeof CompanySettingsManager !== 'undefined') ? CompanySettingsManager.getSettings() : DEFAULT_COMPANY_BRANDING;
 
     const logoSrc = (typeof CompanySettingsManager !== 'undefined') ? CompanySettingsManager.getLogoSrc() : 'assets/tekkomer_logo.png';
@@ -22424,9 +22932,9 @@ async function renderSettingsPage() {
 
                 </div>
 
-                <span class="text-[10px] bg-sky-50 text-sky-700 border border-sky-200 px-2 py-0.5 rounded-full font-bold shrink-0">
+                <span class="text-[10px] ${isManaged ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-sky-50 text-sky-700 border-sky-200'} border px-2 py-0.5 rounded-full font-bold shrink-0">
 
-                    %100 Çevrimdışı
+                    ${isManaged ? 'Bulut + Çevrimdışı' : '%100 Çevrimdışı'}
 
                 </span>
 
@@ -22450,7 +22958,7 @@ async function renderSettingsPage() {
 
                     <span class="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
 
-                        Aktif Personel
+                        ${isManaged && curUser.tenantName ? escapeHtml(curUser.tenantName) : 'Aktif Personel'}
 
                     </span>
 
@@ -22492,13 +23000,20 @@ async function renderSettingsPage() {
 
 
 
+                ${isManaged ? `
+                    <button type="button" onclick="window.CloudAppSync && window.CloudAppSync.syncNow()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-xs">
+                        <i class="fa-solid fa-arrows-rotate"></i>
+                        <span>Buluttan Senkronize Et (İş Klasörleri &amp; Cihazlar)</span>
+                    </button>
+                ` : ''}
+
                 <div class="grid grid-cols-2 gap-2 pt-1 border-t border-slate-700/60">
 
                     <button onclick="openUserProfileModal()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-sky-300 border border-slate-600/80 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-xs">
 
-                        <i class="fa-solid fa-user-pen text-amber-400"></i>
+                        <i class="fa-solid fa-id-card text-amber-400"></i>
 
-                        <span>Profilimi Düzenle</span>
+                        <span>${isManaged ? 'Profil Bilgilerim' : 'Profilimi Düzenle'}</span>
 
                     </button>
 
@@ -22572,13 +23087,19 @@ async function renderSettingsPage() {
 
 
 
-                <button onclick="openCompanySettingsModal()" class="w-full py-2.5 btn-craft-primary active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition">
+                ${isManaged ? `
+                    <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 text-center">
+                        Firma adı, rapor ön eki ve akreditasyon bilgileri firma yöneticisi web panelinden otomatik gelir.
+                    </div>
+                ` : `
+                    <button onclick="openCompanySettingsModal()" class="w-full py-2.5 btn-craft-primary active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition">
 
-                    <i class="fa-solid fa-pen-nib"></i>
+                        <i class="fa-solid fa-pen-nib"></i>
 
-                    <span>Şirket Adı, Logo ve Akreditasyonu Düzenle</span>
+                        <span>Şirket Adı, Logo ve Akreditasyonu Düzenle</span>
 
-                </button>
+                    </button>
+                `}
 
             </div>
 
@@ -22673,7 +23194,7 @@ async function renderSettingsPage() {
                         <span>Aktif Şirket: <strong class="text-slate-900">${escapeHtml(activeComp.companyName)}</strong></span>
                         <span class="font-mono text-[10px] bg-white px-2 py-0.5 rounded border border-slate-200 text-indigo-700 font-bold">Ön Ek: /p/${escapeHtml(activeComp.companySlug)}-...</span>
                     </div>
-                    ${!activeComp.isCustomized ? `
+                    ${!activeComp.isCustomized && !isManaged ? `
                         <div class="pt-1 flex items-center justify-between gap-2 border-t border-emerald-200/70 text-[10px] text-amber-800">
                             <span>Kendi şirket kısaltmanızla (/p/tkm-...) göndermek için şirket adınızı girin.</span>
                             <button type="button" onclick="openCompanySettingsModal()" class="font-bold text-indigo-700 underline shrink-0">Şirket Adını Düzenle</button>
@@ -22835,13 +23356,13 @@ async function renderSettingsPage() {
 
                 <p class="text-xs text-slate-600 leading-relaxed">
 
-                    Saha raporlarının ve iş klasörlerinin kazara silinmesini önlemek amacıyla, tüm silme işlemlerinde aktif personel şifreniz (varsayılan: <strong>123</strong>) istenmektedir.
+                    Saha raporlarının ve iş klasörlerinin kazara silinmesini önlemek amacıyla, tüm silme işlemlerinde aktif personel giriş şifreniz istenmektedir.
 
                 </p>
 
                 <div class="text-[11px] text-slate-500 pt-1">
 
-                    Şifrenizi yukarıdaki <strong>"Profilimi Düzenle"</strong> butonundan dilediğiniz zaman güncelleyebilirsiniz.
+                    ${isManaged ? 'Şifre değişikliği için firma yöneticinize başvurabilirsiniz.' : 'Şifrenizi yukarıdaki <strong>"Profilimi Düzenle"</strong> butonundan dilediğiniz zaman güncelleyebilirsiniz.'}
 
                 </div>
 
@@ -24892,6 +25413,295 @@ ${ramsCss}
         const urlVal = normalizePortalUrl(document.getElementById('settingsPortalUrl')?.value || '') || getPortalConfig().portalUrl;
         window.open(urlVal, '_blank', 'noopener');
     }
+
+    // ========================================================================
+    // 7. SAHA PERSONELİ BULUT GİRİŞ & CİHAZ / İŞ KLASÖRÜ SENKRONİZASYONU
+    // ========================================================================
+    function resolveTemplateMeta(tplId) {
+        const idStr = String(tplId || '2201');
+        const list = (window.ENLAB_REPORT_TEMPLATES || []).concat(window.ENLAB_ALL_REPORT_TEMPLATES_BACKUP || []);
+        const found = list.find(t => String(t.id) === idStr);
+        if (found) return { id: found.id, code: found.code || 'TKM-FR.318', name: found.name || 'Elektrik Periyodik Kontrol' };
+        if (idStr === '2202') return { id: '2202', code: 'TKM-FR.317', name: 'ALÇAK GERİLİM TOPRAKLAMA TESİSATI' };
+        if (idStr === '2205') return { id: '2205', code: 'TKM-FR.164', name: 'JENERATÖR PERİYODİK KONTROLÜ' };
+        return { id: '2201', code: 'TKM-FR.318', name: 'ELEKTRİK İÇ TESİSATI GÖZLE KONTROL VE TESTLERİ' };
+    }
+
+    function applyTenantBranding(tenant) {
+        if (!tenant || typeof CompanySettingsManager === 'undefined') return;
+        const b = (tenant.branding_json && typeof tenant.branding_json === 'object') ? tenant.branding_json : {};
+        const patch = {};
+        if (b.companyFullName || tenant.name) patch.companyFullName = b.companyFullName || tenant.name;
+        if (b.companyShortName || tenant.name) patch.companyShortName = b.companyShortName || tenant.name;
+        if (b.companyAddress !== undefined) patch.companyAddress = b.companyAddress;
+        if (b.companyPhone !== undefined) patch.companyPhone = b.companyPhone;
+        if (b.companyEmail !== undefined) patch.companyEmail = b.companyEmail;
+        if (b.reportNoPrefix) patch.reportNoPrefix = b.reportNoPrefix;
+        if (b.accreditationNo !== undefined) patch.accreditationNo = b.accreditationNo;
+        try {
+            CompanySettingsManager.saveSettings(patch);
+            if (typeof CompanySettingsManager.syncHeaderTitle === 'function') {
+                CompanySettingsManager.syncHeaderTitle();
+            }
+        } catch (e) {}
+    }
+
+    function syncCloudWorkOrders(cloudWorkOrders, userRecord) {
+        if (!window.OfflineDB) return { added: 0, updated: 0 };
+        window.OfflineDB.init();
+        const db = window.OfflineDB.state;
+        if (!Array.isArray(db.workOrders)) db.workOrders = [];
+        if (!Array.isArray(db.inspections)) db.inspections = [];
+
+        const list = Array.isArray(cloudWorkOrders) ? cloudWorkOrders : [];
+        const cloudIds = new Set(list.map(w => String(w.id)));
+        const uid = String(userRecord.cloudId || userRecord.id || '');
+        const todayStr = new Date().toLocaleDateString('tr-TR');
+        let added = 0;
+        let updated = 0;
+
+        // 1. Yönetici tarafından kaldırılan/başkasına devredilen ve henüz yerel değişmemiş klasörleri temizle
+        db.workOrders = db.workOrders.filter(localWo => {
+            if (!localWo.assigned_by_manager || !localWo.cloud_wo_id) return true;
+            if (localWo.assigned_user_cloud_id && uid && String(localWo.assigned_user_cloud_id) !== uid) return true;
+            if (cloudIds.has(String(localWo.cloud_wo_id))) return true;
+            // Sadece hiç düzenleme yapılmamış taslakları sil; düzenlenmiş rapor varsa koru
+            const childInsps = db.inspections.filter(i => String(i.work_order_id) === String(localWo.id));
+            const hasEdited = childInsps.some(i => i.status && i.status !== 'Tamamlanacak');
+            if (hasEdited) return true;
+            db.inspections = db.inspections.filter(i => String(i.work_order_id) !== String(localWo.id));
+            return false;
+        });
+
+        // 2. Gelen iş klasörlerini oluştur / güncelle
+        list.forEach((wo, idx) => {
+            const existing = db.workOrders.find(w => String(w.cloud_wo_id) === String(wo.id));
+            if (existing) {
+                existing.code = wo.work_order_code || existing.code;
+                existing.company_name = wo.company_name || existing.company_name;
+                existing.company_branch = wo.company_branch || '';
+                existing.company_address = wo.company_address || '';
+                existing.isg_katip_no = wo.isg_katip_no || '';
+                existing.sgk_sicil_no = wo.sgk_sicil_no || '';
+                existing.contact_email = wo.contact_email || existing.contact_email || '';
+                if (!existing.field_notes && wo.field_notes) existing.field_notes = wo.field_notes;
+                existing.assigned_user_cloud_id = uid;
+                existing.assigned_to = userRecord.fullName || existing.assigned_to;
+                existing.assigned_by_manager = true;
+                existing.cloud_status = wo.status || 'open';
+                existing.is_open = wo.status === 'completed' ? 0 : 1;
+                updated++;
+                return;
+            }
+
+            const newWoId = Date.now() + idx + Math.floor(Math.random() * 100);
+            const newWo = {
+                id: newWoId,
+                cloud_wo_id: String(wo.id),
+                assigned_user_cloud_id: uid,
+                assigned_by_manager: true,
+                cloud_status: wo.status || 'open',
+                code: wo.work_order_code || `HZL-${newWoId}`,
+                proposal_no: 'TKL-SAHA',
+                company_name: wo.company_name || 'İşyeri',
+                company_branch: wo.company_branch || '',
+                company_address: wo.company_address || '',
+                isg_katip_no: wo.isg_katip_no || '',
+                sgk_sicil_no: wo.sgk_sicil_no || '',
+                contact_email: wo.contact_email || '',
+                field_notes: wo.field_notes || '',
+                start_date: todayStr,
+                end_date: todayStr,
+                assigned_to: userRecord.fullName || '',
+                status: 'Açık',
+                is_open: wo.status === 'completed' ? 0 : 1,
+                is_mine: 1,
+                inspection_count: 0,
+                files_json: '[]'
+            };
+            db.workOrders.unshift(newWo);
+
+            const tpls = Array.isArray(wo.template_ids) ? wo.template_ids : [];
+            const prefix = (typeof CompanySettingsManager !== 'undefined' && CompanySettingsManager.getSettings().reportNoPrefix) || 'HZL-';
+            tpls.forEach((tplId, tIdx) => {
+                const meta = resolveTemplateMeta(tplId);
+                const inspId = newWoId + 1000 + tIdx * 17 + Math.floor(Math.random() * 10);
+                const reportNo = `${prefix}${new Date().toISOString().slice(2, 4)}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(54100 + Math.random() * 5800)}`;
+                const formData = {
+                    companyInfo: {
+                        firmName: newWo.company_name,
+                        address: newWo.company_address,
+                        isgKatipNo: newWo.isg_katip_no,
+                        sgkSicilNo: newWo.sgk_sicil_no,
+                        contactEmail: newWo.contact_email,
+                        reportNo,
+                        reportDate: todayStr
+                    }
+                };
+                if (window.MeasuringDevicesManager && typeof window.MeasuringDevicesManager.applyDefaultsToFormData === 'function') {
+                    window.MeasuringDevicesManager.applyDefaultsToFormData(formData, meta.id, false);
+                }
+                const inspObj = {
+                    id: inspId,
+                    work_order_id: newWoId,
+                    work_order_code: newWo.code,
+                    report_no: reportNo,
+                    template_id: String(meta.id),
+                    template_code: meta.code,
+                    company_name: newWo.company_name,
+                    company_branch: newWo.company_branch,
+                    address: newWo.company_address,
+                    isg_katip_no: newWo.isg_katip_no,
+                    sgk_sicil_no: newWo.sgk_sicil_no,
+                    equipment_name: meta.name,
+                    accreditation: 'AK',
+                    serial_no: '',
+                    location: '',
+                    inspector: userRecord.fullName || '',
+                    approver: '',
+                    status: 'Tamamlanacak',
+                    result: 'UYGUN',
+                    inspection_date: todayStr,
+                    end_date: todayStr,
+                    report_date: todayStr,
+                    is_mine: 1,
+                    data_json: JSON.stringify(formData)
+                };
+                db.inspections.unshift(inspObj);
+            });
+            newWo.inspection_count = tpls.length;
+            added++;
+        });
+
+        window.OfflineDB.save();
+        return { added, updated };
+    }
+
+    function applyCloudSyncPayload(data, rawPassword = null) {
+        if (!data || !data.user) return null;
+        let userRecord = null;
+        if (typeof window.AuthManager !== 'undefined' && typeof window.AuthManager.upsertCloudUser === 'function') {
+            userRecord = window.AuthManager.upsertCloudUser({
+                cloudId: data.user.id,
+                tenantId: data.tenant ? data.tenant.id : data.user.tenant_id,
+                tenantName: data.tenant ? data.tenant.name : '',
+                username: data.user.username,
+                password: rawPassword,
+                role: data.user.role || 'inspector',
+                fullName: data.user.full_name,
+                title: data.user.title || 'Elektrik Mühendisi',
+                ministryRegNo: data.user.ministry_reg_no || '',
+                diplomaNoDate: data.user.diploma_no_date || '',
+                emoNo: data.user.emo_no || '',
+                cloudToken: data.token || undefined,
+                lastSyncedAt: data.synced_at || new Date().toISOString()
+            });
+        }
+        if (data.tenant) {
+            applyTenantBranding(data.tenant);
+        }
+        if (window.MeasuringDevicesManager && typeof window.MeasuringDevicesManager.syncCloudDevices === 'function') {
+            window.MeasuringDevicesManager.syncCloudDevices(
+                Array.isArray(data.devices) ? data.devices : [],
+                userRecord ? userRecord.id : null
+            );
+        }
+        if (userRecord) {
+            syncCloudWorkOrders(Array.isArray(data.work_orders) ? data.work_orders : [], userRecord);
+        }
+        if (typeof window.updateHeaderUserWidget === 'function') {
+            window.updateHeaderUserWidget();
+        }
+        return userRecord;
+    }
+
+    async function loginOnline(username, password) {
+        const cfg = getPortalConfig();
+        const url = `${cfg.portalUrl}/api/app-sync`;
+        try {
+            const res = await realFetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'login',
+                    username: String(username || '').trim(),
+                    password: String(password || '').trim()
+                })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.ok) {
+                return {
+                    success: false,
+                    authError: res.status === 400 || res.status === 401 || res.status === 403,
+                    message: data.error || 'Kullanıcı adı veya şifre hatalı!'
+                };
+            }
+            const user = applyCloudSyncPayload(data, String(password || '').trim());
+            return {
+                success: true,
+                user,
+                deviceCount: Array.isArray(data.devices) ? data.devices.length : 0,
+                workOrderCount: Array.isArray(data.work_orders) ? data.work_orders.length : 0
+            };
+        } catch (err) {
+            return {
+                success: false,
+                networkError: true,
+                message: err && err.message ? err.message : 'Sunucuya ulaşılamadı'
+            };
+        }
+    }
+
+    let _syncPromise = null;
+    async function syncNow({ silent = false } = {}) {
+        const curUser = (typeof window.AuthManager !== 'undefined' && window.AuthManager.getCurrentUser()) || null;
+        if (!curUser || !curUser.isCloudManaged || !curUser.cloudToken) {
+            if (!silent) toast('Bulut senkronizasyonu için şirket hesabınızla giriş yapın.', 'warning');
+            return { ok: false, reason: 'no_cloud_session' };
+        }
+        if (navigator.onLine === false) {
+            if (!silent) toast('İnternet bağlantısı yok — çevrimdışı modda çalışılıyor.', 'warning');
+            return { ok: false, reason: 'offline' };
+        }
+        if (_syncPromise) return _syncPromise;
+
+        _syncPromise = (async () => {
+            try {
+                const cfg = getPortalConfig();
+                const res = await realFetch(`${cfg.portalUrl}/api/app-sync`, {
+                    method: 'GET',
+                    headers: { 'X-App-Token': curUser.cloudToken }
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || !data.ok) {
+                    if (!silent) toast(data.error || 'Senkronizasyon başarısız oldu.', 'error');
+                    return { ok: false, status: res.status, error: data.error };
+                }
+                applyCloudSyncPayload(data, null);
+                if (!silent) {
+                    toast(`Güncellendi: ${(data.devices || []).length} cihaz, ${(data.work_orders || []).length} iş klasörü`, 'success');
+                }
+                if (window.AppState && window.AppState.currentRoute === 'home' && typeof window.renderHome === 'function') {
+                    window.renderHome({ skipSync: true });
+                } else if (window.AppState && window.AppState.currentRoute === 'settings' && typeof window.renderSettingsPage === 'function') {
+                    window.renderSettingsPage();
+                }
+                return { ok: true, devices: (data.devices || []).length, workOrders: (data.work_orders || []).length };
+            } catch (err) {
+                if (!silent) toast('İnternet bağlantısı kurulamadı; çevrimdışı veriler korunuyor.', 'warning');
+                return { ok: false, networkError: true };
+            } finally {
+                _syncPromise = null;
+            }
+        })();
+        return _syncPromise;
+    }
+
+    window.CloudAppSync = {
+        loginOnline,
+        syncNow,
+        applySyncPayload: applyCloudSyncPayload
+    };
 
     window.CloudPortal = {
         DEFAULT_PORTAL_URL: DEFAULT_CLOUD_PORTAL_URL,

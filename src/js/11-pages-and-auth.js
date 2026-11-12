@@ -1749,45 +1749,13 @@ const AuthManager = {
 
                 const list = JSON.parse(raw);
 
-                if (Array.isArray(list) && list.length > 0) return list;
+                if (Array.isArray(list)) return list;
 
             }
 
         } catch (e) {}
 
-
-
-        // Standart Varsayılan Mühendis Hesabı
-
-        const defaultUsers = [
-
-            {
-
-                id: 'usr_alisamil',
-
-                username: 'alisamil',
-
-                password: '123',
-
-                fullName: 'Ali Şamil Aytekin',
-
-                title: 'Elektrik Mühendisi',
-
-                ministryRegNo: 'K2023224376',
-
-                diplomaNoDate: '249538 / 28.09.2022',
-
-                emoNo: '64215',
-
-                createdAt: '2026-01-01'
-
-            }
-
-        ];
-
-        this.saveUsers(defaultUsers);
-
-        return defaultUsers;
+        return [];
 
     },
 
@@ -1820,6 +1788,84 @@ const AuthManager = {
         }
 
         return null;
+
+    },
+
+
+
+    upsertCloudUser(data) {
+
+        const users = this.getUsers();
+
+        const cloudId = String(data.cloudId || data.id || '').trim();
+
+        const uname = String(data.username || '').trim();
+
+        const localId = 'cloud_' + cloudId;
+
+        const idx = users.findIndex(u =>
+            (cloudId && String(u.cloudId) === cloudId)
+            || String(u.id) === localId
+            || (uname && String(u.username || '').trim().toLowerCase() === uname.toLowerCase())
+        );
+
+        const existing = idx >= 0 ? users[idx] : {};
+
+        const record = {
+
+            id: localId,
+
+            cloudId,
+
+            tenantId: String(data.tenantId || existing.tenantId || ''),
+
+            tenantName: String(data.tenantName || existing.tenantName || ''),
+
+            username: uname || existing.username || '',
+
+            password: (data.password !== null && data.password !== undefined && data.password !== '')
+                ? String(data.password).trim()
+                : (existing.password || ''),
+
+            role: String(data.role || existing.role || 'inspector'),
+
+            fullName: String(data.fullName || existing.fullName || uname).trim(),
+
+            title: String(data.title || existing.title || 'Elektrik Mühendisi').trim(),
+
+            ministryRegNo: String(data.ministryRegNo !== undefined ? data.ministryRegNo : (existing.ministryRegNo || '')).trim(),
+
+            diplomaNoDate: String(data.diplomaNoDate !== undefined ? data.diplomaNoDate : (existing.diplomaNoDate || '')).trim(),
+
+            emoNo: String(data.emoNo !== undefined ? data.emoNo : (existing.emoNo || '')).trim(),
+
+            cloudToken: data.cloudToken || existing.cloudToken || '',
+
+            isCloudManaged: true,
+
+            lastSyncedAt: data.lastSyncedAt || new Date().toISOString(),
+
+            createdAt: existing.createdAt || new Date().toISOString()
+
+        };
+
+        if (idx >= 0) {
+
+            users[idx] = record;
+
+        } else {
+
+            users.push(record);
+
+        }
+
+        this.saveUsers(users);
+
+        localStorage.setItem(this.STORAGE_SESSION_KEY, record.id);
+
+        if (typeof updateHeaderUserWidget === 'function') updateHeaderUserWidget();
+
+        return record;
 
     },
 
@@ -2057,9 +2103,9 @@ function renderAuthScreen(activeTab = 'login') {
 
                 <div class="mt-2.5 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-400/30 text-[10px] font-bold">
 
-                    <i class="fa-solid fa-shield-halved"></i>
+                    <i class="fa-solid fa-cloud-arrow-down"></i>
 
-                    <span>%100 Çevrimdışı Yetkili Personel Sistemi</span>
+                    <span>Yetkili Saha Personeli Girişi</span>
 
                 </div>
 
@@ -2067,33 +2113,21 @@ function renderAuthScreen(activeTab = 'login') {
 
 
 
-            <!-- TABS -->
+            <!-- FORM AREA -->
 
             <div class="p-4 space-y-4">
 
-                <div class="grid grid-cols-2 p-1 bg-slate-100 rounded-xl gap-1 text-xs font-bold">
+                <div class="p-2.5 rounded-xl bg-sky-50 border border-sky-200 text-[11px] text-sky-900 leading-relaxed flex items-start gap-2">
 
-                    <button onclick="renderAuthScreen('login')"
+                    <i class="fa-solid fa-circle-info text-sky-600 mt-0.5 shrink-0"></i>
 
-                        class="py-2.5 rounded-lg transition ${activeTab === 'login' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}">
-
-                        <i class="fa-solid fa-right-to-bracket mr-1"></i> Giriş Yap
-
-                    </button>
-
-                    <button onclick="renderAuthScreen('register')"
-
-                        class="py-2.5 rounded-lg transition ${activeTab === 'register' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}">
-
-                        <i class="fa-solid fa-user-plus mr-1"></i> Yeni Hesap Oluştur
-
-                    </button>
+                    <span>Kullanıcı adı ve şifrenizi firma yöneticinizden alabilirsiniz. Giriş yaptığınızda üzerinizdeki <strong>ölçüm cihazları</strong> ve <strong>açık iş klasörleri</strong> otomatik yüklenir.</span>
 
                 </div>
 
 
 
-                ${activeTab === 'login' ? renderLoginFormHtml(users) : renderRegisterFormHtml()}
+                ${renderLoginFormHtml(users)}
 
             </div>
 
@@ -2117,7 +2151,7 @@ function renderLoginFormHtml(users) {
 
                     <label class="block font-bold text-slate-700 mb-1 flex items-center justify-between">
 
-                        <span>Kayıtlı Mühendis / Personel Seçin:</span>
+                        <span>Cihazdaki Kayıtlı Hesaplar:</span>
 
                         <span class="text-[10px] text-slate-400 font-normal">Hızlı doldurur</span>
 
@@ -2135,7 +2169,7 @@ function renderLoginFormHtml(users) {
 
                                     <div class="font-bold text-slate-900 truncate">${escapeHtml(u.fullName)}</div>
 
-                                    <div class="text-[10px] text-slate-500 truncate">${escapeHtml(u.title || 'Mühendis')}</div>
+                                    <div class="text-[10px] text-slate-500 truncate">${escapeHtml(u.tenantName || u.title || 'Mühendis')}</div>
 
                                 </div>
 
@@ -2157,7 +2191,7 @@ function renderLoginFormHtml(users) {
 
                 <label class="block font-bold text-slate-700 mb-1">Kullanıcı Adı</label>
 
-                <input type="text" id="loginUsername" placeholder="Kullanıcı adınızı girin"
+                <input type="text" id="loginUsername" placeholder="Yöneticinizin verdiği kullanıcı adı"
 
                     class="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:border-sky-500 focus:outline-none bg-white">
 
@@ -2187,19 +2221,21 @@ function renderLoginFormHtml(users) {
 
                 </div>
 
-                <p class="text-[10px] text-slate-400 mt-1">Varsayılan demo şifresi: <strong>123</strong></p>
-
             </div>
 
 
 
-            <button type="button" onclick="handleLoginSubmit()"
+            <div id="loginSyncStatus" class="hidden p-2.5 rounded-xl text-[11px] font-semibold"></div>
+
+
+
+            <button type="button" id="loginSubmitBtn" onclick="handleLoginSubmit()"
 
                 class="w-full py-3 bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-1.5">
 
                 <i class="fa-solid fa-right-to-bracket"></i>
 
-                <span>Giriş Yap ve Raporlara Başla</span>
+                <span>Giriş Yap ve Cihazları / İşleri Yükle</span>
 
             </button>
 
@@ -2383,27 +2419,105 @@ function togglePasswordVisibility(inputId, btn) {
 
 
 
-function handleLoginSubmit() {
+async function handleLoginSubmit() {
 
-    const u = document.getElementById('loginUsername')?.value;
+    const u = (document.getElementById('loginUsername')?.value || '').trim();
 
-    const p = document.getElementById('loginPassword')?.value;
+    const p = (document.getElementById('loginPassword')?.value || '').trim();
 
     if (!u || !p) return showToast('Lütfen kullanıcı adı ve şifre girin', 'warning');
 
 
 
-    const res = AuthManager.login(u, p);
+    const btn = document.getElementById('loginSubmitBtn');
 
-    if (res.success) {
+    const statusEl = document.getElementById('loginSyncStatus');
 
-        showToast(`Hoş geldiniz, ${res.user.fullName}!`);
+    const setStatus = (msg, cls) => {
 
-        navigateTo('home');
+        if (!statusEl) return;
 
-    } else {
+        statusEl.textContent = msg;
 
-        showToast(res.message, 'error');
+        statusEl.className = `p-2.5 rounded-xl text-[11px] font-semibold ${cls}`;
+
+        statusEl.classList.remove('hidden');
+
+    };
+
+
+
+    if (btn) {
+
+        btn.disabled = true;
+
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i><span>Buluta bağlanılıyor...</span>';
+
+    }
+
+    setStatus('Firma hesabınız doğrulanıyor, cihazlarınız ve iş klasörleriniz alınıyor...', 'bg-sky-50 text-sky-800 border border-sky-200');
+
+
+
+    try {
+
+        if (window.CloudAppSync && typeof window.CloudAppSync.loginOnline === 'function') {
+
+            const cloudRes = await window.CloudAppSync.loginOnline(u, p);
+
+            if (cloudRes.success) {
+
+                showToast(`Hoş geldiniz, ${cloudRes.user?.fullName || u}! (${cloudRes.deviceCount} cihaz, ${cloudRes.workOrderCount} iş klasörü)`);
+
+                navigateTo('home');
+
+                return;
+
+            }
+
+            if (cloudRes.authError) {
+
+                setStatus(cloudRes.message || 'Kullanıcı adı veya şifre hatalı!', 'bg-rose-50 text-rose-800 border border-rose-200');
+
+                showToast(cloudRes.message || 'Kullanıcı adı veya şifre hatalı!', 'error');
+
+                return;
+
+            }
+
+        }
+
+
+
+        // Yalnızca sunucuya ulaşılamadığında (çevrimdışı) daha önce giriş yapılmış yerel hesaba düş
+
+        const res = AuthManager.login(u, p);
+
+        if (res.success) {
+
+            showToast(`Çevrimdışı giriş yapıldı: ${res.user.fullName}`, 'info');
+
+            navigateTo('home');
+
+        } else {
+
+            const offlineMsg = 'İnternete ulaşılamadı ve bu cihazda kayıtlı çevrimdışı oturum bulunamadı. İlk girişte internet bağlantısı gereklidir.';
+
+            setStatus(offlineMsg, 'bg-amber-50 text-amber-900 border border-amber-200');
+
+            showToast(offlineMsg, 'error');
+
+        }
+
+    } finally {
+
+        if (btn) {
+
+            btn.disabled = false;
+
+            btn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i><span>Giriş Yap ve Cihazları / İşleri Yükle</span>';
+
+        }
 
     }
 
@@ -2461,6 +2575,8 @@ function openUserProfileModal() {
 
     if (!user) return renderAuthScreen('login');
 
+    const isManaged = Boolean(user.isCloudManaged);
+
 
 
     openModal(
@@ -2507,7 +2623,9 @@ function openUserProfileModal() {
 
             <div class="p-3 bg-sky-50 border border-sky-200 rounded-xl text-sky-900 text-[11px] leading-relaxed">
 
-                Bu bilgiler resmi A4 PDF raporlarının <strong>"Muayene Personeli"</strong> ve onay bölümlerinde basılmaktadır. İhtiyaç halinde buradan güncelleyebilirsiniz.
+                ${isManaged
+                    ? 'Bu bilgiler firma yöneticiniz tarafından belirlenmiştir ve resmi A4 PDF raporlarının <strong>"Muayene Personeli"</strong> bölümünde basılmaktadır. Güncelleme için firma yöneticinize başvurun.'
+                    : 'Bu bilgiler resmi A4 PDF raporlarının <strong>"Muayene Personeli"</strong> ve onay bölümlerinde basılmaktadır. İhtiyaç halinde buradan güncelleyebilirsiniz.'}
 
             </div>
 
@@ -2517,9 +2635,9 @@ function openUserProfileModal() {
 
                 <label class="block font-bold text-slate-700 mb-0.5">Adı Soyadı</label>
 
-                <input type="text" id="profFullName" value="${escapeHtml(user.fullName || '')}"
+                <input type="text" id="profFullName" value="${escapeHtml(user.fullName || '')}" ${isManaged ? 'readonly' : ''}
 
-                    class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-bold text-slate-900 bg-white">
+                    class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-bold text-slate-900 ${isManaged ? 'bg-slate-100 text-slate-600' : 'bg-white'}">
 
             </div>
 
@@ -2531,9 +2649,9 @@ function openUserProfileModal() {
 
                     <label class="block font-bold text-slate-700 mb-0.5">Meslek / Unvan</label>
 
-                    <input type="text" id="profTitle" value="${escapeHtml(user.title || 'Elektrik Mühendisi')}"
+                    <input type="text" id="profTitle" value="${escapeHtml(user.title || 'Elektrik Mühendisi')}" ${isManaged ? 'readonly' : ''}
 
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-semibold bg-white">
+                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-semibold ${isManaged ? 'bg-slate-100 text-slate-600' : 'bg-white'}">
 
                 </div>
 
@@ -2541,9 +2659,9 @@ function openUserProfileModal() {
 
                     <label class="block font-bold text-slate-700 mb-0.5">Bakanlık Kayıt No</label>
 
-                    <input type="text" id="profMinistry" value="${escapeHtml(user.ministryRegNo || '')}"
+                    <input type="text" id="profMinistry" value="${escapeHtml(user.ministryRegNo || '')}" ${isManaged ? 'readonly' : ''}
 
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono bg-white">
+                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono ${isManaged ? 'bg-slate-100 text-slate-600' : 'bg-white'}">
 
                 </div>
 
@@ -2557,9 +2675,9 @@ function openUserProfileModal() {
 
                     <label class="block font-bold text-slate-700 mb-0.5">Diploma No / Tarih</label>
 
-                    <input type="text" id="profDiploma" value="${escapeHtml(user.diplomaNoDate || '')}"
+                    <input type="text" id="profDiploma" value="${escapeHtml(user.diplomaNoDate || '')}" ${isManaged ? 'readonly' : ''}
 
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono bg-white">
+                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono ${isManaged ? 'bg-slate-100 text-slate-600' : 'bg-white'}">
 
                 </div>
 
@@ -2567,9 +2685,9 @@ function openUserProfileModal() {
 
                     <label class="block font-bold text-slate-700 mb-0.5">EMO / Oda Sicil No</label>
 
-                    <input type="text" id="profEmo" value="${escapeHtml(user.emoNo || '')}"
+                    <input type="text" id="profEmo" value="${escapeHtml(user.emoNo || '')}" ${isManaged ? 'readonly' : ''}
 
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono bg-white">
+                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono ${isManaged ? 'bg-slate-100 text-slate-600' : 'bg-white'}">
 
                 </div>
 
@@ -2577,6 +2695,7 @@ function openUserProfileModal() {
 
 
 
+            ${isManaged ? '' : `
             <div>
 
                 <label class="block font-bold text-slate-700 mb-0.5">Şifre Değiştir (İsteğe Bağlı)</label>
@@ -2586,6 +2705,7 @@ function openUserProfileModal() {
                     class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono bg-white">
 
             </div>
+            `}
 
         </div>
 
@@ -2595,11 +2715,13 @@ function openUserProfileModal() {
 
         <button onclick="closeModal()" class="px-3 py-2 bg-slate-200 text-slate-800 font-bold text-xs rounded-lg">Kapat</button>
 
+        ${isManaged ? '' : `
         <button onclick="saveUserProfileSubmit('${user.id}')" class="px-4 py-2 bg-emerald-600 active:bg-emerald-700 text-white font-bold text-xs rounded-lg active:scale-95 shadow-sm">
 
             <i class="fa-solid fa-floppy-disk mr-1"></i>Bilgileri Kaydet
 
         </button>
+        `}
 
         `
 
@@ -2682,6 +2804,16 @@ window.updateHeaderUserWidget = updateHeaderUserWidget;
 // ============================================================================
 
 function openCompanySettingsModal() {
+
+    const curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || null;
+
+    if (curUser && curUser.isCloudManaged) {
+
+        showToast('Firma ve rapor antet bilgileri yalnızca firma yöneticisi web panelinden değiştirilebilir.', 'warning');
+
+        return;
+
+    }
 
     const s = CompanySettingsManager.getSettings();
 
@@ -3267,6 +3399,8 @@ async function renderSettingsPage() {
 
     const curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || null;
 
+    const isManaged = Boolean(curUser && curUser.isCloudManaged);
+
     const branding = (typeof CompanySettingsManager !== 'undefined') ? CompanySettingsManager.getSettings() : DEFAULT_COMPANY_BRANDING;
 
     const logoSrc = (typeof CompanySettingsManager !== 'undefined') ? CompanySettingsManager.getLogoSrc() : 'assets/tekkomer_logo.png';
@@ -3313,9 +3447,9 @@ async function renderSettingsPage() {
 
                 </div>
 
-                <span class="text-[10px] bg-sky-50 text-sky-700 border border-sky-200 px-2 py-0.5 rounded-full font-bold shrink-0">
+                <span class="text-[10px] ${isManaged ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-sky-50 text-sky-700 border-sky-200'} border px-2 py-0.5 rounded-full font-bold shrink-0">
 
-                    %100 Çevrimdışı
+                    ${isManaged ? 'Bulut + Çevrimdışı' : '%100 Çevrimdışı'}
 
                 </span>
 
@@ -3339,7 +3473,7 @@ async function renderSettingsPage() {
 
                     <span class="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
 
-                        Aktif Personel
+                        ${isManaged && curUser.tenantName ? escapeHtml(curUser.tenantName) : 'Aktif Personel'}
 
                     </span>
 
@@ -3381,13 +3515,20 @@ async function renderSettingsPage() {
 
 
 
+                ${isManaged ? `
+                    <button type="button" onclick="window.CloudAppSync && window.CloudAppSync.syncNow()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-xs">
+                        <i class="fa-solid fa-arrows-rotate"></i>
+                        <span>Buluttan Senkronize Et (İş Klasörleri &amp; Cihazlar)</span>
+                    </button>
+                ` : ''}
+
                 <div class="grid grid-cols-2 gap-2 pt-1 border-t border-slate-700/60">
 
                     <button onclick="openUserProfileModal()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-sky-300 border border-slate-600/80 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-xs">
 
-                        <i class="fa-solid fa-user-pen text-amber-400"></i>
+                        <i class="fa-solid fa-id-card text-amber-400"></i>
 
-                        <span>Profilimi Düzenle</span>
+                        <span>${isManaged ? 'Profil Bilgilerim' : 'Profilimi Düzenle'}</span>
 
                     </button>
 
@@ -3461,13 +3602,19 @@ async function renderSettingsPage() {
 
 
 
-                <button onclick="openCompanySettingsModal()" class="w-full py-2.5 btn-craft-primary active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition">
+                ${isManaged ? `
+                    <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 text-center">
+                        Firma adı, rapor ön eki ve akreditasyon bilgileri firma yöneticisi web panelinden otomatik gelir.
+                    </div>
+                ` : `
+                    <button onclick="openCompanySettingsModal()" class="w-full py-2.5 btn-craft-primary active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition">
 
-                    <i class="fa-solid fa-pen-nib"></i>
+                        <i class="fa-solid fa-pen-nib"></i>
 
-                    <span>Şirket Adı, Logo ve Akreditasyonu Düzenle</span>
+                        <span>Şirket Adı, Logo ve Akreditasyonu Düzenle</span>
 
-                </button>
+                    </button>
+                `}
 
             </div>
 
@@ -3562,7 +3709,7 @@ async function renderSettingsPage() {
                         <span>Aktif Şirket: <strong class="text-slate-900">${escapeHtml(activeComp.companyName)}</strong></span>
                         <span class="font-mono text-[10px] bg-white px-2 py-0.5 rounded border border-slate-200 text-indigo-700 font-bold">Ön Ek: /p/${escapeHtml(activeComp.companySlug)}-...</span>
                     </div>
-                    ${!activeComp.isCustomized ? `
+                    ${!activeComp.isCustomized && !isManaged ? `
                         <div class="pt-1 flex items-center justify-between gap-2 border-t border-emerald-200/70 text-[10px] text-amber-800">
                             <span>Kendi şirket kısaltmanızla (/p/tkm-...) göndermek için şirket adınızı girin.</span>
                             <button type="button" onclick="openCompanySettingsModal()" class="font-bold text-indigo-700 underline shrink-0">Şirket Adını Düzenle</button>
@@ -3724,13 +3871,13 @@ async function renderSettingsPage() {
 
                 <p class="text-xs text-slate-600 leading-relaxed">
 
-                    Saha raporlarının ve iş klasörlerinin kazara silinmesini önlemek amacıyla, tüm silme işlemlerinde aktif personel şifreniz (varsayılan: <strong>123</strong>) istenmektedir.
+                    Saha raporlarının ve iş klasörlerinin kazara silinmesini önlemek amacıyla, tüm silme işlemlerinde aktif personel giriş şifreniz istenmektedir.
 
                 </p>
 
                 <div class="text-[11px] text-slate-500 pt-1">
 
-                    Şifrenizi yukarıdaki <strong>"Profilimi Düzenle"</strong> butonundan dilediğiniz zaman güncelleyebilirsiniz.
+                    ${isManaged ? 'Şifre değişikliği için firma yöneticinize başvurabilirsiniz.' : 'Şifrenizi yukarıdaki <strong>"Profilimi Düzenle"</strong> butonundan dilediğiniz zaman güncelleyebilirsiniz.'}
 
                 </div>
 

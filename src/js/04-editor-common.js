@@ -615,6 +615,10 @@ function syncGeneratorMeasuringDevicesRef() {
 }
 
 function addManualMeasuringDeviceRow() {
+    if (window.MeasuringDevicesManager && typeof window.MeasuringDevicesManager.isCloudManaged === 'function' && window.MeasuringDevicesManager.isCloudManaged()) {
+        showToast('Yalnızca firma yöneticinizin atadığı ölçüm cihazlarını kullanabilirsiniz.', 'warning');
+        return;
+    }
     const fd = AppState.currentFormData;
     if (!fd) return;
     if (!Array.isArray(fd.measuringDevices)) fd.measuringDevices = [];
@@ -636,6 +640,9 @@ function removeMeasuringDeviceRow(dIdx) {
 }
 
 function updateMeasuringDeviceCell(dIdx, field, val) {
+    if (window.MeasuringDevicesManager && typeof window.MeasuringDevicesManager.isCloudManaged === 'function' && window.MeasuringDevicesManager.isCloudManaged()) {
+        return;
+    }
     const fd = AppState.currentFormData;
     if (!fd || !Array.isArray(fd.measuringDevices) || !fd.measuringDevices[dIdx]) return;
     fd.measuringDevices[dIdx][field] = val;
@@ -657,6 +664,7 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
     const devices = fd.measuringDevices;
     const mgr = window.MeasuringDevicesManager || null;
     const hasCatalogUi = Boolean(mgr);
+    const isLockedManaged = Boolean(mgr && typeof mgr.isCloudManaged === 'function' && mgr.isCloudManaged());
 
     const cardsHtml = devices.length ? devices.map((dev, dIdx) => {
         const subLabel = [dev.brand, dev.model].filter(Boolean).join(' ').trim();
@@ -697,11 +705,11 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
 
                                 <label class="block text-xs font-bold text-slate-700">Cihaz Adı</label>
 
-                                <input type="text" value="${escapeHtml(dev.name || '')}" placeholder=""
+                                <input type="text" value="${escapeHtml(dev.name || '')}" placeholder="" ${isLockedManaged ? 'readonly' : ''}
 
                                     oninput="updateMeasuringDeviceCell(${dIdx}, 'name', this.value)"
 
-                                    class="w-full px-2 py-1.5 border border-slate-300 rounded-lg bg-white font-semibold">
+                                    class="w-full px-2 py-1.5 border border-slate-300 rounded-lg ${isLockedManaged ? 'bg-slate-100 text-slate-700' : 'bg-white'} font-semibold">
 
                             </div>
 
@@ -709,11 +717,11 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
 
                                 <label class="block text-xs font-bold text-slate-700">Seri No</label>
 
-                                <input type="text" value="${escapeHtml(dev.serial || '')}" placeholder=""
+                                <input type="text" value="${escapeHtml(dev.serial || '')}" placeholder="" ${isLockedManaged ? 'readonly' : ''}
 
                                     oninput="updateMeasuringDeviceCell(${dIdx}, 'serial', this.value)"
 
-                                    class="w-full px-2 py-1.5 border border-slate-300 rounded-lg bg-white">
+                                    class="w-full px-2 py-1.5 border border-slate-300 rounded-lg ${isLockedManaged ? 'bg-slate-100 text-slate-700' : 'bg-white'}">
 
                             </div>
 
@@ -721,11 +729,11 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
 
                                 <label class="block text-xs font-bold text-slate-700">Sertifika No</label>
 
-                                <input type="text" value="${escapeHtml(dev.certNo || '')}" placeholder=""
+                                <input type="text" value="${escapeHtml(dev.certNo || '')}" placeholder="" ${isLockedManaged ? 'readonly' : ''}
 
                                     oninput="updateMeasuringDeviceCell(${dIdx}, 'certNo', this.value)"
 
-                                    class="w-full px-2 py-1.5 border border-slate-300 rounded-lg bg-white">
+                                    class="w-full px-2 py-1.5 border border-slate-300 rounded-lg ${isLockedManaged ? 'bg-slate-100 text-slate-700' : 'bg-white'}">
 
                             </div>
 
@@ -733,11 +741,11 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
 
                                 <label class="block text-xs font-bold text-slate-700">Kalibrasyon Tarihi</label>
 
-                                <input type="text" value="${escapeHtml(dev.calDate || '')}" placeholder=""
+                                <input type="text" value="${escapeHtml(dev.calDate || '')}" placeholder="" ${isLockedManaged ? 'readonly' : ''}
 
                                     oninput="updateMeasuringDeviceCell(${dIdx}, 'calDate', this.value)"
 
-                                    class="w-full px-2 py-1.5 border border-slate-300 rounded-lg bg-white">
+                                    class="w-full px-2 py-1.5 border border-slate-300 rounded-lg ${isLockedManaged ? 'bg-slate-100 text-slate-700' : 'bg-white'}">
 
                             </div>
 
@@ -745,11 +753,11 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
 
                                 <label class="block text-xs font-bold text-slate-700">Geçerlilik Tarihi</label>
 
-                                <input type="text" value="${escapeHtml(dev.validDate || '')}" placeholder=""
+                                <input type="text" value="${escapeHtml(dev.validDate || '')}" placeholder="" ${isLockedManaged ? 'readonly' : ''}
 
                                     oninput="updateMeasuringDeviceCell(${dIdx}, 'validDate', this.value)"
 
-                                    class="w-full px-2 py-1.5 border border-slate-300 rounded-lg bg-white">
+                                    class="w-full px-2 py-1.5 border border-slate-300 rounded-lg ${isLockedManaged ? 'bg-slate-100 text-slate-700' : 'bg-white'}">
 
                             </div>
 
@@ -773,11 +781,13 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
                         <span>Havuzdan Cihaz Ekle</span>
                     </button>
                 ` : ''}
-                <button type="button" onclick="addManualMeasuringDeviceRow()"
-                    class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1">
-                    <i class="fa-solid fa-plus"></i>
-                    <span>+ Boş Satır Ekle</span>
-                </button>
+                ${isLockedManaged ? '' : `
+                    <button type="button" onclick="addManualMeasuringDeviceRow()"
+                        class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>+ Boş Satır Ekle</span>
+                    </button>
+                `}
             </div>
         </div>
     `;
@@ -801,18 +811,20 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
                         <button type="button" onclick="openReportAddDeviceModal()"
                             class="px-2 py-1 bg-sky-500 hover:bg-sky-400 active:scale-95 text-slate-950 font-bold rounded-lg text-[11px] flex items-center gap-1 shadow-2xs transition">
                             <i class="fa-solid fa-list-check"></i>
-                            <span>Havuzdan Ekle</span>
+                            <span>${isLockedManaged ? 'Atanan Cihazlardan Ekle' : 'Havuzdan Ekle'}</span>
                         </button>
                     ` : ''}
-                    <button type="button" onclick="addManualMeasuringDeviceRow()"
+                    ${isLockedManaged ? '' : `
+                        <button type="button" onclick="addManualMeasuringDeviceRow()"
 
-                        class="px-2 py-1 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-slate-950 font-bold rounded-lg text-[11px] flex items-center gap-1 shadow-2xs transition">
+                            class="px-2 py-1 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-slate-950 font-bold rounded-lg text-[11px] flex items-center gap-1 shadow-2xs transition">
 
-                        <i class="fa-solid fa-plus"></i>
+                            <i class="fa-solid fa-plus"></i>
 
-                        <span>Manuel</span>
+                            <span>Manuel</span>
 
-                    </button>
+                        </button>
+                    `}
                 </div>
 
             </div>

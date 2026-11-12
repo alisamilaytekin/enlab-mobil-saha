@@ -6,6 +6,16 @@
 
 function openQuickFieldJobModal() {
 
+    const _curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || null;
+
+    if (_curUser && _curUser.isCloudManaged) {
+
+        showToast('Yeni iş klasörleri yalnızca firma yöneticisi web panelinden açılabilir.', 'warning');
+
+        return;
+
+    }
+
     const templates = window.ENLAB_REPORT_TEMPLATES || [];
 
     const tplCheckboxes = templates.map((t) => {
@@ -233,6 +243,12 @@ async function renderFieldNotebookPage() {
 
     const container = document.getElementById('pageContent');
 
+    const curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || null;
+
+    const isManaged = Boolean(curUser && curUser.isCloudManaged);
+
+    const userCloudId = curUser && curUser.cloudId ? String(curUser.cloudId) : '';
+
     const [woRes, notesRes] = await Promise.all([
 
         fetch('/api/work-orders'),
@@ -241,27 +257,33 @@ async function renderFieldNotebookPage() {
 
     ]);
 
-    const wos = (await woRes.json()).map(normalizeWorkOrder);
+    const wos = (await woRes.json()).map(normalizeWorkOrder).filter(w => {
+
+        if (userCloudId && w.assigned_user_cloud_id) return String(w.assigned_user_cloud_id) === userCloudId;
+
+        return true;
+
+    });
 
     const quickNotes = await notesRes.json();
 
 
 
-    const jobOptions = wos.map(w => `<option value="${w.id}" data-name="${w.customer_name}">${w.customer_name} (${w.work_order_no})</option>`).join('');
+    const jobOptions = wos.map(w => `<option value="${escapeHtml(w.id)}" data-name="${escapeHtml(w.customer_name)}">${escapeHtml(w.customer_name)} (${escapeHtml(w.work_order_no)})</option>`).join('');
 
 
 
     const quickNotesHtml = (quickNotes || []).map(n => `
 
-        <div class="bg-amber-50/70 rounded-xl border border-amber-200 p-4 space-y-2.5 shadow-2xs">
+        <div class="bg-slate-200/80 rounded-xl border border-slate-300 p-4 space-y-2.5 shadow-2xs">
 
             <div class="flex flex-wrap items-start justify-between gap-2">
 
                 <div>
 
-                    <h3 class="font-black text-slate-900 text-sm">${n.title || 'Saha Notu'}</h3>
+                    <h3 class="font-black text-slate-900 text-sm">${escapeHtml(n.title || 'Saha Notu')}</h3>
 
-                    <div class="text-[11px] text-amber-800 font-semibold">${n.job_name || 'Genel Saha Notu'} · <span class="font-mono">${n.updated_at || ''}</span></div>
+                    <div class="text-[11px] text-slate-600 font-semibold">${escapeHtml(n.job_name || 'Genel Offline Not')} · <span class="font-mono">${escapeHtml(n.updated_at || '')}</span></div>
 
                 </div>
 
@@ -269,7 +291,7 @@ async function renderFieldNotebookPage() {
 
                     ${n.work_order_id ? `
 
-                        <button onclick="navigateTo('work-order-details', {id: '${n.work_order_id}', tab: 'inspections'})" class="px-2.5 py-1 bg-sky-600 hover:bg-sky-700 text-white rounded text-[11px] font-bold">
+                        <button onclick="navigateTo('work-order-details', {id: '${escapeForJs(n.work_order_id)}', tab: 'inspections'})" class="px-2.5 py-1 bg-slate-700 hover:bg-slate-800 text-white rounded text-[11px] font-bold">
 
                             İşe Git →
 
@@ -277,11 +299,15 @@ async function renderFieldNotebookPage() {
 
                     ` : ''}
 
-                    <button onclick="convertQuickNoteToJob(${n.id})" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-bold" title="Bu nottan yeni iş ve rapor taslağı oluştur">
+                    ${isManaged ? '' : `
 
-                        <i class="fa-solid fa-file-circle-plus mr-1"></i>Rapor Taslağına Dönüştür
+                        <button onclick="convertQuickNoteToJob(${n.id})" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-bold" title="Bu nottan yeni iş ve rapor taslağı oluştur">
 
-                    </button>
+                            <i class="fa-solid fa-file-circle-plus mr-1"></i>Rapor Taslağına Dönüştür
+
+                        </button>
+
+                    `}
 
                     <button onclick="deleteQuickNote(${n.id})" class="px-2 py-1 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded text-[11px] font-bold">
 
@@ -295,7 +321,7 @@ async function renderFieldNotebookPage() {
 
             <textarea rows="4" oninput="updateExistingQuickNote(${n.id}, this.value)"
 
-                class="w-full border border-amber-300 bg-white rounded-lg p-2.5 text-xs text-slate-800 font-medium focus:border-sky-500 focus:outline-none">${n.content || ''}</textarea>
+                class="w-full border border-slate-300 bg-white rounded-lg p-2.5 text-xs text-slate-800 font-medium focus:border-slate-500 focus:outline-none">${escapeHtml(n.content || '')}</textarea>
 
         </div>
 
@@ -305,21 +331,21 @@ async function renderFieldNotebookPage() {
 
     const jobsWithNotesHtml = wos.slice(0, 10).map(w => `
 
-        <div class="bg-white rounded-xl border border-slate-200 p-4 space-y-2 shadow-2xs">
+        <div class="bg-slate-100 rounded-xl border border-slate-300 p-4 space-y-2 shadow-2xs">
 
             <div class="flex flex-wrap items-center justify-between gap-2">
 
                 <div>
 
-                    <span class="font-mono text-[11px] font-bold text-sky-700">${w.work_order_no}</span>
+                    <span class="font-mono text-[11px] font-bold text-slate-600">${escapeHtml(w.work_order_no)}</span>
 
-                    <h4 class="font-bold text-slate-900 text-xs sm:text-sm">${w.customer_name} ${w.customer_branch ? `- ${w.customer_branch}` : ''}</h4>
+                    <h4 class="font-bold text-slate-900 text-xs sm:text-sm">${escapeHtml(w.customer_name)} ${w.customer_branch ? `- ${escapeHtml(w.customer_branch)}` : ''}</h4>
 
                 </div>
 
-                <button onclick="navigateTo('work-order-details', {id: '${w.id}', tab: 'inspections'})" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold">
+                <button onclick="navigateTo('work-order-details', {id: '${escapeForJs(w.id)}', tab: 'inspections'})" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white rounded-lg text-xs font-bold">
 
-                    İşi & Raporları Aç (${w.actual_inspection_count ?? 0}) →
+                    İşi &amp; Raporları Aç (${w.actual_inspection_count ?? 0}) →
 
                 </button>
 
@@ -327,9 +353,9 @@ async function renderFieldNotebookPage() {
 
             <textarea rows="3" placeholder="Bu işe ait saha notlarınızı buraya yazın (Otomatik kaydedilir)..."
 
-                oninput="saveWorkOrderNotesRealtime('${w.id}', this.value)"
+                oninput="saveWorkOrderNotesRealtime('${escapeForJs(w.id)}', this.value)"
 
-                class="w-full border border-slate-300 bg-amber-50/30 rounded-lg p-2.5 text-xs text-slate-800 focus:border-amber-500 focus:outline-none">${w.field_notes || ''}</textarea>
+                class="w-full border border-slate-300 bg-white rounded-lg p-2.5 text-xs text-slate-800 focus:border-slate-500 focus:outline-none">${escapeHtml(w.field_notes || '')}</textarea>
 
         </div>
 
@@ -339,97 +365,125 @@ async function renderFieldNotebookPage() {
 
     container.innerHTML = `
 
-        <div class="bg-white rounded-xl border border-slate-200 shadow-xs p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3">
+        <div class="max-w-4xl mx-auto space-y-4 pb-6">
 
-            <div>
+            <div class="bg-slate-200 rounded-xl border border-slate-300 shadow-xs p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3">
 
-                <div class="text-[11px] text-amber-600 font-bold uppercase tracking-wider">Çevrimdışı Saha Not Defteri (Offline)</div>
+                <div class="flex items-start gap-3">
 
-                <h1 class="text-lg font-black text-slate-900 flex items-center gap-2">
+                    <button onclick="navigateTo('home')" class="px-2.5 py-1.5 bg-white hover:bg-slate-100 active:scale-95 text-slate-700 rounded-xl font-bold text-xs shrink-0 transition border border-slate-300">
 
-                    <i class="fa-solid fa-book-open text-amber-500"></i> Saha Not Defterim & Hızlı Tespitler
+                        <i class="fa-solid fa-arrow-left mr-1"></i>Geri
 
-                </h1>
+                    </button>
 
-                <p class="text-xs text-slate-500 mt-0.5">İnternetin çekmediği yerlerde (Teknosa vb.) aldığınız tüm notlar anında cihaz hafızasına kaydedilir ve istediğiniz zaman resmi A4 rapora aktarılır.</p>
+                    <div>
 
-            </div>
+                        <div class="text-[11px] text-slate-600 font-bold uppercase tracking-wider">Çevrimdışı Not Alma Klasörü (Offline)</div>
 
-            <button onclick="openQuickFieldJobModal()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow flex items-center gap-2">
+                        <h1 class="text-lg font-black text-slate-900 flex items-center gap-2">
 
-                <i class="fa-solid fa-plus"></i> + Yeni İş & Rapor Taslağı Aç
+                            <i class="fa-solid fa-folder text-slate-600"></i> Offline Not Alma Klasörü
 
-            </button>
+                        </h1>
 
-        </div>
-
-
-
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
-
-            <!-- Left: Add New Standalone Note + Quick Notes List -->
-
-            <div class="lg:col-span-6 space-y-4">
-
-                <div class="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-
-                    <div class="px-4 py-3 bg-slate-900 text-white font-bold text-xs uppercase flex items-center justify-between">
-
-                        <span><i class="fa-solid fa-pen-clip text-amber-400 mr-2"></i>Yeni Hızlı Saha Notu Ekle</span>
-
-                        <span class="text-[10px] text-emerald-400">Otomatik Cihaz Kaydı</span>
+                        <p class="text-xs text-slate-600 mt-0.5">İnternetin çekmediği sahalarda aldığınız tüm tespit ve ölçü notları anında cihaz hafızasına kaydedilir.</p>
 
                     </div>
 
-                    <div class="p-4 space-y-3 text-xs">
+                </div>
 
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                ${isManaged ? '' : `
 
-                            <div>
+                    <button onclick="openQuickFieldJobModal()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow flex items-center gap-2">
 
-                                <label class="block font-bold text-slate-700 mb-1">Not Başlığı / Mahal</label>
+                        <i class="fa-solid fa-plus"></i> + Yeni İş & Rapor Taslağı Aç
 
-                                <input type="text" id="newNoteTitle" placeholder="Örn: Teknosa Bodrum Ana Pano Ölçümleri"
+                    </button>
 
-                                    class="w-full border border-slate-300 rounded-lg px-3 py-2 font-semibold">
+                `}
+
+            </div>
+
+
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+                <!-- Left: Add New Standalone Note + Quick Notes List -->
+
+                <div class="lg:col-span-6 space-y-4">
+
+                    <div class="bg-slate-100 rounded-xl border border-slate-300 shadow-xs overflow-hidden">
+
+                        <div class="px-4 py-3 bg-slate-700 text-white font-bold text-xs uppercase flex items-center justify-between">
+
+                            <span><i class="fa-solid fa-pen-clip text-slate-200 mr-2"></i>Yeni Offline Saha Notu Ekle</span>
+
+                            <span class="text-[10px] text-slate-300">Otomatik Cihaz Kaydı</span>
+
+                        </div>
+
+                        <div class="p-4 space-y-3 text-xs">
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+                                <div>
+
+                                    <label class="block font-bold text-slate-700 mb-1">Not Başlığı / Mahal</label>
+
+                                    <input type="text" id="newNoteTitle" placeholder="Örn: Bodrum Ana Pano Ölçümleri"
+
+                                        class="w-full border border-slate-300 bg-white rounded-lg px-3 py-2 font-semibold">
+
+                                </div>
+
+                                <div>
+
+                                    <label class="block font-bold text-slate-700 mb-1">İlgili İş (Opsiyonel)</label>
+
+                                    <select id="newNoteWoSelect" class="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white">
+
+                                        <option value="">-- Genel / Bağımsız Offline Not --</option>
+
+                                        ${jobOptions}
+
+                                    </select>
+
+                                </div>
 
                             </div>
 
                             <div>
 
-                                <label class="block font-bold text-slate-700 mb-1">İlgili İş (Opsiyonel)</label>
+                                <label class="block font-bold text-slate-700 mb-1">Saha Notu İçeriği</label>
 
-                                <select id="newNoteWoSelect" class="w-full border border-slate-300 rounded-lg px-3 py-2 bg-white">
+                                <textarea id="newNoteContent" rows="4" placeholder="Panolar, kablo kesitleri, topraklama dirençleri, eksiklikler..."
 
-                                    <option value="">-- Genel / Bağımsız Not --</option>
+                                    class="w-full border border-slate-300 bg-white rounded-lg p-3 font-medium focus:border-slate-500 focus:outline-none"></textarea>
 
-                                    ${jobOptions}
+                            </div>
 
-                                </select>
+                            <div class="flex justify-end">
+
+                                <button onclick="createNewQuickNote()" class="px-4 py-2 bg-slate-700 hover:bg-slate-800 text-white font-black rounded-lg shadow-xs flex items-center gap-1.5">
+
+                                    <i class="fa-solid fa-floppy-disk"></i> Notu Kaydet
+
+                                </button>
 
                             </div>
 
                         </div>
 
-                        <div>
+                    </div>
 
-                            <label class="block font-bold text-slate-700 mb-1">Saha Notu İçeriği</label>
 
-                            <textarea id="newNoteContent" rows="4" placeholder="Panolar, kablo kesitleri, topraklama dirençleri, eksiklikler..."
 
-                                class="w-full border border-slate-300 rounded-lg p-3 font-medium focus:border-sky-500 focus:outline-none"></textarea>
+                    <div class="space-y-3">
 
-                        </div>
+                        <h2 class="font-bold text-xs uppercase text-slate-600 px-1">Kayıtlı Offline Notlarım (${quickNotes.length})</h2>
 
-                        <div class="flex justify-end">
-
-                            <button onclick="createNewQuickNote()" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-lg shadow-xs flex items-center gap-1.5">
-
-                                <i class="fa-solid fa-floppy-disk"></i> Notu Kaydet
-
-                            </button>
-
-                        </div>
+                        ${quickNotesHtml || '<div class="p-6 bg-slate-100 rounded-xl border border-slate-300 text-center text-xs text-slate-500">Henüz bağımsız hızlı not eklenmemiş.</div>'}
 
                     </div>
 
@@ -437,25 +491,15 @@ async function renderFieldNotebookPage() {
 
 
 
-                <div class="space-y-3">
+                <!-- Right: Per-Job Notebook Cards -->
 
-                    <h2 class="font-bold text-xs uppercase text-slate-500 px-1">Kayıtlı Hızlı Notlarım (${quickNotes.length})</h2>
+                <div class="lg:col-span-6 space-y-3">
 
-                    ${quickNotesHtml || '<div class="p-6 bg-white rounded-xl border border-slate-200 text-center text-xs text-slate-400">Henüz bağımsız hızlı not eklenmemiş.</div>'}
+                    <h2 class="font-bold text-xs uppercase text-slate-600 px-1">İş Klasörlerine Ait Saha Notları</h2>
+
+                    ${jobsWithNotesHtml || '<div class="p-6 bg-slate-100 rounded-xl border border-slate-300 text-center text-xs text-slate-500">Size atanmış iş klasörü bulunmuyor.</div>'}
 
                 </div>
-
-            </div>
-
-
-
-            <!-- Right: Per-Job Notebook Cards -->
-
-            <div class="lg:col-span-6 space-y-3">
-
-                <h2 class="font-bold text-xs uppercase text-slate-500 px-1">İşlere Ait Saha Not Defterleri</h2>
-
-                ${jobsWithNotesHtml}
 
             </div>
 
@@ -544,6 +588,16 @@ async function deleteQuickNote(noteId) {
 
 
 async function convertQuickNoteToJob(noteId) {
+
+    const _curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || null;
+
+    if (_curUser && _curUser.isCloudManaged) {
+
+        showToast('İş klasörleri yalnızca firma yöneticisi web panelinden açılabilir.', 'warning');
+
+        return;
+
+    }
 
     const res = await fetch('/api/quick-notes');
 
@@ -666,6 +720,12 @@ async function renderWorkOrdersPage(scope = 'all', tab = 'open') {
 
     const container = document.getElementById('pageContent');
 
+    const curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || null;
+
+    const isManaged = Boolean(curUser && curUser.isCloudManaged);
+
+    const userCloudId = curUser && curUser.cloudId ? String(curUser.cloudId) : '';
+
     const pageTitle = scope === 'my' ? 'Benim İş Emirlerim' : 'Tüm İş Emirleri';
 
     const routeName = scope === 'my' ? 'my-work-orders' : 'all-work-orders';
@@ -676,7 +736,13 @@ async function renderWorkOrdersPage(scope = 'all', tab = 'open') {
 
     const rawList = await res.json();
 
-    const allNormalized = (Array.isArray(rawList) ? rawList : (rawList.workOrders || [])).map(normalizeWorkOrder);
+    const allNormalized = (Array.isArray(rawList) ? rawList : (rawList.workOrders || [])).map(normalizeWorkOrder).filter(w => {
+
+        if (userCloudId && w.assigned_user_cloud_id) return String(w.assigned_user_cloud_id) === userCloudId;
+
+        return true;
+
+    });
 
 
 
@@ -708,11 +774,15 @@ async function renderWorkOrdersPage(scope = 'all', tab = 'open') {
 
                         class="border border-slate-300 rounded-lg px-3 py-1.5 text-xs w-64 focus:outline-none focus:border-sky-500">
 
-                    <button onclick="openNewWorkOrderModal()" class="px-3.5 py-2 bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs rounded-lg flex items-center gap-1.5">
+                    ${isManaged ? '' : `
 
-                        <i class="fa-solid fa-plus"></i> Yeni İş Emri Ekle
+                        <button onclick="openNewWorkOrderModal()" class="px-3.5 py-2 bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs rounded-lg flex items-center gap-1.5">
 
-                    </button>
+                            <i class="fa-solid fa-plus"></i> Yeni İş Emri Ekle
+
+                        </button>
+
+                    `}
 
                 </div>
 
@@ -877,6 +947,16 @@ function filterWorkOrdersTable() {
 
 
 function openNewWorkOrderModal() {
+
+    const _curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || null;
+
+    if (_curUser && _curUser.isCloudManaged) {
+
+        showToast('Yeni iş emirleri yalnızca firma yöneticisi web panelinden oluşturulabilir.', 'warning');
+
+        return;
+
+    }
 
     openModal(
 

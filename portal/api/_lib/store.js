@@ -1,13 +1,14 @@
 import crypto from 'node:crypto';
 
 export const CUSTOMER_COOKIE_NAME = 'hr_customer_session';
+export const MANAGER_COOKIE_NAME = 'hr_manager_session';
 
 export function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   res.setHeader(
     'Access-Control-Allow-Headers',
-    'Content-Type, Authorization, X-Admin-Key, X-Folder-Token, X-Folder-Write-Token, X-Customer-Token, X-Account-Write-Token, X-App-Client'
+    'Content-Type, Authorization, X-Admin-Key, X-Folder-Token, X-Folder-Write-Token, X-Customer-Token, X-Account-Write-Token, X-Manager-Token, X-App-Token, X-App-Client'
   );
   res.setHeader('Cache-Control', 'no-store');
 }
@@ -373,6 +374,134 @@ export async function resolveAuthenticatedCustomer(req, urlObj) {
   if (!acct || acct.is_active === false) return null;
   if (Number(acct.token_version || 1) !== Number(parsed.cv || 1)) return null;
   return acct;
+}
+
+export function sanitizeTenantPublic(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    branding_json: row.branding_json && typeof row.branding_json === 'object' ? row.branding_json : {},
+    is_active: row.is_active !== false,
+    created_at: row.created_at || null,
+    updated_at: row.updated_at || null
+  };
+}
+
+export function sanitizeSaasUserPublic(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    tenant_id: row.tenant_id,
+    username: row.username,
+    role: row.role || 'inspector',
+    full_name: row.full_name,
+    title: row.title || '',
+    ministry_reg_no: row.ministry_reg_no || '',
+    diploma_no_date: row.diploma_no_date || '',
+    emo_no: row.emo_no || '',
+    is_active: row.is_active !== false,
+    last_login_at: row.last_login_at || null,
+    created_at: row.created_at || null,
+    updated_at: row.updated_at || null
+  };
+}
+
+export function signSaasSessionToken(user, kind = 'app') {
+  const { tokenSecret } = getConfig();
+  if (!tokenSecret) throw new Error('Sunucu token anahtarı yapılandırılmamış');
+  const ttlMs = kind === 'manager' ? 7 * 24 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000;
+  const payloadObj = {
+    t: kind === 'manager' ? 'mgr' : 'app',
+    uid: String(user.id),
+    tid: String(user.tenant_id),
+    r: String(user.role || 'inspector'),
+    tv: Number(user.token_version || 1),
+    exp: Date.now() + ttlMs
+  };
+  const payloadB64 = Buffer.from(JSON.stringify(payloadObj)).toString('base64url');
+  const sig = crypto.createHmac('sha256', tokenSecret).update(payloadB64).digest('base64url');
+  return `${payloadB64}.${sig}`;
+}
+
+export function verifySaasSessionToken(token, expectedKind = null) {
+  const { tokenSecret } = getConfig();
+  if (!tokenSecret || !token || typeof token !== 'string') return null;
+  const dotIdx = token.indexOf('.');
+  if (dotIdx <= 0) return null;
+  const payloadB64 = token.slice(0, dotIdx);
+  const sig = token.slice(dotIdx + 1);
+  const expectedSig = crypto.createHmac('sha256', tokenSecret).update(payloadB64).digest('base64url');
+  const a = Buffer.from(sig, 'utf8');
+  const b = Buffer.from(expectedSig, 'utf8');
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8'));
+    if (!parsed || !parsed.uid || !parsed.tid || !parsed.exp || parsed.exp < Date.now()) {
+      return null;
+    }
+    if (expectedKind === 'manager' && parsed.t !== 'mgr') return null;
+    if (expectedKind === 'app' && parsed.t !== 'app') return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function extractManagerToken(req, urlObj) {
+  const hdr = req.headers['x-manager-token'];
+  if (typeof hdr === 'string' && hdr.trim()) return hdr.trim();
+  const auth = req.headers.authorization || '';
+  if (auth.toLowerCase().startsWith('bearer ')) return auth.slice(7).trim();
+  if (urlObj && urlObj.searchParams.get('mt')) return urlObj.searchParams.get('mt').trim();
+  const cookies = parseCookies(req);
+  if (cookies[MANAGER_COOKIE_NAME]) return cookies[MANAGER_COOKIE_NAME].trim();
+  return '';
+}
+
+export function setManagerSessionCookie(res, token, req) {
+  const isHttps = getOrigin(req).startsWith('https://');
+  const cookie = `${MANAGER_COOKIE_NAME}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800${isHttps ? '; Secure' : ''}`;
+  res.setHeader('Set-Cookie', cookie);
+}
+
+export function clearManagerSessionCookie(res, req) {
+  const isHttps = getOrigin(req).startsWith('https://');
+  const cookie = `${MANAGER_COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${isHttps ? '; Secure' : ''}`;
+  res.setHeader('Set-Cookie', cookie);
+}
+
+export function extractAppToken(req, urlObj) {
+  const hdr = req.headers['x-app-token'];
+  if (typeof hdr === 'string' && hdr.trim()) return hdr.trim();
+  const auth = req.headers.authorization || '';
+  if (auth.toLowerCase().startsWith('bearer ')) return auth.slice(7).trim();
+  if (urlObj && urlObj.searchParams.get('at')) return urlObj.searchParams.get('at').trim();
+  return '';
+}
+
+export async function resolveAuthenticatedSaasUser(req, urlObj, kind = 'app') {
+  const raw = kind === 'manager' ? extractManagerToken(req, urlObj) : extractAppToken(req, urlObj);
+  if (!raw) return null;
+  const parsed = verifySaasSessionToken(raw, kind);
+  if (!parsed) return null;
+  const users = await dbSelect(
+    'saas_users',
+    `id=eq.${encodeURIComponent(parsed.uid)}&select=id,tenant_id,username,role,full_name,title,ministry_reg_no,diploma_no_date,emo_no,is_active,token_version,last_login_at,created_at,updated_at&limit=1`
+  );
+  const user = users[0];
+  if (!user || user.is_active === false) return null;
+  if (Number(user.token_version || 1) !== Number(parsed.tv || 1)) return null;
+  if (kind === 'manager' && user.role !== 'manager') return null;
+
+  const tenants = await dbSelect(
+    'saas_tenants',
+    `id=eq.${encodeURIComponent(user.tenant_id)}&select=id,name,slug,branding_json,is_active,created_at,updated_at&limit=1`
+  );
+  const tenant = tenants[0];
+  if (!tenant || tenant.is_active === false) return null;
+  return { user, tenant };
 }
 
 export function sanitizeReportHtml(html) {

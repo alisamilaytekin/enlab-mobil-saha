@@ -4,7 +4,9 @@
   "rewrites": [
     { "source": "/p/:slug", "destination": "/folder.html?slug=:slug" },
     { "source": "/r/:slug", "destination": "/report.html?slug=:slug" },
-    { "source": "/admin", "destination": "/admin.html" }
+    { "source": "/admin", "destination": "/admin.html" },
+    { "source": "/yonetim", "destination": "/manager.html" },
+    { "source": "/firma", "destination": "/manager.html" }
   ],
   "crons": [
     {

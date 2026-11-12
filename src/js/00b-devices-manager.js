@@ -469,9 +469,53 @@
 
             if (!Array.isArray(state.catalog)) state.catalog = getDefaultCatalog();
             if (!state.assignmentsByUser || typeof state.assignmentsByUser !== 'object') state.assignmentsByUser = {};
+            if (!state.cloudDevicesByUser || typeof state.cloudDevicesByUser !== 'object') state.cloudDevicesByUser = {};
+            if (!state.cloudManagedByUser || typeof state.cloudManagedByUser !== 'object') state.cloudManagedByUser = {};
             if (state.autoApplyEnabled === undefined) state.autoApplyEnabled = true;
 
             return state;
+        },
+
+        isCloudManaged(userId = null) {
+            const uid = userId || this.getCurrentUserId();
+            try {
+                if (typeof AuthManager !== 'undefined' && typeof AuthManager.getCurrentUser === 'function') {
+                    const u = AuthManager.getCurrentUser();
+                    if (u && (!userId || String(u.id) === String(uid)) && u.isCloudManaged) {
+                        return true;
+                    }
+                }
+            } catch (e) {}
+            const s = this.loadState();
+            return Boolean(s.cloudManagedByUser && s.cloudManagedByUser[uid]);
+        },
+
+        syncCloudDevices(cloudDevices, userId = null) {
+            const s = this.loadState();
+            const uid = userId || this.getCurrentUserId();
+            const cleanList = (Array.isArray(cloudDevices) ? cloudDevices : []).map(d => ({
+                id: String(d.id || ('cloud_' + (d.cloudId || Date.now()))),
+                cloudId: d.cloudId || '',
+                category: String(d.category || 'Diğer').trim() || 'Diğer',
+                code: String(d.code || '').trim(),
+                brand: String(d.brand || '').trim(),
+                model: String(d.model || '').trim(),
+                reportName: String(d.reportName || d.category || 'Ölçüm Cihazı').trim(),
+                thermalReportName: String(d.thermalReportName || '').trim(),
+                isThermal: Boolean(d.isThermal),
+                serial: String(d.serial || '').trim(),
+                calDate: String(d.calDate || '').trim(),
+                validDate: String(d.validDate || '').trim(),
+                certNo: String(d.certNo || '').trim(),
+                isCustom: false,
+                lockedByManager: true
+            }));
+            s.cloudDevicesByUser[uid] = cleanList;
+            s.cloudManagedByUser[uid] = true;
+            s.assignmentsByUser[uid] = cleanList.map(d => String(d.id));
+            s.autoApplyEnabled = true;
+            this.saveState(s);
+            return cleanList;
         },
 
         saveState(state) {
@@ -492,8 +536,12 @@
             }
         },
 
-        getCatalog() {
+        getCatalog(userId = null) {
             const s = this.loadState();
+            const uid = userId || this.getCurrentUserId();
+            if (this.isCloudManaged(uid)) {
+                return Array.isArray(s.cloudDevicesByUser[uid]) ? s.cloudDevicesByUser[uid] : [];
+            }
             return s.catalog;
         },
 
@@ -515,6 +563,14 @@
         getAssignedDeviceIds(userId = null) {
             const s = this.loadState();
             const uid = userId || this.getCurrentUserId();
+            if (this.isCloudManaged(uid)) {
+                const cloudDevs = Array.isArray(s.cloudDevicesByUser[uid]) ? s.cloudDevicesByUser[uid] : [];
+                const validSet = new Set(cloudDevs.map(d => String(d.id)));
+                const storedIds = Array.isArray(s.assignmentsByUser[uid])
+                    ? s.assignmentsByUser[uid].map(String).filter(id => validSet.has(id))
+                    : [];
+                return storedIds.length === cloudDevs.length ? storedIds : cloudDevs.map(d => String(d.id));
+            }
             const ids = s.assignmentsByUser[uid];
             if (Array.isArray(ids)) return ids;
             // Fallback: varsa default anahtarını kontrol et
@@ -527,7 +583,7 @@
         setAssignedDeviceIds(ids, userId = null) {
             const s = this.loadState();
             const uid = userId || this.getCurrentUserId();
-            const validIdSet = new Set(s.catalog.map(d => String(d.id)));
+            const validIdSet = new Set(this.getCatalog(uid).map(d => String(d.id)));
             const deduped = [];
             (Array.isArray(ids) ? ids : []).forEach(id => {
                 const sid = String(id);
@@ -539,9 +595,8 @@
         },
 
         getAssignedDevices(userId = null) {
-            const s = this.loadState();
             const ids = this.getAssignedDeviceIds(userId);
-            const map = new Map(s.catalog.map(d => [String(d.id), d]));
+            const map = new Map(this.getCatalog(userId).map(d => [String(d.id), d]));
             return ids.map(id => map.get(String(id))).filter(Boolean);
         },
 
@@ -991,6 +1046,7 @@
         renderSettingsCardHtml() {
             const curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || null;
             const userName = curUser ? curUser.fullName : 'Aktif Personel';
+            const locked = this.isCloudManaged();
             const assigned = this.getAssignedDevices();
             const catalog = this.getCatalog();
             const autoApply = this.isAutoApplyEnabled();
@@ -1049,23 +1105,30 @@
                                     ▼
                                 </button>
                             </div>
-                            <div class="flex items-center gap-1.5 flex-wrap justify-end">
-                                <button type="button" onclick="openDeviceCatalogPickerModal('settings_swap', { oldDeviceId: '${esc(dev.id)}' })"
-                                    class="px-2.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-bold text-[11px] flex items-center gap-1 shadow-2xs transition">
-                                    <i class="fa-solid fa-right-left"></i>
-                                    <span>Değiştir</span>
-                                </button>
-                                <button type="button" onclick="openDeviceEditModal('${esc(dev.id)}', { refreshSettings: true })"
-                                    class="px-2.5 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 active:scale-95 text-slate-800 font-bold text-[11px] flex items-center gap-1 transition">
-                                    <i class="fa-solid fa-pen"></i>
-                                    <span>Düzenle</span>
-                                </button>
-                                <button type="button" onclick="MeasuringDevicesManager.handleUnassignFromSettings('${esc(dev.id)}')"
-                                    class="px-2 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-700 border border-rose-200 font-bold text-[11px] flex items-center gap-1 transition" title="Üzerimden Çıkar">
-                                    <i class="fa-solid fa-xmark"></i>
-                                    <span>Çıkar</span>
-                                </button>
-                            </div>
+                            ${locked ? `
+                                <span class="px-2 py-1 rounded-lg bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-bold inline-flex items-center gap-1">
+                                    <i class="fa-solid fa-lock text-[9px] text-amber-600"></i>
+                                    <span>Yönetici Ataması</span>
+                                </span>
+                            ` : `
+                                <div class="flex items-center gap-1.5 flex-wrap justify-end">
+                                    <button type="button" onclick="openDeviceCatalogPickerModal('settings_swap', { oldDeviceId: '${esc(dev.id)}' })"
+                                        class="px-2.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-bold text-[11px] flex items-center gap-1 shadow-2xs transition">
+                                        <i class="fa-solid fa-right-left"></i>
+                                        <span>Değiştir</span>
+                                    </button>
+                                    <button type="button" onclick="openDeviceEditModal('${esc(dev.id)}', { refreshSettings: true })"
+                                        class="px-2.5 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 active:scale-95 text-slate-800 font-bold text-[11px] flex items-center gap-1 transition">
+                                        <i class="fa-solid fa-pen"></i>
+                                        <span>Düzenle</span>
+                                    </button>
+                                    <button type="button" onclick="MeasuringDevicesManager.handleUnassignFromSettings('${esc(dev.id)}')"
+                                        class="px-2 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-700 border border-rose-200 font-bold text-[11px] flex items-center gap-1 transition" title="Üzerimden Çıkar">
+                                        <i class="fa-solid fa-xmark"></i>
+                                        <span>Çıkar</span>
+                                    </button>
+                                </div>
+                            `}
                         </div>
                     </div>
                 `;
@@ -1074,9 +1137,11 @@
                     <div class="w-10 h-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center mx-auto text-base">
                         <i class="fa-solid fa-screwdriver-wrench"></i>
                     </div>
-                    <div class="text-xs font-bold text-slate-800">Henüz üzerinize ölçüm cihazı almadınız</div>
+                    <div class="text-xs font-bold text-slate-800">${locked ? 'Yöneticiniz henüz size cihaz atamadı' : 'Henüz üzerinize ölçüm cihazı almadınız'}</div>
                     <p class="text-[11px] text-slate-500 max-w-sm mx-auto leading-relaxed">
-                        Aşağıdan kendi kullandığınız cihazları (ör. Fluke / UNI-T Termal Kamera, Metrel Test Cihazı, Pensampermetre vb.) seçin; yeni rapor yazarken otomatik eklensinler.
+                        ${locked
+                            ? "Firma yöneticiniz web panelinden size ölçüm cihazı atadığında burada otomatik görünür ve raporlara eklenir. Atama sonrası 'Buluttan Yenile'ye dokunun."
+                            : 'Aşağıdan kendi kullandığınız cihazları (ör. Fluke / UNI-T Termal Kamera, Metrel Test Cihazı, Pensampermetre vb.) seçin; yeni rapor yazarken otomatik eklensinler.'}
                     </p>
                 </div>
             `;
@@ -1086,11 +1151,18 @@
                     <div class="flex items-center justify-between border-b border-slate-100 pb-2 gap-2">
                         <div class="text-xs font-bold text-slate-800 flex items-center gap-1.5 min-w-0">
                             <i class="fa-solid fa-screwdriver-wrench text-amber-600 shrink-0"></i>
-                            <span class="truncate">Ölçüm Cihazlarım (Üzerime Alınanlar)</span>
+                            <span class="truncate">${locked ? 'Ölçüm Cihazlarım (Yönetici Ataması)' : 'Ölçüm Cihazlarım (Üzerime Alınanlar)'}</span>
                         </div>
-                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${assigned.length ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}">
-                            ${assigned.length} Aktif Cihaz
-                        </span>
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            ${locked ? `
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                    <i class="fa-solid fa-cloud mr-0.5"></i>Yönetici Ataması
+                                </span>
+                            ` : ''}
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${assigned.length ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}">
+                                ${assigned.length} Aktif Cihaz
+                            </span>
+                        </div>
                     </div>
 
                     <div class="flex items-center justify-between gap-2 p-2 rounded-xl bg-amber-50/80 border border-amber-200/80 text-[11px]">
@@ -1106,18 +1178,31 @@
                         ${cardsHtml}
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                        <button type="button" onclick="openDeviceCatalogPickerModal('settings_assign')"
-                            class="w-full py-2.5 px-3 bg-slate-900 hover:bg-slate-800 active:scale-95 text-amber-400 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition">
-                            <i class="fa-solid fa-list-check"></i>
-                            <span>Havuzdan Cihaz Seç / Üzerime Al (${catalog.length})</span>
-                        </button>
-                        <button type="button" onclick="openDeviceEditModal(null, { assignByDefault: true, refreshSettings: true })"
-                            class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition">
-                            <i class="fa-solid fa-plus"></i>
-                            <span>Yeni Ölçüm Cihazı Ekle</span>
-                        </button>
-                    </div>
+                    ${locked ? `
+                        <div class="pt-1 space-y-2">
+                            <button type="button" onclick="window.CloudAppSync && window.CloudAppSync.syncNow()"
+                                class="w-full py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition">
+                                <i class="fa-solid fa-arrows-rotate"></i>
+                                <span>Buluttan Yenile (Cihazları Güncelle)</span>
+                            </button>
+                            <div class="text-[10px] text-slate-500 text-center">
+                                Cihaz ekleme, çıkarma ve kalibrasyon güncelleme işlemleri yalnızca firma yöneticisi web panelinden yapılır.
+                            </div>
+                        </div>
+                    ` : `
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                            <button type="button" onclick="openDeviceCatalogPickerModal('settings_assign')"
+                                class="w-full py-2.5 px-3 bg-slate-900 hover:bg-slate-800 active:scale-95 text-amber-400 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition">
+                                <i class="fa-solid fa-list-check"></i>
+                                <span>Havuzdan Cihaz Seç / Üzerime Al (${catalog.length})</span>
+                            </button>
+                            <button type="button" onclick="openDeviceEditModal(null, { assignByDefault: true, refreshSettings: true })"
+                                class="w-full py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition">
+                                <i class="fa-solid fa-plus"></i>
+                                <span>Yeni Ölçüm Cihazı Ekle</span>
+                            </button>
+                        </div>
+                    `}
                 </div>
             `;
         },
@@ -1131,6 +1216,12 @@
         },
 
         handleUnassignFromSettings(deviceId) {
+            if (this.isCloudManaged()) {
+                if (typeof window.showToast === 'function') {
+                    window.showToast('Cihaz atamaları yalnızca firma yöneticisi tarafından değiştirilebilir', 'warning');
+                }
+                return;
+            }
             const dev = this.getDeviceById(deviceId);
             this.unassignDevice(deviceId);
             if (typeof window.renderSettingsPage === 'function' && window.AppState && window.AppState.currentRoute === 'settings') {
@@ -1190,6 +1281,13 @@
     function renderDeviceCatalogPickerModal() {
         const mode = _pickerState.mode;
         const ctx = _pickerState.context;
+        const locked = MeasuringDevicesManager.isCloudManaged();
+        if (locked && (mode === 'settings_assign' || mode === 'settings_swap')) {
+            if (typeof window.showToast === 'function') {
+                window.showToast('Cihaz atamaları yalnızca firma yöneticisi web panelinden yapılabilir.', 'warning');
+            }
+            return;
+        }
         const catalog = MeasuringDevicesManager.getCatalog();
 
         let modalTitle = '<i class="fa-solid fa-screwdriver-wrench text-amber-400 mr-2"></i>Ölçüm Cihazı Havuzu';
@@ -1304,11 +1402,13 @@
                             placeholder="Marka, model, kod veya seri no ara (ör. Fluke, UNI-T, Metrel)..."
                             class="w-full border border-slate-300 rounded-xl pl-8 pr-3 py-2 text-xs font-medium bg-white focus:border-sky-500 focus:outline-none">
                     </div>
-                    <button type="button" onclick="openDeviceEditModal(null, window._activeNewDeviceCtxOpts || {})"
-                        class="px-2.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs shrink-0 flex items-center gap-1 shadow-xs">
-                        <i class="fa-solid fa-plus"></i>
-                        <span>Yeni</span>
-                    </button>
+                    ${locked ? '' : `
+                        <button type="button" onclick="openDeviceEditModal(null, window._activeNewDeviceCtxOpts || {})"
+                            class="px-2.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs shrink-0 flex items-center gap-1 shadow-xs">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>Yeni</span>
+                        </button>
+                    `}
                 </div>
 
                 <div class="flex items-center gap-1.5 overflow-x-auto pb-1">
@@ -1333,6 +1433,7 @@
     function buildDevicePickerListHtml() {
         const mode = _pickerState.mode;
         const ctx = _pickerState.context;
+        const locked = MeasuringDevicesManager.isCloudManaged();
         const q = (_pickerState.searchQuery || '').trim().toLowerCase();
         const catFilter = _pickerState.categoryFilter;
         const assignedIds = new Set(MeasuringDevicesManager.getAssignedDeviceIds().map(String));
@@ -1357,12 +1458,14 @@
         if (!items.length) {
             return `
                 <div class="p-6 text-center border border-dashed border-slate-200 rounded-xl bg-slate-50 space-y-2">
-                    <div class="text-xs font-bold text-slate-600">Aramaya uygun cihaz bulunamadı</div>
-                    <button type="button" onclick="openDeviceEditModal(null, window._activeNewDeviceCtxOpts || {})"
-                        class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-xs inline-flex items-center gap-1">
-                        <i class="fa-solid fa-plus"></i>
-                        <span>Yeni Cihaz Olarak Ekle</span>
-                    </button>
+                    <div class="text-xs font-bold text-slate-600">${locked ? 'Üzerinize atanmış uygun cihaz bulunamadı' : 'Aramaya uygun cihaz bulunamadı'}</div>
+                    ${locked ? '<div class="text-[11px] text-slate-500">Yöneticinizden web paneli üzerinden cihaz ataması isteyebilirsiniz.</div>' : `
+                        <button type="button" onclick="openDeviceEditModal(null, window._activeNewDeviceCtxOpts || {})"
+                            class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-xs inline-flex items-center gap-1">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>Yeni Cihaz Olarak Ekle</span>
+                        </button>
+                    `}
                 </div>
             `;
         }
@@ -1439,10 +1542,12 @@
                         </div>
                     </div>
                     <div class="flex items-center gap-1 shrink-0">
-                        <button type="button" onclick="openDeviceEditModal('${esc(dev.id)}', { reopenPicker: true })"
-                            class="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 text-[11px]" title="Cihaz Bilgilerini Düzenle">
-                            <i class="fa-solid fa-pen"></i>
-                        </button>
+                        ${locked ? '' : `
+                            <button type="button" onclick="openDeviceEditModal('${esc(dev.id)}', { reopenPicker: true })"
+                                class="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 text-[11px]" title="Cihaz Bilgilerini Düzenle">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                        `}
                         ${primaryActionHtml}
                     </div>
                 </div>
@@ -1451,6 +1556,12 @@
     }
 
     function handlePickerToggleAssign(deviceId) {
+        if (MeasuringDevicesManager.isCloudManaged()) {
+            if (typeof window.showToast === 'function') {
+                window.showToast('Cihaz atamaları yalnızca firma yöneticisi tarafından değiştirilebilir', 'warning');
+            }
+            return;
+        }
         const assigned = MeasuringDevicesManager.toggleAssignment(deviceId);
         const dev = MeasuringDevicesManager.getDeviceById(deviceId);
         renderDeviceCatalogPickerModal();
@@ -1463,6 +1574,12 @@
     }
 
     function handlePickerSelectSwapSettings(oldDeviceId, newDeviceId) {
+        if (MeasuringDevicesManager.isCloudManaged()) {
+            if (typeof window.showToast === 'function') {
+                window.showToast('Cihaz atamaları yalnızca firma yöneticisi tarafından değiştirilebilir', 'warning');
+            }
+            return;
+        }
         const oldDev = MeasuringDevicesManager.getDeviceById(oldDeviceId);
         const newDev = MeasuringDevicesManager.getDeviceById(newDeviceId);
         MeasuringDevicesManager.swapAssignedDevice(oldDeviceId, newDeviceId);
@@ -1478,6 +1595,12 @@
     let _editModalOptions = {};
 
     function openDeviceEditModal(deviceId = null, options = {}) {
+        if (MeasuringDevicesManager.isCloudManaged()) {
+            if (typeof window.showToast === 'function') {
+                window.showToast('Cihaz ekleme ve düzenleme yalnızca firma yöneticisi web panelinden yapılabilir.', 'warning');
+            }
+            return;
+        }
         _editModalOptions = options || {};
         const existing = deviceId ? MeasuringDevicesManager.getDeviceById(deviceId) : null;
         const isEdit = Boolean(existing);

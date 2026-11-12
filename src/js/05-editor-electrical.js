@@ -593,6 +593,12 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
 
     const rows = fd.tableRows[tKey];
 
+    const isThermalSection = (area.index === 1 && topic.index === 0);
+
+    const mgr = window.MeasuringDevicesManager || null;
+
+    const isLockedThermal = Boolean(isThermalSection && mgr && typeof mgr.isCloudManaged === 'function' && mgr.isCloudManaged());
+
     const isSection64 = area.index === 3 && topic.index === 3;
 
     const isSection65 = area.index === 3 && topic.index === 4;
@@ -667,11 +673,11 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
 
                     <label class="block text-[11px] font-bold text-slate-700 mb-1 leading-snug break-words">${labelText}</label>
 
-                    <input type="text" value="${String(cellVal).replace(/"/g, '&quot;')}"
+                    <input type="text" value="${String(cellVal).replace(/"/g, '&quot;')}" ${isLockedThermal ? 'readonly' : ''}
 
                         oninput="handleTopicTableCell('${tKey}', ${rIdx}, '${q.guid}', this.value)"
 
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white focus:border-sky-500 focus:outline-none shadow-2xs font-medium">
+                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs ${isLockedThermal ? 'bg-slate-100 text-slate-700' : 'bg-white'} focus:border-sky-500 focus:outline-none shadow-2xs font-medium">
 
                 </div>
 
@@ -723,9 +729,6 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
 
 
 
-    const isThermalSection = (area.index === 1 && topic.index === 0);
-
-    const mgr = window.MeasuringDevicesManager || null;
     let thermalToolbarHtml = '';
     if (isThermalSection) {
         const firstGuid = topic.questions?.[0]?.guid;
@@ -776,11 +779,15 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
 
                 <div class="font-bold text-xs text-slate-900 leading-snug flex-1">${subNum}. ${topic.name}</div>
 
-                <button onclick="addTopicTableRow('${tKey}', ${area.index}, ${topic.index})" class="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-xs shrink-0 shadow-2xs">
+                ${isLockedThermal ? '' : `
 
-                    + Satır Ekle
+                    <button onclick="addTopicTableRow('${tKey}', ${area.index}, ${topic.index})" class="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-xs shrink-0 shadow-2xs">
 
-                </button>
+                        + Satır Ekle
+
+                    </button>
+
+                `}
 
             </div>
 

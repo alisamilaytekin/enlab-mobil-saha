@@ -17,6 +17,7 @@
         </div>
       </a>
       <div style="display:flex; gap:8px; align-items:center;">
+        <a href="/yonetim" class="btn btn-ghost btn-sm">Firma Yönetim Paneli</a>
         <a href="/" class="btn btn-ghost btn-sm">Müşteri Portalı</a>
         <button id="logoutBtn" type="button" class="btn btn-danger btn-sm hidden" onclick="adminLogout()">Çıkış</button>
       </div>
@@ -54,6 +55,52 @@
             <button type="button" class="btn btn-ghost btn-sm" onclick="copyAdminKey()">Anahtarı Kopyala</button>
           </div>
         </div>
+      </section>
+
+      <!-- Yazılım Müşterileri: Muayene Firmaları & Firma Yöneticileri -->
+      <section class="card">
+        <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px;">
+          <div>
+            <h2 style="margin:0; font-size:16px;">🏢 Yazılım Müşterileri (Muayene Firmaları &amp; Yöneticiler)</h2>
+            <div style="font-size:12px; color:#64748b; margin-top:2px;">
+              Yazılımı verdiğiniz firmaları ve ilk yönetici hesaplarını buradan açın. Firma yöneticileri <a href="/yonetim" target="_blank" style="color:#0284c7; font-weight:700;">/yonetim</a> üzerinden eleman, cihaz ve iş klasörü tanımlar.
+            </div>
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('newTenantWrap').classList.toggle('hidden')">+ Yeni Muayene Firması Ekle</button>
+        </div>
+
+        <form id="createTenantForm">
+          <div id="newTenantWrap" class="hidden card-muted" style="margin-bottom:14px; background:#f8fafc;">
+            <div class="grid-2" style="margin-bottom:10px;">
+              <div>
+                <label class="label" for="tenantNameInput">Muayene Firması Adı *</label>
+                <input id="tenantNameInput" type="text" class="input" placeholder="Örn: TEKKOMER Mühendislik A.Ş." oninput="autoFillTenantManagerUsername()" required>
+              </div>
+              <div>
+                <label class="label" for="tenantMgrFullName">İlk Firma Yöneticisi Ad Soyad *</label>
+                <input id="tenantMgrFullName" type="text" class="input" placeholder="Örn: Ali Şamil Aytekin" required>
+              </div>
+            </div>
+            <div class="grid-3">
+              <div>
+                <label class="label" for="tenantMgrUsername">Yönetici Kullanıcı Adı *</label>
+                <input id="tenantMgrUsername" type="text" class="input mono" placeholder="Örn: tekkomer-yonetici" required>
+              </div>
+              <div>
+                <label class="label" for="tenantMgrPassword">Yönetici Şifresi *</label>
+                <div style="display:flex; gap:6px;">
+                  <input id="tenantMgrPassword" type="text" class="input mono" placeholder="En az 4 karakter" required>
+                  <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('tenantMgrPassword').value = randomCustomerPassword();">Üret</button>
+                </div>
+              </div>
+              <div style="display:flex; align-items:flex-end; justify-content:flex-end;">
+                <button id="createTenantBtn" type="submit" class="btn btn-emerald btn-sm" style="width:100%; height:40px;">Firmayı ve Yöneticiyi Oluştur</button>
+              </div>
+            </div>
+          </div>
+        </form>
+
+        <div id="tenantsList" style="display:flex; flex-direction:column; gap:8px;"></div>
       </section>
 
       <!-- Müşteri Firma Hesapları Kartı -->
@@ -196,8 +243,11 @@
     const ADMIN_KEY_STORAGE = 'hr_portal_admin_key';
     let cachedFolders = [];
     let cachedAccounts = [];
+    let cachedTenants = [];
+    let cachedSaasUsers = [];
     let activeCompanyFilter = '';
     let custUsernameTouched = false;
+    let tenantMgrTouched = false;
 
     function randomCustomerPassword() {
       const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
@@ -262,6 +312,9 @@
       document.getElementById('upInspectionDate').value = new Date().toLocaleDateString('tr-TR');
       if (!document.getElementById('custPassword').value) {
         document.getElementById('custPassword').value = randomCustomerPassword();
+      }
+      if (!document.getElementById('tenantMgrPassword').value) {
+        document.getElementById('tenantMgrPassword').value = randomCustomerPassword();
       }
       await loadAdminFolders();
       return true;
@@ -470,9 +523,11 @@
 
       cachedFolders = data.folders || [];
       cachedAccounts = data.customer_accounts || [];
+      cachedTenants = data.tenants || [];
+      cachedSaasUsers = data.saas_users || [];
 
       document.getElementById('adminStats').textContent =
-        `${data.totals.customers || 0} müşteri hesabı · ${data.totals.folders} klasör · ${data.totals.reports} yayında rapor`;
+        `${data.totals.tenants || 0} muayene firması · ${data.totals.customers || 0} müşteri hesabı · ${data.totals.folders} klasör · ${data.totals.reports} yayında rapor`;
 
       const sel = document.getElementById('upTargetFolder');
       const prev = sel.value;
@@ -487,8 +542,156 @@
         cachedAccounts.map(a => `<option value="${PortalUI.escapeHtml(a.id)}">${PortalUI.escapeHtml(a.company_name)} (@${PortalUI.escapeHtml(a.username)})</option>`).join('');
       if (prevCust) custSel.value = prevCust;
 
+      renderTenantsList();
       renderCustomerAccounts();
       renderAdminFolders();
+    }
+
+    function autoFillTenantManagerUsername() {
+      if (tenantMgrTouched) return;
+      const nm = document.getElementById('tenantNameInput').value;
+      const slug = slugifyUser(nm);
+      document.getElementById('tenantMgrUsername').value = slug ? `${slug}-yonetici` : '';
+    }
+    document.getElementById('tenantMgrUsername').addEventListener('input', () => {
+      tenantMgrTouched = Boolean(document.getElementById('tenantMgrUsername').value.trim());
+    });
+
+    function renderTenantsList() {
+      const box = document.getElementById('tenantsList');
+      if (!box) return;
+      if (!cachedTenants.length) {
+        box.innerHTML = '<div class="card-muted" style="text-align:center;color:#64748b;font-size:13px;">Henüz yazılım müşterisi (muayene firması) eklenmemiş. "+ Yeni Muayene Firması Ekle" butonundan ilk firmayı ve yöneticisini açabilirsiniz.</div>';
+        return;
+      }
+      box.innerHTML = cachedTenants.map(t => {
+        const users = cachedSaasUsers.filter(u => u.tenant_id === t.id);
+        const managers = users.filter(u => u.role === 'manager');
+        const inspectors = users.filter(u => u.role !== 'manager');
+        const statusBadge = t.is_active
+          ? '<span class="badge badge-ok">Aktif</span>'
+          : '<span class="badge badge-bad">Pasif</span>';
+        const mgrBadges = managers.map(m =>
+          `<span class="badge badge-info mono" style="cursor:pointer;" title="Şifreyi yenilemek için tıklayın" onclick="promptResetSaasUserPassword('${PortalUI.escapeHtml(m.id)}', '${PortalUI.escapeHtml(m.username)}')">👔 @${PortalUI.escapeHtml(m.username)} (${PortalUI.escapeHtml(m.full_name)})</span>`
+        ).join(' ');
+        return `
+          <div class="card-muted" style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px;">
+            <div style="min-width:220px; flex:1;">
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <strong style="font-size:14px;">${PortalUI.escapeHtml(t.name)}</strong>
+                <span class="badge mono">${PortalUI.escapeHtml(t.slug)}</span>
+                ${statusBadge}
+              </div>
+              <div style="font-size:12px; color:#64748b; margin-top:4px; display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
+                <span>${managers.length} yönetici · ${inspectors.length} saha elemanı</span>
+                ${mgrBadges}
+              </div>
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button type="button" class="btn btn-outline btn-sm" onclick="promptAddTenantManager('${PortalUI.escapeHtml(t.id)}', '${PortalUI.escapeHtml(t.name)}')">+ Yönetici Ekle</button>
+              <button type="button" class="btn btn-outline btn-sm" onclick="toggleTenantActive('${PortalUI.escapeHtml(t.id)}', ${t.is_active ? 'false' : 'true'})">${t.is_active ? 'Pasife Al' : 'Aktif Et'}</button>
+              <button type="button" class="btn btn-danger btn-sm" onclick="deleteTenant('${PortalUI.escapeHtml(t.id)}', '${PortalUI.escapeHtml(t.name)}')">Sil</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    document.getElementById('createTenantForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('tenantNameInput').value.trim();
+      const managerFullName = document.getElementById('tenantMgrFullName').value.trim();
+      const managerUsername = document.getElementById('tenantMgrUsername').value.trim();
+      const managerPassword = document.getElementById('tenantMgrPassword').value.trim();
+      const btn = document.getElementById('createTenantBtn');
+      btn.disabled = true;
+      try {
+        const res = await fetch('/api/admin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Admin-Key': getAdminKey() },
+          body: JSON.stringify({
+            action: 'create-tenant',
+            name,
+            manager_full_name: managerFullName,
+            manager_username: managerUsername,
+            manager_password: managerPassword
+          })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || 'Firma oluşturulamadı');
+        PortalUI.toast(`Firma ve yönetici oluşturuldu: @${data.manager ? data.manager.username : data.tenant.slug}`, 'success');
+        document.getElementById('createTenantForm').reset();
+        document.getElementById('tenantMgrPassword').value = randomCustomerPassword();
+        tenantMgrTouched = false;
+        await loadAdminFolders();
+      } catch (err) {
+        PortalUI.toast(err.message, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    async function promptAddTenantManager(tenantId, tenantName) {
+      const fullName = prompt(`${tenantName} için yeni yönetici Ad Soyad:`, '');
+      if (!fullName || !fullName.trim()) return;
+      const username = prompt('Yönetici Kullanıcı Adı (en az 3 karakter):', slugifyUser(fullName));
+      if (!username || username.trim().length < 3) return;
+      const password = prompt('Yönetici Giriş Şifresi (en az 4 karakter):', randomCustomerPassword());
+      if (!password || password.trim().length < 4) return;
+      const res = await fetch('/api/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Key': getAdminKey() },
+        body: JSON.stringify({
+          action: 'create-saas-user',
+          tenant_id: tenantId,
+          role: 'manager',
+          full_name: fullName.trim(),
+          username: username.trim(),
+          password: password.trim()
+        })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) return PortalUI.toast(data.error || 'Yönetici eklenemedi', 'error');
+      PortalUI.toast(`Yönetici eklendi: @${data.user.username}`, 'success');
+      await loadAdminFolders();
+    }
+
+    async function promptResetSaasUserPassword(userId, username) {
+      const pwd = prompt(`@${username} kullanıcısı için yeni şifre girin (en az 4 karakter):`, '');
+      if (!pwd || pwd.trim().length < 4) return;
+      const res = await fetch('/api/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Key': getAdminKey() },
+        body: JSON.stringify({ action: 'update-saas-user', user_id: userId, password: pwd.trim() })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) return PortalUI.toast(data.error || 'Şifre güncellenemedi', 'error');
+      PortalUI.toast(`@${username} şifresi güncellendi`, 'success');
+    }
+
+    async function toggleTenantActive(tenantId, nextActive) {
+      const res = await fetch('/api/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Key': getAdminKey() },
+        body: JSON.stringify({ action: 'update-tenant', tenant_id: tenantId, is_active: nextActive })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) return PortalUI.toast(data.error || 'Güncellenemedi', 'error');
+      PortalUI.toast(nextActive ? 'Firma aktif edildi' : 'Firma pasife alındı', 'success');
+      await loadAdminFolders();
+    }
+
+    async function deleteTenant(tenantId, tenantName) {
+      if (!confirm(`"${tenantName}" firması ve tüm kullanıcıları/cihazları/işleri kalıcı olarak silinsin mi?`)) return;
+      const res = await fetch('/api/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Key': getAdminKey() },
+        body: JSON.stringify({ action: 'delete-tenant', tenant_id: tenantId })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) return PortalUI.toast(data.error || 'Silinemedi', 'error');
+      PortalUI.toast('Firma silindi', 'success');
+      await loadAdminFolders();
     }
 
     document.getElementById('createCustomerForm').addEventListener('submit', async (e) => {
