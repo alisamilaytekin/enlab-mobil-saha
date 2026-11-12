@@ -1,6 +1,6 @@
 {
   "name": "hizli-rapor-portal",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "type": "module",
   "description": "Hızlı Rapor - Müşteri Rapor Portalı ve Doğrulama Sistemi"
