@@ -16833,10 +16833,10 @@ function buildTkmPageHeader(reportMainTitle) {
                 <div style="font-size:7.8pt;color:#222222;line-height:1.25;margin-bottom:3px;">
                     info@tkmkontrol.com &nbsp;&nbsp; www.tkmkontrol.com
                 </div>
-                <div style="font-size:11pt;font-weight:700;color:#222222;line-height:1.15;text-transform:uppercase;">
+                <div class="tkm-header-title" style="font-size:11pt;font-weight:700;color:#222222;line-height:1.15;text-transform:uppercase;">
                     ${reportMainTitle}
                 </div>
-                <div style="font-size:9.5pt;font-weight:400;color:#333333;margin-top:2px;letter-spacing:0.3px;">
+                <div class="tkm-header-acc" style="font-size:9.5pt;font-weight:400;color:#333333;margin-top:2px;letter-spacing:0.3px;">
                     PERİYODİK KONTROL RAPORU
                 </div>
             </div>
@@ -18275,8 +18275,35 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
 
         const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+        const useRamsMinistryEnhanced2201 = isRamsTheme(activePdfTheme) && (window.RAMS_2201_ENHANCED_LAYOUT !== false);
 
-        const renderCompleteVisualTopicBlock = (subNumberTitle, questions) => {
+        const renderRadioDotHtml = (selected, isBad = false) => {
+            const bg = isBad ? '#ffffff' : (selected ? '#0f172a' : '#ffffff');
+            const bd = isBad ? '#be123c' : '#0f172a';
+            return `<span style="display:inline-block;width:6.8px;height:6.8px;border-radius:50%;border:1.1px solid ${bd};background:${bg};vertical-align:middle;margin-right:3.5px;box-sizing:border-box;"></span>`;
+        };
+
+        const getAns = (q) => {
+            if (!q) return '';
+            const raw = fd.answers[`q_${q.guid}`] ?? SAMPLE_PDF_DEFAULTS[q.question] ?? '';
+            return String(raw).trim();
+        };
+
+        const renderRadioOptionsInline = (q, gapPx = '10px') => {
+            if (!q) return '';
+            const cur = getAns(q);
+            const opts = Array.isArray(q.options) && q.options.length ? q.options : [];
+            if (!opts.length) return escapeHtml(cur);
+            const matchedAny = opts.some(opt => cur.toLowerCase() === String(opt).trim().toLowerCase());
+            const itemsHtml = opts.map(opt => {
+                const isSel = cur.toLowerCase() === String(opt).trim().toLowerCase();
+                return `<span style="display:inline-flex;align-items:center;margin-right:${gapPx};font-weight:${isSel ? '700' : '400'};color:${isSel ? '#0f172a' : '#334155'};white-space:nowrap;">${renderRadioDotHtml(isSel)}${escapeHtml(opt)}</span>`;
+            }).join('');
+            const extraCustom = (cur && !matchedAny) ? `<span style="font-weight:700;color:#0f172a;margin-left:2px;">(${escapeHtml(cur)})</span>` : '';
+            return `${itemsHtml}${extraCustom}`;
+        };
+
+        const renderCompleteVisualTopicBlock = (subNumberTitle, questions, showHeaderRow = true, showLegendRow = true) => {
             const currentTheme = activePdfTheme;
             if (isRamsTheme(currentTheme)) {
                 // Dual column (2-sütun) layout matching Ministry format!
@@ -18287,22 +18314,24 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
                     const letterL = letters[i] || (i + 1);
                     const symL = formatSymbolForPrint(fd.answers[`q_${qL.guid}`] || '');
                     const badgeL = formatSymbolBadge(symL);
+                    const badClsL = (useRamsMinistryEnhanced2201 && symL === 'X') ? ' class="tkm-cell-bad"' : '';
 
                     const rightIdx = i + mid;
                     const qR = rightIdx < questions.length ? questions[rightIdx] : null;
                     const letterR = qR ? (letters[rightIdx] || (rightIdx + 1)) : '';
                     const symR = qR ? formatSymbolForPrint(fd.answers[`q_${qR.guid}`] || '') : '';
                     const badgeR = qR ? formatSymbolBadge(symR) : '';
+                    const badClsR = (useRamsMinistryEnhanced2201 && symR === 'X') ? ' class="tkm-cell-bad"' : '';
 
                     rowsHtml += `
                         <tr>
-                            <td style="text-align:center;font-weight:700;width:24px;">${letterL}</td>
-                            <td style="text-align:left;padding-left:4px;font-size:6.9pt;">${qL.question}</td>
-                            <td style="text-align:center;width:34px;">${badgeL}</td>
+                            <td${badClsL} style="text-align:center;font-weight:700;width:24px;">${letterL}</td>
+                            <td${badClsL} style="text-align:left;padding-left:4px;font-size:6.9pt;">${qL.question}</td>
+                            <td${badClsL} style="text-align:center;width:34px;">${badgeL}</td>
                             ${qR ? `
-                                <td style="text-align:center;font-weight:700;width:24px;border-left:1.5px solid #cbd5e1;">${letterR}</td>
-                                <td style="text-align:left;padding-left:4px;font-size:6.9pt;">${qR.question}</td>
-                                <td style="text-align:center;width:34px;">${badgeR}</td>
+                                <td${badClsR} style="text-align:center;font-weight:700;width:24px;border-left:1.5px solid #cbd5e1;">${letterR}</td>
+                                <td${badClsR} style="text-align:left;padding-left:4px;font-size:6.9pt;">${qR.question}</td>
+                                <td${badClsR} style="text-align:center;width:34px;">${badgeR}</td>
                             ` : `
                                 <td style="border-left:1.5px solid #cbd5e1;"></td>
                                 <td></td>
@@ -18311,6 +18340,23 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
                         </tr>
                     `;
                 }
+
+                const theadHtml = (!useRamsMinistryEnhanced2201 || showHeaderRow) ? `
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th style="text-align:left;padding-left:4px;font-weight:700;">Soru / Kriter</th>
+                            <th style="text-align:center;font-weight:700;">1</th>
+                            <th style="border-left:1.5px solid #cbd5e1;"></th>
+                            <th style="text-align:left;padding-left:4px;font-weight:700;">Soru / Kriter</th>
+                            <th style="text-align:center;font-weight:700;">1</th>
+                        </tr>
+                    </thead>
+                ` : '';
+
+                const legendHtml = (!useRamsMinistryEnhanced2201 || showLegendRow)
+                    ? `<div class="tkm-legend">✓: Uygun; X: Uygun Değil; N: Uygulaması Yok; G: Görülemedi</div>`
+                    : '';
 
                 return `
                     <div class="tkm-sub-bar">${subNumberTitle}</div>
@@ -18323,19 +18369,10 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
                             <col style="width:42%;">
                             <col style="width:34px;">
                         </colgroup>
-                        <thead>
-                            <tr>
-                                <th></th>
-                                <th style="text-align:left;padding-left:4px;font-weight:700;">Soru / Kriter</th>
-                                <th style="text-align:center;font-weight:700;">1</th>
-                                <th style="border-left:1.5px solid #cbd5e1;"></th>
-                                <th style="text-align:left;padding-left:4px;font-weight:700;">Soru / Kriter</th>
-                                <th style="text-align:center;font-weight:700;">1</th>
-                            </tr>
-                        </thead>
+                        ${theadHtml}
                         <tbody>${rowsHtml}</tbody>
                     </table>
-                    <div class="tkm-legend">✓: Uygun; X: Uygun Değil; N: Uygulaması Yok; G: Görülemedi</div>
+                    ${legendHtml}
                 `;
             }
 
@@ -18382,7 +18419,22 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
 
         // Block 1: 1. FİRMA BİLGİLERİ
-        blocks.push(`
+        const docCodeBarHtml = useRamsMinistryEnhanced2201 ? `
+            <div style="display:flex;justify-content:flex-end;margin-bottom:3px;">
+                <table style="border:1px solid #cbd5e1;font-size:6.4pt;border-collapse:collapse;background:#ffffff;">
+                    <tr>
+                        <td class="tkm-label-cell" style="padding:1.5px 5px;border:1px solid #cbd5e1;">Doküman Kodu</td>
+                        <td class="tkm-val-cell" style="padding:1.5px 5px;border:1px solid #cbd5e1;">ZPKR02</td>
+                        <td class="tkm-label-cell" style="padding:1.5px 5px;border:1px solid #cbd5e1;">Yayım Tarihi</td>
+                        <td class="tkm-val-cell" style="padding:1.5px 5px;border:1px solid #cbd5e1;">18.07.2025</td>
+                        <td class="tkm-label-cell" style="padding:1.5px 5px;border:1px solid #cbd5e1;">Revizyon No / Tarihi</td>
+                        <td class="tkm-val-cell" style="padding:1.5px 5px;border:1px solid #cbd5e1;">- / -</td>
+                        <td class="tkm-label-cell" style="padding:1.5px 5px;border:1px solid #cbd5e1;">Yürürlük Tarihi</td>
+                        <td class="tkm-val-cell" style="padding:1.5px 5px;border:1px solid #cbd5e1;">01.09.2025</td>
+                    </tr>
+                </table>
+            </div>
+        ` : `
             <div style="display:flex;justify-content:flex-end;margin-bottom:3px;">
                 <table style="border:1px solid #000000;font-size:6.7pt;border-collapse:collapse;background:#ffffff;">
                     <tr>
@@ -18393,6 +18445,13 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
                     </tr>
                 </table>
             </div>
+        `;
+
+        const lblCls1 = useRamsMinistryEnhanced2201 ? ' class="tkm-label-cell"' : '';
+        const valCls1 = useRamsMinistryEnhanced2201 ? ' class="tkm-val-cell"' : '';
+
+        blocks.push(`
+            ${docCodeBarHtml}
             <div class="tkm-sec-title">1. FİRMA BİLGİLERİ</div>
 
             <table class="tkm-table">
@@ -18413,71 +18472,71 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
                     <tr>
 
-                        <td style="font-weight:700;">Firma Adı</td>
+                        <td${lblCls1} style="font-weight:700;">Firma Adı</td>
 
-                        <td colspan="3">${ci.firmName}</td>
-
-                    </tr>
-
-                    <tr>
-
-                        <td style="font-weight:700;">Periyodik Kontrol Adresi</td>
-
-                        <td colspan="3">${ci.address}</td>
+                        <td${valCls1} colspan="3">${ci.firmName}</td>
 
                     </tr>
 
                     <tr>
 
-                        <td style="font-weight:700;">İSG-KATİP Sözleşme ID</td>
+                        <td${lblCls1} style="font-weight:700;">Periyodik Kontrol Adresi</td>
 
-                        <td>${ci.isgKatipNo}</td>
-
-                        <td style="font-weight:700;">SGK Sicil Numarası</td>
-
-                        <td>${ci.sgkSicilNo}</td>
+                        <td${valCls1} colspan="3">${ci.address}</td>
 
                     </tr>
 
                     <tr>
 
-                        <td style="font-weight:700;">Rapor Numarası</td>
+                        <td${lblCls1} style="font-weight:700;">İSG-KATİP Sözleşme ID</td>
 
-                        <td>${reportNo}</td>
+                        <td${valCls1}>${ci.isgKatipNo}</td>
 
-                        <td style="font-weight:700;">Rapor Tarihi</td>
+                        <td${lblCls1} style="font-weight:700;">SGK Sicil Numarası</td>
 
-                        <td>${insp.inspection_date || ci.reportDate}</td>
-
-                    </tr>
-
-                    <tr>
-
-                        <td style="font-weight:700;">Periyodik Kontrol Başlangıç ve<br>Bitiş Tarih ve Saati</td>
-
-                        <td>${ci.startEndTime}</td>
-
-                        <td style="font-weight:700;">Bir Sonraki Periyodik<br>Kontrol Tarihi</td>
-
-                        <td>${fd.nextInspectionDate || ci.nextControlDate}</td>
+                        <td${valCls1}>${ci.sgkSicilNo}</td>
 
                     </tr>
 
                     <tr>
 
-                        <td style="font-weight:700;">Rapor / Ekipman Adı</td>
+                        <td${lblCls1} style="font-weight:700;">Rapor Numarası</td>
 
-                        <td>${insp.equipment_name || ci.equipmentName || 'Elektrik İç Tesisatı'}</td>
+                        <td${valCls1}>${reportNo}</td>
 
-                        <td style="font-weight:700;">Ekipman Seri No / Kod</td>
+                        <td${lblCls1} style="font-weight:700;">Rapor Tarihi</td>
 
-                        <td>${ci.serialCode || insp.serial_no || ''}</td>
+                        <td${valCls1}>${insp.inspection_date || ci.reportDate}</td>
 
                     </tr>
 
                     <tr>
 
-                        <td style="font-weight:700;">Periyodik Kontrol Metodu ve<br>Kapsamı</td>
+                        <td${lblCls1} style="font-weight:700;">Periyodik Kontrol Başlangıç ve<br>Bitiş Tarih ve Saati</td>
+
+                        <td${valCls1}>${ci.startEndTime}</td>
+
+                        <td${lblCls1} style="font-weight:700;">Bir Sonraki Periyodik<br>Kontrol Tarihi</td>
+
+                        <td${valCls1}>${fd.nextInspectionDate || ci.nextControlDate}</td>
+
+                    </tr>
+
+                    <tr>
+
+                        <td${lblCls1} style="font-weight:700;">Rapor / Ekipman Adı</td>
+
+                        <td${valCls1}>${insp.equipment_name || ci.equipmentName || 'Elektrik İç Tesisatı'}</td>
+
+                        <td${lblCls1} style="font-weight:700;">Ekipman Seri No / Kod</td>
+
+                        <td${valCls1}>${ci.serialCode || insp.serial_no || ''}</td>
+
+                    </tr>
+
+                    <tr>
+
+                        <td${lblCls1} style="font-weight:700;">Periyodik Kontrol Metodu ve<br>Kapsamı</td>
 
                         <td colspan="3" style="line-height:1.22;">
 
@@ -18499,7 +18558,129 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
 
 
-        // Block 2: 2. EKİPMAN BİLGİLERİ + 2.1. DETAY BİLGİLERİ
+        // Block 2: 2. EKİPMAN BİLGİLERİ + 2.1. DETAY BİLGİLER
+        const sec21Questions = area0.topics[0].questions || [];
+        const renderMinistrySec21Table = () => {
+            const q = sec21Questions;
+            const qPhase = q[10];
+            const curPhase = getAns(qPhase);
+            const aaOpts = ['AA(1 faz-2 tel)', 'AA(1 faz-3 tel)', 'AA(2 faz-3 tel)', 'AA(3 faz-3 tel)', 'AA(3 faz-4 tel)'];
+            const daOpts = ['DA(2 kutup)', 'DA(3 kutup)', 'DA(Diğer)'];
+            const isAAGroup = curPhase.toUpperCase().startsWith('AA');
+            const isDAGroup = curPhase.toUpperCase().startsWith('DA');
+
+            const renderPhaseCol = (groupTitle, isGroupSelected, list) => `
+                <div style="flex:1;min-width:0;">
+                    <div style="font-weight:700;color:#0f172a;margin-bottom:1.5px;font-size:6.7pt;">
+                        ${renderRadioDotHtml(isGroupSelected)}${groupTitle}
+                    </div>
+                    <div style="display:flex;flex-wrap:wrap;gap:2px 8px;padding-left:4px;">
+                        ${list.map(opt => {
+                            const sel = curPhase.toLowerCase() === opt.toLowerCase();
+                            return `<span style="display:inline-flex;align-items:center;font-size:6.55pt;font-weight:${sel ? '700' : '400'};color:${sel ? '#0f172a' : '#334155'};white-space:nowrap;">${renderRadioDotHtml(sel)}${escapeHtml(opt)}</span>`;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+
+            return `
+                <table class="tkm-table">
+                    <colgroup>
+                        <col style="width:21%;">
+                        <col style="width:29%;">
+                        <col style="width:22%;">
+                        <col style="width:28%;">
+                    </colgroup>
+                    <tbody>
+                        <tr>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[0] ? q[0].question : 'Enerji sağlayan kuruluş'}</td>
+                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;">${escapeHtml(getAns(q[0]))}</td>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[1] ? q[1].question : 'Şebeke tipi'}</td>
+                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;font-size:6.75pt;">${renderRadioOptionsInline(q[1], '7px')}</td>
+                        </tr>
+                        <tr>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[2] ? q[2].question : 'Şebeke gerilimi (V)'}</td>
+                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;">${escapeHtml(getAns(q[2]))}</td>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[5] ? q[5].question : 'Kontrol nedeni'}</td>
+                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;font-size:6.8pt;">${renderRadioOptionsInline(q[5], '10px')}</td>
+                        </tr>
+                        <tr>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[3] ? q[3].question : 'Tesise ait proje var mı?'}</td>
+                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;font-size:6.8pt;">${renderRadioOptionsInline(q[3], '12px')}</td>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[4] ? q[4].question : 'Tek hat şeması var mı?'}</td>
+                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;font-size:6.8pt;">${renderRadioOptionsInline(q[4], '12px')}</td>
+                        </tr>
+                        <tr>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[7] ? q[7].question : 'Yapı cinsi'}</td>
+                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;font-size:6.75pt;">${renderRadioOptionsInline(q[7], '8px')}</td>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[6] ? q[6].question : 'Topraklayıcı tipi'}</td>
+                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;font-size:6.65pt;">${renderRadioOptionsInline(q[6], '6px')}</td>
+                        </tr>
+                        <tr>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[8] ? q[8].question : 'Ekipmanın kullanım amacı'}</td>
+                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;">${escapeHtml(getAns(q[8]))}</td>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[9] ? q[9].question : 'Son kontrol tarihi'}</td>
+                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;">${escapeHtml(getAns(q[9]))}</td>
+                        </tr>
+                        <tr>
+                            <td class="tkm-label-cell" rowspan="5" style="text-align:left;padding:2px 5px;vertical-align:middle;">
+                                ${qPhase ? qPhase.question : 'Faz iletkenlerinin sayısı ve tipi'}
+                            </td>
+                            <td class="tkm-val-cell" rowspan="5" style="text-align:left;padding:3px 5px;vertical-align:middle;">
+                                <div style="display:flex;flex-direction:column;gap:3px;">
+                                    ${renderPhaseCol('AA', isAAGroup, aaOpts)}
+                                    <div style="border-top:1px dashed #cbd5e1;padding-top:2px;">
+                                        ${renderPhaseCol('DA', isDAGroup, daOpts)}
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[11] ? q[11].question : 'Temel topraklama direnci (Ω)'}</td>
+                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;">${escapeHtml(getAns(q[11]))}</td>
+                        </tr>
+                        <tr>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[12] ? q[12].question : 'İlave topraklama elektrotu detayları(varsa)'}</td>
+                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;">${escapeHtml(getAns(q[12]))}</td>
+                        </tr>
+                        <tr>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[13] ? q[13].question : 'Sistem topraklama iletkeni ve kesiti (mm²)'}</td>
+                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;">${escapeHtml(getAns(q[13]))}</td>
+                        </tr>
+                        <tr>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[14] ? q[14].question : 'Ana eşpotansiyel iletkeni ve kesiti (mm²)'}</td>
+                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;">${escapeHtml(getAns(q[14]))}</td>
+                        </tr>
+                        <tr>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[19] ? q[19].question : 'Ana kesici karakteristikleri-Tip'}</td>
+                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;">${escapeHtml(getAns(q[19]))}</td>
+                        </tr>
+                        <tr>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[15] ? q[15].question : 'Besleme kaynağı karakteristikleri-Nominal gerilim, U/Uo (kV)'}</td>
+                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;">${escapeHtml(getAns(q[15]))}</td>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[20] ? q[20].question : 'Ana kesici karakteristikleri-Nominal akım (A)'}</td>
+                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;">${escapeHtml(getAns(q[20]))}</td>
+                        </tr>
+                        <tr>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[16] ? q[16].question : 'Besleme kaynağı karakteristikleri-Nominal frekans, f (Hz)'}</td>
+                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;">${escapeHtml(getAns(q[16]))}</td>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[21] ? q[21].question : 'TT/TN-S Şebeke için ana RCD anma akımı (A)'}</td>
+                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;">${escapeHtml(getAns(q[21]))}</td>
+                        </tr>
+                        <tr>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[17] ? q[17].question : 'Besleme kaynağı karakteristikleri-Hata akımı olasılığı, IF (kA)'}</td>
+                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;">${escapeHtml(getAns(q[17]))}</td>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[22] ? q[22].question : 'TT/TN-S Şebeke için ana RCD açma akımı (mA)'}</td>
+                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;">${escapeHtml(getAns(q[22]))}</td>
+                        </tr>
+                        <tr>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[18] ? q[18].question : 'Besleme kaynağı karakteristikleri-Dış çevrim empedansı ZE (Ω)'}</td>
+                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;">${escapeHtml(getAns(q[18]))}</td>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[23] ? q[23].question : 'TT/TN-S Şebeke için ana RCD açma zamanı (ms)'}</td>
+                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;">${escapeHtml(getAns(q[23]))}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            `;
+        };
 
         blocks.push(`
 
@@ -18507,7 +18688,7 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
             <div class="tkm-sub-bar">2.1. DETAY BİLGİLER</div>
 
-            ${renderOrderedGridTable(area0.topics[0].questions, 3)}
+            ${useRamsMinistryEnhanced2201 ? renderMinistrySec21Table() : renderOrderedGridTable(area0.topics[0].questions, 3)}
 
         `);
 
@@ -18560,24 +18741,24 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
                     </colgroup>
                     <tbody>
                         <tr>
-                            <td style="text-align:left;padding:2.5px 6px;font-weight:600;color:#111;">${qChange ? qChange.question : 'Tesisatta kapsamlı değişiklik var mı? (&gt;%20)'}</td>
-                            <td style="text-align:left;padding:2.5px 6px;">${qChange ? optPairHtml(qChange.guid, 'Var', 'Yok') : ''}</td>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2.5px 6px;font-weight:600;color:#111;">${qChange ? qChange.question : 'Tesisatta kapsamlı değişiklik var mı? (&gt;%20)'}</td>
+                            <td class="tkm-val-cell" style="text-align:left;padding:2.5px 6px;">${qChange ? optPairHtml(qChange.guid, 'Var', 'Yok') : ''}</td>
                         </tr>
                         <tr>
-                            <td style="text-align:left;padding:2.5px 6px;font-weight:600;color:#111;">${qSpd ? qSpd.question : 'Tesisatta aşırı gerilim koruma cihazları (DKD/SPD) kullanılmış mı?'}</td>
-                            <td style="text-align:left;padding:2.5px 6px;">${qSpd ? optPairHtml(qSpd.guid, 'Evet', 'Hayır') : ''}</td>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2.5px 6px;font-weight:600;color:#111;">${qSpd ? qSpd.question : 'Tesisatta aşırı gerilim koruma cihazları (DKD/SPD) kullanılmış mı?'}</td>
+                            <td class="tkm-val-cell" style="text-align:left;padding:2.5px 6px;">${qSpd ? optPairHtml(qSpd.guid, 'Evet', 'Hayır') : ''}</td>
                         </tr>
                         <tr>
-                            <td style="text-align:left;padding:3px 6px;font-weight:600;vertical-align:middle;color:#111;">
+                            <td class="tkm-label-cell" style="text-align:left;padding:3px 6px;font-weight:600;vertical-align:middle;color:#111;">
                                 Tespit edilen bilgiler<br>(Doğrudan dokunmaya karşı koruma önlemleri)
                             </td>
-                            <td style="text-align:left;padding:3px 6px;font-size:6.8pt;">
+                            <td class="tkm-val-cell" style="text-align:left;padding:3px 6px;font-size:6.8pt;">
                                 ${protectionRowsHtml}
                             </td>
                         </tr>
                         <tr>
-                            <td style="text-align:left;padding:2.5px 6px;font-weight:600;color:#111;">${qPrevTag ? qPrevTag.question : 'Bir önceki periyodik kontrol etiketi var mı?'}</td>
-                            <td style="text-align:left;padding:2.5px 6px;">${qPrevTag ? optPairHtml(qPrevTag.guid, 'Var', 'Yok') : ''}</td>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2.5px 6px;font-weight:600;color:#111;">${qPrevTag ? qPrevTag.question : 'Bir önceki periyodik kontrol etiketi var mı?'}</td>
+                            <td class="tkm-val-cell" style="text-align:left;padding:2.5px 6px;">${qPrevTag ? optPairHtml(qPrevTag.guid, 'Var', 'Yok') : ''}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -18669,6 +18850,18 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
 
         // Block 6: 5. TEST VE KONTROLLER Title + 5.1. PANO ADI/EKİPMAN TANIMLAMASI
+        const qPano51 = area2.topics[0].questions[0];
+        const sec51TableHtml = useRamsMinistryEnhanced2201 ? `
+            <table class="tkm-table">
+                <colgroup><col style="width:32%;"><col style="width:68%;"></colgroup>
+                <tbody>
+                    <tr>
+                        <td class="tkm-label-cell" style="text-align:left;padding:2.5px 6px;">${qPano51 ? qPano51.question : 'Pano Adı/Ekipman Tanımlaması'}</td>
+                        <td class="tkm-val-cell" style="text-align:left;padding:2.5px 6px;">${escapeHtml(getAns(qPano51))}</td>
+                    </tr>
+                </tbody>
+            </table>
+        ` : renderOrderedGridTable(area2.topics[0].questions, 1);
 
         blocks.push(`
             <div class="tkm-force-page-break" style="display:none;"></div>
@@ -18677,18 +18870,19 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
             <div class="tkm-sub-bar">5.1. ${area2.topics[0].name}</div>
 
-            ${renderOrderedGridTable(area2.topics[0].questions, 1)}
+            ${sec51TableHtml}
 
         `);
 
 
 
-        // Blocks for 5.2 through 5.8 (Each has its COMPLETE gray title bar + Soru/Kriter header + all rows + legend!)
-
+        // Blocks for 5.2 through 5.8
         const visualTopics = area2.topics.slice(1);
         visualTopics.forEach((t, idx) => {
-            let blockHtml = renderCompleteVisualTopicBlock(`5.${idx + 2}. ${t.name}`, t.questions);
-            if (idx === visualTopics.length - 1) {
+            const isFirstVisual = (idx === 0);
+            const isLastVisual = (idx === visualTopics.length - 1);
+            let blockHtml = renderCompleteVisualTopicBlock(`5.${idx + 2}. ${t.name}`, t.questions, isFirstVisual, isLastVisual);
+            if (isLastVisual) {
                 blockHtml += `
                     <div style="font-size:6.8pt;color:#333333;font-style:italic;margin-top:2px;padding:2px 4px;">
                         Pano/Ekipman sayısı fazla olan tesislerde birden fazla form kullanılmalıdır.
@@ -18704,16 +18898,92 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
         // Rams formatında 6. Başlık 3. sayfadan başlar!
         const sec6Break = isRamsTheme(activePdfTheme) ? '<div class="tkm-force-page-break" style="display:none;"></div>' : '';
 
+        const renderMinistrySec6TopHtml = () => {
+            const qMethod = area3.topics[0].questions[0];
+            const qPano61 = area3.topics[1].questions[0];
+            const q61 = area3.topics[2].questions || [];
+            // q61[0]: Zx, q61[1]: ZLN, q61[2]: IK3, q61[3]: DKD tipi, q61[4]: F-F, q61[5]: L-N, q61[6]: N-PE, q61[7]: DKD dayanma akımı
+            const cellValAndCls = (quest) => {
+                const v = getAns(quest);
+                const isX = v.toLowerCase() === 'x';
+                return {
+                    val: escapeHtml(v),
+                    cls: isX ? 'tkm-val-cell tkm-cell-bad' : 'tkm-val-cell'
+                };
+            };
+            const cZx = cellValAndCls(q61[0]);
+            const cZln = cellValAndCls(q61[1]);
+            const cIk3 = cellValAndCls(q61[2]);
+            const cFF = cellValAndCls(q61[4]);
+            const cLN = cellValAndCls(q61[5]);
+            const cNPE = cellValAndCls(q61[6]);
+            const cDkdKa = cellValAndCls(q61[7]);
+
+            return `
+                <div class="tkm-sub-bar">Ölçüm ve Doğrulama Metodu</div>
+                <table class="tkm-table" style="margin-bottom:2px;">
+                    <colgroup><col style="width:28%;"><col style="width:72%;"></colgroup>
+                    <tbody>
+                        <tr>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2.5px 6px;">${qMethod ? qMethod.question : 'Ölçüm ve doğrulama metodu'}</td>
+                            <td class="tkm-val-cell" style="text-align:left;padding:2.5px 6px;font-size:6.9pt;">${renderRadioOptionsInline(qMethod, '16px')}</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="tkm-sub-bar">6.1. ${area3.topics[2].name}</div>
+                <table class="tkm-table" style="margin-bottom:2px;">
+                    <colgroup>
+                        <col style="width:25%;">
+                        <col style="width:11%;">
+                        <col style="width:16%;">
+                        <col style="width:11%;">
+                        <col style="width:22%;">
+                        <col style="width:15%;">
+                    </colgroup>
+                    <tbody>
+                        <tr>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2.5px 6px;">${qPano61 ? qPano61.question : 'Pano (Ekipman) Adı-Etiketi veya Kodu'}</td>
+                            <td class="tkm-val-cell" colspan="5" style="text-align:left;padding:2.5px 6px;">${escapeHtml(getAns(qPano61))}</td>
+                        </tr>
+                        <tr>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q61[0] ? q61[0].question : 'Panodan ölçülen faz-toprak çevrim empedansı (Zx) (Ω)'}</td>
+                            <td class="${cZx.cls}" style="text-align:center;padding:2px 4px;">${cZx.val}</td>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q61[4] ? q61[4].question : 'Gerilimler F-F(V)'}</td>
+                            <td class="${cFF.cls}" style="text-align:center;padding:2px 4px;">${cFF.val}</td>
+                            <td class="tkm-label-cell" rowspan="2" style="text-align:left;padding:2px 5px;vertical-align:middle;">${q61[3] ? q61[3].question : 'Aşırı gerilim koruma (DKD) tipi'}</td>
+                            <td class="tkm-val-cell" rowspan="2" style="text-align:left;padding:2px 5px;vertical-align:middle;font-size:6.4pt;line-height:1.35;">${renderRadioOptionsInline(q61[3], '6px')}</td>
+                        </tr>
+                        <tr>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q61[1] ? q61[1].question : 'Panodan ölçülen faz-nötr çevrim empedansı (ZLN) (Ω)'}</td>
+                            <td class="${cZln.cls}" style="text-align:center;padding:2px 4px;">${cZln.val}</td>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q61[5] ? q61[5].question : 'Gerilimler L-N(V)'}</td>
+                            <td class="${cLN.cls}" style="text-align:center;padding:2px 4px;">${cLN.val}</td>
+                        </tr>
+                        <tr>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q61[2] ? q61[2].question : 'Hesaplanan 3 fazlı kısa devre akımı (kA)'}</td>
+                            <td class="${cIk3.cls}" style="text-align:center;padding:2px 4px;">${cIk3.val}</td>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q61[6] ? q61[6].question : 'Gerilimler N-PE(V)'}</td>
+                            <td class="${cNPE.cls}" style="text-align:center;padding:2px 4px;">${cNPE.val}</td>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q61[7] ? q61[7].question : 'Aşırı gerilim koruma (DKD) dayanma akımı (kA)'}</td>
+                            <td class="${cDkdKa.cls}" style="text-align:center;padding:2px 4px;">${cDkdKa.val}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            `;
+        };
+
         blocks.push(`
             ${sec6Break}
             <div class="tkm-sec-title">6. FONKSİYON KONTROL KRİTERLERİ VE TESTLER</div>
-            <div class="tkm-sub-bar">Ölçüm ve Doğrulama Metodu</div>
-            ${renderOrderedGridTable(area3.topics[0].questions, 1)}
-            <div class="tkm-sub-bar">6.1. ${area3.topics[2].name}</div>
-            <div style="margin-bottom:2px;">
-                ${renderOrderedGridTable(area3.topics[1].questions, 1)}
-            </div>
-            ${renderOrderedGridTable(area3.topics[2].questions, 4)}
+            ${useRamsMinistryEnhanced2201 ? renderMinistrySec6TopHtml() : `
+                <div class="tkm-sub-bar">Ölçüm ve Doğrulama Metodu</div>
+                ${renderOrderedGridTable(area3.topics[0].questions, 1)}
+                <div class="tkm-sub-bar">6.1. ${area3.topics[2].name}</div>
+                <div style="margin-bottom:2px;">
+                    ${renderOrderedGridTable(area3.topics[1].questions, 1)}
+                </div>
+                ${renderOrderedGridTable(area3.topics[2].questions, 4)}
+            `}
         `);
 
         // Helper to push multi-row tables (6.1 Linye, 6.2 Potansiyel Dengeleme, 6.3 Zemin İzolasyonu)
@@ -18752,23 +19022,78 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
                 ? 'text-align:center;font-weight:700;'
                 : 'text-align:center;font-weight:700;font-size:6.8pt;line-height:1.18;padding:2.8px 3px;';
 
-            const ths = topic.questions.map(q => {
-                const hdr = formatPdfTopicHdr(q);
-                return `<th style="${thDefaultStyle}">${hdr}</th>`;
-            }).join('');
+            const buildTableHeadHtml = () => {
+                if (useRamsMinistryEnhanced2201 && tKey === 'topic_3_3') {
+                    // 2-tier grouped Ministry header with 100% unabridged Ministry terminology
+                    return `
+                        <thead>
+                            <tr>
+                                <th rowspan="2" style="${thNoStyle}vertical-align:middle;">No</th>
+                                <th rowspan="2" style="${thDefaultStyle}vertical-align:middle;">Pano/Tablo numarası-<br>Linye Adı-Etiketi</th>
+                                <th colspan="4" class="tkm-linye-group-th" style="text-align:center;">Aşırı Akım Koruma Cihazının</th>
+                                <th colspan="5" class="tkm-linye-group-th" style="text-align:center;">İletkenin</th>
+                                <th colspan="2" class="tkm-linye-group-th" style="text-align:center;">RCD Testi</th>
+                                <th rowspan="2" style="${thDefaultStyle}vertical-align:middle;">Sonuç</th>
+                            </tr>
+                            <tr>
+                                <th style="${thDefaultStyle}">Açma eğrisi tipi</th>
+                                <th style="${thDefaultStyle}">Kutup sayısı</th>
+                                <th style="${thDefaultStyle}">Nominal akımı<br>In (A)</th>
+                                <th style="${thDefaultStyle}">Kısa devre kesme<br>akımı Icu (kA)</th>
+                                <th style="${thDefaultStyle}">Faz kesiti<br>(mm²)</th>
+                                <th style="${thDefaultStyle}">N/PEN Kesiti<br>(mm²)</th>
+                                <th style="${thDefaultStyle}">PE Koruma iletkeni<br>kesiti (mm²)</th>
+                                <th style="${thDefaultStyle}">Ib Yük/Tasarım<br>akımı (A)</th>
+                                <th style="${thDefaultStyle}">Iz Akım taşıma<br>kapasitesi (A)</th>
+                                <th style="${thDefaultStyle}">IΔ (mA)</th>
+                                <th style="${thDefaultStyle}">TΔ (ms)</th>
+                            </tr>
+                        </thead>
+                    `;
+                }
+                const ths = topic.questions.map(q => {
+                    const hdr = formatPdfTopicHdr(q);
+                    return `<th style="${thDefaultStyle}">${hdr}</th>`;
+                }).join('');
+                return `
+                    <thead>
+                        <tr>
+                            <th style="${thNoStyle}">No</th>
+                            ${ths}
+                        </tr>
+                    </thead>
+                `;
+            };
+
+            const theadFullHtml = buildTableHeadHtml();
 
             for (let start = 0; start < allRows.length; start += chunkSize) {
                 const slice = allRows.slice(start, start + chunkSize);
-                const trs = slice.map((r, idx) => `
-                    <tr>
-                        <td style="text-align:center;">${start + idx + 1}</td>
-                        ${topic.questions.map((q, qIdx) => {
-                            const cellAlign = (qIdx === 0 && (tKey === 'topic_3_3' || tKey === 'topic_3_4' || tKey === 'topic_3_5')) ? 'left' : 'center';
-                            const cellVal = q.type === 'YesNo' ? formatSymbolForPrint(r[q.guid] || '') : (r[q.guid] ?? '');
-                            return `<td style="text-align:${cellAlign};font-size:7.1pt;">${cellVal}</td>`;
-                        }).join('')}
-                    </tr>
-                `).join('');
+                const trs = slice.map((r, idx) => {
+                    const lastQ = topic.questions[topic.questions.length - 1];
+                    const rowResultSym = (lastQ && lastQ.type === 'YesNo') ? formatSymbolForPrint(r[lastQ.guid] || '') : '';
+                    const isBadRow = useRamsMinistryEnhanced2201 && rowResultSym === 'X';
+                    const trCls = isBadRow ? ' class="tkm-row-bad"' : '';
+
+                    return `
+                        <tr${trCls}>
+                            <td style="text-align:center;">${start + idx + 1}</td>
+                            ${topic.questions.map((q, qIdx) => {
+                                const cellAlign = (qIdx === 0 && (tKey === 'topic_3_3' || tKey === 'topic_3_4' || tKey === 'topic_3_5')) ? 'left' : 'center';
+                                const rawVal = r[q.guid] ?? '';
+                                if (q.type === 'YesNo') {
+                                    const sym = formatSymbolForPrint(rawVal);
+                                    const out = useRamsMinistryEnhanced2201 ? formatSymbolBadge(sym) : sym;
+                                    return `<td style="text-align:${cellAlign};font-size:7.1pt;">${out}</td>`;
+                                }
+                                const strVal = String(rawVal).trim();
+                                const isXCell = useRamsMinistryEnhanced2201 && strVal.toLowerCase() === 'x';
+                                const tdCls = isXCell ? ' class="tkm-cell-bad"' : '';
+                                return `<td${tdCls} style="text-align:${cellAlign};font-size:7.1pt;">${escapeHtml(strVal)}</td>`;
+                            }).join('')}
+                        </tr>
+                    `;
+                }).join('');
                 const chunkTitle = start === 0 ? subTitle : `${subTitle} (Devamı)`;
                 const isFinalChunk = (start + chunkSize >= allRows.length);
                 const footNoteHtml = (isLastSec6Topic && isFinalChunk) ? `
@@ -18781,12 +19106,7 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
                     <div class="tkm-sub-bar">${chunkTitle}</div>
                     <table class="${tableCls}">
                         ${colGroupHtml}
-                        <thead>
-                            <tr>
-                                <th style="${thNoStyle}">No</th>
-                                ${ths}
-                            </tr>
-                        </thead>
+                        ${theadFullHtml}
                         <tbody>${trs}</tbody>
                     </table>
                     <div class="tkm-legend">✓: Uygun; X: Uygun Değil; N: Uygulaması Yok; G: Görülemedi</div>
@@ -18805,18 +19125,36 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
         pushMultiRowTopicBlocks(area3.topics[5], 'topic_3_5', '6.3. ' + area3.topics[5].name, true);
 
         // Block for 7. KUSUR AÇIKLAMALARI
+        const rawDefectNotes = (fd.defectNotes || 'Kusur tespiti bulunmamaktadır.').trim();
+        const renderRamsDefectNotesContent = () => {
+            if (!rawDefectNotes || rawDefectNotes === 'Kusur tespiti bulunmamaktadır.') {
+                return `<div style="color:#14573a;font-weight:700;font-size:7.3pt;">✓ Kusur tespiti bulunmamaktadır.</div>`;
+            }
+            const lines = rawDefectNotes.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+            return lines.map(line => {
+                const isHeavy = line.includes('**');
+                const isLight = !isHeavy && line.includes('*');
+                const badge = isHeavy
+                    ? `<span style="display:inline-block;padding:0.5px 4px;margin-right:5px;border-radius:3px;background:#fdecea;border:1px solid #f5c2c7;color:#7a1812;font-weight:800;font-size:6.3pt;">AĞIR KUSUR (**)</span>`
+                    : isLight
+                        ? `<span style="display:inline-block;padding:0.5px 4px;margin-right:5px;border-radius:3px;background:#fef3c7;border:1px solid #fde68a;color:#92400e;font-weight:800;font-size:6.3pt;">HAFİF KUSUR (*)</span>`
+                        : '';
+                return `<div style="padding:1.5px 0;border-bottom:1px dashed #e2e8f0;line-height:1.28;color:${isHeavy ? '#7a1812' : '#0f172a'};font-weight:${isHeavy ? '700' : '500'};">${badge}${escapeHtml(line)}</div>`;
+            }).join('');
+        };
+
         blocks.push(`
             <div class="tkm-sec-title">7. KUSUR AÇIKLAMALARI</div>
-            <table class="tkm-table">
+            <table class="tkm-table ${useRamsMinistryEnhanced2201 ? 'tkm-defect-notes-box' : ''}">
                 <tbody>
                     <tr>
                         <td style="min-height:22px;height:24px;vertical-align:top;text-align:left;padding:3.5px 6px;">
-                            ${(fd.defectNotes || 'Kusur tespiti bulunmamaktadır.').replace(/\n/g, '<br>')}
+                            ${useRamsMinistryEnhanced2201 ? renderRamsDefectNotesContent() : escapeHtml(rawDefectNotes).replace(/\n/g, '<br>')}
                         </td>
                     </tr>
                 </tbody>
             </table>
-            <div style="font-size:6.8pt;color:#222222;font-weight:600;padding:2.5px 6px;margin-top:2px;background:#ffffff;border:1px solid #000000;border-radius:2px;line-height:1.25;">
+            <div style="font-size:6.8pt;color:#222222;font-weight:600;padding:2.5px 6px;margin-top:2px;background:#ffffff;border:1px solid ${useRamsMinistryEnhanced2201 ? '#cbd5e1' : '#000000'};border-radius:2px;line-height:1.25;">
                 Kusur derecesi “*” hafif kusurlu ve “**” ağır kusurlu anlamında kullanılmaktadır. Değerlendirme “Uygun”, “Uygun Değil” ve “Uygulanamaz” olarak yapılmıştır.
             </div>
         `);
@@ -18922,7 +19260,7 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
         // Block 9: 9. NOTLAR (Bakanlık Formatı: SABİT 9. BÖLÜM)
         blocks.push(`
             <div class="tkm-sec-title">9. NOTLAR</div>
-            <table class="tkm-table">
+            <table class="tkm-table ${useRamsMinistryEnhanced2201 ? 'tkm-general-notes-box' : ''}">
                 <tbody>
                     <tr>
                         <td style="min-height:22px;height:22px;vertical-align:top;text-align:left;padding:3.5px 6px;font-size:7.2pt;line-height:1.2;">
@@ -18939,46 +19277,55 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
             ? 'KULLANILMASI UYGUNDUR.' 
             : 'KULLANILMASI UYGUN DEĞİLDİR. C1 – Tehlike mevcut. Yaralanma riski. Derhal düzeltici eylem gerekli.';
 
+        const conclusionBannerHtml = `
+            <div class="tkm-conclusion-box ${isSuitable ? 'tkm-result-box-ok' : 'tkm-result-box-bad'}" style="margin-top:2px;margin-bottom:3px;font-size:7.4pt;font-weight:700;color:${isSuitable ? '#047857' : '#c00000'};line-height:1.25;">
+                Periyodik kontrol tarihi itibari ile yukarıda teknik özellikleri belirtilen Elektrik Tesisatının fonksiyon testleri muayenesi sonrasında mevcut şartlar altında<br>
+                <span style="font-size:8.5pt;">
+                    ${conclusionText}
+                </span>
+            </div>
+        `;
+
+        const heavyDefectDefinitionsHtml = `
+            <div style="font-weight:700;">Ağır kusur tanımları:</div>
+            <div style="font-weight:700;margin-top:1px;">Gözle Kontrol Bölümü</div>
+            <div>1. Faza erişim engeli IP2X koruma sınıfını sağlamıyorsa,</div>
+            <div>2. Kablo ek noktaları yalıtımlı değilse, pano içinde ucu açıkta iletken varsa,</div>
+            <div>3. Pano elemanları bağlantı noktalarında kontak gevşekliği (seri ark) tespit edilmişse,</div>
+            <div>4. PVC izoleli kablolarda ve pano elemanlarının dokunulabilen metal olmayan yüzeylerinde aşırı ısınma tespit edilmişse.</div>
+
+            <div style="font-weight:700;margin-top:2px;">Fonksiyon Testleri Bölümü</div>
+            <div>1. Hesaplanan 3 fazlı kısa devre akımı, pano içinde bulunan herhangi bir aşırı akım koruma cihazı etiketinde yazan kısa devre kesme kapasitesinden (Icu) fazla ise,</div>
+            <div>2. Aşırı akım koruma elemanı değerleri linye kesiti ile uyumsuz ise,</div>
+            <div>3. El ulaşma mesafesindeki metal bölümler, ekipmanın toprak barası veya toprak ucuyla eş potansiyel değilse,</div>
+            <div>4. RCD performans testi sonuçları yetersiz ise,</div>
+            <div>5. Kablo şalter koordinasyonunun aşağıdaki uygunsuzluğu;<br>Devre Tasarım Akımı (Ib), Devre Kesici Akımı (In) ve Kablo Akım Taşıma Kapasitesi (Iz) için Ib&lt;In&lt;Iz sağlanmadıysa,</div>
+            <div>6. Zemin yalıtımının aşağıdaki uygunsuzlukları;<br>b) El ulaşma mesafesinde bulunan zemin izolasyonu uygun boyutta değilse, (EİTY Md. 33d)<br>c) Zemin izolasyon direnci 50 kΩ’dan büyük değilse, (EİTY Md. 48)</div>
+            <div>7. N/PEN iletkeni kesitinin ve kullanım yerinin aşağıdaki uygunsuzlukları;<br>a) N/PEN kesiti ile faz iletkeni kesiti eşit değilse. (EİTY Md 57b3-ii-1)<br>İstisna: N/PEN kesitinin faz iletkeninin kesitinden küçük olması durumunda (örneğin 3x70+35 mm2 gibi) faz iletkenlerini koruyan devre kesici anma akımının, N/PEN iletkeni kesitine göre (örnekteki 35mm2’ye göre) belirlenmesi kuralı ihlal edildiyse (EİTY Md 57b3-ii-2)<br>b) PEN iletkeni kesiti &gt;10 mm2 değilse (EİTY Md 36)<br>c) PEN iletkeni yangın tehlikesi olan yerlerden geçirilmemesi kuralı ihlal edildiyse (EİTY Md 64)<br>d) PEN iletkeni Exproof tehlikeli bölge sınırları içinden geçirilmemesi kuralı ihlal edildiyse (IEC 60079-14)</div>
+            <div>8. PE koruma iletkeni kesitinin aşağıdaki uygunsuzluğu;<br>Koruma iletkeni kesiti ETTY Md. 9e1i’de verilen formülle yapılan hesap sonucuna ve ETTY Çizelge 8’de verilen tabloya uygun değilse,</div>
+            <div>9. PD potansiyel dengeleme iletkeni kesitinin aşağıdaki uygunsuzluğu;<br>6 mm2 &lt; PD &lt; 25 mm2 değilse,</div>
+            <div>10. Tamamlayıcı potansiyel dengeleme: PD &gt; 4mm² değilse.</div>
+            <div style="font-weight:700;margin-top:1px;">Ağır kusur olarak değerlendirilir.</div>
+
+            <div style="margin-top:2px;">
+                Bu rapor “Alçak Gerilim Topraklama Tesisatı Kontrol Raporu” ile birlikte geçerlidir.<br>
+                TS HD 60364 standardına göre kullanımı uygun olmayan tesisatlar aşağıdaki şekilde işaretlenir:<br>
+                C1 – Tehlike mevcut. Yaralanma riski. Derhal düzeltici eylem gerekli.<br>
+                C2 – Potansiyel olarak tehlikeli – acil düzeltici eylem gerekli.<br>
+                C3 – İyileştirme önerilir.
+            </div>
+        `;
+
         blocks.push(`
             <div class="tkm-sec-title">10. SONUÇ VE KANAAT</div>
             <table class="tkm-table">
                 <tbody>
                     <tr>
                         <td style="font-size:6.6pt;line-height:1.15;padding:3.5px 6px;text-align:left;">
-                            <div style="font-weight:700;">Ağır kusur tanımları:</div>
-                            <div style="font-weight:700;margin-top:1px;">Gözle Kontrol Bölümü</div>
-                            <div>1. Faza erişim engeli IP2X koruma sınıfını sağlamıyorsa,</div>
-                            <div>2. Kablo ek noktaları yalıtımlı değilse, pano içinde ucu açıkta iletken varsa,</div>
-                            <div>3. Pano elemanları bağlantı noktalarında kontak gevşekliği (seri ark) tespit edilmişse,</div>
-                            <div>4. PVC izoleli kablolarda ve pano elemanlarının dokunulabilen metal olmayan yüzeylerinde aşırı ısınma tespit edilmişse.</div>
-
-                            <div style="font-weight:700;margin-top:2px;">Fonksiyon Testleri Bölümü</div>
-                            <div>1. Hesaplanan 3 fazlı kısa devre akımı, pano içinde bulunan herhangi bir aşırı akım koruma cihazı etiketinde yazan kısa devre kesme kapasitesinden (Icu) fazla ise,</div>
-                            <div>2. Aşırı akım koruma elemanı değerleri linye kesiti ile uyumsuz ise,</div>
-                            <div>3. El ulaşma mesafesindeki metal bölümler, ekipmanın toprak barası veya toprak ucuyla eş potansiyel değilse,</div>
-                            <div>4. RCD performans testi sonuçları yetersiz ise,</div>
-                            <div>5. Kablo şalter koordinasyonunun aşağıdaki uygunsuzluğu;<br>Devre Tasarım Akımı (Ib), Devre Kesici Akımı (In) ve Kablo Akım Taşıma Kapasitesi (Iz) için Ib&lt;In&lt;Iz sağlanmadıysa,</div>
-                            <div>6. Zemin yalıtımının aşağıdaki uygunsuzlukları;<br>b) El ulaşma mesafesinde bulunan zemin izolasyonu uygun boyutta değilse, (EİTY Md. 33d)<br>c) Zemin izolasyon direnci 50 kΩ’dan büyük değilse, (EİTY Md. 48)</div>
-                            <div>7. N/PEN iletkeni kesitinin ve kullanım yerinin aşağıdaki uygunsuzlukları;<br>a) N/PEN kesiti ile faz iletkeni kesiti eşit değilse. (EİTY Md 57b3-ii-1)<br>İstisna: N/PEN kesitinin faz iletkeninin kesitinden küçük olması durumunda (örneğin 3x70+35 mm2 gibi) faz iletkenlerini koruyan devre kesici anma akımının, N/PEN iletkeni kesitine göre (örnekteki 35mm2’ye göre) belirlenmesi kuralı ihlal edildiyse (EİTY Md 57b3-ii-2)<br>b) PEN iletkeni kesiti &gt;10 mm2 değilse (EİTY Md 36)<br>c) PEN iletkeni yangın tehlikesi olan yerlerden geçirilmemesi kuralı ihlal edildiyse (EİTY Md 64)<br>d) PEN iletkeni Exproof tehlikeli bölge sınırları içinden geçirilmemesi kuralı ihlal edildiyse (IEC 60079-14)</div>
-                            <div>8. PE koruma iletkeni kesitinin aşağıdaki uygunsuzluğu;<br>Koruma iletkeni kesiti ETTY Md. 9e1i’de verilen formülle yapılan hesap sonucuna ve ETTY Çizelge 8’de verilen tabloya uygun değilse,</div>
-                            <div>9. PD potansiyel dengeleme iletkeni kesitinin aşağıdaki uygunsuzluğu;<br>6 mm2 &lt; PD &lt; 25 mm2 değilse,</div>
-                            <div>10. Tamamlayıcı potansiyel dengeleme: PD &gt; 4mm² değilse.</div>
-                            <div style="font-weight:700;margin-top:1px;">Ağır kusur olarak değerlendirilir.</div>
-
-                            <div style="margin-top:2px;">
-                                Bu rapor “Alçak Gerilim Topraklama Tesisatı Kontrol Raporu” ile birlikte geçerlidir.<br>
-                                TS HD 60364 standardına göre kullanımı uygun olmayan tesisatlar aşağıdaki şekilde işaretlenir:<br>
-                                C1 – Tehlike mevcut. Yaralanma riski. Derhal düzeltici eylem gerekli.<br>
-                                C2 – Potansiyel olarak tehlikeli – acil düzeltici eylem gerekli.<br>
-                                C3 – İyileştirme önerilir.
-                            </div>
-
-                            <div class="tkm-conclusion-box ${isSuitable ? 'tkm-result-box-ok' : 'tkm-result-box-bad'}" style="margin-top:2.5px;font-size:7.4pt;font-weight:700;color:${isSuitable ? '#047857' : '#c00000'};line-height:1.25;">
-                                Periyodik kontrol tarihi itibari ile yukarıda teknik özellikleri belirtilen Elektrik Tesisatının fonksiyon testleri muayenesi sonrasında mevcut şartlar altında<br>
-                                <span style="font-size:8.5pt;">
-                                    ${conclusionText}
-                                </span>
-                            </div>
+                            ${useRamsMinistryEnhanced2201
+                                ? `${conclusionBannerHtml}${heavyDefectDefinitionsHtml}`
+                                : `${heavyDefectDefinitionsHtml}${conclusionBannerHtml}`
+                            }
                         </td>
                     </tr>
                 </tbody>

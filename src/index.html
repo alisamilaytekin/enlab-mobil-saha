@@ -672,17 +672,38 @@
         /* Etiket vs Değer Mikro-Hiyerarşisi */
         [data-pdf-theme^="rams_"] .tkm-label-cell,
         [data-pdf-theme="modern"] .tkm-label-cell {
-            color: #5b6573 !important;
-            font-size: 7.1pt !important;
+            color: #334155 !important;
+            font-size: 6.95pt !important;
             font-weight: 600 !important;
-            background-color: #f8fafc !important;
+            background-color: #f1f5f9 !important;
         }
 
         [data-pdf-theme^="rams_"] .tkm-val-cell,
         [data-pdf-theme="modern"] .tkm-val-cell {
             color: #0f172a !important;
-            font-size: 7.5pt !important;
+            font-size: 7.25pt !important;
             font-weight: 700 !important;
+            background-color: #ffffff !important;
+        }
+
+        /* Uygunsuz (X) Satır ve Hücre Vurgusu (Hızlı Görsel Tarama) */
+        [data-pdf-theme^="rams_"] .tkm-table tbody tr.tkm-row-bad td,
+        [data-pdf-theme="modern"] .tkm-table tbody tr.tkm-row-bad td,
+        [data-pdf-theme^="rams_"] .tkm-table tbody td.tkm-cell-bad,
+        [data-pdf-theme="modern"] .tkm-table tbody td.tkm-cell-bad {
+            background-color: #fff1f2 !important;
+            color: #9f1239 !important;
+            font-weight: 700 !important;
+        }
+
+        /* 2 Katlı Gruplu Linye Başlığı (RAMS) */
+        [data-pdf-theme^="rams_"] .tkm-table.tkm-linye-table th.tkm-linye-group-th,
+        [data-pdf-theme="modern"] .tkm-table.tkm-linye-table th.tkm-linye-group-th {
+            background-color: #e2e8f0 !important;
+            font-size: 6.6pt !important;
+            font-weight: 800 !important;
+            padding: 2.2px 3px !important;
+            letter-spacing: 0.1px !important;
         }
 
         /* Çift Sütunlu Gözle Kontrol Tablosu */
