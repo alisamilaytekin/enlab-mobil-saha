@@ -36,31 +36,32 @@ function buildTkmPageHeader(reportMainTitle) {
     const showTurkak = branding.showTurkakLogo !== false;
     const turkakLogoSrc = (typeof CompanySettingsManager !== 'undefined') ? CompanySettingsManager.getTurkakLogoSrc() : 'assets/turkak_logo.jpg';
     const accNo = branding.accreditationNo || 'AB-0227-M';
+    const safeCompanyFullName = String(branding.companyFullName || 'TEKNİK KONTROL MERKEZİ BELGELENDİRME A.Ş.').replace(/KOMTROL/gi, 'KONTROL');
 
     return `
         <div class="tkm-header">
-            <div style="display:flex;justify-content:center;align-items:center;">
-                <img src="${logoSrc}" alt="TEKKOMER Logo" style="width:82px;height:82px;object-fit:contain;display:block;">
+            <div style="display:flex;justify-content:center;align-items:center;padding-left:2px;overflow:visible;">
+                <img src="${logoSrc}" alt="TEKKOMER Logo" style="width:78px;height:70px;object-fit:contain;object-position:center;display:block;">
             </div>
             <div style="text-align:center;padding:0 6px;">
-                <div style="font-size:11.8pt;font-weight:700;color:#222222;letter-spacing:0.2px;margin-bottom:2px;line-height:1.2;">
-                    ${escapeHtml(branding.companyFullName || 'TEKNİK KONTROL MERKEZİ BELGELENDİRME A.Ş.')}
+                <div style="font-size:11.2pt;font-weight:700;color:#222222;letter-spacing:0.2px;margin-bottom:1px;line-height:1.15;">
+                    ${escapeHtml(safeCompanyFullName)}
                 </div>
-                <div style="font-size:7.8pt;color:#222222;line-height:1.25;">
+                <div style="font-size:7.6pt;color:#222222;line-height:1.2;">
                     T: +90 (216) 526 61 41 &nbsp;&nbsp; F: +90 (216) 526 61 40
                 </div>
-                <div style="font-size:7.8pt;color:#222222;line-height:1.25;margin-bottom:3px;">
+                <div style="font-size:7.6pt;color:#222222;line-height:1.2;margin-bottom:2px;">
                     info@tkmkontrol.com &nbsp;&nbsp; www.tkmkontrol.com
                 </div>
-                <div class="tkm-header-title" style="font-size:11pt;font-weight:700;color:#222222;line-height:1.15;text-transform:uppercase;">
+                <div class="tkm-header-title" style="font-size:10.5pt;font-weight:700;color:#222222;line-height:1.12;text-transform:uppercase;">
                     ${reportMainTitle}
                 </div>
-                <div class="tkm-header-acc" style="font-size:9.5pt;font-weight:400;color:#333333;margin-top:2px;letter-spacing:0.3px;">
+                <div class="tkm-header-acc" style="font-size:9pt;font-weight:400;color:#333333;margin-top:1px;letter-spacing:0.3px;">
                     PERİYODİK KONTROL RAPORU
                 </div>
             </div>
             <div style="display:flex;justify-content:center;align-items:center;">
-                ${showTurkak ? `<img src="${turkakLogoSrc}" alt="Akreditasyon ${escapeHtml(accNo)}" style="width:72px;height:105px;object-fit:contain;display:block;">` : `<div style="width:72px;"></div>`}
+                ${showTurkak ? `<img src="${turkakLogoSrc}" alt="Akreditasyon ${escapeHtml(accNo)}" style="width:68px;height:84px;object-fit:contain;display:block;">` : `<div style="width:68px;"></div>`}
             </div>
         </div>
     `;
@@ -71,8 +72,11 @@ function buildTkmPageHeader(reportMainTitle) {
 function buildTkmPageFooter(formCode, reportNo, pageNum, totalPages) {
 
     const branding = (typeof CompanySettingsManager !== 'undefined') ? CompanySettingsManager.getSettings() : DEFAULT_COMPANY_BRANDING;
+    const safeCompanyFullName = String(branding.companyFullName || 'TEKNİK KONTROL MERKEZİ BELGELENDİRME A.Ş.').replace(/KOMTROL/gi, 'KONTROL');
 
-    const disclaimer = ((branding.footerDisclaimer || DEFAULT_COMPANY_BRANDING.footerDisclaimer)).replace(/\{COMPANY_NAME\}/g, branding.companyFullName || 'TEKNİK KONTROL MERKEZİ BELGELENDİRME A.Ş.');
+    const disclaimer = ((branding.footerDisclaimer || DEFAULT_COMPANY_BRANDING.footerDisclaimer))
+        .replace(/\{COMPANY_NAME\}/g, safeCompanyFullName)
+        .replace(/KOMTROL/gi, 'KONTROL');
 
     const revDefault = branding.defaultRevisionInfo || 'REV.00 / YT: 01.09.2025';
 
@@ -1508,7 +1512,7 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
             return String(raw).trim();
         };
 
-        const renderRadioOptionsInline = (q, gapPx = '10px') => {
+        const renderRadioOptionsInline = (q, gapPx = '6px') => {
             if (!q) return '';
             const cur = getAns(q);
             const opts = Array.isArray(q.options) && q.options.length ? q.options : [];
@@ -1516,10 +1520,10 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
             const matchedAny = opts.some(opt => cur.toLowerCase() === String(opt).trim().toLowerCase());
             const itemsHtml = opts.map(opt => {
                 const isSel = cur.toLowerCase() === String(opt).trim().toLowerCase();
-                return `<span style="display:inline-flex;align-items:center;margin-right:${gapPx};font-weight:${isSel ? '700' : '400'};color:${isSel ? '#0f172a' : '#334155'};white-space:nowrap;">${renderRadioDotHtml(isSel)}${escapeHtml(opt)}</span>`;
+                return `<span style="display:inline-flex;align-items:center;font-weight:${isSel ? '700' : '400'};color:${isSel ? '#0f172a' : '#334155'};white-space:nowrap;">${renderRadioDotHtml(isSel)}${escapeHtml(opt)}</span>`;
             }).join('');
-            const extraCustom = (cur && !matchedAny) ? `<span style="font-weight:700;color:#0f172a;margin-left:2px;">(${escapeHtml(cur)})</span>` : '';
-            return `${itemsHtml}${extraCustom}`;
+            const extraCustom = (cur && !matchedAny) ? `<span style="font-weight:700;color:#0f172a;">(${escapeHtml(cur)})</span>` : '';
+            return `<div style="display:flex;flex-wrap:wrap;gap:2px ${gapPx};align-items:center;">${itemsHtml}${extraCustom}</div>`;
         };
 
         const renderCompleteVisualTopicBlock = (subNumberTitle, questions, showHeaderRow = true, showLegendRow = true) => {
@@ -1544,17 +1548,17 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
                     rowsHtml += `
                         <tr>
-                            <td${badClsL} style="text-align:center;font-weight:700;width:24px;">${letterL}</td>
-                            <td${badClsL} style="text-align:left;padding-left:4px;font-size:6.9pt;">${qL.question}</td>
-                            <td${badClsL} style="text-align:center;width:34px;">${badgeL}</td>
+                            <td${badClsL} style="text-align:center;vertical-align:middle;font-weight:700;width:24px;">${letterL}</td>
+                            <td${badClsL} style="text-align:left;vertical-align:middle;padding-left:4px;font-size:6.9pt;">${qL.question}</td>
+                            <td${badClsL} style="text-align:center;vertical-align:middle;width:34px;border-right:1.5px solid #333333 !important;">${badgeL}</td>
                             ${qR ? `
-                                <td${badClsR} style="text-align:center;font-weight:700;width:24px;border-left:1.5px solid #cbd5e1;">${letterR}</td>
-                                <td${badClsR} style="text-align:left;padding-left:4px;font-size:6.9pt;">${qR.question}</td>
-                                <td${badClsR} style="text-align:center;width:34px;">${badgeR}</td>
+                                <td${badClsR} style="text-align:center;vertical-align:middle;font-weight:700;width:24px;border-left:1.5px solid #333333 !important;">${letterR}</td>
+                                <td${badClsR} style="text-align:left;vertical-align:middle;padding-left:4px;font-size:6.9pt;">${qR.question}</td>
+                                <td${badClsR} style="text-align:center;vertical-align:middle;width:34px;">${badgeR}</td>
                             ` : `
-                                <td style="border-left:1.5px solid #cbd5e1;"></td>
-                                <td></td>
-                                <td></td>
+                                <td style="vertical-align:middle;border-left:1.5px solid #333333 !important;"></td>
+                                <td style="vertical-align:middle;"></td>
+                                <td style="vertical-align:middle;"></td>
                             `}
                         </tr>
                     `;
@@ -1563,12 +1567,12 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
                 const theadHtml = (!useRamsMinistryEnhanced2201 || showHeaderRow) ? `
                     <thead>
                         <tr>
-                            <th></th>
-                            <th style="text-align:left;padding-left:4px;font-weight:700;">Soru / Kriter</th>
-                            <th style="text-align:center;font-weight:700;">1</th>
-                            <th style="border-left:1.5px solid #cbd5e1;"></th>
-                            <th style="text-align:left;padding-left:4px;font-weight:700;">Soru / Kriter</th>
-                            <th style="text-align:center;font-weight:700;">1</th>
+                            <th style="vertical-align:middle;"></th>
+                            <th style="text-align:left;vertical-align:middle;padding-left:4px;font-weight:700;">Soru / Kriter</th>
+                            <th style="text-align:center;vertical-align:middle;font-weight:700;border-right:1.5px solid #333333 !important;">1</th>
+                            <th style="vertical-align:middle;border-left:1.5px solid #333333 !important;"></th>
+                            <th style="text-align:left;vertical-align:middle;padding-left:4px;font-weight:700;">Soru / Kriter</th>
+                            <th style="text-align:center;vertical-align:middle;font-weight:700;">1</th>
                         </tr>
                     </thead>
                 ` : '';
@@ -1789,18 +1793,19 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
             const isDAGroup = curPhase.toUpperCase().startsWith('DA');
 
             const renderPhaseCol = (groupTitle, isGroupSelected, list) => `
-                <div style="flex:1;min-width:0;">
-                    <div style="font-weight:700;color:#0f172a;margin-bottom:1.5px;font-size:6.7pt;">
-                        ${renderRadioDotHtml(isGroupSelected)}${groupTitle}
-                    </div>
-                    <div style="display:flex;flex-wrap:wrap;gap:2px 8px;padding-left:4px;">
-                        ${list.map(opt => {
-                            const sel = curPhase.toLowerCase() === opt.toLowerCase();
-                            return `<span style="display:inline-flex;align-items:center;font-size:6.55pt;font-weight:${sel ? '700' : '400'};color:${sel ? '#0f172a' : '#334155'};white-space:nowrap;">${renderRadioDotHtml(sel)}${escapeHtml(opt)}</span>`;
-                        }).join('')}
-                    </div>
+                <div style="display:flex;flex-wrap:wrap;gap:3px 6px;align-items:center;">
+                    <span style="font-weight:700;color:#0f172a;font-size:7.3pt;margin-right:2px;white-space:nowrap;">
+                        ${renderRadioDotHtml(isGroupSelected)}${groupTitle}:
+                    </span>
+                    ${list.map(opt => {
+                        const sel = curPhase.toLowerCase() === opt.toLowerCase();
+                        return `<span style="display:inline-flex;align-items:center;font-size:7.1pt;font-weight:${sel ? '700' : '400'};color:${sel ? '#0f172a' : '#334155'};white-space:nowrap;">${renderRadioDotHtml(sel)}${escapeHtml(opt)}</span>`;
+                    }).join('')}
                 </div>
             `;
+
+            const lblStyle = 'text-align:left;padding:2px 4px;line-height:1.18;font-size:7.3pt;vertical-align:middle;';
+            const valStyle = 'text-align:left;padding:2px 4px;line-height:1.18;font-size:7.5pt;vertical-align:middle;';
 
             return `
                 <table class="tkm-table">
@@ -1812,40 +1817,40 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
                     </colgroup>
                     <tbody>
                         <tr>
-                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[0] ? q[0].question : 'Enerji sağlayan kuruluş'}</td>
-                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;">${escapeHtml(getAns(q[0]))}</td>
-                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[1] ? q[1].question : 'Şebeke tipi'}</td>
-                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;font-size:6.75pt;">${renderRadioOptionsInline(q[1], '7px')}</td>
+                            <td class="tkm-label-cell" style="${lblStyle}">${q[0] ? q[0].question : 'Enerji sağlayan kuruluş'}</td>
+                            <td class="tkm-val-cell" style="${valStyle}">${escapeHtml(getAns(q[0]))}</td>
+                            <td class="tkm-label-cell" style="${lblStyle}">${q[1] ? q[1].question : 'Şebeke tipi'}</td>
+                            <td class="tkm-val-cell" style="${valStyle}">${renderRadioOptionsInline(q[1], '6px')}</td>
                         </tr>
                         <tr>
-                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[2] ? q[2].question : 'Şebeke gerilimi (V)'}</td>
-                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;">${escapeHtml(getAns(q[2]))}</td>
-                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[5] ? q[5].question : 'Kontrol nedeni'}</td>
-                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;font-size:6.8pt;">${renderRadioOptionsInline(q[5], '10px')}</td>
+                            <td class="tkm-label-cell" style="${lblStyle}">${q[2] ? q[2].question : 'Şebeke gerilimi (V)'}</td>
+                            <td class="tkm-val-cell" style="${valStyle}">${escapeHtml(getAns(q[2]))}</td>
+                            <td class="tkm-label-cell" style="${lblStyle}">${q[5] ? q[5].question : 'Kontrol nedeni'}</td>
+                            <td class="tkm-val-cell" style="${valStyle}">${renderRadioOptionsInline(q[5], '8px')}</td>
                         </tr>
                         <tr>
-                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[3] ? q[3].question : 'Tesise ait proje var mı?'}</td>
-                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;font-size:6.8pt;">${renderRadioOptionsInline(q[3], '12px')}</td>
-                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[4] ? q[4].question : 'Tek hat şeması var mı?'}</td>
-                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;font-size:6.8pt;">${renderRadioOptionsInline(q[4], '12px')}</td>
+                            <td class="tkm-label-cell" style="${lblStyle}">${q[3] ? q[3].question : 'Tesise ait proje var mı?'}</td>
+                            <td class="tkm-val-cell" style="${valStyle}">${renderRadioOptionsInline(q[3], '10px')}</td>
+                            <td class="tkm-label-cell" style="${lblStyle}">${q[4] ? q[4].question : 'Tek hat şeması var mı?'}</td>
+                            <td class="tkm-val-cell" style="${valStyle}">${renderRadioOptionsInline(q[4], '10px')}</td>
                         </tr>
                         <tr>
-                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[7] ? q[7].question : 'Yapı cinsi'}</td>
-                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;font-size:6.75pt;">${renderRadioOptionsInline(q[7], '8px')}</td>
-                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[6] ? q[6].question : 'Topraklayıcı tipi'}</td>
-                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;font-size:6.65pt;">${renderRadioOptionsInline(q[6], '6px')}</td>
+                            <td class="tkm-label-cell" style="${lblStyle}">${q[7] ? q[7].question : 'Yapı cinsi'}</td>
+                            <td class="tkm-val-cell" style="${valStyle}">${renderRadioOptionsInline(q[7], '6px')}</td>
+                            <td class="tkm-label-cell" style="${lblStyle}">${q[6] ? q[6].question : 'Topraklayıcı tipi'}</td>
+                            <td class="tkm-val-cell" style="${valStyle}">${renderRadioOptionsInline(q[6], '6px')}</td>
                         </tr>
                         <tr>
-                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[8] ? q[8].question : 'Ekipmanın kullanım amacı'}</td>
-                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;">${escapeHtml(getAns(q[8]))}</td>
-                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[9] ? q[9].question : 'Son kontrol tarihi'}</td>
-                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;">${escapeHtml(getAns(q[9]))}</td>
+                            <td class="tkm-label-cell" style="${lblStyle}">${q[8] ? q[8].question : 'Ekipmanın kullanım amacı'}</td>
+                            <td class="tkm-val-cell" style="${valStyle}">${escapeHtml(getAns(q[8]))}</td>
+                            <td class="tkm-label-cell" style="${lblStyle}">${q[9] ? q[9].question : 'Son kontrol tarihi'}</td>
+                            <td class="tkm-val-cell" style="${valStyle}">${escapeHtml(getAns(q[9]))}</td>
                         </tr>
                         <tr>
-                            <td class="tkm-label-cell" rowspan="5" style="text-align:left;padding:2px 5px;vertical-align:middle;">
+                            <td class="tkm-label-cell" rowspan="5" style="${lblStyle}">
                                 ${qPhase ? qPhase.question : 'Faz iletkenlerinin sayısı ve tipi'}
                             </td>
-                            <td class="tkm-val-cell" rowspan="5" style="text-align:left;padding:3px 5px;vertical-align:middle;">
+                            <td class="tkm-val-cell" rowspan="5" style="${valStyle}">
                                 <div style="display:flex;flex-direction:column;gap:3px;">
                                     ${renderPhaseCol('AA', isAAGroup, aaOpts)}
                                     <div style="border-top:1px dashed #cbd5e1;padding-top:2px;">
@@ -1853,48 +1858,48 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
                                     </div>
                                 </div>
                             </td>
-                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[11] ? q[11].question : 'Temel topraklama direnci (Ω)'}</td>
-                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;">${escapeHtml(getAns(q[11]))}</td>
+                            <td class="tkm-label-cell" style="${lblStyle}">${q[11] ? q[11].question : 'Temel topraklama direnci (Ω)'}</td>
+                            <td class="tkm-val-cell" style="${valStyle}">${escapeHtml(getAns(q[11]))}</td>
                         </tr>
                         <tr>
-                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[12] ? q[12].question : 'İlave topraklama elektrotu detayları(varsa)'}</td>
-                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;">${escapeHtml(getAns(q[12]))}</td>
+                            <td class="tkm-label-cell" style="${lblStyle}">${q[12] ? q[12].question : 'İlave topraklama elektrotu detayları(varsa)'}</td>
+                            <td class="tkm-val-cell" style="${valStyle}">${escapeHtml(getAns(q[12]))}</td>
                         </tr>
                         <tr>
-                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[13] ? q[13].question : 'Sistem topraklama iletkeni ve kesiti (mm²)'}</td>
-                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;">${escapeHtml(getAns(q[13]))}</td>
+                            <td class="tkm-label-cell" style="${lblStyle}">${q[13] ? q[13].question : 'Sistem topraklama iletkeni ve kesiti (mm²)'}</td>
+                            <td class="tkm-val-cell" style="${valStyle}">${escapeHtml(getAns(q[13]))}</td>
                         </tr>
                         <tr>
-                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[14] ? q[14].question : 'Ana eşpotansiyel iletkeni ve kesiti (mm²)'}</td>
-                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;">${escapeHtml(getAns(q[14]))}</td>
+                            <td class="tkm-label-cell" style="${lblStyle}">${q[14] ? q[14].question : 'Ana eşpotansiyel iletkeni ve kesiti (mm²)'}</td>
+                            <td class="tkm-val-cell" style="${valStyle}">${escapeHtml(getAns(q[14]))}</td>
                         </tr>
                         <tr>
-                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[19] ? q[19].question : 'Ana kesici karakteristikleri-Tip'}</td>
-                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;">${escapeHtml(getAns(q[19]))}</td>
+                            <td class="tkm-label-cell" style="${lblStyle}">${q[19] ? q[19].question : 'Ana kesici karakteristikleri-Tip'}</td>
+                            <td class="tkm-val-cell" style="${valStyle}">${escapeHtml(getAns(q[19]))}</td>
                         </tr>
                         <tr>
-                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[15] ? q[15].question : 'Besleme kaynağı karakteristikleri-Nominal gerilim, U/Uo (kV)'}</td>
-                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;">${escapeHtml(getAns(q[15]))}</td>
-                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[20] ? q[20].question : 'Ana kesici karakteristikleri-Nominal akım (A)'}</td>
-                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;">${escapeHtml(getAns(q[20]))}</td>
+                            <td class="tkm-label-cell" style="${lblStyle}">${q[15] ? q[15].question : 'Besleme kaynağı karakteristikleri-Nominal gerilim, U/Uo (kV)'}</td>
+                            <td class="tkm-val-cell" style="${valStyle}">${escapeHtml(getAns(q[15]))}</td>
+                            <td class="tkm-label-cell" style="${lblStyle}">${q[20] ? q[20].question : 'Ana kesici karakteristikleri-Nominal akım (A)'}</td>
+                            <td class="tkm-val-cell" style="${valStyle}">${escapeHtml(getAns(q[20]))}</td>
                         </tr>
                         <tr>
-                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[16] ? q[16].question : 'Besleme kaynağı karakteristikleri-Nominal frekans, f (Hz)'}</td>
-                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;">${escapeHtml(getAns(q[16]))}</td>
-                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[21] ? q[21].question : 'TT/TN-S Şebeke için ana RCD anma akımı (A)'}</td>
-                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;">${escapeHtml(getAns(q[21]))}</td>
+                            <td class="tkm-label-cell" style="${lblStyle}">${q[16] ? q[16].question : 'Besleme kaynağı karakteristikleri-Nominal frekans, f (Hz)'}</td>
+                            <td class="tkm-val-cell" style="${valStyle}">${escapeHtml(getAns(q[16]))}</td>
+                            <td class="tkm-label-cell" style="${lblStyle}">${q[21] ? q[21].question : 'TT/TN-S Şebeke için ana RCD anma akımı (A)'}</td>
+                            <td class="tkm-val-cell" style="${valStyle}">${escapeHtml(getAns(q[21]))}</td>
                         </tr>
                         <tr>
-                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[17] ? q[17].question : 'Besleme kaynağı karakteristikleri-Hata akımı olasılığı, IF (kA)'}</td>
-                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;">${escapeHtml(getAns(q[17]))}</td>
-                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[22] ? q[22].question : 'TT/TN-S Şebeke için ana RCD açma akımı (mA)'}</td>
-                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;">${escapeHtml(getAns(q[22]))}</td>
+                            <td class="tkm-label-cell" style="${lblStyle}">${q[17] ? q[17].question : 'Besleme kaynağı karakteristikleri-Hata akımı olasılığı, IF (kA)'}</td>
+                            <td class="tkm-val-cell" style="${valStyle}">${escapeHtml(getAns(q[17]))}</td>
+                            <td class="tkm-label-cell" style="${lblStyle}">${q[22] ? q[22].question : 'TT/TN-S Şebeke için ana RCD açma akımı (mA)'}</td>
+                            <td class="tkm-val-cell" style="${valStyle}">${escapeHtml(getAns(q[22]))}</td>
                         </tr>
                         <tr>
-                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[18] ? q[18].question : 'Besleme kaynağı karakteristikleri-Dış çevrim empedansı ZE (Ω)'}</td>
-                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;">${escapeHtml(getAns(q[18]))}</td>
-                            <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q[23] ? q[23].question : 'TT/TN-S Şebeke için ana RCD açma zamanı (ms)'}</td>
-                            <td class="tkm-val-cell" style="text-align:left;padding:2px 5px;">${escapeHtml(getAns(q[23]))}</td>
+                            <td class="tkm-label-cell" style="${lblStyle}">${q[18] ? q[18].question : 'Besleme kaynağı karakteristikleri-Dış çevrim empedansı ZE (Ω)'}</td>
+                            <td class="tkm-val-cell" style="${valStyle}">${escapeHtml(getAns(q[18]))}</td>
+                            <td class="tkm-label-cell" style="${lblStyle}">${q[23] ? q[23].question : 'TT/TN-S Şebeke için ana RCD açma zamanı (ms)'}</td>
+                            <td class="tkm-val-cell" style="${valStyle}">${escapeHtml(getAns(q[23]))}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -1943,7 +1948,7 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
                 const isBad = (cur === 'Uygunsuz' || cur === 'Uygun Değil');
                 const shortTxt = String(q.question || '').replace(/^Tespit edilen bilgiler\s*\([^)]*\)\s*-\s*/i, '').trim();
                 return `
-                    <div style="display:flex;align-items:flex-start;gap:4px;line-height:1.3;margin-bottom:1px;">
+                    <div style="display:flex;align-items:flex-start;gap:4px;line-height:1.15;margin-bottom:0.5px;">
                         <span style="flex-shrink:0;margin-top:2px;">${dotHtml(isSelected, isBad)}</span>
                         <span style="font-weight:${(isSelected || isBad) ? '700' : '400'};color:${isBad ? '#be123c' : '#111'};">
                             ${shortTxt}${isBad ? ' <span style="color:#be123c;font-weight:700;">(Uygunsuz)</span>' : ''}
@@ -1960,24 +1965,24 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
                     </colgroup>
                     <tbody>
                         <tr>
-                            <td class="tkm-label-cell" style="text-align:left;padding:2.5px 6px;font-weight:600;color:#111;">${qChange ? qChange.question : 'Tesisatta kapsamlı değişiklik var mı? (&gt;%20)'}</td>
-                            <td class="tkm-val-cell" style="text-align:left;padding:2.5px 6px;">${qChange ? optPairHtml(qChange.guid, 'Var', 'Yok') : ''}</td>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2px 4px;line-height:1.15;font-weight:600;color:#111;">${qChange ? qChange.question : 'Tesisatta kapsamlı değişiklik var mı? (&gt;%20)'}</td>
+                            <td class="tkm-val-cell" style="text-align:left;padding:2px 4px;line-height:1.15;">${qChange ? optPairHtml(qChange.guid, 'Var', 'Yok') : ''}</td>
                         </tr>
                         <tr>
-                            <td class="tkm-label-cell" style="text-align:left;padding:2.5px 6px;font-weight:600;color:#111;">${qSpd ? qSpd.question : 'Tesisatta aşırı gerilim koruma cihazları (DKD/SPD) kullanılmış mı?'}</td>
-                            <td class="tkm-val-cell" style="text-align:left;padding:2.5px 6px;">${qSpd ? optPairHtml(qSpd.guid, 'Evet', 'Hayır') : ''}</td>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2px 4px;line-height:1.15;font-weight:600;color:#111;">${qSpd ? qSpd.question : 'Tesisatta aşırı gerilim koruma cihazları (DKD/SPD) kullanılmış mı?'}</td>
+                            <td class="tkm-val-cell" style="text-align:left;padding:2px 4px;line-height:1.15;">${qSpd ? optPairHtml(qSpd.guid, 'Evet', 'Hayır') : ''}</td>
                         </tr>
                         <tr>
-                            <td class="tkm-label-cell" style="text-align:left;padding:3px 6px;font-weight:600;vertical-align:middle;color:#111;">
+                            <td class="tkm-label-cell" style="text-align:left;padding:2px 4px;line-height:1.15;font-weight:600;vertical-align:middle;color:#111;">
                                 Tespit edilen bilgiler<br>(Doğrudan dokunmaya karşı koruma önlemleri)
                             </td>
-                            <td class="tkm-val-cell" style="text-align:left;padding:3px 6px;font-size:6.8pt;">
+                            <td class="tkm-val-cell" style="text-align:left;padding:2px 4px;line-height:1.15;font-size:6.8pt;">
                                 ${protectionRowsHtml}
                             </td>
                         </tr>
                         <tr>
-                            <td class="tkm-label-cell" style="text-align:left;padding:2.5px 6px;font-weight:600;color:#111;">${qPrevTag ? qPrevTag.question : 'Bir önceki periyodik kontrol etiketi var mı?'}</td>
-                            <td class="tkm-val-cell" style="text-align:left;padding:2.5px 6px;">${qPrevTag ? optPairHtml(qPrevTag.guid, 'Var', 'Yok') : ''}</td>
+                            <td class="tkm-label-cell" style="text-align:left;padding:2px 4px;line-height:1.15;font-weight:600;color:#111;">${qPrevTag ? qPrevTag.question : 'Bir önceki periyodik kontrol etiketi var mı?'}</td>
+                            <td class="tkm-val-cell" style="text-align:left;padding:2px 4px;line-height:1.15;">${qPrevTag ? optPairHtml(qPrevTag.guid, 'Var', 'Yok') : ''}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -1994,9 +1999,10 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
 
 
-        // Block 4: 3. TERMAL KAMERA BİLGİLERİ
+        // Block 4: 3. TERMAL KAMERA BİLGİLERİ (RAMS formatında 3, 4 ve 5. bölümler 2. sayfada yer alır)
 
         blocks.push(`
+            ${isRamsTheme(activePdfTheme) ? '<div class="tkm-force-page-break" style="display:none;"></div>' : ''}
 
             <div class="tkm-sec-title">3. TERMAL KAMERA BİLGİLERİ</div>
 
@@ -2075,15 +2081,15 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
                 <colgroup><col style="width:32%;"><col style="width:68%;"></colgroup>
                 <tbody>
                     <tr>
-                        <td class="tkm-label-cell" style="text-align:left;padding:2.5px 6px;">${qPano51 ? qPano51.question : 'Pano Adı/Ekipman Tanımlaması'}</td>
-                        <td class="tkm-val-cell" style="text-align:left;padding:2.5px 6px;">${escapeHtml(getAns(qPano51))}</td>
+                        <td class="tkm-label-cell" style="text-align:left;padding:2px 6px;">${qPano51 ? qPano51.question : 'Pano Adı/Ekipman Tanımlaması'}</td>
+                        <td class="tkm-val-cell" style="text-align:left;padding:2px 6px;">${escapeHtml(getAns(qPano51))}</td>
                     </tr>
                 </tbody>
             </table>
         ` : renderOrderedGridTable(area2.topics[0].questions, 1);
 
         blocks.push(`
-            <div class="tkm-force-page-break" style="display:none;"></div>
+            ${!isRamsTheme(activePdfTheme) ? '<div class="tkm-force-page-break" style="display:none;"></div>' : ''}
             <div class="tkm-sec-title" style="text-align:left;font-size:8.4pt;color:#111111;font-weight:700;letter-spacing:0.2px;padding:2px 0;margin:2px 0;">TEST VE KONTROLLER</div>
             <div class="tkm-sec-title">5. KONTROL KRİTERLERİ VE TESTLER</div>
 
@@ -2141,11 +2147,9 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
             return `
                 <div class="tkm-sub-bar">Ölçüm ve Doğrulama Metodu</div>
                 <table class="tkm-table" style="margin-bottom:2px;">
-                    <colgroup><col style="width:28%;"><col style="width:72%;"></colgroup>
                     <tbody>
                         <tr>
-                            <td class="tkm-label-cell" style="text-align:left;padding:2.5px 6px;">${qMethod ? qMethod.question : 'Ölçüm ve doğrulama metodu'}</td>
-                            <td class="tkm-val-cell" style="text-align:left;padding:2.5px 6px;font-size:6.9pt;">${renderRadioOptionsInline(qMethod, '16px')}</td>
+                            <td class="tkm-val-cell" style="text-align:left;padding:2.5px 6px;font-size:7.4pt;">${renderRadioOptionsInline(qMethod, '18px')}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -2170,7 +2174,7 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
                             <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q61[4] ? q61[4].question : 'Gerilimler F-F(V)'}</td>
                             <td class="${cFF.cls}" style="text-align:center;padding:2px 4px;">${cFF.val}</td>
                             <td class="tkm-label-cell" rowspan="2" style="text-align:left;padding:2px 5px;vertical-align:middle;">${q61[3] ? q61[3].question : 'Aşırı gerilim koruma (DKD) tipi'}</td>
-                            <td class="tkm-val-cell" rowspan="2" style="text-align:left;padding:2px 5px;vertical-align:middle;font-size:6.4pt;line-height:1.35;">${renderRadioOptionsInline(q61[3], '6px')}</td>
+                            <td class="tkm-val-cell" rowspan="2" style="text-align:left;padding:2px 5px;vertical-align:middle;font-size:6.8pt;line-height:1.3;">${renderRadioOptionsInline(q61[3], '6px')}</td>
                         </tr>
                         <tr>
                             <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q61[1] ? q61[1].question : 'Panodan ölçülen faz-nötr çevrim empedansı (ZLN) (Ω)'}</td>
@@ -2213,7 +2217,9 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
             const chunkSize = 8;
 
             const topicColWidths = tKey === 'topic_3_3'
-                ? ['2.7%', '14.5%', '7.6%', '5.6%', '7.6%', '8.4%', '6.8%', '7.0%', '7.6%', '7.4%', '7.4%', '6.4%', '6.4%', '4.6%']
+                ? (useRamsMinistryEnhanced2201
+                    ? ['4.0%', '22.0%', '6.2%', '5.4%', '6.0%', '6.6%', '6.0%', '6.2%', '6.8%', '6.4%', '6.4%', '6.0%', '6.0%', '6.0%']
+                    : ['2.7%', '14.5%', '7.6%', '5.6%', '7.6%', '8.4%', '6.8%', '7.0%', '7.6%', '7.4%', '7.4%', '6.4%', '6.4%', '4.6%'])
                 : tKey === 'topic_3_4'
                     ? ['3.5%', '25.5%', '14.5%', '14.5%', '18.5%', '16.5%', '7.0%']
                     : tKey === 'topic_3_5'
@@ -2235,10 +2241,10 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
             const tableCls = tKey === 'topic_3_3' ? 'tkm-table tkm-linye-table' : 'tkm-table';
             const thNoStyle = topicColWidths
-                ? 'text-align:center;font-weight:700;'
+                ? 'text-align:center;font-weight:700;word-break:keep-all;overflow-wrap:normal;'
                 : 'width:24px;text-align:center;font-weight:700;font-size:7pt;';
             const thDefaultStyle = tKey === 'topic_3_3'
-                ? 'text-align:center;font-weight:700;'
+                ? 'text-align:center;font-weight:700;word-break:keep-all;overflow-wrap:normal;'
                 : 'text-align:center;font-weight:700;font-size:6.8pt;line-height:1.18;padding:2.8px 3px;';
 
             const buildTableHeadHtml = () => {
@@ -2519,7 +2525,7 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
             <div>3. El ulaşma mesafesindeki metal bölümler, ekipmanın toprak barası veya toprak ucuyla eş potansiyel değilse,</div>
             <div>4. RCD performans testi sonuçları yetersiz ise,</div>
             <div>5. Kablo şalter koordinasyonunun aşağıdaki uygunsuzluğu;<br>Devre Tasarım Akımı (Ib), Devre Kesici Akımı (In) ve Kablo Akım Taşıma Kapasitesi (Iz) için Ib&lt;In&lt;Iz sağlanmadıysa,</div>
-            <div>6. Zemin yalıtımının aşağıdaki uygunsuzlukları;<br>b) El ulaşma mesafesinde bulunan zemin izolasyonu uygun boyutta değilse, (EİTY Md. 33d)<br>c) Zemin izolasyon direnci 50 kΩ’dan büyük değilse, (EİTY Md. 48)</div>
+            <div>6. Zemin yalıtımının aşağıdaki uygunsuzlukları;<br>a) El ulaşma mesafesinde bulunan zemin izolasyonu uygun boyutta değilse, (EİTY Md. 33d)<br>b) Zemin izolasyon direnci 50 kΩ’dan büyük değilse, (EİTY Md. 48)</div>
             <div>7. N/PEN iletkeni kesitinin ve kullanım yerinin aşağıdaki uygunsuzlukları;<br>a) N/PEN kesiti ile faz iletkeni kesiti eşit değilse. (EİTY Md 57b3-ii-1)<br>İstisna: N/PEN kesitinin faz iletkeninin kesitinden küçük olması durumunda (örneğin 3x70+35 mm2 gibi) faz iletkenlerini koruyan devre kesici anma akımının, N/PEN iletkeni kesitine göre (örnekteki 35mm2’ye göre) belirlenmesi kuralı ihlal edildiyse (EİTY Md 57b3-ii-2)<br>b) PEN iletkeni kesiti &gt;10 mm2 değilse (EİTY Md 36)<br>c) PEN iletkeni yangın tehlikesi olan yerlerden geçirilmemesi kuralı ihlal edildiyse (EİTY Md 64)<br>d) PEN iletkeni Exproof tehlikeli bölge sınırları içinden geçirilmemesi kuralı ihlal edildiyse (IEC 60079-14)</div>
             <div>8. PE koruma iletkeni kesitinin aşağıdaki uygunsuzluğu;<br>Koruma iletkeni kesiti ETTY Md. 9e1i’de verilen formülle yapılan hesap sonucuna ve ETTY Çizelge 8’de verilen tabloya uygun değilse,</div>
             <div>9. PD potansiyel dengeleme iletkeni kesitinin aşağıdaki uygunsuzluğu;<br>6 mm2 &lt; PD &lt; 25 mm2 değilse,</div>
@@ -2535,14 +2541,20 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
             </div>
         `;
 
+        const ramsCompactHeavyDefsHtml = `
+            <div style="column-count:2;column-gap:12px;font-size:7.1pt;line-height:1.15;text-align:left;">
+                ${heavyDefectDefinitionsHtml}
+            </div>
+        `;
+
         blocks.push(`
             <div class="tkm-sec-title">10. SONUÇ VE KANAAT</div>
             <table class="tkm-table">
                 <tbody>
                     <tr>
-                        <td style="font-size:6.6pt;line-height:1.15;padding:3.5px 6px;text-align:left;">
+                        <td style="font-size:${useRamsMinistryEnhanced2201 ? '7.1pt' : '6.6pt'};line-height:1.15;padding:3.5px 6px;text-align:left;">
                             ${useRamsMinistryEnhanced2201
-                                ? `${conclusionBannerHtml}${heavyDefectDefinitionsHtml}`
+                                ? `${conclusionBannerHtml}${ramsCompactHeavyDefsHtml}`
                                 : `${heavyDefectDefinitionsHtml}${conclusionBannerHtml}`
                             }
                         </td>

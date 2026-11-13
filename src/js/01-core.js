@@ -182,6 +182,10 @@ const CompanySettingsManager = {
                 const parsed = JSON.parse(raw);
 
                 if (parsed.companyShortName === 'TEKKOMER' || parsed.companyShortName === 'ENLAB') parsed.companyShortName = 'Hızlı Rapor';
+                if (parsed.companyFullName && /KOMTROL/i.test(parsed.companyFullName)) {
+                    parsed.companyFullName = parsed.companyFullName.replace(/KOMTROL/gi, 'KONTROL');
+                    try { localStorage.setItem(this.STORAGE_KEY, JSON.stringify(parsed)); } catch (e) {}
+                }
 
                 return { ...DEFAULT_COMPANY_BRANDING, ...parsed };
 
