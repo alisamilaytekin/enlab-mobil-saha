@@ -16601,18 +16601,6 @@ function triggerAutoSave() {
 
     if (!insp) return;
 
-    try {
-
-        localStorage.setItem(`enlab_insp_${insp.id}`, JSON.stringify(AppState.currentFormData));
-
-    } catch (e) {
-
-        console.warn('LocalStorage kotası uyarısı:', e);
-
-    }
-
-
-
     const badge = document.getElementById('lastSavedBadge');
 
     if (badge) {
@@ -16623,17 +16611,69 @@ function triggerAutoSave() {
 
     }
 
-
-
     clearTimeout(AppState.saveTimer);
 
-    AppState.saveTimer = setTimeout(() => saveCurrentInspection(false), 300);
+    AppState.saveTimer = setTimeout(() => {
+
+        AppState.saveTimer = null;
+
+        saveCurrentInspection(false);
+
+    }, 250);
 
 }
 
+function flushPendingAutoSave() {
 
+    if (!AppState.saveTimer) return;
+
+    clearTimeout(AppState.saveTimer);
+
+    AppState.saveTimer = null;
+
+    const insp = AppState.currentInspection;
+
+    const fd = AppState.currentFormData;
+
+    if (!insp || !fd) return;
+
+    try {
+
+        localStorage.setItem(`enlab_insp_${insp.id}`, JSON.stringify(fd));
+
+    } catch (e) {
+
+        console.warn('LocalStorage kotası uyarısı:', e);
+
+    }
+
+    saveCurrentInspection(false);
+
+}
+
+if (typeof document !== 'undefined' && !window._enlabAutoSaveLifecycleBound) {
+
+    window._enlabAutoSaveLifecycleBound = true;
+
+    document.addEventListener('visibilitychange', () => {
+
+        if (document.visibilityState === 'hidden') {
+
+            flushPendingAutoSave();
+
+        }
+
+    });
+
+    window.addEventListener('pagehide', flushPendingAutoSave);
+
+}
 
 async function saveCurrentInspection(manualToast = false) {
+
+    clearTimeout(AppState.saveTimer);
+
+    AppState.saveTimer = null;
 
     const insp = AppState.currentInspection;
 
@@ -16784,9 +16824,8 @@ async function saveCurrentInspection(manualToast = false) {
 
 
 // ============================================================================
-// HIZLI RAPOR - 10-PDF-ENGINE.JS
-// Açıklama: TÜRKAK & Bakanlık Resmi A4 PDF Çıktı ve Rapor Yazdırma Motoru
-// Satır Aralığı: 13007 - 15980 (2974 satır)
+// HIZLI RAPOR - 10A-PDF-CORE.JS
+// Açıklama: PDF Önizleme/Panzoom, Ortak Antet/Altbilgi, Sayfalama ve E-Posta Motoru
 // ============================================================================
 
 function formatSymbolForPrint(val) {
@@ -16863,9 +16902,53 @@ function buildTkmPageFooter(formCode, reportNo, pageNum, totalPages) {
         .replace(/\{COMPANY_NAME\}/g, safeCompanyFullName)
         .replace(/KOMTROL/gi, 'KONTROL');
 
+    const isRams = (typeof isRamsTheme === 'function') && isRamsTheme(getPdfTheme());
+
+    if (isRams) {
+        const baseFormCode = String(formCode || 'FR.01').split(',')[0].trim() || 'FR.01';
+        const docCode = (baseFormCode.includes('318') || baseFormCode.includes('ZPKR02'))
+            ? 'ZPKR02'
+            : baseFormCode;
+
+        return `
+
+        <div class="tkm-footer">
+
+            <div class="tkm-footer-disclaimer">
+
+                ${escapeHtml(disclaimer)}
+
+            </div>
+
+            <div class="tkm-footer-meta">
+
+                <table class="tkm-footer-doc-table">
+                    <tbody>
+                        <tr>
+                            <td class="tkm-fdoc-lbl">Doküman Kodu</td>
+                            <td class="tkm-fdoc-val">${escapeHtml(docCode)}</td>
+                            <td class="tkm-fdoc-lbl">Yayım Tarihi</td>
+                            <td class="tkm-fdoc-val">18.07.2025</td>
+                            <td class="tkm-fdoc-lbl">Revizyon No / Tarihi</td>
+                            <td class="tkm-fdoc-val">- / -</td>
+                            <td class="tkm-fdoc-lbl">Yürürlük Tarihi</td>
+                            <td class="tkm-fdoc-val">01.09.2025</td>
+                            <td class="tkm-fdoc-lbl">Rapor No</td>
+                            <td class="tkm-fdoc-val">${escapeHtml(reportNo || '-')}</td>
+                            <td class="tkm-fdoc-lbl">Sayfa No</td>
+                            <td class="tkm-fdoc-val">${pageNum} / ${totalPages}</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+            </div>
+
+        </div>
+
+    `;
+    }
+
     const revDefault = branding.defaultRevisionInfo || 'REV.00 / YT: 01.09.2025';
-
-
 
     let displayFormCode = formCode || 'FR.01';
 
@@ -16874,8 +16957,6 @@ function buildTkmPageFooter(formCode, reportNo, pageNum, totalPages) {
         displayFormCode = `${displayFormCode}, ${revDefault}`;
 
     }
-
-
 
     return `
 
@@ -18129,6 +18210,72 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
 
     if (is2201) {
+        pagesArray = buildPdfPages2201(insp, fd, ci, reportNo, formCode, activePdfTheme);
+    } else if (isGrounding2202) {
+        pagesArray = buildPdfPages2202(insp, fd, ci, reportNo, activePdfTheme);
+    } else if (isGenerator2205) {
+        pagesArray = buildPdfPages2205(insp, fd, ci, reportNo, activePdfTheme);
+    } else {
+        pagesArray = buildPdfPagesSpecialized(insp, fd, ci, reportNo, formCode, activePdfTheme);
+    }
+
+
+    updateThemeSelectorUI(activePdfTheme);
+
+    const themeSelect = document.getElementById('pdfThemeSelect');
+    if (themeSelect) themeSelect.value = activePdfTheme;
+
+    // Populate Printable Container (for @media print)
+    printArea.setAttribute('data-pdf-theme', activePdfTheme);
+    printArea.innerHTML = pagesArray.map(p => `<div class="tkm-a4-page" data-pdf-theme="${activePdfTheme}">${p}</div>`).join('');
+
+    if (customTarget && typeof Element !== 'undefined' && customTarget instanceof Element) {
+        customTarget.setAttribute('data-pdf-theme', activePdfTheme);
+        customTarget.innerHTML = printArea.innerHTML;
+    }
+
+    if (silentRender) {
+        return;
+    }
+
+    // Populate On-Screen A4 Preview Modal
+    const previewContainer = document.getElementById('a4PreviewPagesContainer');
+    const previewModal = document.getElementById('a4PreviewModal');
+    const previewTitle = document.getElementById('a4PreviewTitle');
+    const previewSubtitle = document.getElementById('a4PreviewSubtitle');
+    if (previewTitle) {
+        previewTitle.textContent = `${reportNo || 'Rapor'} · ${insp.customer_name || 'Müşteri'}`;
+    }
+    if (previewSubtitle) {
+        previewSubtitle.textContent = `${insp.equipment_name || 'Periyodik Kontrol'} (${pagesArray.length} Sayfa A4)`;
+    }
+    if (previewContainer) {
+        previewContainer.setAttribute('data-pdf-theme', activePdfTheme);
+        previewContainer.innerHTML = pagesArray.map(p => `<div class="tkm-a4-page tkm-preview-sheet" data-pdf-theme="${activePdfTheme}">${p}</div>`).join('');
+    }
+
+    if (previewModal && !directPrint) {
+
+        previewModal.classList.remove('hidden');
+
+        resetA4PreviewZoom();
+    initA4PinchZoom();
+
+    } else {
+
+        triggerBrowserPrint();
+
+    }
+
+}
+
+
+// ============================================================================
+// HIZLI RAPOR - 10B-PDF-2201-ELECTRICAL.JS
+// Açıklama: 2201 Elektrik İç Tesisatı (TKM-FR.318 / ZPKR02) Resmi A4 PDF Şablonu
+// ============================================================================
+
+function buildPdfPages2201(insp, fd, ci, reportNo, formCode, activePdfTheme) {
 
 
 
@@ -18427,22 +18574,7 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
 
         // Block 1: 1. FİRMA BİLGİLERİ
-        const docCodeBarHtml = useRamsMinistryEnhanced2201 ? `
-            <div style="display:flex;justify-content:flex-end;margin-bottom:3px;">
-                <table style="border:1px solid #cbd5e1;font-size:6.4pt;border-collapse:collapse;background:#ffffff;">
-                    <tr>
-                        <td class="tkm-label-cell" style="padding:1.5px 5px;border:1px solid #cbd5e1;">Doküman Kodu</td>
-                        <td class="tkm-val-cell" style="padding:1.5px 5px;border:1px solid #cbd5e1;">ZPKR02</td>
-                        <td class="tkm-label-cell" style="padding:1.5px 5px;border:1px solid #cbd5e1;">Yayım Tarihi</td>
-                        <td class="tkm-val-cell" style="padding:1.5px 5px;border:1px solid #cbd5e1;">18.07.2025</td>
-                        <td class="tkm-label-cell" style="padding:1.5px 5px;border:1px solid #cbd5e1;">Revizyon No / Tarihi</td>
-                        <td class="tkm-val-cell" style="padding:1.5px 5px;border:1px solid #cbd5e1;">- / -</td>
-                        <td class="tkm-label-cell" style="padding:1.5px 5px;border:1px solid #cbd5e1;">Yürürlük Tarihi</td>
-                        <td class="tkm-val-cell" style="padding:1.5px 5px;border:1px solid #cbd5e1;">01.09.2025</td>
-                    </tr>
-                </table>
-            </div>
-        ` : `
+        const docCodeBarHtml = isRamsTheme(activePdfTheme) ? '' : `
             <div style="display:flex;justify-content:flex-end;margin-bottom:3px;">
                 <table style="border:1px solid #000000;font-size:6.7pt;border-collapse:collapse;background:#ffffff;">
                     <tr>
@@ -19353,9 +19485,17 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
         // Dynamically pack blocks into A4 pages using real DOM measurement!
 
-        pagesArray = paginateBlocksIntoA4Pages(blocks, reportMainTitle, formCode, reportNo);
+        return paginateBlocksIntoA4Pages(blocks, reportMainTitle, formCode, reportNo);
 
-    } else if (isGrounding2202) {
+}
+
+
+// ============================================================================
+// HIZLI RAPOR - 10C-PDF-2202-GROUNDING.JS
+// Açıklama: 2202 Alçak Gerilim Topraklama Tesisatı (TKM-FR.317) Resmi A4 PDF Şablonu
+// ============================================================================
+
+function buildPdfPages2202(insp, fd, ci, reportNo, activePdfTheme) {
 
         // ====================================================================
 
@@ -20000,11 +20140,19 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
 
 
-        pagesArray = paginateBlocksIntoA4Pages(blocks, reportMainTitle, docFormCode, reportNo);
+        return paginateBlocksIntoA4Pages(blocks, reportMainTitle, docFormCode, reportNo);
 
 
 
-    } else if (isGenerator2205) {
+}
+
+
+// ============================================================================
+// HIZLI RAPOR - 10D-PDF-2205-GENERATOR.JS
+// Açıklama: 2205 Jeneratör (TKM-FR.164) ve Özel Şablonlar Resmi A4 PDF Motoru
+// ============================================================================
+
+function buildPdfPages2205(insp, fd, ci, reportNo, activePdfTheme) {
 
         // ====================================================================
 
@@ -20712,11 +20860,13 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
 
 
-        pagesArray = paginateBlocksIntoA4Pages(blocks, reportMainTitle, docFormCode, reportNo);
+        return paginateBlocksIntoA4Pages(blocks, reportMainTitle, docFormCode, reportNo);
 
 
 
-    } else {
+}
+
+function buildPdfPagesSpecialized(insp, fd, ci, reportNo, formCode, activePdfTheme) {
 
         // Specialized Templates (Paratoner, Yangın, Kapı, Raf, Klima vb.)
 
@@ -20991,79 +21141,14 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
         const specDocCode = ((schema.docNo || schema.code || formCode).split(',')[0] || formCode).trim();
 
-        pagesArray = paginateBlocksIntoA4Pages(specBlocks, reportMainTitle, specDocCode, reportNo);
-
-    }
-
-
-
-    updateThemeSelectorUI(activePdfTheme);
-
-    const themeSelect = document.getElementById('pdfThemeSelect');
-    if (themeSelect) themeSelect.value = activePdfTheme;
-
-    // Populate Printable Container (for @media print)
-    printArea.setAttribute('data-pdf-theme', activePdfTheme);
-    printArea.innerHTML = pagesArray.map(p => `<div class="tkm-a4-page" data-pdf-theme="${activePdfTheme}">${p}</div>`).join('');
-
-    if (customTarget && typeof Element !== 'undefined' && customTarget instanceof Element) {
-        customTarget.setAttribute('data-pdf-theme', activePdfTheme);
-        customTarget.innerHTML = printArea.innerHTML;
-    }
-
-    if (silentRender) {
-        return;
-    }
-
-    // Populate On-Screen A4 Preview Modal
-    const previewContainer = document.getElementById('a4PreviewPagesContainer');
-    const previewModal = document.getElementById('a4PreviewModal');
-    const previewTitle = document.getElementById('a4PreviewTitle');
-    const previewSubtitle = document.getElementById('a4PreviewSubtitle');
-    if (previewTitle) {
-        previewTitle.textContent = `${reportNo || 'Rapor'} · ${insp.customer_name || 'Müşteri'}`;
-    }
-    if (previewSubtitle) {
-        previewSubtitle.textContent = `${insp.equipment_name || 'Periyodik Kontrol'} (${pagesArray.length} Sayfa A4)`;
-    }
-    if (previewContainer) {
-        previewContainer.setAttribute('data-pdf-theme', activePdfTheme);
-        previewContainer.innerHTML = pagesArray.map(p => `<div class="tkm-a4-page tkm-preview-sheet" data-pdf-theme="${activePdfTheme}">${p}</div>`).join('');
-    }
-
-    if (previewModal && !directPrint) {
-
-        previewModal.classList.remove('hidden');
-
-        resetA4PreviewZoom();
-    initA4PinchZoom();
-
-    } else {
-
-        triggerBrowserPrint();
-
-    }
+        return paginateBlocksIntoA4Pages(specBlocks, reportMainTitle, specDocCode, reportNo);
 
 }
 
 
-
-
-
 // ============================================================================
-
-// ACİL DURUM YEDEKLEME, VERİ KURTARMA & GÜVENLİK KALKANI (v0.5)
-
-// ============================================================================
-
-
-
-
-
-// ============================================================================
-// HIZLI RAPOR - 11-PAGES-AND-AUTH.JS
-// Açıklama: Kullanıcı Hesapları, Şirket Ayarları, Yedekleme ve Yardımcı Sayfalar
-// Satır Aralığı: 15981 - 19624 (3644 satır)
+// HIZLI RAPOR - 11A-BACKUP-AND-FIELD-TOOLS.JS
+// Açıklama: Acil Yedekleme, Çökme Kalkanı, Fotoğraf Çizim/Annotator ve Saha Araçları
 // ============================================================================
 
 function exportEmergencyBackup() {
@@ -22746,6 +22831,13 @@ window.filterVisualCheckQuestionsLive = filterVisualCheckQuestionsLive;
 
 
 
+
+
+
+// ============================================================================
+// HIZLI RAPOR - 11B-AUTH-AND-SETTINGS.JS
+// Açıklama: Kullanıcı Hesapları, Kimlik Yönetimi, Şirket/Marka ve Uygulama Ayarları
+// ============================================================================
 
 // ============================================================================
 

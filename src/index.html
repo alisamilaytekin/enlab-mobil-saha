@@ -771,7 +771,48 @@
             font-size: 7.2pt !important;
             line-height: 1.24 !important;
             color: #475569 !important;
-            border-bottom: 1px solid #cbd5e1 !important;
+            border-bottom: none !important;
+            padding-bottom: 2px !important;
+        }
+
+        [data-pdf-theme^="rams_"] .tkm-footer-meta,
+        [data-pdf-theme="modern"] .tkm-footer-meta {
+            display: block !important;
+            width: 100% !important;
+            font-size: 6.3pt !important;
+            padding-top: 1px !important;
+        }
+
+        [data-pdf-theme^="rams_"] .tkm-footer-doc-table,
+        [data-pdf-theme="modern"] .tkm-footer-doc-table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            table-layout: auto !important;
+            background: #ffffff !important;
+        }
+
+        [data-pdf-theme^="rams_"] .tkm-footer-doc-table td,
+        [data-pdf-theme="modern"] .tkm-footer-doc-table td {
+            border: 1px solid #cbd5e1 !important;
+            padding: 1.5px 4px !important;
+            font-size: 6.3pt !important;
+            line-height: 1.15 !important;
+            text-align: center !important;
+            vertical-align: middle !important;
+            white-space: nowrap !important;
+        }
+
+        [data-pdf-theme^="rams_"] .tkm-footer-doc-table .tkm-fdoc-lbl,
+        [data-pdf-theme="modern"] .tkm-footer-doc-table .tkm-fdoc-lbl {
+            background-color: #f1f5f9 !important;
+            font-weight: 700 !important;
+        }
+
+        [data-pdf-theme^="rams_"] .tkm-footer-doc-table .tkm-fdoc-val,
+        [data-pdf-theme="modern"] .tkm-footer-doc-table .tkm-fdoc-val {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+            font-weight: 600 !important;
         }
 
         [data-pdf-theme^="rams_"] .tkm-legend,
@@ -862,6 +903,10 @@
         [data-pdf-theme="modern"] .tkm-footer-meta {
             color: #1f3a5f !important;
         }
+        [data-pdf-theme="rams_navy"] .tkm-footer-doc-table .tkm-fdoc-lbl,
+        [data-pdf-theme="modern"] .tkm-footer-doc-table .tkm-fdoc-lbl {
+            color: #1f3a5f !important;
+        }
 
         /* -------------------------------------------------------------
            TEMA 2: RAMS İSG ZÜMRÜT (#064E3B / #047857)
@@ -893,6 +938,10 @@
             color: #064e3b !important;
         }
         [data-pdf-theme="rams_emerald"] .tkm-footer-meta {
+            color: #064e3b !important;
+        }
+        [data-pdf-theme="rams_emerald"] .tkm-footer-doc-table .tkm-fdoc-lbl {
+            background-color: #f0fdf4 !important;
             color: #064e3b !important;
         }
 
@@ -928,6 +977,10 @@
         [data-pdf-theme="rams_nordic"] .tkm-footer-meta {
             color: #0f172a !important;
         }
+        [data-pdf-theme="rams_nordic"] .tkm-footer-doc-table .tkm-fdoc-lbl {
+            background-color: #f8fafc !important;
+            color: #0f172a !important;
+        }
 
         /* -------------------------------------------------------------
            TEMA 4: RAMS ENDÜSTRİYEL KOBALT (#1E3A8A)
@@ -959,6 +1012,10 @@
             color: #1e3a8a !important;
         }
         [data-pdf-theme="rams_tuv"] .tkm-footer-meta {
+            color: #1e3a8a !important;
+        }
+        [data-pdf-theme="rams_tuv"] .tkm-footer-doc-table .tkm-fdoc-lbl {
+            background-color: #f0f7ff !important;
             color: #1e3a8a !important;
         }
         /* TKM_RAMS_CSS_END */

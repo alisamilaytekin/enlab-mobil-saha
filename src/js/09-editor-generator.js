@@ -1806,18 +1806,6 @@ function triggerAutoSave() {
 
     if (!insp) return;
 
-    try {
-
-        localStorage.setItem(`enlab_insp_${insp.id}`, JSON.stringify(AppState.currentFormData));
-
-    } catch (e) {
-
-        console.warn('LocalStorage kotası uyarısı:', e);
-
-    }
-
-
-
     const badge = document.getElementById('lastSavedBadge');
 
     if (badge) {
@@ -1828,17 +1816,69 @@ function triggerAutoSave() {
 
     }
 
-
-
     clearTimeout(AppState.saveTimer);
 
-    AppState.saveTimer = setTimeout(() => saveCurrentInspection(false), 300);
+    AppState.saveTimer = setTimeout(() => {
+
+        AppState.saveTimer = null;
+
+        saveCurrentInspection(false);
+
+    }, 250);
 
 }
 
+function flushPendingAutoSave() {
 
+    if (!AppState.saveTimer) return;
+
+    clearTimeout(AppState.saveTimer);
+
+    AppState.saveTimer = null;
+
+    const insp = AppState.currentInspection;
+
+    const fd = AppState.currentFormData;
+
+    if (!insp || !fd) return;
+
+    try {
+
+        localStorage.setItem(`enlab_insp_${insp.id}`, JSON.stringify(fd));
+
+    } catch (e) {
+
+        console.warn('LocalStorage kotası uyarısı:', e);
+
+    }
+
+    saveCurrentInspection(false);
+
+}
+
+if (typeof document !== 'undefined' && !window._enlabAutoSaveLifecycleBound) {
+
+    window._enlabAutoSaveLifecycleBound = true;
+
+    document.addEventListener('visibilitychange', () => {
+
+        if (document.visibilityState === 'hidden') {
+
+            flushPendingAutoSave();
+
+        }
+
+    });
+
+    window.addEventListener('pagehide', flushPendingAutoSave);
+
+}
 
 async function saveCurrentInspection(manualToast = false) {
+
+    clearTimeout(AppState.saveTimer);
+
+    AppState.saveTimer = null;
 
     const insp = AppState.currentInspection;
 

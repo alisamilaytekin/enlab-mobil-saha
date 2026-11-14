@@ -119,6 +119,9 @@ def build(target_version=None):
 
         # 2. Web uygulaması kaynak dosyaları (assets/ içine)
         for root, dirs, files in os.walk(SRC_DIR):
+            # src/js/ ham modulleri zaten src/app.js icinde paketli; APK'ya cift kopyalanmaz
+            if os.path.abspath(root) == os.path.abspath(SRC_DIR) and 'js' in dirs:
+                dirs.remove('js')
             for file in files:
                 full_path = os.path.join(root, file)
                 rel_path = os.path.relpath(full_path, SRC_DIR).replace('\\', '/')
