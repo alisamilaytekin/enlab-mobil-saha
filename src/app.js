@@ -16920,20 +16920,15 @@ function buildTkmPageFooter(formCode, reportNo, pageNum, totalPages) {
 
             </div>
 
-            <table class="tkm-footer-doc-table">
-                <tbody>
-                    <tr>
-                        <td class="tkm-fdoc-lbl">Doküman Kodu</td>
-                        <td class="tkm-fdoc-val">${escapeHtml(docCode)}</td>
-                        <td class="tkm-fdoc-lbl">Yayım Tarihi</td>
-                        <td class="tkm-fdoc-val">18.07.2025</td>
-                        <td class="tkm-fdoc-lbl">Revizyon No / Tarihi</td>
-                        <td class="tkm-fdoc-val">- / -</td>
-                        <td class="tkm-fdoc-lbl">Yürürlük Tarihi</td>
-                        <td class="tkm-fdoc-val">01.09.2025</td>
-                    </tr>
-                </tbody>
-            </table>
+            <div class="tkm-footer-doc-line">
+                <span>Doküman Kodu: <strong>${escapeHtml(docCode)}</strong></span>
+                <span class="tkm-fdoc-sep">&middot;</span>
+                <span>Yayım Tarihi: <strong>18.07.2025</strong></span>
+                <span class="tkm-fdoc-sep">&middot;</span>
+                <span>Revizyon No / Tarihi: <strong>- / -</strong></span>
+                <span class="tkm-fdoc-sep">&middot;</span>
+                <span>Yürürlük Tarihi: <strong>01.09.2025</strong></span>
+            </div>
 
             <div class="tkm-footer-meta">
 

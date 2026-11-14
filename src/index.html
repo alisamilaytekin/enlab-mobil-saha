@@ -768,47 +768,37 @@
 
         [data-pdf-theme^="rams_"] .tkm-footer-disclaimer,
         [data-pdf-theme="modern"] .tkm-footer-disclaimer {
-            font-size: 6.8pt !important;
+            font-size: 6.5pt !important;
             line-height: 1.18 !important;
             color: rgba(51, 65, 85, 0.78) !important;
             border-bottom: none !important;
-            padding-bottom: 2px !important;
+            padding-bottom: 1px !important;
         }
 
-        [data-pdf-theme^="rams_"] .tkm-footer-doc-table,
-        [data-pdf-theme="modern"] .tkm-footer-doc-table {
-            width: 100% !important;
-            border-collapse: collapse !important;
-            table-layout: auto !important;
-            background: transparent !important;
-            margin-bottom: 1.5px !important;
-        }
-
-        [data-pdf-theme^="rams_"] .tkm-footer-doc-table td,
-        [data-pdf-theme="modern"] .tkm-footer-doc-table td {
-            border: 1px solid rgba(100, 116, 139, 0.28) !important;
-            padding: 1.2px 4px !important;
-            font-size: 6.1pt !important;
-            line-height: 1.12 !important;
-            text-align: center !important;
-            vertical-align: middle !important;
+        [data-pdf-theme^="rams_"] .tkm-footer-doc-line,
+        [data-pdf-theme="modern"] .tkm-footer-doc-line {
+            display: flex !important;
+            justify-content: flex-start !important;
+            align-items: center !important;
+            flex-wrap: nowrap !important;
+            gap: 6px !important;
+            font-size: 6.3pt !important;
+            line-height: 1.15 !important;
+            color: rgba(51, 65, 85, 0.75) !important;
+            padding: 1px 0 2.5px 0 !important;
+            border-bottom: 1px solid rgba(100, 116, 139, 0.28) !important;
             white-space: nowrap !important;
-            background: transparent !important;
-            color: rgba(51, 65, 85, 0.72) !important;
         }
 
-        [data-pdf-theme^="rams_"] .tkm-footer-doc-table .tkm-fdoc-lbl,
-        [data-pdf-theme="modern"] .tkm-footer-doc-table .tkm-fdoc-lbl {
-            background-color: rgba(100, 116, 139, 0.06) !important;
-            color: rgba(51, 65, 85, 0.68) !important;
+        [data-pdf-theme^="rams_"] .tkm-footer-doc-line strong,
+        [data-pdf-theme="modern"] .tkm-footer-doc-line strong {
             font-weight: 600 !important;
+            color: rgba(30, 41, 59, 0.82) !important;
         }
 
-        [data-pdf-theme^="rams_"] .tkm-footer-doc-table .tkm-fdoc-val,
-        [data-pdf-theme="modern"] .tkm-footer-doc-table .tkm-fdoc-val {
-            background-color: transparent !important;
-            color: rgba(30, 41, 59, 0.76) !important;
-            font-weight: 600 !important;
+        [data-pdf-theme^="rams_"] .tkm-footer-doc-line .tkm-fdoc-sep,
+        [data-pdf-theme="modern"] .tkm-footer-doc-line .tkm-fdoc-sep {
+            color: rgba(100, 116, 139, 0.45) !important;
         }
 
         [data-pdf-theme^="rams_"] .tkm-footer-meta,
@@ -820,7 +810,7 @@
             font-size: 7pt !important;
             line-height: 1.1 !important;
             color: rgba(51, 65, 85, 0.82) !important;
-            padding-top: 1.5px !important;
+            padding-top: 2px !important;
         }
 
         [data-pdf-theme^="rams_"] .tkm-legend,
