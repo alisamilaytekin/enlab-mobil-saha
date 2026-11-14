@@ -16920,26 +16920,28 @@ function buildTkmPageFooter(formCode, reportNo, pageNum, totalPages) {
 
             </div>
 
+            <table class="tkm-footer-doc-table">
+                <tbody>
+                    <tr>
+                        <td class="tkm-fdoc-lbl">Doküman Kodu</td>
+                        <td class="tkm-fdoc-val">${escapeHtml(docCode)}</td>
+                        <td class="tkm-fdoc-lbl">Yayım Tarihi</td>
+                        <td class="tkm-fdoc-val">18.07.2025</td>
+                        <td class="tkm-fdoc-lbl">Revizyon No / Tarihi</td>
+                        <td class="tkm-fdoc-val">- / -</td>
+                        <td class="tkm-fdoc-lbl">Yürürlük Tarihi</td>
+                        <td class="tkm-fdoc-val">01.09.2025</td>
+                    </tr>
+                </tbody>
+            </table>
+
             <div class="tkm-footer-meta">
 
-                <table class="tkm-footer-doc-table">
-                    <tbody>
-                        <tr>
-                            <td class="tkm-fdoc-lbl">Doküman Kodu</td>
-                            <td class="tkm-fdoc-val">${escapeHtml(docCode)}</td>
-                            <td class="tkm-fdoc-lbl">Yayım Tarihi</td>
-                            <td class="tkm-fdoc-val">18.07.2025</td>
-                            <td class="tkm-fdoc-lbl">Revizyon No / Tarihi</td>
-                            <td class="tkm-fdoc-val">- / -</td>
-                            <td class="tkm-fdoc-lbl">Yürürlük Tarihi</td>
-                            <td class="tkm-fdoc-val">01.09.2025</td>
-                            <td class="tkm-fdoc-lbl">Rapor No</td>
-                            <td class="tkm-fdoc-val">${escapeHtml(reportNo || '-')}</td>
-                            <td class="tkm-fdoc-lbl">Sayfa No</td>
-                            <td class="tkm-fdoc-val">${pageNum} / ${totalPages}</td>
-                        </tr>
-                    </tbody>
-                </table>
+                <span style="width:33%;text-align:left;"></span>
+
+                <span style="width:34%;text-align:center;">${escapeHtml(reportNo)}</span>
+
+                <span style="width:33%;text-align:right;">${pageNum} / ${totalPages}</span>
 
             </div>
 
