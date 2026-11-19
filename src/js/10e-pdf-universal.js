@@ -464,7 +464,25 @@
             });
         }
 
-        // BLOK 4: GÖZLE KONTROL KRİTERLERİ (checklist - 1 Sütun veya 2 Sütun + Satır Bölünebilir!)
+        // BLOK 3B: TEST DEĞERLERİ VE SEMBOL AÇIKLAMALARI KUTUSU (info_box - Topraklama vb.)
+        if (schema.infoBoxHtml) {
+            blocks.push({
+                type: 'info_box',
+                splittable: false,
+                html: `
+                    <div class="tkm-sec-title">${escapeHtml(schema.infoBoxTitle || `${secNo++}. TEST DEĞERLERİ`)}</div>
+                    <table class="tkm-table">
+                        <tbody>
+                            <tr>
+                                <td style="padding:3.5px 6px;text-align:left;">${schema.infoBoxHtml}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                `
+            });
+        }
+
+        // BLOK 4: GÖZLE KONTROL KRİTERLERİ (checklist - Alt Gruplu 5.2..5.8 / A..D, 1 veya 2 Sütun + Satır Bölünebilir!)
         const checks = schema.visualChecks || [];
         if (checks.length > 0) {
             const chkSecNo = secNo++;
@@ -487,89 +505,192 @@
                 return fd.specializedChecks?.[`chk_${idx}`] || '';
             };
 
-            let trList = [];
-            let colgroup = '';
-            let thead = '';
+            const hasGroups = checks.some(c => c.group);
+            if (hasGroups) {
+                const groupedMap = [];
+                checks.forEach((chk, idx) => {
+                    const gName = chk.group || 'KONTROL KRİTERLERİ';
+                    let gObj = groupedMap.find(g => g.name === gName);
+                    if (!gObj) {
+                        gObj = { name: gName, items: [] };
+                        groupedMap.push(gObj);
+                    }
+                    gObj.items.push({ chk, globalIdx: idx });
+                });
 
-            if (chkCols === 2 && checks.length >= 4) {
-                colgroup = '<colgroup><col style="width:24px;"><col style="width:43%;"><col style="width:32px;"><col style="width:24px;"><col style="width:43%;"><col style="width:32px;"></colgroup>';
-                thead = '<thead><tr><th>No</th><th style="text-align:left;padding-left:5px;">Kontrol Kriteri</th><th style="text-align:center;">Drm</th><th>No</th><th style="text-align:left;padding-left:5px;">Kontrol Kriteri</th><th style="text-align:center;">Drm</th></tr></thead>';
-                const half = Math.ceil(checks.length / 2);
-                for (let i = 0; i < half; i++) {
-                    const left = checks[i];
-                    const right = checks[i + half];
-                    const leftSym = renderSym(getChkVal(left, i));
-                    const rightCells = right
-                        ? `<td style="text-align:center;font-weight:700;">${escapeHtml(right.code || String(i + half + 1))}</td>
-                           <td style="text-align:left;padding-left:5px;">${escapeHtml(right.text)}</td>
-                           <td style="text-align:center;">${renderSym(getChkVal(right, i + half))}</td>`
-                        : '<td></td><td></td><td></td>';
-                    trList.push(`
+                groupedMap.forEach((grp, gIdx) => {
+                    const isFirstGrp = gIdx === 0;
+                    const isLastGrp = gIdx === groupedMap.length - 1;
+                    let colgroup = '';
+                    let thead = '';
+                    let rowsHtml = '';
+
+                    if (chkCols === 2 && grp.items.length >= 2) {
+                        colgroup = '<colgroup><col style="width:26px;"><col style="width:42.5%;"><col style="width:30px;"><col style="width:26px;"><col style="width:42.5%;"><col style="width:30px;"></colgroup>';
+                        thead = isFirstGrp
+                            ? '<thead><tr><th>No</th><th style="text-align:left;padding-left:5px;">Soru / Kriter</th><th style="text-align:center;">Drm</th><th>No</th><th style="text-align:left;padding-left:5px;">Soru / Kriter</th><th style="text-align:center;">Drm</th></tr></thead>'
+                            : '';
+                        const half = Math.ceil(grp.items.length / 2);
+                        for (let i = 0; i < half; i++) {
+                            const left = grp.items[i];
+                            const right = grp.items[i + half];
+                            const leftSym = renderSym(getChkVal(left.chk, left.globalIdx));
+                            const rightCells = right
+                                ? `<td style="text-align:center;font-weight:700;">${escapeHtml(right.chk.code || String(i + half + 1))}</td>
+                                   <td style="text-align:left;padding-left:5px;">${escapeHtml(right.chk.text)}</td>
+                                   <td style="text-align:center;">${renderSym(getChkVal(right.chk, right.globalIdx))}</td>`
+                                : '<td></td><td></td><td></td>';
+                            rowsHtml += `
+                                <tr>
+                                    <td style="text-align:center;font-weight:700;">${escapeHtml(left.chk.code || String(i + 1))}</td>
+                                    <td style="text-align:left;padding-left:5px;">${escapeHtml(left.chk.text)}</td>
+                                    <td style="text-align:center;">${leftSym}</td>
+                                    ${rightCells}
+                                </tr>
+                            `;
+                        }
+                    } else {
+                        colgroup = '<colgroup><col style="width:28px;"><col><col style="width:44px;"></colgroup>';
+                        thead = isFirstGrp
+                            ? '<thead><tr><th>No</th><th style="text-align:left;padding-left:6px;font-weight:700;">Soru / Kontrol Kriteri</th><th style="text-align:center;font-weight:700;">Sonuç</th></tr></thead>'
+                            : '';
+                        rowsHtml = grp.items.map(it => `
+                            <tr>
+                                <td style="text-align:center;font-weight:700;">${escapeHtml(it.chk.code || String(it.globalIdx + 1))}</td>
+                                <td style="text-align:left;padding-left:6px;">${escapeHtml(it.chk.text)}</td>
+                                <td style="text-align:center;">${renderSym(getChkVal(it.chk, it.globalIdx))}</td>
+                            </tr>
+                        `).join('');
+                    }
+
+                    blocks.push({
+                        type: 'checklist_group',
+                        splittable: false,
+                        html: `
+                            ${isFirstGrp ? `<div class="tkm-sec-title">${chkSecNo}. GÖZLE KONTROL KRİTERLERİ VE FONKSİYON TESTLERİ</div>` : ''}
+                            <div class="tkm-sub-bar">${escapeHtml(grp.name)}</div>
+                            <table class="tkm-table">${colgroup}${thead}<tbody>${rowsHtml}</tbody></table>
+                            ${isLastGrp ? `<div class="tkm-legend">✓: Uygun &nbsp;|&nbsp; X: Uygun Değil &nbsp;|&nbsp; N: Uygulaması Yok &nbsp;|&nbsp; G: Görülemedi</div>` : ''}
+                        `
+                    });
+                });
+            } else {
+                let trList = [];
+                let colgroup = '';
+                let thead = '';
+
+                if (chkCols === 2 && checks.length >= 4) {
+                    colgroup = '<colgroup><col style="width:24px;"><col style="width:43%;"><col style="width:32px;"><col style="width:24px;"><col style="width:43%;"><col style="width:32px;"></colgroup>';
+                    thead = '<thead><tr><th>No</th><th style="text-align:left;padding-left:5px;">Kontrol Kriteri</th><th style="text-align:center;">Drm</th><th>No</th><th style="text-align:left;padding-left:5px;">Kontrol Kriteri</th><th style="text-align:center;">Drm</th></tr></thead>';
+                    const half = Math.ceil(checks.length / 2);
+                    for (let i = 0; i < half; i++) {
+                        const left = checks[i];
+                        const right = checks[i + half];
+                        const leftSym = renderSym(getChkVal(left, i));
+                        const rightCells = right
+                            ? `<td style="text-align:center;font-weight:700;">${escapeHtml(right.code || String(i + half + 1))}</td>
+                               <td style="text-align:left;padding-left:5px;">${escapeHtml(right.text)}</td>
+                               <td style="text-align:center;">${renderSym(getChkVal(right, i + half))}</td>`
+                            : '<td></td><td></td><td></td>';
+                        trList.push(`
+                            <tr>
+                                <td style="text-align:center;font-weight:700;">${escapeHtml(left.code || String(i + 1))}</td>
+                                <td style="text-align:left;padding-left:5px;">${escapeHtml(left.text)}</td>
+                                <td style="text-align:center;">${leftSym}</td>
+                                ${rightCells}
+                            </tr>
+                        `);
+                    }
+                } else {
+                    colgroup = '<colgroup><col style="width:28px;"><col><col style="width:44px;"></colgroup>';
+                    thead = '<thead><tr><th>No</th><th style="text-align:left;padding-left:6px;font-weight:700;">Soru / Kontrol Kriteri</th><th style="text-align:center;font-weight:700;">Sonuç</th></tr></thead>';
+                    trList = checks.map((chk, idx) => `
                         <tr>
-                            <td style="text-align:center;font-weight:700;">${escapeHtml(left.code || String(i + 1))}</td>
-                            <td style="text-align:left;padding-left:5px;">${escapeHtml(left.text)}</td>
-                            <td style="text-align:center;">${leftSym}</td>
-                            ${rightCells}
+                            <td style="text-align:center;font-weight:700;">${escapeHtml(chk.code || String(idx + 1))}</td>
+                            <td style="text-align:left;padding-left:6px;">${escapeHtml(chk.text)}</td>
+                            <td style="text-align:center;">${renderSym(getChkVal(chk, idx))}</td>
                         </tr>
                     `);
                 }
-            } else {
-                colgroup = '<colgroup><col style="width:28px;"><col><col style="width:44px;"></colgroup>';
-                thead = '<thead><tr><th>No</th><th style="text-align:left;padding-left:6px;font-weight:700;">Soru / Kontrol Kriteri</th><th style="text-align:center;font-weight:700;">Sonuç</th></tr></thead>';
-                trList = checks.map((chk, idx) => `
-                    <tr>
-                        <td style="text-align:center;font-weight:700;">${escapeHtml(chk.code || String(idx + 1))}</td>
-                        <td style="text-align:left;padding-left:6px;">${escapeHtml(chk.text)}</td>
-                        <td style="text-align:center;">${renderSym(getChkVal(chk, idx))}</td>
-                    </tr>
-                `);
+
+                const buildChecklistTableHtml = (rowsSlice, isCont = false) => `
+                    <div class="tkm-sec-title">${chkSecNo}. GÖZLE KONTROL KRİTERLERİ VE FONKSİYON TESTLERİ${isCont ? ' (DEVAMI)' : ''}</div>
+                    ${isCont ? '' : `<div class="tkm-sub-bar">${chkSecNo}.1. KONTROL KRİTERLERİ</div>`}
+                    <table class="tkm-table">${colgroup}${thead}<tbody>${rowsSlice.join('')}</tbody></table>
+                    <div class="tkm-legend">✓: Uygun &nbsp;|&nbsp; X: Uygun Değil &nbsp;|&nbsp; N: Uygulaması Yok &nbsp;|&nbsp; G: Görülemedi</div>
+                `;
+
+                blocks.push({
+                    type: 'checklist',
+                    splittable: true,
+                    rows: trList,
+                    buildSliceHtml: buildChecklistTableHtml,
+                    html: buildChecklistTableHtml(trList, false)
+                });
             }
-
-            const buildChecklistTableHtml = (rowsSlice, isCont = false) => `
-                <div class="tkm-sec-title">${chkSecNo}. GÖZLE KONTROL KRİTERLERİ VE FONKSİYON TESTLERİ${isCont ? ' (DEVAMI)' : ''}</div>
-                ${isCont ? '' : `<div class="tkm-sub-bar">${chkSecNo}.1. KONTROL KRİTERLERİ</div>`}
-                <table class="tkm-table">${colgroup}${thead}<tbody>${rowsSlice.join('')}</tbody></table>
-                <div class="tkm-legend">✓: Uygun &nbsp;|&nbsp; X: Uygun Değil &nbsp;|&nbsp; N: Uygulaması Yok &nbsp;|&nbsp; G: Görülemedi</div>
-            `;
-
-            blocks.push({
-                type: 'checklist',
-                splittable: true,
-                rows: trList,
-                buildSliceHtml: buildChecklistTableHtml,
-                html: buildChecklistTableHtml(trList, false)
-            });
         }
 
-        // BLOK 5: ÖLÇÜM VE TEST SONUÇLARI TABLOSU (measurement_table - Satır Bazlı Otomatik Bölünebilir!)
+        // BLOK 5: ÖLÇÜM VE TEST SONUÇLARI TABLOSU (measurement_table - 2 Katlı Bakanlık Başlığı + Satır Bazlı Otomatik Bölünebilir!)
         const tableCols = schema.tableColumns || [];
         if (tableCols.length > 0) {
             const tblSecNo = secNo++;
             const tblTitle = (schema.tableTitle || 'ÖLÇÜM VE TEST SONUÇLARI TABLOSU').toUpperCase();
-            const colgroupHtml = tableCols.some(c => c.width)
-                ? `<colgroup>${tableCols.map(c => `<col style="${c.width ? `width:${c.width};` : ''}">`).join('')}</colgroup>`
-                : '';
-            const thsHtml = tableCols.map(c => `<th style="text-align:center;font-weight:700;">${escapeHtml(c.label)}</th>`).join('');
+            const isMinistryLinye = schema.groupedHeaderType === 'ministry_linye_2201';
+
+            const colgroupHtml = isMinistryLinye
+                ? '<colgroup><col style="width:3.8%;"><col style="width:21.4%;"><col style="width:5.8%;"><col style="width:5.2%;"><col style="width:5.8%;"><col style="width:6.2%;"><col style="width:5.8%;"><col style="width:6.0%;"><col style="width:6.4%;"><col style="width:6.2%;"><col style="width:6.2%;"><col style="width:5.6%;"><col style="width:5.6%;"><col style="width:10.0%;"></colgroup>'
+                : (tableCols.some(c => c.width)
+                    ? `<colgroup>${tableCols.map(c => `<col style="${c.width ? `width:${c.width};` : ''}">`).join('')}</colgroup>`
+                    : '');
+
+            const theadFullHtml = isMinistryLinye ? `
+                <thead>
+                    <tr>
+                        <th rowspan="2" style="text-align:center;vertical-align:middle;font-weight:700;">No</th>
+                        <th rowspan="2" style="text-align:center;vertical-align:middle;font-weight:700;">Pano/Tablo No -<br>Linye Adı-Etiketi</th>
+                        <th colspan="4" class="tkm-linye-group-th" style="text-align:center;font-weight:700;">Aşırı Akım Koruma Cihazının</th>
+                        <th colspan="5" class="tkm-linye-group-th" style="text-align:center;font-weight:700;">İletkenin</th>
+                        <th colspan="2" class="tkm-linye-group-th" style="text-align:center;font-weight:700;">RCD Testi</th>
+                        <th rowspan="2" style="text-align:center;vertical-align:middle;font-weight:700;">Sonuç</th>
+                    </tr>
+                    <tr>
+                        <th style="text-align:center;font-weight:700;">Eğri</th>
+                        <th style="text-align:center;font-weight:700;">Kutup</th>
+                        <th style="text-align:center;font-weight:700;">In (A)</th>
+                        <th style="text-align:center;font-weight:700;">Icu (kA)</th>
+                        <th style="text-align:center;font-weight:700;">Faz (mm²)</th>
+                        <th style="text-align:center;font-weight:700;">N/PEN</th>
+                        <th style="text-align:center;font-weight:700;">PE (mm²)</th>
+                        <th style="text-align:center;font-weight:700;">Ib (A)</th>
+                        <th style="text-align:center;font-weight:700;">Iz (A)</th>
+                        <th style="text-align:center;font-weight:700;">IΔ (mA)</th>
+                        <th style="text-align:center;font-weight:700;">TΔ (ms)</th>
+                    </tr>
+                </thead>
+            ` : `<thead><tr>${tableCols.map(c => `<th style="text-align:center;font-weight:700;">${escapeHtml(c.label)}</th>`).join('')}</tr></thead>`;
 
             const rawRows = (Array.isArray(fd.universalTableRows) && fd.universalTableRows.length)
                 ? fd.universalTableRows
                 : [];
 
-            const trRows = rawRows.map(rowObj => {
-                const cellsHtml = tableCols.map(col => {
+            const trRows = rawRows.map((rowObj, rIdx) => {
+                const noCell = isMinistryLinye ? `<td style="text-align:center;">${rIdx + 1}</td>` : '';
+                const cellsHtml = tableCols.map((col, cIdx) => {
                     const cellVal = (rowObj && rowObj[col.key] !== undefined) ? String(rowObj[col.key]) : '';
-                    const isBad = cellVal === 'Uygun Değil' || cellVal.includes('Kırmızı');
-                    const style = isBad ? 'text-align:center;color:#b91c1c;font-weight:700;background:#fef2f2;' : 'text-align:center;';
+                    const isBad = cellVal === 'Uygun Değil' || cellVal.includes('Uygun Değil') || cellVal.includes('Kırmızı');
+                    const align = (isMinistryLinye && cIdx === 0) ? 'left;padding-left:4px' : 'center';
+                    const style = isBad ? `text-align:${align};color:#b91c1c;font-weight:700;background:#fef2f2;` : `text-align:${align};`;
                     return `<td style="${style}">${escapeHtml(cellVal)}</td>`;
                 }).join('');
-                return `<tr>${cellsHtml}</tr>`;
+                return `<tr>${noCell}${cellsHtml}</tr>`;
             });
 
+            const tableCls = isMinistryLinye ? 'tkm-table tkm-linye-table' : 'tkm-table';
             const buildMeasurementTableHtml = (rowsSlice, isCont = false) => `
                 <div class="tkm-sec-title">${tblSecNo}. ${escapeHtml(tblTitle)}${isCont ? ' (TABLO DEVAMI)' : ''}</div>
-                <table class="tkm-table">
+                <table class="${tableCls}">
                     ${colgroupHtml}
-                    <thead><tr>${thsHtml}</tr></thead>
+                    ${theadFullHtml}
                     <tbody>${rowsSlice.join('')}</tbody>
                 </table>
             `;
@@ -582,6 +703,46 @@
                 html: buildMeasurementTableHtml(trRows, false)
             });
         }
+
+        // BLOK 5B: ÇOKLU EK ÖLÇÜM TABLOLARI (6.2 Potansiyel Dengeleme, 6.3 Zemin İzolasyonu, 5.3 Selektivite, 5.2/5.3 Jeneratör)
+        (schema.additionalTables || []).forEach(subTbl => {
+            const subCols = subTbl.columns || [];
+            const subRows = (fd.universalSubTables && Array.isArray(fd.universalSubTables[subTbl.id]))
+                ? fd.universalSubTables[subTbl.id]
+                : (subTbl.defaultRows || []);
+            if (!subCols.length || !subRows.length) return;
+
+            const subColgroup = subCols.some(c => c.width)
+                ? `<colgroup>${subCols.map(c => `<col style="${c.width ? `width:${c.width};` : ''}">`).join('')}</colgroup>`
+                : '';
+            const subThs = subCols.map(c => `<th style="text-align:center;font-weight:700;">${escapeHtml(c.label)}</th>`).join('');
+            const subTrs = subRows.map(sRow => {
+                const tds = subCols.map(sc => {
+                    const v = (sRow && sRow[sc.key] !== undefined) ? String(sRow[sc.key]) : '';
+                    const isBad = v === 'Uygun Değil' || v.includes('Uygun Değil');
+                    const style = isBad ? 'text-align:center;color:#b91c1c;font-weight:700;background:#fef2f2;' : 'text-align:center;';
+                    return `<td style="${style}">${escapeHtml(v)}</td>`;
+                }).join('');
+                return `<tr>${tds}</tr>`;
+            });
+
+            const buildSubTableHtml = (rowsSlice, isCont = false) => `
+                <div class="tkm-sub-bar">${escapeHtml(subTbl.title)}${isCont ? ' (DEVAMI)' : ''}</div>
+                <table class="tkm-table">
+                    ${subColgroup}
+                    <thead><tr>${subThs}</tr></thead>
+                    <tbody>${rowsSlice.join('')}</tbody>
+                </table>
+            `;
+
+            blocks.push({
+                type: 'sub_measurement_table',
+                splittable: true,
+                rows: subTrs,
+                buildSliceHtml: buildSubTableHtml,
+                html: buildSubTableHtml(subTrs, false)
+            });
+        });
 
         // BLOK 6: KUSUR AÇIKLAMALARI & NOTLAR
         const defSecNo = secNo++;
@@ -631,11 +792,14 @@
             <table class="tkm-table">
                 <tbody>
                     <tr>
-                        <td style="padding:5px 7px;font-weight:700;font-size:7.4pt;color:${verdictColor};background:${verdictBg};line-height:1.28;">
-                            Periyodik kontrol tarihi itibari ile yukarıda teknik özellikleri belirtilen ekipmanın muayenesi sonrasında mevcut şartlar altında<br>
-                            <span style="font-size:8.5pt;font-weight:800;">
-                                KULLANIMI ${isUnsuitable ? 'UYGUN DEĞİLDİR.' : 'UYGUNDUR.'}
-                            </span>
+                        <td style="padding:5px 7px;text-align:left;line-height:1.25;">
+                            ${schema.conclusionNotesHtml || ''}
+                            <div style="font-weight:700;font-size:7.4pt;color:${verdictColor};background:${verdictBg};padding:4px 6px;border-radius:3px;">
+                                Periyodik kontrol tarihi itibari ile yukarıda teknik özellikleri belirtilen ekipmanın muayenesi sonrasında mevcut şartlar altında<br>
+                                <span style="font-size:8.5pt;font-weight:800;">
+                                    KULLANIMI ${isUnsuitable ? 'UYGUN DEĞİLDİR.' : 'UYGUNDUR.'}
+                                </span>
+                            </div>
                         </td>
                     </tr>
                 </tbody>

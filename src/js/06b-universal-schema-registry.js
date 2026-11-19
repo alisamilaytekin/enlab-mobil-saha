@@ -1072,10 +1072,365 @@
                 { test_item: 'Operasyon Bölgesi Muhafaza / Switch Testi', measured: 'Muhafaza Tam ve Aktif', reference: 'TS EN ISO 12100', result: 'Uygun' },
                 { test_item: 'Gövde Koruma Topraklaması Sürekliliği', measured: '0.09 Ω', reference: '≤ 0.20 Ω (TS EN 60204-1)', result: 'Uygun' }
             ]
+        },
+
+        // ====================================================================
+        // U2201 - ELEKTRİK İÇ TESİSATI (EVRENSEL MOTOR v1 - TÜM ÖZELLİKLER)
+        // ====================================================================
+        'U2201': {
+            templateId: 'U2201',
+            schemaVersion: 1,
+            engineVersion: 1,
+            code: 'TKM-FR.318',
+            docNo: 'TKM-FR.318, REV.00 / YT: 01.09.2025',
+            category: 'Ana Elektriksel (Evrensel Motor)',
+            title: 'ELEKTRİK İÇ TESİSATI GÖZLE KONTROL VE FONKSİYON TESTLERİ RAPORU',
+            methods: [
+                'RG, 04.11.1984 - 18565 Elektrik İç Tesisleri Yönetmeliği',
+                'RG, 21.08.2001 - 24500 Elektrik Tesislerinde Topraklamalar Yönetmeliği',
+                'RG, 25.04.2013 - 28628 İş Ekipmanlarının Kullanımında Sağlık ve Güvenlik Şartları Yönetmeliği',
+                'TS HD 60364-4-41 Alçak Gerilim Elektrik Tesisleri - Elektrik Çarpmasına Karşı Koruma',
+                'TS HD 60364-6 Alçak Gerilim Elektrik Tesisatları - Bölüm 6: Doğrulama'
+            ],
+            layoutHints: { fieldGridColumns: 3, checklistColumns: 2, showDevices: true },
+            autoCalcType: 'electrical_linye_2201',
+            generalFields: [
+                { key: 'enerji_kurulusu', label: 'Enerji Sağlayan Kuruluş', type: 'text', presets: ['AYEDAŞ', 'BEDAŞ', 'TEİAŞ', 'OSB Müdürlüğü', 'UEDAŞ', 'GDZ'], default: 'AYEDAŞ' },
+                { key: 'sebeke_tipi', label: 'Şebeke Tipi', type: 'select', options: ['TT', 'TN-S', 'TN-C-S', 'TN-C', 'IT'], default: 'TN-S' },
+                { key: 'topraklayici_tipi', label: 'Topraklayıcı Tipi', type: 'select', options: ['Temel Topraklama', 'Yüzeysel', 'Ring', 'Derin (Çubuk)', 'Belirlenemedi'], default: 'Temel Topraklama' },
+                { key: 'proje_var_mi', label: 'Tesise Ait Proje Var mı?', type: 'select', options: ['Var', 'Yok'], negativeValues: ['Yok'], default: 'Var' },
+                { key: 'tek_hat_var_mi', label: 'Tek Hat Şeması Var mı?', type: 'select', options: ['Var', 'Yok'], negativeValues: ['Yok'], default: 'Var' },
+                { key: 'ic_kapak_pleksi', label: 'Pano İç Kapak / Pleksi Koruma', type: 'select', options: ['Var', 'Yok'], negativeValues: ['Yok'], default: 'Var' },
+                { key: 'izole_hali', label: 'Pano Önü Yalıtkan Paspas (İzole Halı)', type: 'select', options: ['Var', 'Yok'], negativeValues: ['Yok'], default: 'Var' },
+                { key: 'sebeke_gerilimi', label: 'Şebeke Gerilimi', type: 'text', unit: 'V', presets: ['230/400 V', '400 V', '230 V'], default: '230/400 V' },
+                { key: 'ana_kesici', label: 'Pano Ana Kesici Tipi / Anma Akımı', type: 'text', presets: ['TMŞ 3x160 A', 'TMŞ 3x100 A', 'TMŞ 3x250 A', 'Otomatik Sigorta 3x63 A', 'Otomatik Sigorta 3x40 A'], default: 'TMŞ 3x160 A' },
+                { key: 'ana_rcd', label: 'Ana Kaçak Akım Rölesi (RCD / Toroid)', type: 'text', presets: ['4x63A 300mA', '4x40A 30mA', 'Toroid Röle 300mA', 'Yok'], negativeValues: ['Yok'], default: '4x63A 300mA' },
+                { key: 'olcum_metodu', label: 'Ölçüm ve Doğrulama Metodu', type: 'select', options: ['Çevrim Empedansı Metodu', '3 Uçlu Topraklama Metodu', 'Klamp Metodu'], default: 'Çevrim Empedansı Metodu' },
+                { key: 'pano_zx', label: '6.1 Pano Faz-Toprak Empedansı (Zx)', type: 'text', unit: 'Ω', presets: ['0.32', '0.45', '0.68', '1.15'], default: '0.38' },
+                { key: 'pano_zln', label: '6.1 Pano Faz-Nötr Empedansı (ZLN)', type: 'text', unit: 'Ω', presets: ['0.28', '0.35', '0.52'], default: '0.34' },
+                { key: 'pano_ik3', label: '6.1 Hesaplanan 3 Faz Kısa Devre (Ik3)', type: 'text', unit: 'kA', default: '0.68' },
+                { key: 'gerilim_ff', label: '6.1 Gerilim Faz-Faz (F-F)', type: 'text', unit: 'V', presets: ['400', '398', '402'], default: '400' },
+                { key: 'gerilim_ln', label: '6.1 Gerilim Faz-Nötr (L-N)', type: 'text', unit: 'V', presets: ['230', '231', '229'], default: '230' },
+                { key: 'gerilim_npe', label: '6.1 Gerilim Nötr-Toprak (N-PE)', type: 'text', unit: 'V', presets: ['0.4', '0.8', '1.2'], default: '0.5' },
+                { key: 'dkd_parafudr', label: '6.1 Aşırı Gerilim Koruma (DKD / Parafudr)', type: 'select', options: ['Tip 1+2 (Var)', 'Tip 2 (Var)', 'Yok'], negativeValues: [], default: 'Tip 2 (Var)' },
+                { key: 'termal_durum', label: '3. Termal Kamera Maks. Sıcaklık / Durum', type: 'text', presets: ['38.4 °C / Kusur Yok', '44.2 °C / Normal', 'Uygulaması Yok'], default: '38.4 °C / Kusur Yok' }
+            ],
+            visualChecks: [
+                // 5.2 Sabit Tesisat Kontrolleri
+                { id: 'chk_u2201_52a', group: '5.2. SABİT TESİSAT KONTROLLERİ', code: 'A', text: 'Kablo şebeke tarafı (giriş rakoru ve mekanik koruma)', isCritical: true, defect: 'Pano şebeke besleme kablosu girişinde mekanik koruma (rakor/conta) eksikliği tespit edilmiştir.' },
+                { id: 'chk_u2201_52b', group: '5.2. SABİT TESİSAT KONTROLLERİ', code: 'B', text: 'Kablo donanım tarafı (çıkış klemens ve yüksük bağlantıları)', isCritical: true, defect: 'Pano çıkış kablo bağlantılarında gevşeklik, yüksük eksikliği veya uygunsuz klemens bağlantısı tespit edilmiştir.' },
+                { id: 'chk_u2201_52c', group: '5.2. SABİT TESİSAT KONTROLLERİ', code: 'C', text: 'Pano sabitlenmesi (Depreme dayanıklılık)', isCritical: true, defect: 'Pano gövdesi zemine veya duvara devrilmeye ve depreme karşı rijit şekilde sabitlenmemiştir.' },
+                { id: 'chk_u2201_52d', group: '5.2. SABİT TESİSAT KONTROLLERİ', code: 'D', text: 'Dış darbelere karşı koruma önlemi (IP koruma sınıfı)', isCritical: false, defect: 'Pano dış darbelere ve çevresel etkilere (IP koruma sınıfı) karşı korumasız durumdadır.' },
+                { id: 'chk_u2201_52e', group: '5.2. SABİT TESİSAT KONTROLLERİ', code: 'E', text: 'Elektrik panosu etrafında yabancı malzemeler', isCritical: false, defect: 'Elektrik panosu önünde ve çevresinde müdahaleyi engelleyen veya yangın riski oluşturan yabancı malzemeler bulunmaktadır.' },
+                // 5.3 Koruma Tedbirleri
+                { id: 'chk_u2201_53a', group: '5.3. KORUMA TEDBİRLERİ KONTROLLERİ', code: 'A', text: 'Zemin izolasyonu (TS EN 61111 yalıtkan paspas)', isCritical: true, defect: 'Pano önünde TS EN 61111 standardına uygun dielektrik yalıtkan paspas (izolasyon halısı) bulunmamaktadır.' },
+                { id: 'chk_u2201_53b', group: '5.3. KORUMA TEDBİRLERİ KONTROLLERİ', code: 'B', text: 'Topraklama iletkeni', isCritical: true, defect: 'Pano ana topraklama barası bağlantısı veya topraklama iletkeni kesiti standartlara uygun değildir.' },
+                { id: 'chk_u2201_53c', group: '5.3. KORUMA TEDBİRLERİ KONTROLLERİ', code: 'C', text: 'Ana potansiyel dengeleme iletkeni', isCritical: true, defect: 'Ana potansiyel dengeleme barası ve iletken bağlantısı tesis edilmemiştir.' },
+                { id: 'chk_u2201_53d', group: '5.3. KORUMA TEDBİRLERİ KONTROLLERİ', code: 'D', text: 'Ek Potansiyel dengeleme İletkeni (Tamamlayıcı pot.den)', isCritical: false, defect: 'Metal gövdeli donanımlar ile elektrik panosu arasında tamamlayıcı potansiyel dengeleme bağlantısı eksiktir.' },
+                { id: 'chk_u2201_53e', group: '5.3. KORUMA TEDBİRLERİ KONTROLLERİ', code: 'E', text: 'Pano kapak bağlantısı kontrolü 6 mm2', isCritical: true, defect: 'Pano metal kapağı ile gövde arasında min. 6 mm² esnek sarı-yeşil topraklama köprüsü bulunmamaktadır.' },
+                // 5.4 Pano İç Donanım
+                { id: 'chk_u2201_54a', group: '5.4. PANO İÇ DONANIM VE MONTAJ KONTROLLERİ', code: 'A', text: 'Elektriksel olmayan tesislere yaklaşma ve diğer etkilerin kontrolü', isCritical: false, defect: 'Elektrik tesisatı ile su/doğalgaz/mekanik boru hatları arasında yeterli güvenlik mesafesi yoktur.' },
+                { id: 'chk_u2201_54b', group: '5.4. PANO İÇ DONANIM VE MONTAJ KONTROLLERİ', code: 'B', text: 'Bant I ve Bant II ayrılması, Bant II yalıtımı', isCritical: false, defect: 'Zayıf akım (Bant I) ve kuvvetli akım (Bant II) kabloları aynı kanalda ayrıştırma yapılmadan çekilmiştir.' },
+                { id: 'chk_u2201_54c', group: '5.4. PANO İÇ DONANIM VE MONTAJ KONTROLLERİ', code: 'C', text: 'Güvenlik devre ayrılması', isCritical: false, defect: 'Acil durum ve güvenlik devreleri genel besleme devrelerinden bağımsız ayrılmamıştır.' },
+                { id: 'chk_u2201_54d', group: '5.4. PANO İÇ DONANIM VE MONTAJ KONTROLLERİ', code: 'D', text: 'Pano iç kapak, faza erişim engeli veya pleksi koruma', isCritical: true, defect: 'Pano içerisinde gerilim altındaki aktif bölümlere doğrudan dokunmayı önleyen iç kapak veya pleksi koruma bulunmamaktadır (TS HD 60364-4-41).' },
+                { id: 'chk_u2201_54e', group: '5.4. PANO İÇ DONANIM VE MONTAJ KONTROLLERİ', code: 'E', text: 'Şemalar, talimatlar, devre çizimleri ve kısa bilgiler', isCritical: false, defect: 'Pano içerisinde güncel onaylı tek hat şeması ve işletme talimatı bulunmamaktadır.' },
+                { id: 'chk_u2201_54f', group: '5.4. PANO İÇ DONANIM VE MONTAJ KONTROLLERİ', code: 'F', text: 'Koruma cihaz ve terminal etiket', isCritical: false, defect: 'Pano içerisindeki şalter, sigorta, RCD ve klemenslerin beslediği linyeleri belirten etiketlemeler eksiktir.' },
+                { id: 'chk_u2201_54g', group: '5.4. PANO İÇ DONANIM VE MONTAJ KONTROLLERİ', code: 'G', text: 'Tehlike işaretleri ve diğer uyarı işaretleri', isCritical: false, defect: 'Pano dış kapağında standart ölüm tehlikesi / elektrik uyarı levhası bulunmamaktadır.' },
+                { id: 'chk_u2201_54h', group: '5.4. PANO İÇ DONANIM VE MONTAJ KONTROLLERİ', code: 'H', text: 'Kablo yollarının uygunluğu ve mekanik koruma', isCritical: false, defect: 'Kablo tava ve kanallarında kapak eksikliği, sarkma veya mekanik hasar tespit edilmiştir.' },
+                // 5.5 Kablo ve İletken
+                { id: 'chk_u2201_55a', group: '5.5. KABLO VE İLETKEN KONTROLLERİ', code: 'A', text: 'Kablo renk kodları Nötr: Mavi Toprak: Sarı/ Yeşil', isCritical: true, defect: 'Tesisatta Nötr (Mavi) ve Koruma/Toprak (Sarı-Yeşil) iletken renk kodlaması standartlara uygun değildir.' },
+                { id: 'chk_u2201_55b', group: '5.5. KABLO VE İLETKEN KONTROLLERİ', code: 'B', text: 'Tesisat yöntemi', isCritical: false, defect: 'Kablo döşeme ve sabitleme yöntemi tesisat standartlarına uygun değildir.' },
+                { id: 'chk_u2201_55c', group: '5.5. KABLO VE İLETKEN KONTROLLERİ', code: 'C', text: 'Yangın engeli, uygun kilitleme ve sıcaklık etkisine karşı koruma', isCritical: false, defect: 'Kablo geçişlerinde yangın durdurucu harç/bariyer eksikliği mevcuttur.' },
+                // 5.6 Termal Kamera
+                { id: 'chk_u2201_56a', group: '5.6. TERMAL KAMERA İNCELEMESİ', code: 'A', text: 'Kontak gevşekliği ısınması', isCritical: true, defect: 'Termal kamera incelemesinde klemens/şalter bağlantı noktasında kontak gevşekliği kaynaklı aşırı ısınma tespit edilmiştir.' },
+                { id: 'chk_u2201_56b', group: '5.6. TERMAL KAMERA İNCELEMESİ', code: 'B', text: 'Aşırı yük ısınması PVC kablolar için >70 derece', isCritical: true, defect: 'Termal kamera incelemesinde PVC yalıtımlı iletkenlerde 70°C sınır değerinin üzerinde aşırı yük ısınması tespit edilmiştir.' },
+                // 5.7 & 5.8 Yangın, Bakım ve Korozyon
+                { id: 'chk_u2201_57a', group: '5.7. YANGIN, BAKIM VE KOROZYON KONTROLLERİ', code: 'A', text: 'Ekipman yakınında elektriksel ekipman yangın söndürme tertibatı', isCritical: false, defect: 'Pano odası / yakınında elektrik yangınlarına uygun (CO2 / KKT) yangın söndürme tüpü bulunmamaktadır.' },
+                { id: 'chk_u2201_57b', group: '5.7. YANGIN, BAKIM VE KOROZYON KONTROLLERİ', code: 'B', text: 'Ekipman içi veya yakınında acil durum aydınlatma tertibatı', isCritical: false, defect: 'Pano mahallinde enerji kesintisinde devreye giren acil durum aydınlatma armatürü bulunmamaktadır.' },
+                { id: 'chk_u2201_58a', group: '5.7. YANGIN, BAKIM VE KOROZYON KONTROLLERİ', code: 'C', text: 'Ekipman temizlik/bakım durumu', isCritical: false, defect: 'Pano içerisinde toz, örümcek ağı ve yabancı partikül birikimi mevcut olup pano içi temizlik ve bakım yapılmalıdır.' },
+                { id: 'chk_u2201_58b', group: '5.7. YANGIN, BAKIM VE KOROZYON KONTROLLERİ', code: 'D', text: 'Pano içi ve bağlantılarının korozyon kontrolü', isCritical: false, defect: 'Pano içi bara ve bağlantı elemanlarında oksitlenme/korozyon başlangıcı görülmüştür.' }
+            ],
+            tableTitle: '6.1. PANO / LİNYE AŞIRI AKIM, İLETKEN KESİTİ VE RCD ÖLÇÜM TABLOSU',
+            groupedHeaderType: 'ministry_linye_2201',
+            rowPresets: [
+                { label: '+ Aydınlatma (B16 / 2.5mm²)', row: { linye_name: 'Aydınlatma Linyesi', curve: 'B', poles: '1', in_a: '16', icu_ka: '6', faz_mm2: '2.5', n_mm2: '2.5', pe_mm2: '2.5', ib_a: '8.4', iz_a: '25', rcd_id: '24', rcd_td: '28', result: 'Uygun' } },
+                { label: '+ Priz Linyesi (C16 / 2.5mm²)', row: { linye_name: 'Genel Priz Linyesi', curve: 'C', poles: '1', in_a: '16', icu_ka: '6', faz_mm2: '2.5', n_mm2: '2.5', pe_mm2: '2.5', ib_a: '11.2', iz_a: '25', rcd_id: '24', rcd_td: '26', result: 'Uygun' } },
+                { label: '+ Klima (C20 / 4mm²)', row: { linye_name: 'Klima Besleme Hattı', curve: 'C', poles: '1', in_a: '20', icu_ka: '6', faz_mm2: '4', n_mm2: '4', pe_mm2: '4', ib_a: '14.5', iz_a: '34', rcd_id: '24', rcd_td: '28', result: 'Uygun' } },
+                { label: '+ 3 Faz Kuvvet (C32 / 6mm²)', row: { linye_name: '3 Faz Kuvvet / Makina Hattı', curve: 'C', poles: '3', in_a: '32', icu_ka: '10', faz_mm2: '6', n_mm2: '6', pe_mm2: '6', ib_a: '22.0', iz_a: '43', rcd_id: '24', rcd_td: '28', result: 'Uygun' } },
+                { label: '+ Ana Şalter (TMŞ 160A / 70mm²)', row: { linye_name: 'Pano Ana Giriş Şalteri', curve: 'TMŞ', poles: '3', in_a: '160', icu_ka: '36', faz_mm2: '70', n_mm2: '35', pe_mm2: '35', ib_a: '95.0', iz_a: '202', rcd_id: '240', rcd_td: '42', result: 'Uygun' } }
+            ],
+            tableColumns: [
+                { key: 'linye_name', label: 'Pano/Tablo No - Linye Adı', width: '22%', default: 'Aydınlatma Linyesi - 1' },
+                { key: 'curve', label: 'Açma Eğrisi', width: '6.2%', options: ['B', 'C', 'D', 'K', 'TMŞ', 'gG'], default: 'B' },
+                { key: 'poles', label: 'Kutup Sayısı', width: '5.4%', options: ['1', '2', '3', '4'], default: '1' },
+                { key: 'in_a', label: 'Nominal Akım In (A)', width: '6.0%', default: '16' },
+                { key: 'icu_ka', label: 'Kısa Devre Icu (kA)', width: '6.6%', default: '6' },
+                { key: 'faz_mm2', label: 'Faz Kesiti (mm²)', width: '6.0%', default: '2.5' },
+                { key: 'n_mm2', label: 'N/PEN Kesiti (mm²)', width: '6.2%', default: '2.5' },
+                { key: 'pe_mm2', label: 'PE Kesiti (mm²)', width: '6.8%', default: '2.5' },
+                { key: 'ib_a', label: 'Yük Akımı Ib (A)', width: '6.4%', default: '9.2' },
+                { key: 'iz_a', label: 'Taşıma Kapasitesi Iz (A)', width: '6.4%', default: '25' },
+                { key: 'rcd_id', label: 'RCD IΔ (mA)', width: '6.0%', default: '24' },
+                { key: 'rcd_td', label: 'RCD TΔ (ms)', width: '6.0%', default: '28' },
+                { key: 'result', label: 'Sonuç', width: '6.0%', options: ['Uygun', 'Uygun Değil'], default: 'Uygun' }
+            ],
+            defaultRows: [
+                { linye_name: 'Pano Ana Giriş Kesicisi', curve: 'TMŞ', poles: '3', in_a: '100', icu_ka: '25', faz_mm2: '35', n_mm2: '16', pe_mm2: '16', ib_a: '54.0', iz_a: '131', rcd_id: '240', rcd_td: '38', result: 'Uygun' },
+                { linye_name: 'L1 - Aydınlatma Linyesi', curve: 'B', poles: '1', in_a: '16', icu_ka: '6', faz_mm2: '2.5', n_mm2: '2.5', pe_mm2: '2.5', ib_a: '7.8', iz_a: '25', rcd_id: '24', rcd_td: '26', result: 'Uygun' },
+                { linye_name: 'L2 - Genel Priz Linyesi', curve: 'C', poles: '1', in_a: '16', icu_ka: '6', faz_mm2: '2.5', n_mm2: '2.5', pe_mm2: '2.5', ib_a: '11.4', iz_a: '25', rcd_id: '24', rcd_td: '28', result: 'Uygun' }
+            ],
+            additionalTables: [
+                {
+                    id: 'pot_dengeleme',
+                    title: '6.2. POTANSİYEL DENGELEME İLETKENLERİ SÜREKLİLİK KONTROL TABLOSU',
+                    columns: [
+                        { key: 'point', label: 'Potansiyel Dengeleme Noktası / Bara', width: '32%', default: 'Pano Ana Topraklama Barası - Kapak Köprüsü' },
+                        { key: 'type', label: 'İletken Cinsi', width: '16%', default: 'H07V-K Bakır' },
+                        { key: 'section', label: 'Kesit (mm²)', width: '14%', default: '6 mm²' },
+                        { key: 'r_ohm', label: 'Ölçülen Süreklilik (Ω)', width: '14%', default: '0.05 Ω' },
+                        { key: 'limit', label: 'Sınır Değer', width: '12%', default: '≤ 0.20 Ω' },
+                        { key: 'result', label: 'Sonuç', width: '12%', options: ['Uygun', 'Uygun Değil'], default: 'Uygun' }
+                    ],
+                    defaultRows: [
+                        { point: 'Pano Gövde - Kapak Topraklama Köprüsü', type: 'NYAF Bakır', section: '6 mm²', r_ohm: '0.04 Ω', limit: '≤ 0.20 Ω', result: 'Uygun' },
+                        { point: 'Ana Eşpotansiyel Bara - Metal Kablo Tavası', type: 'Bakır', section: '16 mm²', r_ohm: '0.07 Ω', limit: '≤ 0.20 Ω', result: 'Uygun' }
+                    ]
+                },
+                {
+                    id: 'zemin_izolasyon',
+                    title: '6.3. ZEMİN VE İZOLE PASPAS YALITIM DİRENCİ KONTROL TABLOSU',
+                    columns: [
+                        { key: 'location', label: 'Ölçüm Yapılan Pano Önü / Mahal', width: '38%', default: 'Pano Önü TS EN 61111 Yalıtkan Paspas' },
+                        { key: 'test_v', label: 'Test Gerilimi', width: '16%', default: '1000 V DC' },
+                        { key: 'measured', label: 'Ölçülen Yalıtım Direnci', width: '18%', default: '> 500 MΩ' },
+                        { key: 'limit', label: 'Sınır Değer', width: '16%', default: '≥ 50 kΩ' },
+                        { key: 'result', label: 'Sonuç', width: '12%', options: ['Uygun', 'Uygun Değil'], default: 'Uygun' }
+                    ],
+                    defaultRows: [
+                        { location: 'Pano Önü TS EN 61111 Yalıtkan Paspas', test_v: '1000 V DC', measured: '> 500 MΩ', limit: '≥ 50 kΩ', result: 'Uygun' }
+                    ]
+                }
+            ]
+        },
+
+        // ====================================================================
+        // U2202 - ALÇAK GERİLİM TOPRAKLAMA TESİSATI (EVRENSEL MOTOR v1)
+        // ====================================================================
+        'U2202': {
+            templateId: 'U2202',
+            schemaVersion: 1,
+            engineVersion: 1,
+            code: 'TKM-FR.317',
+            docNo: 'TKM-FR.317, REV.00 / YT: 01.09.2025',
+            category: 'Ana Elektriksel (Evrensel Motor)',
+            title: 'ALÇAK GERİLİM TOPRAKLAMA TESİSATI PERİYODİK KONTROL RAPORU',
+            methods: [
+                'RG, 04.11.1984 - 18565 Elektrik İç Tesisleri Yönetmeliği',
+                'RG, 21.08.2001 - 24500 Elektrik Tesislerinde Topraklamalar Yönetmeliği',
+                'RG, 25.04.2013 - 28628 İş Ekipmanları Kullanımında Sağlık Güvenlik Şartları Yönetmeliği',
+                'TS HD 60364-4-41 Alçak Gerilim Elektrik Tesisleri – Bölüm 41: Elektrik Çarpmasına Karşı Koruma',
+                'TS HD 60364-6 Alçak Gerilim Elektrik Tesisatları – Bölüm 6: Doğrulama'
+            ],
+            layoutHints: { fieldGridColumns: 3, checklistColumns: 2, showDevices: true },
+            autoCalcType: 'grounding_2202',
+            infoBoxTitle: '4. TEST DEĞERLERİ VE SEMBOL AÇIKLAMALARI',
+            infoBoxHtml: `
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 14px;font-size:6.7pt;line-height:1.2;">
+                    <div><strong>Zx:</strong> Ölçülen çevrim empedansı (Ω).</div>
+                    <div><strong>Zs:</strong> Aşırı akım koruma cihazının açma akımına göre hesaplanan sınır çevrim empedansı.</div>
+                    <div><strong>Rx:</strong> Ölçülen topraklama direnci (Ω).</div>
+                    <div><strong>RA:</strong> Aşırı akım koruma cihazının açma akımına göre hesaplanan sınır topraklama direnci.</div>
+                    <div><strong>Ik1:</strong> Toprak çevrim empedansına göre hesaplanan faz-toprak hata akımı (230V / Zx).</div>
+                    <div><strong>Ia:</strong> Koruma cihazının açma eğrisine göre otomatik açma akımı (RCD için IΔn).</div>
+                    <div><strong>IΔn / IΔ / TΔ:</strong> RCD beyan açma akımı / test açma akımı (mA) / test açma zamanı (max 200-300 ms).</div>
+                    <div><strong>50V / 25V / 230V:</strong> Normal dokunma sınırı (50V), ıslak hacim sınırı (25V), faz-toprak gerilimi Uo (230V).</div>
+                    <div><strong>Zs &lt; 230V / Ia:</strong> TN şebekeler için dolaylı dokunmaya karşı güvenlik şartı.</div>
+                    <div><strong>RA &lt; 50V / Ia:</strong> TT şebekeler için dolaylı dokunmaya karşı güvenlik şartı.</div>
+                </div>
+            `,
+            conclusionNotesHtml: `
+                <div style="font-size:6.5pt;line-height:1.18;margin-bottom:4px;color:#1e293b;">
+                    <div style="font-weight:700;margin-bottom:1px;">Uygunluk Notu ve Ağır Kusur Açıklamaları:</div>
+                    <div><strong>Not-1:</strong> Uygun. &nbsp;|&nbsp; <strong>Not-2:</strong> Güvenlik şartı sağlanamadığından uygun değildir (Ağır kusur). &nbsp;|&nbsp; <strong>Not-3:</strong> Topraklama bağlantısı yok, kontrol edilmelidir (Ağır kusur). &nbsp;|&nbsp; <strong>Not-4:</strong> Artık akım anahtarı (RCD) kullanıldığı ve faal olduğu için uygundur.</div>
+                    <div><strong>Not-5:</strong> TT veya TN şebekelerde 32 A'e kadar priz devrelerinde 30 mA RCD kullanımı zorunludur (Ağır kusur). &nbsp;|&nbsp; <strong>Not-7:</strong> Selektif RCD kullanılmadığından yetersizdir. &nbsp;|&nbsp; <strong>Not-10:</strong> Prizde sıfırlama (N-PE birleşikliği) tespit edildiğinden yetersizdir. &nbsp;|&nbsp; <strong>Not-11:</strong> Pano gövde-kapak köprüsü olmadığından yetersizdir.</div>
+                </div>
+            `,
+            generalFields: [
+                { key: 'enerji_kurulusu', label: 'Enerji Sağlayan Kuruluş', type: 'text', presets: ['AYEDAŞ', 'BEDAŞ', 'TEİAŞ', 'OSB Müdürlüğü'], default: 'AYEDAŞ' },
+                { key: 'sebeke_tipi', label: 'Şebeke Tipi', type: 'select', options: ['TN-S', 'TN-C-S', 'TT', 'IT', 'TN-C'], default: 'TN-S' },
+                { key: 'sebeke_gerilimi', label: 'Şebeke Gerilimi (V)', type: 'text', presets: ['230/400 V', '400 V'], default: '230/400 V' },
+                { key: 'proje_var_mi', label: 'Tesise Ait Proje Var mı?', type: 'select', options: ['Var', 'Yok'], negativeValues: ['Yok'], default: 'Var' },
+                { key: 'tek_hat_var_mi', label: 'Tek Hat Şeması Var mı?', type: 'select', options: ['Var', 'Yok'], negativeValues: ['Yok'], default: 'Var' },
+                { key: 'kontrol_nedeni', label: 'Kontrol Nedeni', type: 'select', options: ['Periyodik Kontrol', 'İlk Kontrol', 'Tadilat Sonrası'], default: 'Periyodik Kontrol' },
+                { key: 'topraklayici_tipi', label: 'Topraklayıcı Tipi', type: 'select', options: ['Temel Topraklaması', 'Yüzeysel (Şerit/Levha)', 'Ring (Çevre)', 'Derin (Çubuk Elektrot)'], default: 'Temel Topraklaması' },
+                { key: 'olcum_metodu', label: '5.1 Ölçüm ve Doğrulama Metodu', type: 'select', options: ['Çevrim Empedansı Metodu', '3 Uçlu Topraklama Metodu', 'Klamp Metodu'], default: 'Çevrim Empedansı Metodu' },
+                { key: 'hava_sicaklik', label: 'Hava Durumu / Sıcaklık (°C)', type: 'text', default: 'Açık / 22 °C' },
+                { key: 'zemin_nem', label: 'Zemin Nem Durumu', type: 'select', options: ['Normal / Nemli', 'Kuru', 'Islak'], default: 'Normal / Nemli' },
+                { key: 'koruma_onlemi', label: 'Dolaylı Dokunmaya Karşı Koruma', type: 'text', default: 'Beslemenin Otomatik Kesilmesi + RCD' },
+                { key: 'kapsamli_degisiklik', label: '2.2 Tesisatta Kapsamlı Değişiklik Var mı?', type: 'select', options: ['Yok', 'Var'], negativeValues: [], default: 'Yok' }
+            ],
+            visualChecks: [
+                { id: 'chk_u2202_atb', code: 'A', text: 'Ana topraklama barası (ATB) ve eşpotansiyel dengeleme barası uygun tesis edilmiş mi?', isCritical: true, defect: 'Ana potansiyel (eşpotansiyel) dengeleme barası ve ana topraklama iletken bağlantısı tesis edilmemiştir.' },
+                { id: 'chk_u2202_mech', code: 'B', text: 'Topraklama iletkenleri mekanik darbelere ve korozyona karşı korunmuş mu?', isCritical: true, defect: 'Topraklama ölçüm klemenslerinde (test ayırma noktalarında) korozyon / gevşeklik tespit edilmiştir.' },
+                { id: 'chk_u2202_clamp', code: 'C', text: 'Topraklama bağlantı klemensleri ve pabuçları sıkı ve sağlam mı?', isCritical: true, defect: 'Topraklama barası ve pabuç bağlantılarında gevşeklik tespit edilmiştir.' },
+                { id: 'chk_u2202_color', code: 'D', text: 'Koruma iletkeni (PE) sarı-yeşil renk koduna ve kesit şartına uygun mu?', isCritical: true, defect: 'Koruma topraklaması iletken kesiti faz kesitine göre yetersizdir.' },
+                { id: 'chk_u2202_door', code: 'E', text: 'Pano gövde ve kapak topraklama köprüleri (min. 6 mm²) eksiksiz bağlı mı?', isCritical: true, defect: 'Pano gövde–kapak topraklama köprüsü olmadığından yetersizdir (Not-11).' },
+                { id: 'chk_u2202_bond', code: 'F', text: 'Metalik boru hatları ve yapı çelik konstrüksiyonu eşpotansiyele dahil edilmiş mi?', isCritical: false, defect: 'Binadaki metal su/doğalgaz ana boru hatları ve yapı çelik konstrüksiyonu eşpotansiyel baraya irtibatlandırılmamıştır.' }
+            ],
+            tableTitle: '5.2. SON TÜKETİM NOKTALARINDA DOLAYLI DOKUNMAYA KARŞI KORUMA YETERLİLİĞİ TABLOSU',
+            rowPresets: [
+                { label: '+ Ana Pano (TMŞ 160A)', row: { no: '1', point: 'Ana Dağıtım Panosu (ADP) Gövde/Bara', in_amp: '160', curve: 'TMŞ', ia_amp: '1600', ik1_amp: '657', zx_rx: '0.35', zs_ra: '0.14', rcd_spec: '300 mA', rcd_id: '240', rcd_td: '38', result: 'Not-4 (Uygun)' } },
+                { label: '+ Tali Pano (C63A + RCD)', row: { no: '2', point: 'Tali Dağıtım Panosu (TDP-1)', in_amp: '63', curve: 'C', ia_amp: '630', ik1_amp: '547', zx_rx: '0.42', zs_ra: '0.36', rcd_spec: '30 mA', rcd_id: '24', rcd_td: '28', result: 'Not-4 (Uygun)' } },
+                { label: '+ Priz Linyesi (B16A)', row: { no: '3', point: 'İdari Ofis Priz Hattı', in_amp: '16', curve: 'B', ia_amp: '80', ik1_amp: '353', zx_rx: '0.65', zs_ra: '2.87', rcd_spec: '30 mA', rcd_id: '24', rcd_td: '26', result: 'Not-1 (Uygun)' } },
+                { label: '+ Makina Gövde (C32A)', row: { no: '4', point: 'Üretim Makinası Gövde Topraklaması', in_amp: '32', curve: 'C', ia_amp: '320', ik1_amp: '442', zx_rx: '0.52', zs_ra: '0.71', rcd_spec: '30 mA', rcd_id: '24', rcd_td: '28', result: 'Not-1 (Uygun)' } }
+            ],
+            tableColumns: [
+                { key: 'no', label: 'No', width: '4%', default: '1' },
+                { key: 'point', label: 'Ölçüm Noktası / Etiket veya Kodu', width: '22%', default: 'Ana Dağıtım Panosu (ADP)' },
+                { key: 'in_amp', label: 'In (A)', width: '6%', default: '63' },
+                { key: 'curve', label: 'Açma Eğrisi', width: '6%', options: ['B', 'C', 'D', 'TMŞ', 'gG'], default: 'C' },
+                { key: 'ia_amp', label: 'Ia (A)', width: '7%', default: '630' },
+                { key: 'ik1_amp', label: 'Ik1 (A)', width: '7%', default: '657' },
+                { key: 'zx_rx', label: 'Ölçülen Zx/Rx (Ω)', width: '8%', default: '0.35' },
+                { key: 'zs_ra', label: 'Sınır Zs/RA (Ω)', width: '8%', default: '0.36' },
+                { key: 'rcd_spec', label: 'RCD Tipi / IΔn', width: '10%', default: 'AC 30 mA' },
+                { key: 'rcd_id', label: 'IΔ (mA)', width: '6%', default: '24' },
+                { key: 'rcd_td', label: 'TΔ (ms)', width: '6%', default: '28' },
+                { key: 'result', label: 'Sonuç Notu', width: '10%', options: ['Not-1 (Uygun)', 'Not-4 (Uygun)', 'Not-2 (Uygun Değil)', 'Not-3 (Uygun Değil)', 'Not-5 (Uygun Değil)'], default: 'Not-1 (Uygun)' }
+            ],
+            defaultRows: [
+                { no: '1', point: 'Ana Dağıtım Panosu (ADP) Ana Topraklama Barası', in_amp: '63', curve: 'C', ia_amp: '630', ik1_amp: '657', zx_rx: '0.35', zs_ra: '0.36', rcd_spec: '300 mA', rcd_id: '240', rcd_td: '36', result: 'Not-1 (Uygun)' },
+                { no: '2', point: 'Tali Pano (TDP-1) ve Priz Devresi', in_amp: '16', curve: 'B', ia_amp: '80', ik1_amp: '425', zx_rx: '0.54', zs_ra: '2.87', rcd_spec: '30 mA', rcd_id: '24', rcd_td: '28', result: 'Not-1 (Uygun)' }
+            ],
+            additionalTables: [
+                {
+                    id: 'rcd_selectivity',
+                    title: '5.3. ARTIK AKIM ANAHTARLARI (RCD) SELEKTİVİTE KONTROLÜ TABLOSU',
+                    columns: [
+                        { key: 'prior_panel', label: 'Önceki (Ana) Pano Adı', width: '18%', default: 'Ana Dağıtım Panosu (ADP)' },
+                        { key: 'prior_type', label: 'Önceki RCD Tipi', width: '10%', default: 'AC-S (Gecikmeli)' },
+                        { key: 'prior_idn', label: 'IΔn (mA)', width: '10%', default: '300 mA' },
+                        { key: 'prior_td', label: 'TΔ (ms)', width: '10%', default: '135 ms' },
+                        { key: 'dest_panel', label: 'Beslenen Tali Pano Adı', width: '18%', default: 'TDP-1 Tali Pano' },
+                        { key: 'dest_type', label: 'Tali RCD Tipi', width: '10%', default: 'AC (Anlık)' },
+                        { key: 'dest_idn', label: 'IΔn (mA)', width: '10%', default: '30 mA' },
+                        { key: 'dest_td', label: 'TΔ (ms)', width: '7%', default: '28 ms' },
+                        { key: 'result', label: 'Sonuç', width: '7%', options: ['Uygun', 'Uygun Değil'], default: 'Uygun' }
+                    ],
+                    defaultRows: [
+                        { prior_panel: 'Ana Dağıtım Panosu (ADP)', prior_type: 'AC-S', prior_idn: '300 mA', prior_td: '135 ms', dest_panel: 'TDP-1 Tali Pano', dest_type: 'AC', dest_idn: '30 mA', dest_td: '28 ms', result: 'Uygun' }
+                    ]
+                }
+            ]
+        },
+
+        // ====================================================================
+        // U2205 - JENERATÖR PERİYODİK KONTROLÜ (EVRENSEL MOTOR v1)
+        // ====================================================================
+        'U2205': {
+            templateId: 'U2205',
+            schemaVersion: 1,
+            engineVersion: 1,
+            code: 'TKM-FR.164',
+            docNo: 'TKM-FR.164, REV.07 / RT: 09.12.2024',
+            category: 'Ana Elektriksel (Evrensel Motor)',
+            title: 'JENERATÖR PERİYODİK KONTROL RAPORU',
+            methods: [
+                'RG, 04.11.1984 - 18565 Elektrik İç Tesisleri Yönetmeliği',
+                'RG, 21.08.2001 - 24500 Elektrik Tesislerinde Topraklamalar Yönetmeliği',
+                'RG, 25.04.2013 - 28628 İş Ekipmanları Kullanımında Sağlık Güvenlik Şartları Yönetmeliği',
+                'RG, 30.11.2000 - 24246 Elektrik Kuvvetli Akım Tesisleri Yönetmeliği',
+                'TS ISO 8528-1 Pistonlu İçten Yanmalı Motorla Tahrik Edilen AA Jeneratör Grupları'
+            ],
+            layoutHints: { fieldGridColumns: 3, checklistColumns: 2, showDevices: true },
+            generalFields: [
+                { key: 'muayene_nedeni', label: 'Muayene Nedeni', type: 'select', options: ['Periyodik Kontrol', 'İlk Kontrol'], default: 'Periyodik Kontrol' },
+                { key: 'sebeke_tipi', label: 'Şebeke Tipi', type: 'select', options: ['TN-S', 'TN-C-S', 'TT', 'IT'], default: 'TN-S' },
+                { key: 'topraklama_tipi', label: 'Topraklama Tipi', type: 'select', options: ['Temel Topraklaması', 'Yüzeysel', 'Ring', 'Derin Çubuk'], default: 'Temel Topraklaması' },
+                { key: 'espotansiyel_bara', label: 'Eşpotansiyel Bara Durumu', type: 'select', options: ['Var', 'Yok'], negativeValues: ['Yok'], default: 'Var' },
+                { key: 'marka', label: '3.1 Jeneratör Markası', type: 'text', presets: ['AKSA', 'TEKSAN', 'İŞBİR', 'ÇUKUROVA', 'GENPOWER', 'KJ POWER'], default: 'AKSA' },
+                { key: 'model_seri', label: '3.1 Model / Seri No / İmal Yılı', type: 'text', default: 'APD 110C / 2022' },
+                { key: 'guc_kva', label: '3.1 Standby / Prime Güç', type: 'text', unit: 'kVA', presets: ['50 kVA', '110 kVA', '150 kVA', '250 kVA', '400 kVA', '500 kVA'], default: '110 kVA' },
+                { key: 'gerilim_frekans', label: '3.1 Nominal Gerilim / Frekans', type: 'text', default: '230/400 V / 50 Hz' },
+                { key: 'yakit_kabin', label: '3.1 Yakıt Cinsi / Ses İzolasyon Kabini', type: 'select', options: ['Dizel / Ses İzolasyon Kabinli', 'Dizel / Kabinsiz Oda İçi', 'Doğalgazlı'], default: 'Dizel / Ses İzolasyon Kabinli' },
+                { key: 'transfer_panosu', label: 'Transfer Panosu (ATS) Tipi', type: 'select', options: ['Otomatik Transfer (ATS)', 'Manuel Enversör Şalter', 'Senkron Panolu'], default: 'Otomatik Transfer (ATS)' },
+                { key: 'calisma_saati', label: 'Mevcut Çalışma Saati', type: 'text', unit: 'Saat', default: '142 Saat' },
+                { key: 'aku_bilgisi', label: '5.3 Starter Akü Marka / Kapasite', type: 'text', default: '12V 72Ah Bakımsız Akü' }
+            ],
+            visualChecks: [
+                // A. Üçüncü Taraf Dokümanları
+                { id: 'chk_u2205_a1', group: 'A. ÜÇÜNCÜ TARAF DOKÜMANLARININ KONTROLLERİ', code: 'A.1', text: 'Jeneratöre ait elektrik tek hat şeması mevcut mu?', isCritical: false, defect: 'Jeneratör ve transfer panosuna ait güncel elektrik tek hat şeması bulunmamaktadır.' },
+                { id: 'chk_u2205_a2', group: 'A. ÜÇÜNCÜ TARAF DOKÜMANLARININ KONTROLLERİ', code: 'A.2', text: 'Kullanma ve periyodik bakım talimatları mevcut mu?', isCritical: false, defect: 'Jeneratör işletme ve acil durum kullanma talimatı jeneratör mahallinde asılı değildir.' },
+                // B. Jeneratör Odası Kontrolleri
+                { id: 'chk_u2205_b1', group: 'B. JENERATÖR ODASI VE MAHAL KONTROLLERİ', code: 'B.1', text: 'Jeneratör mahalli temiz, yanıcı malzemeden arındırılmış ve yetkisiz girişe kilitli mi?', isCritical: false, defect: 'Jeneratör mahallinde yangın riski oluşturan yabancı malzemeler bulunmaktadır.' },
+                { id: 'chk_u2205_b2', group: 'B. JENERATÖR ODASI VE MAHAL KONTROLLERİ', code: 'B.2', text: 'Mahalde elektrik/yakıt yangınlarına uygun yangın söndürme tüpü ve uyarı levhaları mevcut mu?', isCritical: true, defect: 'Jeneratör mahallinde elektrik ve yakıt yangınlarına uygun seyyar yangın söndürme tüpü (CO2/KKT) bulunmamaktadır.' },
+                { id: 'chk_u2205_b3', group: 'B. JENERATÖR ODASI VE MAHAL KONTROLLERİ', code: 'B.3', text: 'Taze hava giriş ve sıcak hava atış (havalandırma) açıklıkları yeterli mi?', isCritical: true, defect: 'Jeneratör odası otomatik hava giriş ve egzoz panjurları devreye girmemektedir / havalandırma yetersizdir.' },
+                { id: 'chk_u2205_b4', group: 'B. JENERATÖR ODASI VE MAHAL KONTROLLERİ', code: 'B.4', text: 'Egzoz borusu ısı izolasyonu yapılmış ve egzoz gazı güvenli şekilde dış atmosfere atılmış mı?', isCritical: true, defect: 'Jeneratör egzoz borusunda personeli yanmaya karşı koruyacak ısı yalıtımı / izolasyon kaplaması eksiktir.' },
+                // C. Görsel Kontroller
+                { id: 'chk_u2205_c1', group: 'C. GÖRSEL VE MEKANİK KONTROLLER', code: 'C.1', text: 'Jeneratör gövde koruma topraklaması ve nötr topraklaması uygun tesis edilmiş mi?', isCritical: true, defect: 'Jeneratör gövde ve nötr topraklaması ayrı ayrı yapılmamıştır veya topraklama iletken kesiti yetersizdir.' },
+                { id: 'chk_u2205_c2', group: 'C. GÖRSEL VE MEKANİK KONTROLLER', code: 'C.2', text: 'Döner aksam (fan, kayış, kasnak) üzerinde koruyucu kafes muhafazaları tam mı?', isCritical: true, defect: 'Jeneratör hareketli parçaları (kayış, kasnak, fan) üzerinde koruyucu kafes muhafazası bulunmamaktadır.' },
+                { id: 'chk_u2205_c3', group: 'C. GÖRSEL VE MEKANİK KONTROLLER', code: 'C.3', text: 'Yakıt tankı, yakıt taşma tavası ve yağ/soğutma suyu devrelerinde sızıntı yok mu?', isCritical: true, defect: 'Jeneratör yakıt tankı havalandırma borusu açık havaya tahliye edilmemiştir ve yakıt taşma tavası yoktur.' },
+                { id: 'chk_u2205_c4', group: 'C. GÖRSEL VE MEKANİK KONTROLLER', code: 'C.4', text: 'Starter akü kutup başları temiz, sıkı ve koruyucu kapağı mevcut mu?', isCritical: false, defect: 'Starter akü kutup başlarında korozyon / sülfatlaşma mevcuttur ve akü koruyucu kapağı eksiktir.' },
+                // D. Fonksiyonel Kontroller
+                { id: 'chk_u2205_d1', group: 'D. FONKSİYONEL VE OTOMASYON KONTROLLERİ', code: 'D.1', text: 'Acil durdurma (Acil Stop) butonu erişilebilir ve basıldığında motoru anında durduruyor mu?', isCritical: true, defect: 'Jeneratör dairesinde acil durum durdurma (Acil Stop) butonu bulunmamaktadır veya işlevsizdir.' },
+                { id: 'chk_u2205_d2', group: 'D. FONKSİYONEL VE OTOMASYON KONTROLLERİ', code: 'D.2', text: 'Şebeke-Jeneratör Transfer Panosu (ATS) elektriksel ve mekanik kilitlemesi çalışıyor mu?', isCritical: true, defect: 'Şebeke - Jeneratör transfer panosu (ATS) elektriksel ve mekanik kilitlemesi işlevsizdir / bulunmamaktadır.' },
+                { id: 'chk_u2205_d3', group: 'D. FONKSİYONEL VE OTOMASYON KONTROLLERİ', code: 'D.3', text: 'Blok su ısıtıcısı (ceket suyu ısıtıcısı) ve akü şarj redresörü aktif çalışıyor mu?', isCritical: true, defect: 'Jeneratör blok su ısıtıcısı veya akü tampon şarj redresörü çalışmamaktadır.' },
+                { id: 'chk_u2205_d4', group: 'D. FONKSİYONEL VE OTOMASYON KONTROLLERİ', code: 'D.4', text: 'Kontrol paneli OTOMATİK konumda ve aktif arıza/alarm kaydı bulunmuyor mu?', isCritical: true, defect: 'Jeneratör kontrol paneli OTOMATİK konumda değildir veya üzerinde arıza uyarısı bulunmaktadır.' }
+            ],
+            tableTitle: '5.1. JENERATÖR POTANSİYEL (GERİLİM) ÖLÇÜMLERİ TABLOSU',
+            tableColumns: [
+                { key: 'l1_n', label: 'L1 – N (V)', width: '14.2%', default: '231 V' },
+                { key: 'l2_n', label: 'L2 – N (V)', width: '14.2%', default: '230 V' },
+                { key: 'l3_n', label: 'L3 – N (V)', width: '14.2%', default: '231 V' },
+                { key: 'l1_l2', label: 'L1 – L2 (V)', width: '14.2%', default: '400 V' },
+                { key: 'l1_l3', label: 'L1 – L3 (V)', width: '14.2%', default: '401 V' },
+                { key: 'l2_l3', label: 'L2 – L3 (V)', width: '14.5%', default: '400 V' },
+                { key: 'n_pe', label: 'N – PE (V)', width: '14.5%', default: '0.4 V' }
+            ],
+            defaultRows: [
+                { l1_n: '231 V', l2_n: '230 V', l3_n: '231 V', l1_l2: '400 V', l1_l3: '401 V', l2_l3: '400 V', n_pe: '0.4 V' }
+            ],
+            additionalTables: [
+                {
+                    id: 'env_and_ground',
+                    title: '5.2. AYDINLATMA, SES, TOPRAKLAMA VE FREKANS ÖLÇÜMLERİ TABLOSU',
+                    columns: [
+                        { key: 'lux', label: 'Aydınlatma Şiddeti (Lux)', width: '15%', default: '185 Lux' },
+                        { key: 'db_1m', label: '1 m\'de Ses Seviyesi (dB)', width: '15%', default: '78 dB' },
+                        { key: 'db_7m', label: '7 m\'de Ses Seviyesi (dB)', width: '15%', default: '68 dB' },
+                        { key: 'hz_l1', label: 'L1 Frekans (Hz)', width: '13%', default: '50.0 Hz' },
+                        { key: 'hz_l2', label: 'L2 Frekans (Hz)', width: '13%', default: '50.0 Hz' },
+                        { key: 'hz_l3', label: 'L3 Frekans (Hz)', width: '13%', default: '50.0 Hz' },
+                        { key: 'ground_r', label: 'Gövde Topraklaması (Ω)', width: '16%', default: '0.82 Ω' }
+                    ],
+                    defaultRows: [
+                        { lux: '185 Lux', db_1m: '78 dBA', db_7m: '68 dBA', hz_l1: '50.0 Hz', hz_l2: '50.0 Hz', hz_l3: '50.0 Hz', ground_r: '0.82 Ω' }
+                    ]
+                },
+                {
+                    id: 'battery_table',
+                    title: '5.3. STARTER AKÜ BİLGİLERİ VE REDRESÖR GERİLİM ÖLÇÜMLERİ TABLOSU',
+                    columns: [
+                        { key: 'brand', label: 'Akü Markası', width: '18%', default: 'MUTLU / VARTA' },
+                        { key: 'model', label: 'Model / Kapasite', width: '18%', default: '12V 72Ah' },
+                        { key: 'serial', label: 'Seri No', width: '16%', default: 'STD' },
+                        { key: 'year', label: 'İmal Yılı', width: '12%', default: '2023' },
+                        { key: 'v_on', label: 'Redresör Devredeyken (V)', width: '18%', default: '13.8 V DC' },
+                        { key: 'v_off', label: 'Redresör Devre Dışıyken (V)', width: '18%', default: '12.7 V DC' }
+                    ],
+                    defaultRows: [
+                        { brand: 'MUTLU', model: '12V 72Ah', serial: 'STD', year: '2023', v_on: '13.8 V DC', v_off: '12.7 V DC' }
+                    ]
+                }
+            ]
         }
     };
 
-    // Mevcut SPECIALIZED_SCHEMAS (2202, 2205 vb.) varsa kaydet
+    // 2202 ve 2205 şablonları Evrensel Motordan çağrıldığında zengin U2202 / U2205 şemasını kullansın
+    MASTER_SCHEMAS_V1['2202'] = Object.assign({}, MASTER_SCHEMAS_V1['U2202'], { templateId: '2202' });
+    MASTER_SCHEMAS_V1['2205'] = Object.assign({}, MASTER_SCHEMAS_V1['U2205'], { templateId: '2205' });
+
+    // Mevcut SPECIALIZED_SCHEMAS varsa kaydet
     if (window.SPECIALIZED_SCHEMAS) {
         Object.keys(window.SPECIALIZED_SCHEMAS).forEach(tid => {
             if (!MASTER_SCHEMAS_V1[tid]) {
@@ -1138,6 +1493,19 @@
             limitRule: col.limitRule || null
         }));
 
+        const additionalTables = (raw.additionalTables || []).map((at, tIdx) => ({
+            id: String(at.id || `subtable_${tIdx}`),
+            title: at.title || `EK ÖLÇÜM TABLOSU ${tIdx + 2}`,
+            columns: (at.columns || []).map((c, cIdx) => ({
+                key: String(c.key || `col_${cIdx}`),
+                label: c.label || `Sütun ${cIdx + 1}`,
+                width: c.width || '',
+                options: Array.isArray(c.options) ? c.options : undefined,
+                default: c.default !== undefined ? c.default : ''
+            })),
+            defaultRows: Array.isArray(at.defaultRows) ? at.defaultRows : []
+        }));
+
         return {
             templateId: tid,
             schemaVersion: Number(raw.schemaVersion || 1),
@@ -1151,11 +1519,18 @@
                 'İlgili TS EN ve ISO Standartları'
             ],
             layoutHints: Object.assign({ fieldGridColumns: 2, checklistColumns: 1, showDevices: true }, raw.layoutHints || {}),
+            autoCalcType: raw.autoCalcType || '',
+            infoBoxTitle: raw.infoBoxTitle || '',
+            infoBoxHtml: raw.infoBoxHtml || '',
+            conclusionNotesHtml: raw.conclusionNotesHtml || '',
+            groupedHeaderType: raw.groupedHeaderType || '',
+            rowPresets: Array.isArray(raw.rowPresets) ? raw.rowPresets : [],
             generalFields,
             visualChecks,
             tableTitle: raw.tableTitle || 'FONKSİYON TESTİ VE ÖLÇÜM DEĞERLERİ TABLOSU',
             tableColumns,
-            defaultRows: Array.isArray(raw.defaultRows) ? raw.defaultRows : []
+            defaultRows: Array.isArray(raw.defaultRows) ? raw.defaultRows : [],
+            additionalTables
         };
     }
 
@@ -1518,6 +1893,30 @@
                 cols.map(c => (rowObj && rowObj[c.key] !== undefined) ? String(rowObj[c.key]) : '')
             );
 
+            // 4. Çoklu Ek Ölçüm Tabloları (additionalTables: 6.2 Potansiyel Dengeleme, 6.3 Zemin İzolasyonu, 5.3 Selektivite, 5.2/5.3 Jeneratör vb.)
+            if (!formData.universalSubTables || typeof formData.universalSubTables !== 'object') {
+                formData.universalSubTables = {};
+            }
+            (schema.additionalTables || []).forEach(subTbl => {
+                const subId = subTbl.id;
+                const subCols = subTbl.columns || [];
+                if (!Array.isArray(formData.universalSubTables[subId]) || formData.universalSubTables[subId].length === 0) {
+                    if (Array.isArray(subTbl.defaultRows) && subTbl.defaultRows.length > 0) {
+                        formData.universalSubTables[subId] = subTbl.defaultRows.map(dr => {
+                            const rObj = {};
+                            subCols.forEach(c => {
+                                rObj[c.key] = dr[c.key] !== undefined ? String(dr[c.key]) : (c.default || '');
+                            });
+                            return rObj;
+                        });
+                    } else {
+                        const emptyObj = {};
+                        subCols.forEach(c => { emptyObj[c.key] = c.default || ''; });
+                        formData.universalSubTables[subId] = [emptyObj];
+                    }
+                }
+            });
+
             return schema;
         },
 
@@ -1574,9 +1973,99 @@
             return true;
         },
 
-        // Sınır değer ve otomatik uygunluk değerlendirme kural motoru
-        evaluateRowLimitRules(schema, rowObj) {
-            if (!schema || !Array.isArray(schema.tableColumns) || !rowObj) return;
+        // Teknik alan (2.1 / 6.1 Pano Özeti) otomatik mühendislik hesaplamaları
+        evaluateFieldAutoCalc(schema, fieldKey, value, formData) {
+            if (!schema || !formData || !formData.specializedFields) return false;
+            if (schema.autoCalcType === 'electrical_linye_2201' && (fieldKey === 'pano_zx' || fieldKey === 'pano_zln')) {
+                const rawZ = String(formData.specializedFields.pano_zx || formData.specializedFields.pano_zln || '').replace(',', '.');
+                const zVal = parseFloat(rawZ);
+                if (Number.isFinite(zVal) && zVal > 0.01) {
+                    const ik3Ka = (230 / zVal) / 1000;
+                    formData.specializedFields.pano_ik3 = ik3Ka.toFixed(2);
+                    return true;
+                }
+            }
+            return false;
+        },
+
+        // Sınır değer ve otomatik elektriksel mühendislik hesaplama motoru (U2201 Linye, U2202 Topraklama ve Genel)
+        evaluateRowLimitRules(schema, rowObj, formData = null, editedColKey = '') {
+            if (!schema || !rowObj) return;
+
+            // A) U2201 ELEKTRİK İÇ TESİSATI LİNYE OTOMASYONU (Kablo Kesiti -> Iz, N/PE Kesiti, Ib<=In<=Iz, İş Emri RCD Hafızası)
+            if (schema.autoCalcType === 'electrical_linye_2201') {
+                const izMap = {
+                    '1.5': 18, '2.5': 25, '4': 34, '6': 43, '10': 60, '16': 80,
+                    '25': 106, '35': 131, '50': 159, '70': 202, '95': 244, '120': 282, '150': 324, '185': 371, '240': 436
+                };
+                const fazStr = String(rowObj.faz_mm2 || '').replace(',', '.').trim();
+                if (editedColKey === 'faz_mm2' && izMap[fazStr]) {
+                    rowObj.iz_a = String(izMap[fazStr]);
+                    const fazNum = parseFloat(fazStr);
+                    const subSec = fazNum <= 16 ? fazStr : (fazNum === 25 || fazNum === 35 ? '16' : (fazNum === 50 ? '25' : (fazNum === 70 ? '35' : '50')));
+                    if (!rowObj.n_mm2 || editedColKey === 'faz_mm2') rowObj.n_mm2 = subSec;
+                    if (!rowObj.pe_mm2 || editedColKey === 'faz_mm2') rowObj.pe_mm2 = subSec;
+                }
+
+                // İş Emri Bazlı RCD Hafızası
+                if (editedColKey === 'rcd_id' || editedColKey === 'rcd_td') {
+                    try {
+                        const woId = (typeof AppState !== 'undefined' && AppState.currentInspection?.work_order_id) || 'default';
+                        const mem = { rcd_id: rowObj.rcd_id || '24', rcd_td: rowObj.rcd_td || '28' };
+                        localStorage.setItem(`enlab_wo_rcd_mem_${woId}`, JSON.stringify(mem));
+                    } catch (e) {}
+                }
+
+                const inVal = parseFloat(String(rowObj.in_a || '').replace(',', '.'));
+                const ibVal = parseFloat(String(rowObj.ib_a || '').replace(',', '.'));
+                const izVal = parseFloat(String(rowObj.iz_a || '').replace(',', '.'));
+                const rcdId = parseFloat(String(rowObj.rcd_id || '').replace(',', '.'));
+                const rcdTd = parseFloat(String(rowObj.rcd_td || '').replace(',', '.'));
+
+                let ok = true;
+                if (Number.isFinite(inVal) && Number.isFinite(izVal) && inVal > izVal) ok = false;
+                if (Number.isFinite(ibVal) && Number.isFinite(inVal) && ibVal > inVal) ok = false;
+                if (Number.isFinite(rcdTd) && rcdTd > 300) ok = false;
+                if (editedColKey !== 'result') {
+                    rowObj.result = ok ? 'Uygun' : 'Uygun Değil';
+                }
+            }
+
+            // B) U2202 TOPRAKLAMA OTOMASYONU (In + Eğri + Zx/Rx + Şebeke Tipi -> Ia, Ik1, Sınır Zs/RA, Not-1/Not-2/Not-4)
+            if (schema.autoCalcType === 'grounding_2202') {
+                const inVal = parseFloat(String(rowObj.in_amp || '').replace(',', '.'));
+                const curve = String(rowObj.curve || 'C').toUpperCase().trim();
+                const zxVal = parseFloat(String(rowObj.zx_rx || '').replace(',', '.'));
+                const netType = String(formData?.specializedFields?.sebeke_tipi || 'TN-S').toUpperCase();
+
+                if (Number.isFinite(inVal) && inVal > 0 && (editedColKey === 'in_amp' || editedColKey === 'curve' || editedColKey === 'zx_rx')) {
+                    const mult = curve === 'B' ? 5 : (curve === 'D' ? 20 : 10);
+                    const ia = Math.round(inVal * mult);
+                    rowObj.ia_amp = String(ia);
+                    const limitOhm = netType.startsWith('TT') ? (50 / ia) : (230 / ia);
+                    rowObj.zs_ra = limitOhm.toFixed(2);
+                }
+
+                if (Number.isFinite(zxVal) && zxVal > 0.005 && (editedColKey === 'zx_rx' || editedColKey === 'in_amp' || editedColKey === 'curve')) {
+                    rowObj.ik1_amp = String(Math.round(230 / zxVal));
+                    const zsLimit = parseFloat(String(rowObj.zs_ra || '').replace(',', '.'));
+                    const rcdTd = parseFloat(String(rowObj.rcd_td || '').replace(',', '.'));
+                    const hasActiveRcd = Number.isFinite(rcdTd) && rcdTd > 0 && rcdTd <= 300;
+
+                    if (editedColKey !== 'result') {
+                        if (Number.isFinite(zsLimit) && zxVal <= zsLimit) {
+                            rowObj.result = 'Not-1 (Uygun)';
+                        } else if (hasActiveRcd && zxVal <= 1667) {
+                            rowObj.result = 'Not-4 (Uygun)';
+                        } else if (Number.isFinite(zsLimit) && zxVal > zsLimit) {
+                            rowObj.result = 'Not-2 (Uygun Değil)';
+                        }
+                    }
+                }
+            }
+
+            // C) GENEL SÜTUN SINIR DEĞER KURAL MOTORU (limitRule)
+            if (!Array.isArray(schema.tableColumns)) return;
             schema.tableColumns.forEach(col => {
                 if (!col.limitRule) return;
                 const rawVal = String(rowObj[col.key] || '').replace(',', '.');

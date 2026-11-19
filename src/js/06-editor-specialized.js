@@ -199,14 +199,27 @@ function renderSpecializedTemplateEditor() {
     `;
 
     // ------------------------------------------------------------------------
-    // ADIM 2: GÖZLE KONTROL VE FONKSİYON KRİTERLERİ (KALICI SEMANTIC ID)
+    // ADIM 2: GÖZLE KONTROL VE FONKSİYON KRİTERLERİ (KALICI SEMANTIC ID + GRUPLU)
     // ------------------------------------------------------------------------
+    let lastCheckGroup = '';
     const checksHtml = checksList.map((chkObj, idx) => {
         const chkText = typeof chkObj === 'string' ? chkObj : chkObj.text;
         const semanticId = (typeof chkObj === 'object' && chkObj.id) ? chkObj.id : `chk_${idx}`;
         const legacyKey = `chk_${idx}`;
         const defaultDefect = (typeof chkObj === 'object' && chkObj.defect) ? chkObj.defect : '';
         const isCritical = (typeof chkObj === 'object') ? chkObj.isCritical !== false : true;
+        const groupTitle = (typeof chkObj === 'object' && chkObj.group) ? String(chkObj.group).trim() : '';
+
+        let groupHeaderHtml = '';
+        if (groupTitle && groupTitle !== lastCheckGroup) {
+            lastCheckGroup = groupTitle;
+            groupHeaderHtml = `
+                <div class="px-3 py-1.5 mt-2 first:mt-0 rounded-lg bg-slate-800 text-amber-300 font-extrabold text-[11px] tracking-wide flex items-center gap-1.5">
+                    <i class="fa-solid fa-layer-group text-[10px]"></i>
+                    <span>${escapeHtml(groupTitle)}</span>
+                </div>
+            `;
+        }
 
         const val = (fd.universalChecksById && fd.universalChecksById[semanticId]) || fd.specializedChecks?.[legacyKey] || '';
         const isDefect = (val === 'Uygun Değil' || val === 'Kısmen Uygun');
@@ -229,6 +242,7 @@ function renderSpecializedTemplateEditor() {
         }).join('');
 
         return `
+            ${groupHeaderHtml}
             <div class="rounded-xl border ${isDefect ? 'border-rose-300 bg-rose-50/40' : val === 'Uygun' ? 'border-emerald-200 bg-emerald-50/20' : 'border-slate-200 bg-slate-50/60'} overflow-hidden transition-all">
                 <div class="p-2.5 flex items-center justify-between gap-2">
                     <div class="min-w-0 flex-1">
@@ -277,8 +291,25 @@ function renderSpecializedTemplateEditor() {
     `;
 
     // ------------------------------------------------------------------------
-    // ADIM 3: DİNAMİK ÖLÇÜM VE TEST TABLOSU (SEMANTIC SÜTUN & OTOMATİK KURAL)
+    // ADIM 3: DİNAMİK ÖLÇÜM VE TEST TABLOLARI (ÇOKLU TABLO + HAZIR ŞABLON + OTOMASYON)
     // ------------------------------------------------------------------------
+    const rowPresetsHtml = (Array.isArray(schema.rowPresets) && schema.rowPresets.length > 0) ? `
+        <div class="px-3 pt-2.5 pb-1 bg-slate-50 border-b border-slate-200 space-y-1">
+            <div class="flex items-center justify-between text-[10px] font-bold text-slate-600">
+                <span class="flex items-center gap-1"><i class="fa-solid fa-wand-magic-sparkles text-amber-500"></i><span>Tek Dokunuşla Hazır Mühendislik Satırı Ekle:</span></span>
+                ${schema.autoCalcType ? `<span class="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">Otomatik Hesap &amp; RCD Hafızası Aktif</span>` : ''}
+            </div>
+            <div class="flex flex-wrap gap-1.5 pb-1">
+                ${schema.rowPresets.map((rp, rpIdx) => `
+                    <button type="button" onclick="addUniversalPresetRow(${rpIdx})"
+                        class="px-2.5 py-1 rounded-lg bg-white hover:bg-sky-50 text-slate-800 hover:text-sky-700 border border-slate-300 hover:border-sky-400 font-bold text-[11px] shadow-2xs active:scale-95 transition">
+                        ${escapeHtml(rp.label)}
+                    </button>
+                `).join('')}
+            </div>
+        </div>
+    ` : '';
+
     const cardsHtml = tableRows.map((rowObj, rIdx) => {
         const inputs = cols.map((col, cIdx) => {
             const cKey = col.key || `col_${cIdx}`;
@@ -288,7 +319,7 @@ function renderSpecializedTemplateEditor() {
             if (cleanOpts.length > 0 && cleanOpts.length <= 3) {
                 const btns = cleanOpts.map(opt => {
                     const isSel = cellVal === opt;
-                    const isBad = opt === 'Uygun Değil' || opt.includes('Kırmızı');
+                    const isBad = opt === 'Uygun Değil' || opt.includes('Kırmızı') || opt.includes('Not-2') || opt.includes('Not-3');
                     const actCls = isBad ? 'bg-rose-600 text-white border-rose-600' : 'bg-emerald-600 text-white border-emerald-600';
                     return `<button type="button" onclick="setUniversalTableCell(${rIdx}, '${escapeForJs(cKey)}', '${escapeForJs(opt)}', true)"
                         class="flex-1 min-h-[34px] px-2 py-1 rounded-lg border text-xs font-bold transition ${isSel ? actCls : 'bg-white text-slate-700 border-slate-300'}">${escapeHtml(opt)}</button>`;
@@ -318,7 +349,7 @@ function renderSpecializedTemplateEditor() {
             return `
                 <div class="${cIdx === 1 ? 'col-span-2' : ''}">
                     <label class="block text-xs font-bold text-slate-700 mb-1 truncate">${escapeHtml(col.label)}</label>
-                    <input type="text" value="${escapeHtml(cellVal)}"
+                    <input type="text" id="utbl_${rIdx}_${escapeHtml(cKey)}" value="${escapeHtml(cellVal)}"
                         oninput="setUniversalTableCell(${rIdx}, '${escapeForJs(cKey)}', this.value, false)"
                         class="w-full h-9 border border-slate-300 rounded-lg px-2.5 text-xs font-semibold bg-white focus:border-sky-500 focus:outline-none">
                 </div>
@@ -340,26 +371,92 @@ function renderSpecializedTemplateEditor() {
                         </button>
                     </div>
                 </div>
-                <div class="grid grid-cols-2 gap-2">
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     ${inputs}
                 </div>
             </div>
         `;
     }).join('');
 
+    // Çoklu Ek Tablolar (6.2 Potansiyel Dengeleme, 6.3 Zemin İzolasyonu, 5.3 Selektivite, 5.2/5.3 Jeneratör vb.)
+    const additionalTablesHtml = (schema.additionalTables || []).map(subTbl => {
+        const subId = subTbl.id;
+        const subCols = subTbl.columns || [];
+        const subRows = (fd.universalSubTables && Array.isArray(fd.universalSubTables[subId])) ? fd.universalSubTables[subId] : [];
+
+        const subCardsHtml = subRows.map((sRow, sIdx) => {
+            const sInputs = subCols.map((sc, scIdx) => {
+                const scKey = sc.key;
+                const scVal = String((sRow && sRow[scKey] !== undefined) ? sRow[scKey] : '');
+                const scOpts = Array.isArray(sc.options) ? sc.options.filter(Boolean) : [];
+                if (scOpts.length > 0) {
+                    return `
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1 truncate">${escapeHtml(sc.label)}</label>
+                            <select onchange="setUniversalSubTableCell('${escapeForJs(subId)}', ${sIdx}, '${escapeForJs(scKey)}', this.value)"
+                                class="w-full h-9 border border-slate-300 rounded-lg px-2 text-xs bg-white font-semibold">
+                                ${scOpts.map(o => `<option value="${escapeHtml(o)}" ${scVal === o ? 'selected' : ''}>${escapeHtml(o)}</option>`).join('')}
+                            </select>
+                        </div>
+                    `;
+                }
+                return `
+                    <div class="${scIdx === 0 ? 'col-span-2 sm:col-span-1' : ''}">
+                        <label class="block text-xs font-bold text-slate-700 mb-1 truncate">${escapeHtml(sc.label)}</label>
+                        <input type="text" value="${escapeHtml(scVal)}"
+                            oninput="setUniversalSubTableCell('${escapeForJs(subId)}', ${sIdx}, '${escapeForJs(scKey)}', this.value)"
+                            class="w-full h-9 border border-slate-300 rounded-lg px-2.5 text-xs font-semibold bg-white focus:border-sky-500 focus:outline-none">
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <div class="p-3 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
+                    <div class="flex items-center justify-between border-b border-slate-200 pb-1.5 gap-2">
+                        <span class="font-bold text-xs text-slate-800">Satır #${sIdx + 1}</span>
+                        <div class="flex items-center gap-1.5">
+                            <button type="button" onclick="removeUniversalSubTableRow('${escapeForJs(subId)}', ${sIdx})"
+                                class="px-2 py-1 bg-rose-50 active:bg-rose-100 text-rose-600 rounded-lg text-xs font-semibold">
+                                <i class="fa-solid fa-trash-can mr-1"></i>Sil
+                            </button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">${sInputs}</div>
+                </div>
+            `;
+        }).join('');
+
+        return `
+            <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                <div class="px-3.5 py-2.5 bg-slate-800 text-white flex items-center justify-between gap-2">
+                    <span class="font-bold text-xs truncate">${escapeHtml(subTbl.title)} (${subRows.length})</span>
+                    <button type="button" onclick="addUniversalSubTableRow('${escapeForJs(subId)}')" class="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1 shadow-2xs shrink-0 active:scale-95">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Satır Ekle</span>
+                    </button>
+                </div>
+                <div class="p-3 space-y-2.5">${subCardsHtml}</div>
+            </div>
+        `;
+    }).join('');
+
     const showStep3 = (activeTab === 2 || activeTab === -1);
     const step3Html = !showStep3 ? '' : `
-        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
-            <div class="px-3.5 py-2.5 bg-slate-800 text-white flex items-center justify-between gap-2">
-                <span class="font-bold text-xs truncate">4. ${escapeHtml(schema.tableTitle || 'Ölçüm ve Test Sonuçları')} (${tableRows.length})</span>
-                <button type="button" onclick="addSpecializedRow(${cols.length})" class="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1 shadow-2xs shrink-0 active:scale-95">
-                    <i class="fa-solid fa-plus"></i>
-                    <span>Satır Ekle</span>
-                </button>
+        <div class="space-y-3">
+            <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                <div class="px-3.5 py-2.5 bg-slate-800 text-white flex items-center justify-between gap-2">
+                    <span class="font-bold text-xs truncate">4. ${escapeHtml(schema.tableTitle || 'Ölçüm ve Test Sonuçları')} (${tableRows.length})</span>
+                    <button type="button" onclick="addSpecializedRow(${cols.length})" class="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1 shadow-2xs shrink-0 active:scale-95">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Satır Ekle</span>
+                    </button>
+                </div>
+                ${rowPresetsHtml}
+                <div class="p-3 space-y-2.5">
+                    ${cardsHtml}
+                </div>
             </div>
-            <div class="p-3 space-y-2.5">
-                ${cardsHtml}
-            </div>
+            ${additionalTablesHtml}
         </div>
     `;
 
@@ -416,10 +513,23 @@ function renderSpecializedTemplateEditor() {
 }
 
 function setUniversalFieldValue(fieldKey, value, shouldRepaint = false) {
+    const insp = AppState.currentInspection;
     const fd = AppState.currentFormData;
     if (!fd) return;
     if (!fd.specializedFields) fd.specializedFields = {};
     fd.specializedFields[fieldKey] = value;
+
+    if (insp && window.UniversalSchemaRegistry && typeof window.UniversalSchemaRegistry.evaluateFieldAutoCalc === 'function') {
+        const schema = window.getDynamicSchemaForEquipment(insp.template_id, insp.equipment_name);
+        const changed = window.UniversalSchemaRegistry.evaluateFieldAutoCalc(schema, fieldKey, value, fd);
+        if (changed) {
+            const ik3El = document.getElementById('ufld_pano_ik3');
+            if (ik3El && fd.specializedFields.pano_ik3 !== undefined) {
+                ik3El.value = fd.specializedFields.pano_ik3;
+            }
+        }
+    }
+
     triggerAutoSave();
     if (shouldRepaint) {
         paintInspectionEditorUI();
@@ -514,12 +624,20 @@ function setUniversalTableCell(rowIndex, colKey, value, shouldRepaint = false) {
     const schema = window.getDynamicSchemaForEquipment(insp.template_id, insp.equipment_name);
     if (!Array.isArray(fd.universalTableRows) || !fd.universalTableRows[rowIndex]) return;
 
-    fd.universalTableRows[rowIndex][colKey] = value;
+    const rowObj = fd.universalTableRows[rowIndex];
+    rowObj[colKey] = value;
 
     if (window.UniversalSchemaRegistry && typeof window.UniversalSchemaRegistry.evaluateRowLimitRules === 'function') {
-        window.UniversalSchemaRegistry.evaluateRowLimitRules(schema, fd.universalTableRows[rowIndex]);
+        window.UniversalSchemaRegistry.evaluateRowLimitRules(schema, rowObj, fd, colKey);
+        // Otomatik hesaplanan hücreleri DOM üzerinde anında güncelle (odak kaybı olmadan!)
+        ['iz_a', 'n_mm2', 'pe_mm2', 'ia_amp', 'ik1_amp', 'zs_ra', 'result'].forEach(autoKey => {
+            if (autoKey !== colKey && rowObj[autoKey] !== undefined) {
+                const autoEl = document.getElementById(`utbl_${rowIndex}_${autoKey}`);
+                if (autoEl) autoEl.value = rowObj[autoKey];
+            }
+        });
     }
-    if (colKey === 'result' && value === 'Uygun Değil') {
+    if (colKey === 'result' && (value === 'Uygun Değil' || String(value).includes('Uygun Değil'))) {
         fd.overallResult = 'UYGUN DEĞİL';
     }
 
@@ -528,6 +646,73 @@ function setUniversalTableCell(rowIndex, colKey, value, shouldRepaint = false) {
     if (shouldRepaint) {
         paintInspectionEditorUI();
     }
+}
+
+function addUniversalPresetRow(presetIndex) {
+    const insp = AppState.currentInspection;
+    const fd = AppState.currentFormData;
+    if (!insp || !fd) return;
+    const schema = window.getDynamicSchemaForEquipment(insp.template_id, insp.equipment_name);
+    const preset = schema.rowPresets && schema.rowPresets[presetIndex];
+    if (!preset || !preset.row) return;
+
+    if (!Array.isArray(fd.universalTableRows)) fd.universalTableRows = [];
+    const newRowObj = JSON.parse(JSON.stringify(preset.row));
+    if (newRowObj.no !== undefined) {
+        newRowObj.no = String(fd.universalTableRows.length + 1);
+    }
+
+    // İş emri RCD hafızası varsa uygula
+    try {
+        const woId = insp.work_order_id || 'default';
+        const memRaw = localStorage.getItem(`enlab_wo_rcd_mem_${woId}`);
+        if (memRaw) {
+            const mem = JSON.parse(memRaw);
+            if (mem.rcd_id && newRowObj.rcd_id !== undefined && newRowObj.curve !== 'TMŞ') newRowObj.rcd_id = mem.rcd_id;
+            if (mem.rcd_td && newRowObj.rcd_td !== undefined) newRowObj.rcd_td = mem.rcd_td;
+        }
+    } catch (e) {}
+
+    fd.universalTableRows.push(newRowObj);
+    syncLegacySpecializedRowsFromUniversal();
+    triggerAutoSave();
+    paintInspectionEditorUI();
+    showToast(`"${preset.label}" satırı eklendi.`);
+}
+
+function setUniversalSubTableCell(subTableId, rowIndex, colKey, value) {
+    const fd = AppState.currentFormData;
+    if (!fd || !fd.universalSubTables || !Array.isArray(fd.universalSubTables[subTableId])) return;
+    if (!fd.universalSubTables[subTableId][rowIndex]) return;
+    fd.universalSubTables[subTableId][rowIndex][colKey] = value;
+    triggerAutoSave();
+}
+
+function addUniversalSubTableRow(subTableId) {
+    const insp = AppState.currentInspection;
+    const fd = AppState.currentFormData;
+    if (!insp || !fd) return;
+    const schema = window.getDynamicSchemaForEquipment(insp.template_id, insp.equipment_name);
+    const subTbl = (schema.additionalTables || []).find(t => t.id === subTableId);
+    if (!subTbl) return;
+
+    if (!fd.universalSubTables) fd.universalSubTables = {};
+    if (!Array.isArray(fd.universalSubTables[subTableId])) fd.universalSubTables[subTableId] = [];
+    const newRow = {};
+    (subTbl.columns || []).forEach(c => {
+        newRow[c.key] = c.default || '';
+    });
+    fd.universalSubTables[subTableId].push(newRow);
+    triggerAutoSave();
+    paintInspectionEditorUI();
+}
+
+function removeUniversalSubTableRow(subTableId, rowIndex) {
+    const fd = AppState.currentFormData;
+    if (!fd || !fd.universalSubTables || !Array.isArray(fd.universalSubTables[subTableId])) return;
+    fd.universalSubTables[subTableId].splice(rowIndex, 1);
+    triggerAutoSave();
+    paintInspectionEditorUI();
 }
 
 function addSpecializedRow(colCount) {
@@ -601,6 +786,10 @@ window.handleUniversalCheckChange = handleUniversalCheckChange;
 window.markAllUniversalChecksSuitable = markAllUniversalChecksSuitable;
 window.setUniversalTableCell = setUniversalTableCell;
 window.removeUniversalTableRow = removeUniversalTableRow;
+window.addUniversalPresetRow = addUniversalPresetRow;
+window.setUniversalSubTableCell = setUniversalSubTableCell;
+window.addUniversalSubTableRow = addUniversalSubTableRow;
+window.removeUniversalSubTableRow = removeUniversalSubTableRow;
 window.toggleUniversalReportSnapshotSeal = toggleUniversalReportSnapshotSeal;
 
 

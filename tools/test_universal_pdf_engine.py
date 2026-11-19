@@ -33,13 +33,30 @@ def verify_universal_engine():
     assert len(unique_ids) >= 25, "En az 25 şablon olmalı!"
 
     # 2. Yeni evrensel şema kayıt defterindeki şablonların kontrolü
-    master_ids = re.findall(r"'(\d{4})'\s*:\s*\{", reg_src)
+    master_ids = re.findall(r"'(U?\d{4})'\s*:\s*\{", reg_src)
     print(f"[OK] UniversalSchemaRegistry icinde dogrudan tanimli semalar ({len(master_ids)} adet): {', '.join(master_ids)}")
+    for core_el in ['U2201', 'U2202', 'U2205']:
+        assert core_el in master_ids, f"Ana elektriksel evrensel şema eksik: {core_el}"
 
     # 3. Kalıcı Semantic ID kontrolü (chk_<tid>_<slug>)
-    semantic_chk_ids = re.findall(r"id:\s*'chk_\d{4}_[a-z0-9_]+'", reg_src)
+    semantic_chk_ids = re.findall(r"id:\s*'chk_u?\d{4}_[a-z0-9_]+'", reg_src)
     print(f"[OK] Kalici Semantic ID'li gozle kontrol kriteri sayisi: {len(semantic_chk_ids)}")
-    assert len(semantic_chk_ids) >= 80, "En az 80 kalıcı semantic ID'li kriter olmalı!"
+    assert len(semantic_chk_ids) >= 150, "En az 150 kalıcı semantic ID'li kriter olmalı!"
+
+    # 4. Elektriksel özel yeteneklerin (2 katlı Linye başlığı, çoklu alt tablolar, hazır satırlar, otomatik hesap) kontrolü
+    electrical_features = [
+        'electrical_linye_2201',
+        'grounding_2202',
+        'ministry_linye_2201',
+        'additionalTables',
+        'rowPresets',
+        'evaluateFieldAutoCalc',
+        'addUniversalPresetRow',
+        'setUniversalSubTableCell'
+    ]
+    for feat in electrical_features:
+        assert feat in app_src, f"Elektriksel evrensel motor özelliği eksik: {feat}"
+    print(f"[OK] Tum {len(electrical_features)} gelismis elektriksel otomasyon ve coklu tablo yetenegi aktif.")
 
     # 4. PDF Engine temel yeteneklerinin kontrolü
     required_symbols = [
