@@ -37,6 +37,18 @@ function buildTkmPageHeader(reportMainTitle) {
     const accNo = branding.accreditationNo || 'AB-0227-M';
     const safeCompanyFullName = String(branding.companyFullName || 'TEKNİK KONTROL MERKEZİ BELGELENDİRME A.Ş.').replace(/KOMTROL/gi, 'KONTROL');
 
+    const cPhone = String(branding.companyPhone || '').trim();
+    const cWeb = String(branding.companyWeb || '').trim();
+    const cEmail = String(branding.companyEmail || '').trim();
+    const hasCustomContact = Boolean(cPhone || cWeb || cEmail);
+
+    const contactLine1 = hasCustomContact
+        ? escapeHtml(cPhone)
+        : 'T: +90 (216) 526 61 41 &nbsp;&nbsp; F: +90 (216) 526 61 40';
+    const contactLine2 = hasCustomContact
+        ? [cEmail, cWeb].filter(Boolean).map(escapeHtml).join(' &nbsp;&nbsp; ')
+        : 'info@tkmkontrol.com &nbsp;&nbsp; www.tkmkontrol.com';
+
     return `
         <div class="tkm-header">
             <div style="display:flex;justify-content:center;align-items:center;padding-left:2px;overflow:visible;">
@@ -46,12 +58,8 @@ function buildTkmPageHeader(reportMainTitle) {
                 <div style="font-size:11.2pt;font-weight:700;color:#222222;letter-spacing:0.2px;margin-bottom:1px;line-height:1.15;">
                     ${escapeHtml(safeCompanyFullName)}
                 </div>
-                <div style="font-size:7.6pt;color:#222222;line-height:1.2;">
-                    T: +90 (216) 526 61 41 &nbsp;&nbsp; F: +90 (216) 526 61 40
-                </div>
-                <div style="font-size:7.6pt;color:#222222;line-height:1.2;margin-bottom:2px;">
-                    info@tkmkontrol.com &nbsp;&nbsp; www.tkmkontrol.com
-                </div>
+                ${contactLine1 ? `<div style="font-size:7.6pt;color:#222222;line-height:1.2;">${contactLine1}</div>` : ''}
+                ${contactLine2 ? `<div style="font-size:7.6pt;color:#222222;line-height:1.2;margin-bottom:2px;">${contactLine2}</div>` : ''}
                 <div class="tkm-header-title" style="font-size:10.5pt;font-weight:700;color:#222222;line-height:1.12;text-transform:uppercase;">
                     ${reportMainTitle}
                 </div>

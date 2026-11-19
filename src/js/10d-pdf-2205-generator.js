@@ -718,8 +718,11 @@ function buildPdfPages2205(insp, fd, ci, reportNo, activePdfTheme) {
 }
 
 function buildPdfPagesSpecialized(insp, fd, ci, reportNo, formCode, activePdfTheme) {
+        if (window.UniversalPdfEngine && typeof window.UniversalPdfEngine.buildPdfPages === 'function') {
+            return window.UniversalPdfEngine.buildPdfPages(insp, fd, ci, reportNo, formCode, activePdfTheme);
+        }
 
-        // Specialized Templates (Paratoner, Yangın, Kapı, Raf, Klima vb.)
+        // Fallback Legacy Specialized Templates (Paratoner, Yangın, Kapı, Raf, Klima vb.)
 
         const schema = window.getDynamicSchemaForEquipment(insp.template_id, insp.equipment_name);
 

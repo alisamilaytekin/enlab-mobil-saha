@@ -1419,6 +1419,23 @@ function openCompanySettingsModal() {
 
                 </div>
 
+                <!-- EVRENSEL FORM & PDF MOTORU STÜDYOSU KISAYOLU -->
+                <div class="p-3 bg-sky-50 border border-sky-200 rounded-xl flex items-center justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="font-extrabold text-sky-950 text-xs flex items-center gap-1.5">
+                            <i class="fa-solid fa-sliders text-sky-600"></i>
+                            <span>Evrensel Form &amp; A4 PDF Tasarım Motoru</span>
+                        </div>
+                        <div class="text-[11px] text-sky-800 leading-snug mt-0.5">
+                            Antet/altbilgi varyantı, 1-2-3'lü imza düzeni, tablo sütun sayısı ve şablon bazlı özel soru/alan yamaları.
+                        </div>
+                    </div>
+                    <button type="button" onclick="if(typeof openUniversalTemplateStudioModal==='function') openUniversalTemplateStudioModal('2074')"
+                        class="px-3 py-2 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white font-bold text-xs rounded-xl shrink-0 shadow-2xs transition">
+                        Stüdyoyu Aç
+                    </button>
+                </div>
+
             </div>
 
         </div>

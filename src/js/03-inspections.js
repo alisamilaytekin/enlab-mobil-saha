@@ -116,17 +116,41 @@ function getMostUsedEquipmentNames(limit = 10) {
 
 function openAddInspectionModal(workOrderId) {
 
-    const optionsHtml = (window.ENLAB_REPORT_TEMPLATES || []).map(t => {
+    const primaryTemplates = window.ENLAB_REPORT_TEMPLATES || [];
+    const allCatalog = (window.UniversalSchemaRegistry && typeof window.UniversalSchemaRegistry.getAllCatalogTemplates === 'function')
+        ? window.UniversalSchemaRegistry.getAllCatalogTemplates()
+        : (window.ENLAB_ALL_REPORT_TEMPLATES_BACKUP || primaryTemplates);
 
+    const primaryIds = new Set(primaryTemplates.map(t => String(t.id)));
+    const primaryOpts = primaryTemplates.map(t => {
         const cleanName = getCleanTemplateTypeLabel(t.id, t.code);
-
         return `<option value="${t.id}" data-code="${t.code}" data-name="${t.name}">
-
-            ${cleanName}
-
+            ${cleanName} (${t.code})
         </option>`;
-
     }).join('');
+
+    const extraTemplates = allCatalog.filter(t => !primaryIds.has(String(t.id)));
+    const extraByCategory = {};
+    extraTemplates.forEach(t => {
+        const cat = t.category || 'Diğer Şablonlar';
+        if (!extraByCategory[cat]) extraByCategory[cat] = [];
+        extraByCategory[cat].push(t);
+    });
+
+    const extraGroupsHtml = Object.keys(extraByCategory).map(cat => {
+        const itemsHtml = extraByCategory[cat].map(t => {
+            const cleanName = getCleanTemplateTypeLabel(t.id, t.code);
+            return `<option value="${t.id}" data-code="${t.code}" data-name="${t.name}">
+                ${cleanName} (${t.code})
+            </option>`;
+        }).join('');
+        return `<optgroup label="Evrensel Motor · ${cat}">${itemsHtml}</optgroup>`;
+    }).join('');
+
+    const optionsHtml = `
+        <optgroup label="Ana Elektriksel Şablonlar">${primaryOpts}</optgroup>
+        ${extraGroupsHtml}
+    `;
 
 
 

@@ -1,166 +1,216 @@
 // ============================================================================
 // HIZLI RAPOR - 06-EDITOR-SPECIALIZED.JS
-// Açıklama: Özel Teknik Şablonlar Editörü, Fotoğraf Yükleme ve Galeri
-// Satır Aralığı: 6873 - 8134 (1262 satır)
+// Açıklama: Evrensel Form & Şema Tabanlı 5 Adımlı Saha Editörü, Fotoğraf ve Galeri
 // ============================================================================
 
 function renderSpecializedTemplateEditor() {
-
     const insp = AppState.currentInspection;
-
     const fd = AppState.currentFormData;
 
-    const schema = window.getDynamicSchemaForEquipment(insp.template_id, insp.equipment_name);
+    const schema = (window.UniversalSchemaRegistry && typeof window.UniversalSchemaRegistry.ensureUniversalFormData === 'function')
+        ? window.UniversalSchemaRegistry.ensureUniversalFormData(fd, insp.template_id, insp.equipment_name)
+        : window.getDynamicSchemaForEquipment(insp.template_id, insp.equipment_name);
 
     const cols = schema.tableColumns || [];
 
-
-
     ensureCompanyInfo();
-
     ensureMeasuringDevices();
 
-
-
     if (AppState.activeSpecTab === undefined) AppState.activeSpecTab = 0;
-
     const activeTab = AppState.activeSpecTab;
 
+    const tableRows = Array.isArray(fd.universalTableRows) ? fd.universalTableRows : [];
+    const checksList = schema.visualChecks || [];
+    const defectCount = checksList.reduce((acc, chk, idx) => {
+        const val = (fd.universalChecksById && chk.id && fd.universalChecksById[chk.id]) || fd.specializedChecks?.[`chk_${idx}`] || '';
+        return acc + ((val === 'Uygun Değil' || val === 'Kısmen Uygun') ? 1 : 0);
+    }, 0);
 
+    const isSealed = Boolean(fd.universalSnapshot && fd.universalSnapshot.isSealed);
+    const hasOverlay = Boolean(schema.hasTenantOverlay);
 
-    if (!fd.specializedRows || !fd.specializedRows.length) {
-
-        fd.specializedRows = [new Array(cols.length).fill('')];
-
-    } else {
-
-        fd.specializedRows = normalizeSpecializedRowsArray(fd.specializedRows, cols);
-
-    }
-
-
-
-    const tabs = [
-
-        { label: '1. Firma & Cihaz', id: 0 },
-
-        { label: '2. Teknik Bilgiler', id: 1 },
-
-        { label: '3. Kontrol Kriterleri', id: 2 },
-
-        { label: `4. Ölçüm (${fd.specializedRows.length})`, id: 3 },
-
-        { label: `5. Fotoğraflar (${(fd.photos || []).length})`, id: 4 },
-
-        { label: '6. Sonuç & Onay', id: 5 },
-
-        { label: 'Tümü', id: -1 }
-
+    // 5 Adımlı Saha Sihirbazı (DESIGN.md 01-05 Stepper + Tümü)
+    const steps = [
+        { num: '01', label: 'Genel', id: 0 },
+        { num: '02', label: 'Gözle', id: 1, badge: defectCount > 0 ? defectCount : '' },
+        { num: '03', label: 'Ölçüm', id: 2, count: tableRows.length },
+        { num: '04', label: 'Foto', id: 3, count: (fd.photos || []).length },
+        { num: '05', label: 'Sonuç', id: 4 },
+        { num: 'ALL', label: 'Tümü', id: -1 }
     ];
 
-
-
-    const tabsHtml = `
-
-        <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-
-            ${tabs.map(t => {
-
-                const isActive = activeTab === t.id;
-
-                return `
-
-                    <button onclick="AppState.activeSpecTab=${t.id}; paintInspectionEditorUI();"
-
-                        class="py-2 px-2.5 rounded-lg text-xs font-bold text-center truncate transition ${
-
-                            isActive ? 'bg-slate-900 text-white shadow-2xs' : 'bg-slate-100 text-slate-700 active:bg-slate-200'
-
-                        } ${t.id === -1 ? 'col-span-2 sm:col-span-1' : ''}">
-
-                        ${t.label}
-
-                    </button>
-
-                `;
-
-            }).join('')}
-
-        </div>
-
-    `;
-
-
-
-    const rawFields = schema.generalFields || schema.fields || [];
-
-    const fieldsHtml = rawFields.map(f => {
-
-        const fId = f.key || f.id;
-
-        if (fd.specializedFields[fId] === undefined) fd.specializedFields[fId] = '';
-
-        const val = fd.specializedFields[fId];
-
-        if (f.type === 'select' || (Array.isArray(f.options) && f.options.length > 0)) {
-
-            const opts = (f.options || []).map(o => `<option value="${o}" ${val === o ? 'selected' : ''}>${o}</option>`).join('');
-
-            return `
-
-                <div>
-
-                    <label class="block text-xs font-semibold text-slate-700 mb-1">${f.label}</label>
-
-                    <select onchange="AppState.currentFormData.specializedFields['${fId}']=this.value; triggerAutoSave();"
-
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white font-semibold">
-
-                        <option value="">Seçiniz...</option>
-
-                        ${opts}
-
-                    </select>
-
+    const stepperHtml = `
+        <div class="card-craft-white p-2 space-y-2">
+            <!-- EVRENSEL MOTOR DURUM & ŞABLON STÜDYOSU ŞERİDİ -->
+            <div class="flex flex-wrap items-center justify-between gap-1.5 px-1 pb-1.5 border-b border-slate-100">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="px-2 py-0.5 rounded-md bg-slate-900 text-amber-400 font-mono font-bold text-[10px] tracking-tight">
+                        ${escapeHtml(schema.code || 'FR.100')} &middot; Şema v${schema.schemaVersion || 1}
+                    </span>
+                    ${hasOverlay ? `
+                        <span class="px-1.5 py-0.5 rounded-md bg-sky-50 text-sky-700 border border-sky-200 font-bold text-[10px]">
+                            Firma Yamalı
+                        </span>
+                    ` : ''}
+                    ${isSealed ? `
+                        <span class="px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-300 font-bold text-[10px] flex items-center gap-1" title="Bu raporun şablon ve antet sürümü mühürlenmiştir; gelecekteki değişikliklerden etkilenmez.">
+                            <i class="fa-solid fa-lock text-[9px]"></i>
+                            <span>Sürüm Mühürlü</span>
+                        </span>
+                    ` : ''}
                 </div>
-
-            `;
-
-        }
-
-        return `
-
-            <div>
-
-                <label class="block text-xs font-semibold text-slate-700 mb-1">${f.label}</label>
-
-                <input type="text" value="${String(val).replace(/"/g, '&quot;')}"
-
-                    oninput="AppState.currentFormData.specializedFields['${fId}']=this.value; triggerAutoSave();"
-
-                    class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs">
-
+                <div class="flex items-center gap-1">
+                    <button type="button" onclick="toggleUniversalReportSnapshotSeal()"
+                        class="h-7 px-2 rounded-lg border text-[10px] font-bold flex items-center gap-1 transition active:scale-95 ${
+                            isSealed
+                                ? 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100'
+                                : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
+                        }"
+                        title="${isSealed ? 'Sürüm kilidini aç ve güncel şablona bağla' : 'Bu raporun şemasını ve antetini şu anki haliyle dondur/mühürle'}">
+                        <i class="fa-solid ${isSealed ? 'fa-lock-open' : 'fa-shield-halved'}"></i>
+                        <span>${isSealed ? 'Kilidi Aç' : 'Sürümü Mühürle'}</span>
+                    </button>
+                    <button type="button" onclick="openUniversalTemplateStudioModal('${escapeForJs(insp.template_id)}', '${escapeForJs(insp.equipment_name)}')"
+                        class="h-7 px-2.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-[10px] font-bold flex items-center gap-1 transition active:scale-95 shadow-2xs"
+                        title="Bu formu veya PDF tasarımını firmanıza özel özelleştirin">
+                        <i class="fa-solid fa-sliders"></i>
+                        <span>Form & PDF Tasarımı</span>
+                    </button>
+                </div>
             </div>
 
-        `;
+            <!-- 01-05 STEPPER TABS -->
+            <div class="grid grid-cols-6 gap-1">
+                ${steps.map(s => {
+                    const isActive = activeTab === s.id;
+                    const hasDefectBadge = Boolean(s.badge);
+                    return `
+                        <button type="button" onclick="AppState.activeSpecTab=${s.id}; paintInspectionEditorUI();"
+                            class="min-h-[38px] py-1 px-1 rounded-xl text-[11px] font-bold flex flex-col items-center justify-center transition relative ${
+                                isActive
+                                    ? 'bg-slate-900 text-white shadow-2xs'
+                                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200 active:scale-95'
+                            }">
+                            <span class="text-[9px] font-mono ${isActive ? 'text-amber-400' : 'text-slate-400'}">${s.num}</span>
+                            <span class="truncate max-w-full leading-tight">${s.label}${s.count ? ` (${s.count})` : ''}</span>
+                            ${hasDefectBadge ? `<span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-600 text-white text-[9px] font-black flex items-center justify-center">${s.badge}</span>` : ''}
+                        </button>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+    `;
 
+    // ------------------------------------------------------------------------
+    // ADIM 1: FİRMA, CİHAZ VE EKİPMAN TEKNİK BİLGİLERİ
+    // ------------------------------------------------------------------------
+    const rawFields = schema.generalFields || schema.fields || [];
+    const fieldsHtml = rawFields.map(f => {
+        const fId = f.key || f.id;
+        if (fd.specializedFields[fId] === undefined) fd.specializedFields[fId] = f.default !== undefined ? f.default : '';
+        const val = String(fd.specializedFields[fId] ?? '');
+        const negList = Array.isArray(f.negativeValues) ? f.negativeValues : ['Yok', 'Uygun Değil', 'Uygunsuz', 'Arızalı'];
+
+        // Seçenek sayısı <= 6 ise 1-Dokunuşlu Segmented Pill Butonlar (DESIGN.md standardı)
+        const cleanOpts = Array.isArray(f.options) ? f.options.filter(o => String(o).trim() !== '') : [];
+        if (cleanOpts.length > 0 && cleanOpts.length <= 6) {
+            const pills = cleanOpts.map(opt => {
+                const isSel = val === opt;
+                const isNeg = negList.includes(opt);
+                const activeCls = isNeg
+                    ? 'bg-rose-600 text-white border-rose-600 shadow-2xs'
+                    : 'bg-emerald-600 text-white border-emerald-600 shadow-2xs';
+                const idleCls = 'bg-white text-slate-700 border-slate-200 hover:border-slate-300';
+                return `
+                    <button type="button"
+                        onclick="setUniversalFieldValue('${escapeForJs(fId)}', '${escapeForJs(opt)}', true)"
+                        class="min-h-[36px] px-2.5 py-1.5 rounded-xl border text-xs font-bold transition active:scale-95 ${isSel ? activeCls : idleCls}">
+                        ${escapeHtml(opt)}
+                    </button>
+                `;
+            }).join('');
+
+            return `
+                <div class="sm:col-span-2 space-y-1">
+                    <label class="block text-xs font-bold text-slate-700">${escapeHtml(f.label)}</label>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5">${pills}</div>
+                </div>
+            `;
+        }
+
+        // Seçenek sayısı > 6 ise Select Dropdown
+        if (cleanOpts.length > 6) {
+            const opts = cleanOpts.map(o => `<option value="${escapeHtml(o)}" ${val === o ? 'selected' : ''}>${escapeHtml(o)}</option>`).join('');
+            return `
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">${escapeHtml(f.label)}</label>
+                    <select onchange="setUniversalFieldValue('${escapeForJs(fId)}', this.value, false)"
+                        class="w-full h-10 border border-slate-300 rounded-xl px-2.5 text-xs bg-white font-semibold">
+                        <option value="">Seçiniz...</option>
+                        ${opts}
+                    </select>
+                </div>
+            `;
+        }
+
+        // Hızlı Preset Çipleri + Birimli Metin Girişi
+        const presetsHtml = (Array.isArray(f.presets) && f.presets.length > 0)
+            ? `<div class="flex flex-wrap gap-1 mb-1">
+                ${f.presets.map(p => {
+                    const isSel = val === p;
+                    return `<button type="button" onclick="setUniversalFieldValue('${escapeForJs(fId)}', '${escapeForJs(p)}', true)"
+                        class="px-2 py-0.5 rounded-md border text-[10px] font-bold transition ${
+                            isSel ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
+                        }">${escapeHtml(p)}</button>`;
+                }).join('')}
+               </div>`
+            : '';
+
+        return `
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">
+                    ${escapeHtml(f.label)}
+                    ${f.isTenantCustom ? `<span class="ml-1 text-[10px] text-sky-600 font-semibold">(Firma Özel)</span>` : ''}
+                </label>
+                ${presetsHtml}
+                <div class="relative flex items-center">
+                    <input type="text" id="ufld_${escapeHtml(fId)}" value="${escapeHtml(val)}"
+                        oninput="setUniversalFieldValue('${escapeForJs(fId)}', this.value, false)"
+                        class="w-full h-10 border border-slate-300 rounded-xl px-3 ${f.unit ? 'pr-12' : ''} text-xs font-semibold text-slate-900 bg-white focus:border-sky-500 focus:outline-none">
+                    ${f.unit ? `<span class="absolute right-2.5 px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-mono font-bold text-[10px] pointer-events-none">${escapeHtml(f.unit)}</span>` : ''}
+                </div>
+            </div>
+        `;
     }).join('');
 
+    const showStep1 = (activeTab === 0 || activeTab === -1);
+    const step1Html = !showStep1 ? '' : `
+        ${renderSharedCompanyInfoSection()}
+        ${schema.layoutHints?.showDevices !== false ? renderSharedMeasuringDevicesSection('Ölçüm Aletleri Bilgileri') : ''}
+        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div class="px-3.5 py-2.5 bg-slate-800 text-white font-bold text-xs flex items-center justify-between">
+                <span>2. Ekipman Teknik Özellikleri (${rawFields.length} Alan)</span>
+                <span class="text-[10px] text-slate-300 font-normal">${escapeHtml(schema.category || '')}</span>
+            </div>
+            <div class="p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                ${fieldsHtml}
+            </div>
+        </div>
+    `;
 
+    // ------------------------------------------------------------------------
+    // ADIM 2: GÖZLE KONTROL VE FONKSİYON KRİTERLERİ (KALICI SEMANTIC ID)
+    // ------------------------------------------------------------------------
+    const checksHtml = checksList.map((chkObj, idx) => {
+        const chkText = typeof chkObj === 'string' ? chkObj : chkObj.text;
+        const semanticId = (typeof chkObj === 'object' && chkObj.id) ? chkObj.id : `chk_${idx}`;
+        const legacyKey = `chk_${idx}`;
+        const defaultDefect = (typeof chkObj === 'object' && chkObj.defect) ? chkObj.defect : '';
+        const isCritical = (typeof chkObj === 'object') ? chkObj.isCritical !== false : true;
 
-    const checksHtml = (schema.visualChecks || []).map((chkText, idx) => {
-
-        const cKey = `chk_${idx}`;
-
-        if (fd.specializedChecks[cKey] === undefined) fd.specializedChecks[cKey] = '';
-
-        const val = fd.specializedChecks[cKey];
-
+        const val = (fd.universalChecksById && fd.universalChecksById[semanticId]) || fd.specializedChecks?.[legacyKey] || '';
         const isDefect = (val === 'Uygun Değil' || val === 'Kısmen Uygun');
-
-        const selectedDefect = fd.itemDefectSelections && fd.itemDefectSelections[cKey]?.sentence;
-
-        const safeChkTitle = chkText.replace(/'/g, "\\'");
+        const selectedDefect = (fd.itemDefectSelections && (fd.itemDefectSelections[legacyKey]?.sentence || fd.itemDefectSelections[semanticId]?.sentence)) || '';
 
         const quickBtns = [
             { val: 'Uygun', short: '✓', title: 'Uygun', activeCls: 'bg-emerald-600 text-white border-emerald-600 shadow-2xs', idleCls: 'bg-white text-emerald-700 border-slate-200 hover:bg-emerald-50' },
@@ -171,320 +221,387 @@ function renderSpecializedTemplateEditor() {
             const isSel = (val === b.val);
             return `
                 <button type="button" title="${b.title}"
-                    onclick="handleSpecializedCheckChange('${cKey}', '${b.val}', '${safeChkTitle}')"
-                    class="w-8 h-8 rounded-lg border text-xs font-black flex items-center justify-center transition-all active:scale-95 ${isSel ? b.activeCls : b.idleCls}">
+                    onclick="handleUniversalCheckChange('${escapeForJs(semanticId)}', '${escapeForJs(legacyKey)}', '${b.val}', '${escapeForJs(chkText)}', '${escapeForJs(defaultDefect)}')"
+                    class="w-9 h-9 rounded-xl border text-xs font-black flex items-center justify-center transition-all active:scale-95 ${isSel ? b.activeCls : b.idleCls}">
                     ${b.short}
                 </button>
             `;
         }).join('');
 
         return `
-
             <div class="rounded-xl border ${isDefect ? 'border-rose-300 bg-rose-50/40' : val === 'Uygun' ? 'border-emerald-200 bg-emerald-50/20' : 'border-slate-200 bg-slate-50/60'} overflow-hidden transition-all">
-
                 <div class="p-2.5 flex items-center justify-between gap-2">
-
-                    <span class="text-xs font-medium text-slate-800 min-w-0 flex-1 leading-snug"><strong class="text-slate-900 mr-1">${idx + 1}.</strong>${chkText}</span>
-
+                    <div class="min-w-0 flex-1">
+                        <span class="text-xs font-medium text-slate-800 leading-snug block">
+                            <strong class="text-slate-900 mr-1">${escapeHtml(chkObj.code || String(idx + 1))}.</strong>${escapeHtml(chkText)}
+                            ${isCritical ? `<span class="ml-1 px-1 py-0.2 rounded bg-amber-100 text-amber-900 text-[9px] font-bold">Kritik</span>` : ''}
+                        </span>
+                    </div>
                     <div class="flex items-center gap-1 shrink-0">
                         ${quickBtns}
                     </div>
-
                 </div>
-
                 ${isDefect ? `
-
                     <div class="mx-2.5 mb-2.5 p-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-900 text-xs flex items-center justify-between gap-2">
-
                         <div class="flex items-start gap-1.5 min-w-0">
-
                             <i class="fa-solid fa-triangle-exclamation text-rose-600 mt-0.5 shrink-0 text-xs"></i>
-
                             <div class="min-w-0">
-
-                                <span class="font-medium text-slate-800 text-[11px] leading-snug block">${selectedDefect || 'Uygunsuzluk cümlesi seçilmedi'}</span>
-
+                                <span class="font-medium text-slate-800 text-[11px] leading-snug block">${escapeHtml(selectedDefect || defaultDefect || 'Uygunsuzluk cümlesi seçilmedi')}</span>
                             </div>
-
                         </div>
-
-                        <button type="button" onclick="openItemDefectPickerModal('${cKey}', '${chkText.replace(/'/g, "\\'")}', 'specialized')"
-
-                            class="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white rounded-lg font-bold text-[10px] shrink-0 flex items-center gap-1 shadow-2xs transition-all">
-
+                        <button type="button" onclick="openItemDefectPickerModal('${escapeForJs(legacyKey)}', '${escapeForJs(chkText)}', 'specialized')"
+                            class="px-2.5 py-1.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white rounded-lg font-bold text-[10px] shrink-0 flex items-center gap-1 shadow-2xs transition-all">
                             <i class="fa-solid fa-list-check"></i>
-
                             <span>${selectedDefect ? 'Değiştir' : 'Cümle Seç'}</span>
-
                         </button>
-
                     </div>
-
                 ` : ''}
-
             </div>
-
         `;
-
     }).join('');
 
-
-
-    const cardsHtml = fd.specializedRows.map((row, rIdx) => {
-
-        const inputs = cols.map((col, cIdx) => `
-
-            <div class="${cIdx === 1 ? 'col-span-2' : ''}">
-
-                <label class="block text-xs font-bold text-slate-700 mb-1 truncate">${col.label}</label>
-
-                <input type="text" value="${String(row[cIdx] ?? '').replace(/"/g, '&quot;')}"
-
-                    oninput="AppState.currentFormData.specializedRows[${rIdx}][${cIdx}]=this.value; triggerAutoSave();"
-
-                    class="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-xs bg-white focus:border-sky-500 focus:outline-none">
-
+    const showStep2 = (activeTab === 1 || activeTab === -1);
+    const step2Html = !showStep2 ? '' : `
+        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div class="px-3.5 py-2.5 bg-slate-800 text-white font-bold text-xs flex items-center justify-between gap-2">
+                <span>3. Gözle ve Fonksiyon Kontrol Kriterleri (${checksList.length})</span>
+                <button type="button" onclick="markAllUniversalChecksSuitable()" class="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1 shadow-2xs active:scale-95">
+                    <i class="fa-solid fa-check-double"></i>
+                    <span>Boş Kalanları Uygun Yap</span>
+                </button>
             </div>
+            <div class="p-3 space-y-2">
+                ${checksHtml}
+            </div>
+        </div>
+    `;
 
-        `).join('');
+    // ------------------------------------------------------------------------
+    // ADIM 3: DİNAMİK ÖLÇÜM VE TEST TABLOSU (SEMANTIC SÜTUN & OTOMATİK KURAL)
+    // ------------------------------------------------------------------------
+    const cardsHtml = tableRows.map((rowObj, rIdx) => {
+        const inputs = cols.map((col, cIdx) => {
+            const cKey = col.key || `col_${cIdx}`;
+            const cellVal = String((rowObj && rowObj[cKey] !== undefined) ? rowObj[cKey] : '');
+            const cleanOpts = Array.isArray(col.options) ? col.options.filter(o => String(o).trim() !== '') : [];
+
+            if (cleanOpts.length > 0 && cleanOpts.length <= 3) {
+                const btns = cleanOpts.map(opt => {
+                    const isSel = cellVal === opt;
+                    const isBad = opt === 'Uygun Değil' || opt.includes('Kırmızı');
+                    const actCls = isBad ? 'bg-rose-600 text-white border-rose-600' : 'bg-emerald-600 text-white border-emerald-600';
+                    return `<button type="button" onclick="setUniversalTableCell(${rIdx}, '${escapeForJs(cKey)}', '${escapeForJs(opt)}', true)"
+                        class="flex-1 min-h-[34px] px-2 py-1 rounded-lg border text-xs font-bold transition ${isSel ? actCls : 'bg-white text-slate-700 border-slate-300'}">${escapeHtml(opt)}</button>`;
+                }).join('');
+                return `
+                    <div class="col-span-2 sm:col-span-1">
+                        <label class="block text-xs font-bold text-slate-700 mb-1 truncate">${escapeHtml(col.label)}</label>
+                        <div class="flex gap-1">${btns}</div>
+                    </div>
+                `;
+            }
+
+            if (cleanOpts.length > 3) {
+                const optsHtml = cleanOpts.map(o => `<option value="${escapeHtml(o)}" ${cellVal === o ? 'selected' : ''}>${escapeHtml(o)}</option>`).join('');
+                return `
+                    <div class="${cIdx === 1 ? 'col-span-2' : ''}">
+                        <label class="block text-xs font-bold text-slate-700 mb-1 truncate">${escapeHtml(col.label)}</label>
+                        <select onchange="setUniversalTableCell(${rIdx}, '${escapeForJs(cKey)}', this.value, true)"
+                            class="w-full h-9 border border-slate-300 rounded-lg px-2 text-xs bg-white font-semibold">
+                            <option value="">Seçiniz...</option>
+                            ${optsHtml}
+                        </select>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="${cIdx === 1 ? 'col-span-2' : ''}">
+                    <label class="block text-xs font-bold text-slate-700 mb-1 truncate">${escapeHtml(col.label)}</label>
+                    <input type="text" value="${escapeHtml(cellVal)}"
+                        oninput="setUniversalTableCell(${rIdx}, '${escapeForJs(cKey)}', this.value, false)"
+                        class="w-full h-9 border border-slate-300 rounded-lg px-2.5 text-xs font-semibold bg-white focus:border-sky-500 focus:outline-none">
+                </div>
+            `;
+        }).join('');
 
         return `
-
             <div class="p-3 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
-
                 <div class="flex items-center justify-between border-b border-slate-200 pb-1.5 gap-2">
-
-                    <span class="font-bold text-xs text-slate-800">Satır #${rIdx + 1}</span>
-
+                    <span class="font-bold text-xs text-slate-800">Ölçüm / Test Satırı #${rIdx + 1}</span>
                     <div class="flex items-center gap-1.5">
-
-                        <button onclick="duplicateSpecificSpecializedRow(${rIdx})" class="px-2.5 py-1 bg-sky-100 active:bg-sky-200 text-sky-800 rounded-lg text-xs font-bold flex items-center gap-1">
-
+                        <button type="button" onclick="duplicateSpecificSpecializedRow(${rIdx})" class="px-2.5 py-1 bg-sky-100 active:bg-sky-200 text-sky-800 rounded-lg text-xs font-bold flex items-center gap-1">
                             <i class="fa-solid fa-copy"></i>
-
                             <span>Kopyala</span>
-
                         </button>
-
-                        <button onclick="AppState.currentFormData.specializedRows.splice(${rIdx},1); triggerAutoSave(); paintInspectionEditorUI();"
-
+                        <button type="button" onclick="removeUniversalTableRow(${rIdx})"
                             class="px-2 py-1 bg-rose-50 active:bg-rose-100 text-rose-600 rounded-lg text-xs font-semibold">
-
                             <i class="fa-solid fa-trash-can mr-1"></i>Sil
-
                         </button>
-
                     </div>
-
                 </div>
-
                 <div class="grid grid-cols-2 gap-2">
-
                     ${inputs}
-
                 </div>
-
             </div>
-
         `;
-
     }).join('');
 
-
-
-    const showCompany = (activeTab === 0 || activeTab === -1);
-
-    const companyHtml = !showCompany ? '' : `
-
-        ${renderSharedCompanyInfoSection()}
-
-        ${renderSharedMeasuringDevicesSection('Ölçüm Aletleri Bilgileri')}
-
-    `;
-
-
-
-    const showTech = (activeTab === 1 || activeTab === -1);
-
-    const techHtml = !showTech ? '' : `
-
+    const showStep3 = (activeTab === 2 || activeTab === -1);
+    const step3Html = !showStep3 ? '' : `
         <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
-
-            <div class="px-3.5 py-2.5 bg-slate-800 text-white font-bold text-xs">
-
-                2. Teknik Bilgiler
-
-            </div>
-
-            <div class="p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-
-                ${fieldsHtml}
-
-            </div>
-
-        </div>
-
-    `;
-
-
-
-    const showChecks = (activeTab === 2 || activeTab === -1);
-
-    const checksBlockHtml = !showChecks ? '' : `
-
-        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
-
-            <div class="px-3.5 py-2.5 bg-slate-800 text-white font-bold text-xs flex items-center justify-between">
-
-                <span>3. Kontrol Kriterleri</span>
-
-                <button onclick="markAllVisualChecksSuitable()" class="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1 shadow-2xs">
-
-                    <i class="fa-solid fa-check-double"></i>
-
-                    <span>Boş Kalanları Uygun Yap</span>
-
-                </button>
-
-            </div>
-
-            <div class="p-3 space-y-2">
-
-                ${checksHtml}
-
-            </div>
-
-        </div>
-
-    `;
-
-
-
-    const showRows = (activeTab === 3 || activeTab === -1);
-
-    const rowsBlockHtml = !showRows ? '' : `
-
-        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
-
             <div class="px-3.5 py-2.5 bg-slate-800 text-white flex items-center justify-between gap-2">
-
-                <span class="font-bold text-xs">4. Ölçüm Sonuçları (${fd.specializedRows.length})</span>
-
-                <button onclick="addSpecializedRow(${cols.length})" class="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1 shadow-2xs">
-
+                <span class="font-bold text-xs truncate">4. ${escapeHtml(schema.tableTitle || 'Ölçüm ve Test Sonuçları')} (${tableRows.length})</span>
+                <button type="button" onclick="addSpecializedRow(${cols.length})" class="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1 shadow-2xs shrink-0 active:scale-95">
                     <i class="fa-solid fa-plus"></i>
-
                     <span>Satır Ekle</span>
-
                 </button>
-
             </div>
-
             <div class="p-3 space-y-2.5">
-
                 ${cardsHtml}
-
             </div>
-
         </div>
-
     `;
 
+    // ------------------------------------------------------------------------
+    // ADIM 4: FOTOĞRAFLAR VE ADIM 5: SONUÇ & ONAY
+    // ------------------------------------------------------------------------
+    const showStep4 = (activeTab === 3 || activeTab === -1);
+    const step4Html = !showStep4 ? '' : renderPhotoSectionUI();
 
+    const showStep5 = (activeTab === 4 || activeTab === -1);
+    const step5Html = !showStep5 ? '' : renderEvaluationAndFooterSection();
 
-    const showPhotos = (activeTab === 4 || activeTab === -1);
-
-    const photosHtml = !showPhotos ? '' : renderPhotoSectionUI();
-
-
-
-    const showEval = (activeTab === 5 || activeTab === -1);
-
-    const evalHtml = !showEval ? '' : renderEvaluationAndFooterSection();
-
-
+    // Alt Adım Gezinme Çubuğu (DESIGN.md Sticky/Clear Bottom Navigation)
+    const bottomNavHtml = activeTab === -1 ? '' : `
+        <div class="card-craft-white p-2.5 flex items-center justify-between gap-2">
+            <button type="button"
+                onclick="AppState.activeSpecTab=${Math.max(0, activeTab - 1)}; paintInspectionEditorUI(); window.scrollTo({top:0,behavior:'smooth'});"
+                ${activeTab <= 0 ? 'disabled' : ''}
+                class="h-10 px-3.5 rounded-xl font-bold text-xs flex items-center gap-1.5 border transition ${
+                    activeTab <= 0 ? 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed' : 'bg-slate-100 text-slate-800 border-slate-300 active:scale-95'
+                }">
+                <i class="fa-solid fa-arrow-left text-[11px]"></i>
+                <span>Önceki Adım</span>
+            </button>
+            <span class="text-[11px] font-bold text-slate-500 font-mono">Adım ${activeTab + 1} / 5</span>
+            ${activeTab < 4 ? `
+                <button type="button"
+                    onclick="AppState.activeSpecTab=${activeTab + 1}; paintInspectionEditorUI(); window.scrollTo({top:0,behavior:'smooth'});"
+                    class="h-10 px-4 rounded-xl bg-slate-900 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs active:scale-95 transition">
+                    <span>Sonraki Adım</span>
+                    <i class="fa-solid fa-arrow-right text-[11px] text-amber-400"></i>
+                </button>
+            ` : `
+                <button type="button" onclick="printOfficialReport()"
+                    class="h-10 px-4 rounded-xl bg-emerald-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs active:scale-95 transition">
+                    <i class="fa-solid fa-file-pdf"></i>
+                    <span>A4 PDF Önizle</span>
+                </button>
+            `}
+        </div>
+    `;
 
     return `
-
         <div class="space-y-3">
-
-            ${tabsHtml}
-
-            ${companyHtml}
-
-            ${techHtml}
-
-            ${checksBlockHtml}
-
-            ${rowsBlockHtml}
-
-            ${photosHtml}
-
-            ${evalHtml}
-
+            ${stepperHtml}
+            ${step1Html}
+            ${step2Html}
+            ${step3Html}
+            ${step4Html}
+            ${step5Html}
+            ${bottomNavHtml}
         </div>
-
     `;
-
 }
 
+function setUniversalFieldValue(fieldKey, value, shouldRepaint = false) {
+    const fd = AppState.currentFormData;
+    if (!fd) return;
+    if (!fd.specializedFields) fd.specializedFields = {};
+    fd.specializedFields[fieldKey] = value;
+    triggerAutoSave();
+    if (shouldRepaint) {
+        paintInspectionEditorUI();
+    }
+}
 
+function handleUniversalCheckChange(semanticId, legacyKey, value, checkTitle = '', defaultDefect = '') {
+    const fd = AppState.currentFormData;
+    if (!fd) return;
+    if (!fd.specializedChecks) fd.specializedChecks = {};
+    if (!fd.universalChecksById) fd.universalChecksById = {};
+
+    fd.specializedChecks[legacyKey] = value;
+    fd.universalChecksById[semanticId] = value;
+
+    if (value === 'Uygun Değil' || value === 'Kısmen Uygun') {
+        fd.overallResult = 'UYGUN DEĞİL';
+        if (defaultDefect) {
+            if (!fd.itemDefectSelections) fd.itemDefectSelections = {};
+            if (!fd.itemDefectSelections[legacyKey]) {
+                fd.itemDefectSelections[legacyKey] = {
+                    title: checkTitle,
+                    sentence: defaultDefect,
+                    category: 'specialized'
+                };
+                if (typeof syncAllDefectsToDefectNotes === 'function') {
+                    syncAllDefectsToDefectNotes();
+                } else if (!String(fd.defectNotes || '').includes(defaultDefect)) {
+                    fd.defectNotes = [fd.defectNotes, defaultDefect].filter(Boolean).join('\n');
+                }
+            }
+        }
+        triggerAutoSave();
+        paintInspectionEditorUI();
+        if (checkTitle) {
+            setTimeout(() => openItemDefectPickerModal(legacyKey, checkTitle, 'specialized'), 50);
+        }
+    } else {
+        if (fd.itemDefectSelections && fd.itemDefectSelections[legacyKey]) {
+            delete fd.itemDefectSelections[legacyKey];
+            if (typeof syncAllDefectsToDefectNotes === 'function') {
+                syncAllDefectsToDefectNotes();
+            }
+        }
+        triggerAutoSave();
+        paintInspectionEditorUI();
+    }
+}
+
+function markAllUniversalChecksSuitable() {
+    const insp = AppState.currentInspection;
+    const fd = AppState.currentFormData;
+    if (!insp || !fd) return;
+    const schema = window.getDynamicSchemaForEquipment(insp.template_id, insp.equipment_name);
+    if (!fd.specializedChecks) fd.specializedChecks = {};
+    if (!fd.universalChecksById) fd.universalChecksById = {};
+
+    let count = 0;
+    (schema.visualChecks || []).forEach((chk, idx) => {
+        const legacyKey = `chk_${idx}`;
+        const semanticId = (typeof chk === 'object' && chk.id) ? chk.id : legacyKey;
+        const cur = fd.universalChecksById[semanticId] || fd.specializedChecks[legacyKey];
+        if (!cur) {
+            fd.universalChecksById[semanticId] = 'Uygun';
+            fd.specializedChecks[legacyKey] = 'Uygun';
+            count++;
+        }
+    });
+
+    triggerAutoSave();
+    paintInspectionEditorUI();
+    showToast(`${count} adet boş kontrol kriteri "✓ Uygun" olarak işaretlendi.`);
+}
+
+function syncLegacySpecializedRowsFromUniversal() {
+    const insp = AppState.currentInspection;
+    const fd = AppState.currentFormData;
+    if (!insp || !fd) return;
+    const schema = window.getDynamicSchemaForEquipment(insp.template_id, insp.equipment_name);
+    const cols = schema.tableColumns || [];
+    if (Array.isArray(fd.universalTableRows)) {
+        fd.specializedRows = fd.universalTableRows.map(rowObj =>
+            cols.map(c => (rowObj && rowObj[c.key] !== undefined) ? String(rowObj[c.key]) : '')
+        );
+    }
+}
+
+function setUniversalTableCell(rowIndex, colKey, value, shouldRepaint = false) {
+    const insp = AppState.currentInspection;
+    const fd = AppState.currentFormData;
+    if (!insp || !fd) return;
+    const schema = window.getDynamicSchemaForEquipment(insp.template_id, insp.equipment_name);
+    if (!Array.isArray(fd.universalTableRows) || !fd.universalTableRows[rowIndex]) return;
+
+    fd.universalTableRows[rowIndex][colKey] = value;
+
+    if (window.UniversalSchemaRegistry && typeof window.UniversalSchemaRegistry.evaluateRowLimitRules === 'function') {
+        window.UniversalSchemaRegistry.evaluateRowLimitRules(schema, fd.universalTableRows[rowIndex]);
+    }
+    if (colKey === 'result' && value === 'Uygun Değil') {
+        fd.overallResult = 'UYGUN DEĞİL';
+    }
+
+    syncLegacySpecializedRowsFromUniversal();
+    triggerAutoSave();
+    if (shouldRepaint) {
+        paintInspectionEditorUI();
+    }
+}
 
 function addSpecializedRow(colCount) {
+    const insp = AppState.currentInspection;
+    const fd = AppState.currentFormData;
+    if (!fd) return;
+    const schema = insp ? window.getDynamicSchemaForEquipment(insp.template_id, insp.equipment_name) : { tableColumns: [] };
+    const cols = schema.tableColumns || [];
 
-    const rows = AppState.currentFormData.specializedRows || [];
-
-    const newRow = new Array(colCount).fill('');
-
-    rows.push(newRow);
-
-    AppState.currentFormData.specializedRows = rows;
+    if (!Array.isArray(fd.universalTableRows)) fd.universalTableRows = [];
+    const newRowObj = {};
+    cols.forEach((c, idx) => {
+        if (c.key === 'no') {
+            newRowObj[c.key] = String(fd.universalTableRows.length + 1);
+        } else {
+            newRowObj[c.key] = c.default || '';
+        }
+    });
+    fd.universalTableRows.push(newRowObj);
+    syncLegacySpecializedRowsFromUniversal();
 
     triggerAutoSave();
-
     paintInspectionEditorUI();
-
 }
 
-
+function removeUniversalTableRow(rowIndex) {
+    const fd = AppState.currentFormData;
+    if (!fd || !Array.isArray(fd.universalTableRows)) return;
+    fd.universalTableRows.splice(rowIndex, 1);
+    syncLegacySpecializedRowsFromUniversal();
+    triggerAutoSave();
+    paintInspectionEditorUI();
+}
 
 function duplicateSpecificSpecializedRow(rowIndex) {
-
-    const rows = AppState.currentFormData.specializedRows || [];
-
-    if (!rows[rowIndex]) return;
-
-    const copy = JSON.parse(JSON.stringify(rows[rowIndex]));
-
-    rows.push(copy);
-
-    AppState.currentFormData.specializedRows = rows;
-
+    const fd = AppState.currentFormData;
+    if (!fd || !Array.isArray(fd.universalTableRows) || !fd.universalTableRows[rowIndex]) return;
+    const copy = JSON.parse(JSON.stringify(fd.universalTableRows[rowIndex]));
+    if (copy.no && /^\d+$/.test(String(copy.no))) {
+        copy.no = String(fd.universalTableRows.length + 1);
+    }
+    fd.universalTableRows.push(copy);
+    syncLegacySpecializedRowsFromUniversal();
     triggerAutoSave();
-
     paintInspectionEditorUI();
-
     showToast(`Satır #${rowIndex + 1} kopyalanıp sona eklendi`);
-
 }
-
-
 
 function cloneSpecializedRow() {
-
-    const rows = AppState.currentFormData.specializedRows || [];
-
-    if (!rows.length) return addSpecializedRow(6);
-
-    const copy = [...rows[rows.length - 1]];
-
-    rows.push(copy);
-
-    triggerAutoSave();
-
-    paintInspectionEditorUI();
-
+    const fd = AppState.currentFormData;
+    if (!fd || !Array.isArray(fd.universalTableRows) || !fd.universalTableRows.length) {
+        return addSpecializedRow(6);
+    }
+    duplicateSpecificSpecializedRow(fd.universalTableRows.length - 1);
 }
+
+function toggleUniversalReportSnapshotSeal() {
+    const insp = AppState.currentInspection;
+    const fd = AppState.currentFormData;
+    if (!fd || !window.UniversalSchemaRegistry) return;
+    if (fd.universalSnapshot && fd.universalSnapshot.isSealed) {
+        window.UniversalSchemaRegistry.unsealReportSnapshot(fd, false);
+    } else {
+        window.UniversalSchemaRegistry.sealReportSnapshot(fd, insp, false);
+    }
+    paintInspectionEditorUI();
+}
+
+window.setUniversalFieldValue = setUniversalFieldValue;
+window.handleUniversalCheckChange = handleUniversalCheckChange;
+window.markAllUniversalChecksSuitable = markAllUniversalChecksSuitable;
+window.setUniversalTableCell = setUniversalTableCell;
+window.removeUniversalTableRow = removeUniversalTableRow;
+window.toggleUniversalReportSnapshotSeal = toggleUniversalReportSnapshotSeal;
 
 
 

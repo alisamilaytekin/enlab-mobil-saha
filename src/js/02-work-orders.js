@@ -1300,7 +1300,7 @@ function getCleanTemplateTypeLabel(templateId, templateCode) {
 
         return 'Alçak Gerilim Topraklama';
 
-    } else if (tid === '2205' || code.includes('164') || code.includes('322')) {
+    } else if (tid === '2205' || code.includes('164')) {
 
         return 'Jeneratör';
 
@@ -1310,7 +1310,11 @@ function getCleanTemplateTypeLabel(templateId, templateCode) {
 
     }
 
-    const tpl = (window.ENLAB_REPORT_TEMPLATES || []).find(t => String(t.id) === tid);
+    const catalogList = (window.UniversalSchemaRegistry && typeof window.UniversalSchemaRegistry.getAllCatalogTemplates === 'function')
+        ? window.UniversalSchemaRegistry.getAllCatalogTemplates()
+        : (window.ENLAB_ALL_REPORT_TEMPLATES_BACKUP || window.ENLAB_REPORT_TEMPLATES || []);
+
+    const tpl = catalogList.find(t => String(t.id) === tid);
 
     if (tpl && tpl.name) {
 
@@ -1330,7 +1334,7 @@ function getCleanTemplateTypeLabel(templateId, templateCode) {
 
     }
 
-    return 'Elektrik Muayenesi';
+    return 'Periyodik Kontrol';
 
 }
 
