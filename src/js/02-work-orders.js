@@ -1368,11 +1368,11 @@ function renderWoInspectionRows(list, workOrderId) {
 
                         ${isPublished ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold text-sky-700 bg-sky-50 px-1.5 py-0.5 rounded-md border border-sky-200" title="Doğrulama: ${escapeHtml(item.portal_verify_code || '')}"><i class="fa-solid fa-globe text-[9px]"></i>Yayında</span>` : ''}
 
-                        <span class="inline-flex items-center gap-1 text-[10px] font-semibold ${isSuitable ? 'text-emerald-700' : 'text-rose-700'} bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200">
+                        <span class="inline-flex items-center gap-1 text-[10px] font-semibold ${isSuitable ? 'text-emerald-700 bg-emerald-50/70 border-emerald-200' : 'text-rose-700 bg-rose-50/70 border-rose-200'} px-2 py-0.5 rounded-md border">
 
                             <span class="w-1.5 h-1.5 rounded-full ${isSuitable ? 'bg-emerald-500' : 'bg-rose-500'}"></span>
 
-                            ${item.result_status || 'UYGUN'}
+                            ${item.result_status || 'UYGUN'}${(!isSuitable && item.defect_count > 0) ? ` (${item.defect_count})` : ''}
 
                         </span>
 
@@ -1434,19 +1434,20 @@ function renderWoInspectionRows(list, workOrderId) {
 
                 </div>
 
-                <div class="flex items-center gap-0.5 shrink-0">
+                <div class="flex items-center gap-1 shrink-0">
 
                     <button onclick="cloneInspectionReport('${item.id}', '${workOrderId}')"
 
-                        class="p-1 text-slate-400 hover:text-sky-600 active:scale-90 rounded-md transition" title="Raporu Klonla">
+                        class="px-2 py-1 text-[11px] font-bold text-slate-600 bg-slate-100 hover:bg-sky-50 hover:text-sky-700 active:scale-95 rounded-lg border border-slate-200 flex items-center gap-1 transition" title="Bu Panoyu / Raporu Çoğalt">
 
-                        <i class="fa-solid fa-clone text-xs"></i>
+                        <i class="fa-solid fa-clone text-[10px]"></i>
+                        <span>Çoğalt</span>
 
                     </button>
 
                     <button onclick="event.stopPropagation(); openRenameInspectionModal('${item.id}', '${escapeForJs(item.equipment_name || '')}', '${workOrderId}')"
 
-                        class="p-1 text-slate-400 hover:text-sky-600 active:scale-90 rounded-md transition" title="Pano İsmini Düzenle">
+                        class="p-1.5 text-slate-400 hover:text-sky-600 active:scale-90 rounded-md transition" title="Pano İsmini Düzenle">
 
                         <i class="fa-solid fa-pen text-xs"></i>
 
@@ -1454,7 +1455,7 @@ function renderWoInspectionRows(list, workOrderId) {
 
                     <button onclick="event.stopPropagation(); deleteInspectionItem('${item.id}', '${workOrderId}', '${(item.equipment_name || 'Muayene Raporu').replace(/'/g, "\'")}')"
 
-                        class="p-1 text-slate-400 hover:text-rose-600 active:scale-90 rounded-md transition" title="Raporu Sil">
+                        class="p-1.5 text-slate-400 hover:text-rose-600 active:scale-90 rounded-md transition" title="Raporu Sil">
 
                         <i class="fa-solid fa-trash-can text-xs text-rose-500"></i>
 

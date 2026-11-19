@@ -456,19 +456,53 @@ function applySelectedDefectsToReport() {
 
 
 
+function deduplicateLegacy22DefectNotes(rawNotes) {
+    if (!rawNotes || typeof rawNotes !== 'string') return rawNotes || '';
+    const allLines = rawNotes.split(/\r?\n/);
+    const non22Lines = allLines.filter(l => !l.trim().startsWith('• [2.2 Tespit Edilen Bilgiler'));
+    const cleaned = allLines.filter(line => {
+        const t = line.trim();
+        if (!t.startsWith('• [2.2 Tespit Edilen Bilgiler')) return true;
+        const m = t.match(/:\s*Uygunsuz\s*\((.+)\)\s*$/);
+        if (m && m[1]) {
+            const inner = m[1].trim();
+            if (inner && non22Lines.some(other => other.includes(inner))) {
+                return false;
+            }
+        }
+        return true;
+    });
+    return cleaned.join('\n');
+}
+window.deduplicateLegacy22DefectNotes = deduplicateLegacy22DefectNotes;
+
 function renderEvaluationAndFooterSection() {
 
     const fd = AppState.currentFormData;
+    const insp = AppState.currentInspection;
+    const is2201 = String(insp?.template_id) === '2201';
+
+    if (fd.defectNotes && fd.defectNotes.includes('• [2.2 Tespit Edilen Bilgiler')) {
+        const cleanedNotes = deduplicateLegacy22DefectNotes(fd.defectNotes);
+        if (cleanedNotes !== fd.defectNotes) {
+            fd.defectNotes = cleanedNotes;
+        }
+    }
 
     const isSuitable = fd.overallResult !== 'UYGUN DEĞİL';
-
-
+    if (!fd.defectGrade) fd.defectGrade = 'C1';
+    const grade = fd.defectGrade;
+    const gradeDescriptions = {
+        'C1': 'C1 – Tehlike mevcut. Yaralanma riski. Derhal düzeltici eylem gerekli.',
+        'C2': 'C2 – Potansiyel olarak tehlikeli – acil düzeltici eylem gerekli.',
+        'C3': 'C3 – İyileştirme önerilir.'
+    };
 
     const concludingSentence = isSuitable
 
         ? '✓ Yapılan periyodik kontrol, muayene ve test sonuçlarına göre söz konusu ekipmanın / tesisatın mevcut şartlar altında İSG mevzuatı ve ilgili standartlar açısından KULLANIMI UYGUNDUR.'
 
-        : '✕ Yapılan periyodik kontrol, muayene ve test sonuçlarına göre tespit edilen kusur ve uygunsuzluklar giderilinceye kadar söz konusu ekipmanın / tesisatın KULLANIMI UYGUN DEĞİLDİR.';
+        : `✕ Yapılan periyodik kontrol, muayene ve test sonuçlarına göre tespit edilen kusur ve uygunsuzluklar giderilinceye kadar söz konusu ekipmanın / tesisatın KULLANIMI UYGUN DEĞİLDİR.${is2201 ? ' (' + (gradeDescriptions[grade] || gradeDescriptions.C1) + ')' : ''}`;
 
 
 
@@ -478,13 +512,14 @@ function renderEvaluationAndFooterSection() {
 
         : 'bg-rose-50 border-2 border-rose-400 text-rose-800';
 
-
+    const rptDateDisp = insp?.inspection_date || fd?.companyInfo?.reportDate || '-';
+    const nextDateDisp = fd?.nextInspectionDate || fd?.companyInfo?.nextControlDate || '-';
 
     return `
 
         <div class="bg-white rounded-xl border border-slate-200 overflow-hidden space-y-3 p-3.5 text-xs">
 
-            <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+            <div class="flex flex-wrap items-center justify-between border-b border-slate-100 pb-2 gap-2">
 
                 <span class="font-black text-xs text-slate-800 uppercase tracking-wide">7-10. KUSUR, NOT VE SONUÇ</span>
 
@@ -526,8 +561,6 @@ function renderEvaluationAndFooterSection() {
 
                         <label class="block font-bold text-slate-800">7. KUSUR AÇIKLAMALARI / UYGUNSUZLUKLAR</label>
 
-
-
                     </div>
 
                     ${fd.defectNotes ? `
@@ -548,7 +581,7 @@ function renderEvaluationAndFooterSection() {
 
                     oninput="AppState.currentFormData.defectNotes=this.value; triggerAutoSave();"
 
-                    placeholder="Uygunsuzluk açıklamaları..."
+                    placeholder="Gözle kontrol ve ölçümlerde işaretlenen kusurlar buraya otomatik eklenir..."
 
                     class="w-full border border-slate-300 rounded-xl p-2.5 text-slate-800 leading-relaxed focus:border-sky-500 focus:outline-none font-medium">${fd.defectNotes || ''}</textarea>
 
@@ -558,13 +591,13 @@ function renderEvaluationAndFooterSection() {
 
             <div>
 
-                <label class="block font-bold text-slate-800 mb-1">9. NOTLAR (Proje Bilgileri & Saha Notları)</label>
+                <label class="block font-bold text-slate-800 mb-1">9. NOTLAR (Proje Bilgileri & Saha Notları - İsteğe Bağlı)</label>
 
                 <textarea rows="2"
 
                     oninput="AppState.currentFormData.generalNotes=this.value; triggerAutoSave();"
 
-                    placeholder="Proje sorumlusu veya saha notları..."
+                    placeholder="Boş bırakılırsa 2.1'deki Proje / Tek Hat Şeması seçiminize göre otomatik standart not yazılır..."
 
                     class="w-full border border-slate-300 rounded-xl p-2.5 text-slate-700 focus:border-sky-500 focus:outline-none">${fd.generalNotes || ''}</textarea>
 
@@ -572,52 +605,74 @@ function renderEvaluationAndFooterSection() {
 
 
 
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div class="space-y-2.5 pt-1">
 
                 <div>
 
-                    <label class="block font-bold text-slate-800 mb-1">10. SONUÇ VE KANAAT</label>
+                    <label class="block font-bold text-slate-800 mb-1.5">10. SONUÇ VE KANAAT</label>
 
-                    <select onchange="AppState.currentFormData.overallResult=this.value; if(AppState.currentInspection) AppState.currentInspection.result_status=this.value; triggerAutoSave(); paintInspectionEditorUI();"
-
-                        class="w-full border-2 rounded-lg px-2.5 py-2 text-xs font-black ${
-
-                            !isSuitable ? 'border-rose-500 bg-rose-50 text-rose-800' :
-
-                            'border-emerald-500 bg-emerald-50 text-emerald-800'
-
-                        }">
-
-                        <option value="UYGUN" ${isSuitable ? 'selected' : ''}>✓ UYGUN</option>
-
-                        <option value="UYGUN DEĞİL" ${!isSuitable ? 'selected' : ''}>✕ UYGUN DEĞİL</option>
-
-                    </select>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button"
+                            onclick="AppState.currentFormData.overallResult='UYGUN'; if(AppState.currentInspection) AppState.currentInspection.result_status='UYGUN'; triggerAutoSave(); paintInspectionEditorUI();"
+                            class="py-2.5 px-3 rounded-xl border-2 font-black text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
+                                isSuitable
+                                    ? 'border-emerald-600 bg-emerald-600 text-white shadow-2xs'
+                                    : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-300'
+                            }">
+                            <i class="fa-solid fa-circle-check"></i>
+                            <span>✓ UYGUN</span>
+                        </button>
+                        <button type="button"
+                            onclick="AppState.currentFormData.overallResult='UYGUN DEĞİL'; if(AppState.currentInspection) AppState.currentInspection.result_status='UYGUN DEĞİL'; triggerAutoSave(); paintInspectionEditorUI();"
+                            class="py-2.5 px-3 rounded-xl border-2 font-black text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
+                                !isSuitable
+                                    ? 'border-rose-600 bg-rose-600 text-white shadow-2xs'
+                                    : 'border-slate-200 bg-white text-slate-600 hover:border-rose-300'
+                            }">
+                            <i class="fa-solid fa-circle-xmark"></i>
+                            <span>✕ UYGUN DEĞİL</span>
+                        </button>
+                    </div>
 
                 </div>
 
-                <div>
+                ${(!isSuitable && is2201) ? `
+                    <div class="p-2.5 rounded-xl bg-rose-50/70 border border-rose-200 space-y-1.5">
+                        <label class="block text-[11px] font-bold text-rose-900">TS HD 60364 Kusur / Risk Sınıfı (PDF Sonuç Cümlesi)</label>
+                        <div class="grid grid-cols-3 gap-1.5">
+                            ${[
+                                { code: 'C1', title: 'C1 • Tehlike Mevcut', sub: 'Derhal düzeltilmeli' },
+                                { code: 'C2', title: 'C2 • Potansiyel Tehlike', sub: 'Acil düzeltilmeli' },
+                                { code: 'C3', title: 'C3 • İyileştirme', sub: 'İyileştirme önerilir' }
+                            ].map(g => {
+                                const isSel = grade === g.code;
+                                return `
+                                    <button type="button"
+                                        onclick="AppState.currentFormData.defectGrade='${g.code}'; triggerAutoSave(); paintInspectionEditorUI();"
+                                        class="p-2 rounded-lg border text-left transition-all active:scale-95 ${
+                                            isSel
+                                                ? 'border-rose-600 bg-rose-600 text-white shadow-2xs'
+                                                : 'border-rose-200 bg-white text-slate-700 hover:bg-rose-50'
+                                        }">
+                                        <div class="font-black text-[11px] leading-tight">${g.title}</div>
+                                        <div class="text-[10px] ${isSel ? 'text-rose-100' : 'text-slate-400'} mt-0.5">${g.sub}</div>
+                                    </button>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                ` : ''}
 
-                    <label class="block font-bold text-slate-800 mb-1">Rapor Tarihi</label>
-
-                    <input type="date" id="editorReportDateInput" value="${escapeHtml((typeof toIsoDate === 'function' ? toIsoDate(AppState.currentInspection?.inspection_date || AppState.currentFormData?.companyInfo?.reportDate) : '') || '')}"
-
-                        onchange="if(typeof updateReportDateManual === 'function') updateReportDateManual(this.value);"
-
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-2 bg-white">
-
-                </div>
-
-                <div>
-
-                    <label class="block font-bold text-slate-800 mb-1">Sonraki Kontrol Tarihi</label>
-
-                    <input type="date" id="editorNextControlDateInput" value="${escapeHtml((typeof toIsoDate === 'function' ? toIsoDate(fd.nextInspectionDate || AppState.currentFormData?.companyInfo?.nextControlDate) : '') || '')}"
-
-                        onchange="if(typeof updateReportNextDateManual === 'function') updateReportNextDateManual(this.value);"
-
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-2 bg-white">
-
+                <div class="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600">
+                    <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                        <span><i class="fa-regular fa-calendar-check text-sky-600 mr-1"></i>Kontrol Tarihi: <strong class="text-slate-800">${escapeHtml(rptDateDisp)}</strong></span>
+                        <span><i class="fa-solid fa-calendar-plus text-emerald-600 mr-1"></i>Sonraki Kontrol: <strong class="text-slate-800">${escapeHtml(nextDateDisp)}</strong></span>
+                    </div>
+                    <button type="button"
+                        onclick="AppState.activeEditorSection=0; AppState.activeSpecTab=0; AppState.activeGenTab=0; paintInspectionEditorUI(); window.scrollTo({top:0,behavior:'smooth'});"
+                        class="text-sky-600 hover:underline font-bold shrink-0 ml-2">
+                        1. Adımda Düzenle
+                    </button>
                 </div>
 
             </div>
@@ -685,6 +740,13 @@ function autoCompileDefectNotes() {
             const val = fd.answers[k];
 
             if (val === 'Uygun Değil' || val === 'Kısmen Uygun') {
+
+                const customSel = fd.itemDefectSelections && fd.itemDefectSelections[k];
+                if (customSel && customSel.sentence) {
+                    const line = `• [${customSel.title}]: ${customSel.sentence}`;
+                    if (!detectedDefects.includes(line)) detectedDefects.push(line);
+                    return;
+                }
 
                 const guid = k.replace(/^q_/, '');
 

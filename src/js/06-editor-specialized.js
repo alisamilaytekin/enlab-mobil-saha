@@ -160,41 +160,35 @@ function renderSpecializedTemplateEditor() {
 
         const selectedDefect = fd.itemDefectSelections && fd.itemDefectSelections[cKey]?.sentence;
 
-        const colorCls = val === 'Uygun'
+        const safeChkTitle = chkText.replace(/'/g, "\\'");
 
-            ? 'border-emerald-400 bg-emerald-50 text-emerald-900 font-bold'
-
-            : isDefect
-
-            ? 'border-rose-400 bg-rose-50 text-rose-900 font-bold'
-
-            : 'border-slate-300 bg-slate-50 text-slate-700';
-
-
+        const quickBtns = [
+            { val: 'Uygun', short: '✓', title: 'Uygun', activeCls: 'bg-emerald-600 text-white border-emerald-600 shadow-2xs', idleCls: 'bg-white text-emerald-700 border-slate-200 hover:bg-emerald-50' },
+            { val: 'Uygun Değil', short: '✕', title: 'Uygun Değil', activeCls: 'bg-rose-600 text-white border-rose-600 shadow-2xs', idleCls: 'bg-white text-rose-700 border-slate-200 hover:bg-rose-50' },
+            { val: 'Uygulaması Yok', short: 'N', title: 'Uygulaması Yok', activeCls: 'bg-slate-700 text-white border-slate-700 shadow-2xs', idleCls: 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100' },
+            { val: 'Görülemedi', short: 'G', title: 'Görülemedi', activeCls: 'bg-amber-500 text-slate-950 border-amber-500 shadow-2xs', idleCls: 'bg-white text-amber-700 border-slate-200 hover:bg-amber-50' }
+        ].map(b => {
+            const isSel = (val === b.val);
+            return `
+                <button type="button" title="${b.title}"
+                    onclick="handleSpecializedCheckChange('${cKey}', '${b.val}', '${safeChkTitle}')"
+                    class="w-8 h-8 rounded-lg border text-xs font-black flex items-center justify-center transition-all active:scale-95 ${isSel ? b.activeCls : b.idleCls}">
+                    ${b.short}
+                </button>
+            `;
+        }).join('');
 
         return `
 
-            <div class="rounded-xl border ${isDefect ? 'border-rose-300 bg-rose-50/40' : 'border-slate-200 bg-slate-50/60'} overflow-hidden transition-all">
+            <div class="rounded-xl border ${isDefect ? 'border-rose-300 bg-rose-50/40' : val === 'Uygun' ? 'border-emerald-200 bg-emerald-50/20' : 'border-slate-200 bg-slate-50/60'} overflow-hidden transition-all">
 
                 <div class="p-2.5 flex items-center justify-between gap-2">
 
-                    <span class="text-xs font-medium text-slate-800 min-w-0 flex-1"><strong class="text-slate-900 mr-1">${idx + 1}.</strong>${chkText}</span>
+                    <span class="text-xs font-medium text-slate-800 min-w-0 flex-1 leading-snug"><strong class="text-slate-900 mr-1">${idx + 1}.</strong>${chkText}</span>
 
-                    <select onchange="handleSpecializedCheckChange('${cKey}', this.value, '${chkText.replace(/'/g, "\\'")}')"
-
-                        class="w-32 shrink-0 border rounded-lg px-2 py-1.5 text-xs ${colorCls}">
-
-                        <option value="" ${val === '' ? 'selected' : ''}>Seçiniz...</option>
-
-                        <option value="Uygun" ${val === 'Uygun' ? 'selected' : ''}>✓ Uygun</option>
-
-                        <option value="Uygun Değil" ${val === 'Uygun Değil' ? 'selected' : ''}>✕ Uygun Değil</option>
-
-                        <option value="Uygulaması Yok" ${val === 'Uygulaması Yok' ? 'selected' : ''}>N Uyg. Yok</option>
-
-                        <option value="Görülemedi" ${val === 'Görülemedi' ? 'selected' : ''}>G Görülemedi</option>
-
-                    </select>
+                    <div class="flex items-center gap-1 shrink-0">
+                        ${quickBtns}
+                    </div>
 
                 </div>
 

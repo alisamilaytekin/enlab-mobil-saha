@@ -721,13 +721,16 @@ function buildPdfPages2201(insp, fd, ci, reportNo, formCode, activePdfTheme) {
 
         // Block 6: 5. TEST VE KONTROLLER Title + 5.1. PANO ADI/EKİPMAN TANIMLAMASI
         const qPano51 = area2.topics[0].questions[0];
+        const fallbackPanelName = (insp.equipment_name || ci.equipmentName || '').trim();
+        const fallbackSerialCode = (ci.serialCode || insp.serial_no || '').trim();
+        const pano51Val = getAns(qPano51) || fallbackPanelName;
         const sec51TableHtml = useRamsMinistryEnhanced2201 ? `
             <table class="tkm-table">
                 <colgroup><col style="width:32%;"><col style="width:68%;"></colgroup>
                 <tbody>
                     <tr>
                         <td class="tkm-label-cell" style="text-align:left;padding:2px 6px;">${qPano51 ? qPano51.question : 'Pano Adı/Ekipman Tanımlaması'}</td>
-                        <td class="tkm-val-cell" style="text-align:left;padding:2px 6px;">${escapeHtml(getAns(qPano51))}</td>
+                        <td class="tkm-val-cell" style="text-align:left;padding:2px 6px;">${escapeHtml(pano51Val)}</td>
                     </tr>
                 </tbody>
             </table>
@@ -811,7 +814,7 @@ function buildPdfPages2201(insp, fd, ci, reportNo, formCode, activePdfTheme) {
                     <tbody>
                         <tr>
                             <td class="tkm-label-cell" style="text-align:left;padding:2.5px 6px;">${qPano61 ? qPano61.question : 'Pano (Ekipman) Adı-Etiketi veya Kodu'}</td>
-                            <td class="tkm-val-cell" colspan="5" style="text-align:left;padding:2.5px 6px;">${escapeHtml(getAns(qPano61))}</td>
+                            <td class="tkm-val-cell" colspan="5" style="text-align:left;padding:2.5px 6px;">${escapeHtml(getAns(qPano61) || (fallbackSerialCode && fallbackPanelName && !fallbackPanelName.includes(fallbackSerialCode) ? `${fallbackPanelName} (${fallbackSerialCode})` : (fallbackPanelName || fallbackSerialCode)))}</td>
                         </tr>
                         <tr>
                             <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q61[0] ? q61[0].question : 'Panodan ölçülen faz-toprak çevrim empedansı (Zx) (Ω)'}</td>
@@ -995,7 +998,10 @@ function buildPdfPages2201(insp, fd, ci, reportNo, formCode, activePdfTheme) {
         pushMultiRowTopicBlocks(area3.topics[5], 'topic_3_5', '6.3. ' + area3.topics[5].name, true);
 
         // Block for 7. KUSUR AÇIKLAMALARI
-        const rawDefectNotes = (fd.defectNotes || 'Kusur tespiti bulunmamaktadır.').trim();
+        const cleanedRawDefects = typeof window.deduplicateLegacy22DefectNotes === 'function'
+            ? window.deduplicateLegacy22DefectNotes(fd.defectNotes || '')
+            : (fd.defectNotes || '');
+        const rawDefectNotes = (cleanedRawDefects.trim() || 'Kusur tespiti bulunmamaktadır.');
         const renderRamsDefectNotesContent = () => {
             if (!rawDefectNotes || rawDefectNotes === 'Kusur tespiti bulunmamaktadır.') {
                 return `<div style="color:#14573a;font-weight:700;font-size:7.3pt;">✓ Kusur tespiti bulunmamaktadır.</div>`;
@@ -1128,13 +1134,27 @@ function buildPdfPages2201(insp, fd, ci, reportNo, formCode, activePdfTheme) {
         }
 
         // Block 9: 9. NOTLAR (Bakanlık Formatı: SABİT 9. BÖLÜM)
+        const hasProjectAns = (fd.answers?.['q_03facbae-a3ef-4403-88db-2c86da421539'] || '').trim();
+        const hasDiagramAns = (fd.answers?.['q_f30211b6-9dcd-4c8d-9fad-5f45c6bb436a'] || '').trim();
+        const smartDefaultGeneralNote = (() => {
+            if (hasProjectAns === 'Yok' && hasDiagramAns === 'Yok') {
+                return 'Proje Bilgileri: Kontrol esnasında tesise ait onaylı elektrik tesisat projesi ve tek hat şeması ibraz edilmemiş olup, periyodik kontroller mevcut tesisat durumu üzerinden gerçekleştirilmiştir.';
+            }
+            if (hasProjectAns === 'Yok' && hasDiagramAns === 'Var') {
+                return 'Proje Bilgileri: Kontrol esnasında pano tek hat şeması yerinde incelenmiş, elektrik tesisat projesi ibraz edilmemiştir.';
+            }
+            if (hasProjectAns === 'Var' && hasDiagramAns === 'Yok') {
+                return 'Proje Bilgileri: Kontrol esnasında tesise ait elektrik tesisat projesi incelenmiş, pano içerisinde tek hat şeması bulunmadığı tespit edilmiştir.';
+            }
+            return 'Proje Bilgileri: Tesisin elektrik tesisat projeleri ve tek hat şeması yerinde incelenmiş olup kontroller bu doğrultuda gerçekleştirilmiştir.';
+        })();
         blocks.push(`
             <div class="tkm-sec-title">9. NOTLAR</div>
             <table class="tkm-table ${useRamsMinistryEnhanced2201 ? 'tkm-general-notes-box' : ''}">
                 <tbody>
                     <tr>
                         <td style="min-height:22px;height:22px;vertical-align:top;text-align:left;padding:3.5px 6px;font-size:7.2pt;line-height:1.2;">
-                            ${escapeHtml(fd.generalNotes || "Proje Bilgileri: Tesisin elektrik tesisat projeleri ve tek hat şeması yerinde incelenmiş olup kontroller bu doğrultuda gerçekleştirilmiştir.").replace(/\n/g, '<br>')}
+                            ${escapeHtml(fd.generalNotes || smartDefaultGeneralNote).replace(/\n/g, '<br>')}
                         </td>
                     </tr>
                 </tbody>
@@ -1143,9 +1163,15 @@ function buildPdfPages2201(insp, fd, ci, reportNo, formCode, activePdfTheme) {
 
         // Block 10: 10. SONUÇ VE KANAAT (Bakanlık Formatı: SABİT 10. BÖLÜM)
         const isSuitable = fd.overallResult !== 'UYGUN DEĞİL';
+        const gradeMap = {
+            'C1': 'C1 – Tehlike mevcut. Yaralanma riski. Derhal düzeltici eylem gerekli.',
+            'C2': 'C2 – Potansiyel olarak tehlikeli – acil düzeltici eylem gerekli.',
+            'C3': 'C3 – İyileştirme önerilir.'
+        };
+        const selectedGradeText = gradeMap[fd.defectGrade] || gradeMap.C1;
         const conclusionText = isSuitable 
             ? 'KULLANILMASI UYGUNDUR.' 
-            : 'KULLANILMASI UYGUN DEĞİLDİR. C1 – Tehlike mevcut. Yaralanma riski. Derhal düzeltici eylem gerekli.';
+            : `KULLANILMASI UYGUN DEĞİLDİR. ${selectedGradeText}`;
 
         const conclusionBannerHtml = `
             <div class="tkm-conclusion-box ${isSuitable ? 'tkm-result-box-ok' : 'tkm-result-box-bad'}" style="margin-top:2px;margin-bottom:3px;font-size:7.4pt;font-weight:700;color:${isSuitable ? '#047857' : '#c00000'};line-height:1.25;">

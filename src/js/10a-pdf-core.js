@@ -1382,6 +1382,33 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
 
     if (is2201) {
+        if (typeof window.ensureElectrical2201SmartRadioAndPanelDefaults === 'function') {
+            window.ensureElectrical2201SmartRadioAndPanelDefaults(fd, insp);
+        }
+        if (typeof window.syncElectrical2201Section22FromTriggers === 'function') {
+            window.syncElectrical2201Section22FromTriggers(null, true);
+        }
+        if (!silentRender && !directPrint) {
+            const missingHints = [];
+            const zxVal = (fd.answers?.['q_6e02fa60-7627-4361-a8d0-0a68162eb123'] || '').trim();
+            const vFF = (fd.answers?.['q_314d6833-ba97-4209-9d63-112fc4557cf2'] || '').trim();
+            const vLN = (fd.answers?.['q_5d61243b-e63f-4fa1-8e9f-cc4853b3a2e6'] || '').trim();
+            if (!zxVal && !vFF && !vLN) {
+                missingHints.push('6.1 Pano Empedans/Gerilim');
+            }
+            const linyeRows = fd.tableRows?.['topic_3_3'] || [];
+            const hasFilledLinye = linyeRows.some(r => {
+                const inVal = (r['1753eb8f-8cf2-4847-8ec2-9f97e12c8225'] || '').trim();
+                const fazVal = (r['1655264f-6533-4a9c-9a04-4e580745015b'] || '').trim();
+                return Boolean(inVal || fazVal);
+            });
+            if (!hasFilledLinye) {
+                missingHints.push('6.1 Linye Tablosu');
+            }
+            if (missingHints.length > 0 && typeof showToast === 'function') {
+                showToast(`Hatırlatma: ${missingHints.join(' ve ')} henüz boş`, 'warning');
+            }
+        }
         pagesArray = buildPdfPages2201(insp, fd, ci, reportNo, formCode, activePdfTheme);
     } else if (isGrounding2202) {
         pagesArray = buildPdfPages2202(insp, fd, ci, reportNo, activePdfTheme);

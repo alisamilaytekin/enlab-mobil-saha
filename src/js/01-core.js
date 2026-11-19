@@ -664,9 +664,42 @@ function normalizeInspection(i) {
 
     } catch (e) {}
 
+    if (i.id !== undefined && i.id !== null) {
+        try {
+            const localRaw = localStorage.getItem(`enlab_insp_${i.id}`);
+            if (localRaw) {
+                const localParsed = JSON.parse(localRaw);
+                if (localParsed && typeof localParsed === 'object') {
+                    formData = Object.assign({}, formData, localParsed);
+                }
+            }
+        } catch (e) {}
+    }
+
+    const rawDefectLines = String(formData.defectNotes || '')
+        .split(/\r?\n/)
+        .map(l => l.trim())
+        .filter(l => l && l !== 'Kusur tespiti bulunmamaktadır.');
+    const cleanedDefectLines = (typeof window.deduplicateLegacy22DefectNotes === 'function')
+        ? window.deduplicateLegacy22DefectNotes(rawDefectLines.join('\n')).split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+        : rawDefectLines;
+    const itemDefectCount = formData.itemDefectSelections ? Object.keys(formData.itemDefectSelections).length : 0;
+    const defectCount = Math.max(cleanedDefectLines.length, itemDefectCount);
+
+    let resolvedResult = formData.overallResult || i.result || i.result_status || 'UYGUN';
+    if (defectCount > 0 && !formData.overallResult) {
+        resolvedResult = 'UYGUN DEĞİL';
+    }
+
+    const resolvedEqName = (formData.companyInfo && formData.companyInfo.equipmentName)
+        ? formData.companyInfo.equipmentName
+        : (i.equipment_name || '');
+
     const curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || null;
 
     return Object.assign({}, i, {
+
+        equipment_name: resolvedEqName || i.equipment_name || '',
 
         work_order_no: i.work_order_code || i.work_order_no || '',
 
@@ -680,7 +713,9 @@ function normalizeInspection(i) {
 
         diploma_no: i.diploma_no || (curUser ? curUser.diplomaNoDate : '249538 / 28.09.2022'),
 
-        result_status: i.result || i.result_status || 'UYGUN',
+        result_status: resolvedResult,
+
+        defect_count: defectCount,
 
         form_data: formData
 
@@ -992,6 +1027,8 @@ window.handleAndroidBackButton = function () {
     }
 
     if (AppState.currentRoute === 'inspection-complete') {
+
+        if (typeof flushPendingAutoSave === 'function') flushPendingAutoSave();
 
         const woId = AppState.currentInspection?.work_order_id || AppState.currentWorkOrder?.id;
 

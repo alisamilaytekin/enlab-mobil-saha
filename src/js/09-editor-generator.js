@@ -1533,7 +1533,9 @@ function syncAllDefectsToDefectNotes() {
 
         if (item && item.sentence) {
 
-            lines.push(`• [${item.title}]: ${item.sentence}`);
+            const lineStr = `• [${item.title}]: ${item.sentence}`;
+
+            if (!lines.includes(lineStr)) lines.push(lineStr);
 
         }
 
@@ -1541,7 +1543,11 @@ function syncAllDefectsToDefectNotes() {
 
     if (String(AppState.currentInspection?.template_id) === '2201' && typeof window.getElectrical22DefectLines === 'function') {
 
-        window.getElectrical22DefectLines(fd).forEach(l => lines.push(l));
+        window.getElectrical22DefectLines(fd).forEach(l => {
+
+            if (!lines.includes(l)) lines.push(l);
+
+        });
 
     }
 
@@ -1559,7 +1565,17 @@ function syncAllDefectsToDefectNotes() {
 
     const cur = (fd.defectNotes || '').trim();
 
-    const existingManual = cur ? cur.split('\n').filter(l => l.trim() && !l.trim().startsWith('• [')) : [];
+    const existingManual = cur ? cur.split('\n').filter(l => {
+
+        const t = l.trim();
+
+        if (!t) return false;
+
+        if (t.startsWith('• [')) return false;
+
+        return true;
+
+    }) : [];
 
 
 

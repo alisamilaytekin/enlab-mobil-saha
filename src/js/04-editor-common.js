@@ -209,7 +209,7 @@ function paintInspectionEditorUI() {
 
                 <div class="flex items-center justify-between gap-2">
 
-                    <button onclick="navigateTo('work-order-details', {id: '${insp.work_order_id || 43129}'})" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs rounded-xl shrink-0 transition border border-slate-200">
+                    <button onclick="if(typeof flushPendingAutoSave==='function') flushPendingAutoSave(); navigateTo('work-order-details', {id: '${insp.work_order_id || 43129}'})" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs rounded-xl shrink-0 transition border border-slate-200">
 
                         <i class="fa-solid fa-arrow-left mr-1"></i>Geri
 
@@ -371,6 +371,14 @@ function updateInspectionName(newName) {
         if (!AppState.currentFormData.companyInfo) AppState.currentFormData.companyInfo = {};
 
         AppState.currentFormData.companyInfo.equipmentName = newName;
+
+        // 2201: 5.1 ve 6.1 Pano Adı alanlarını üstteki Ekipman Adı ile otomatik senkron tut
+        if (String(AppState.currentInspection.template_id) === '2201' && AppState.currentFormData.answers) {
+            const serial = (AppState.currentFormData.companyInfo.serialCode || AppState.currentInspection.serial_no || '').trim();
+            const fullPanelLabel = serial && newName ? `${newName} (${serial})` : (newName || '');
+            AppState.currentFormData.answers['q_4806ef6b-a811-4c26-b76f-6467779e5499'] = newName || '';
+            AppState.currentFormData.answers['q_3e5cfce4-bb64-4339-b086-f0947d8dbccb'] = fullPanelLabel;
+        }
 
     }
 
@@ -541,6 +549,41 @@ function setReportEndTimeNow() {
     updateReportDateTimeField('endTime', nowTime);
 }
 
+function setReportEndTimeOffset(offsetMinutes = 30) {
+    ensureCompanyInfo();
+    const ci = AppState.currentFormData.companyInfo;
+    const startStr = String(ci.controlStartTime || getLocalNowHHMM()).trim();
+    const m = startStr.match(/^(\d{1,2}):(\d{2})$/);
+    if (!m) return setReportEndTimeNow();
+    const baseMins = parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+    const nextTotal = baseMins + (parseInt(offsetMinutes, 10) || 30);
+    const dayShift = Math.floor(nextTotal / 1440);
+    const rem = ((nextTotal % 1440) + 1440) % 1440;
+    const hh = String(Math.floor(rem / 60)).padStart(2, '0');
+    const mm = String(rem % 60).padStart(2, '0');
+    const newEndTime = `${hh}:${mm}`;
+    const startIso = ci.controlStartDate || getLocalTodayIso();
+    const newEndIso = dayShift > 0 ? addDaysIso(startIso, dayShift) : startIso;
+    ci.controlEndDate = newEndIso;
+    ci.controlEndTime = newEndTime;
+    const endTimeEl = document.getElementById('editorEndTimeInput');
+    if (endTimeEl) endTimeEl.value = newEndTime;
+    const endDateEl = document.getElementById('editorEndDateInput');
+    if (endDateEl) endDateEl.value = newEndIso;
+    updateReportDateTimeField('endTime', newEndTime);
+}
+
+function toggleCompanyDetailsEdit() {
+    AppState.showCompanyDetailsEdit = !AppState.showCompanyDetailsEdit;
+    paintInspectionEditorUI();
+}
+
+function toggleDeviceRowDetails(dIdx) {
+    if (!AppState.expandedDeviceRows) AppState.expandedDeviceRows = {};
+    AppState.expandedDeviceRows[dIdx] = !AppState.expandedDeviceRows[dIdx];
+    paintInspectionEditorUI();
+}
+
 function updateReportDateManual(isoVal) {
     const iso = toIsoDate(isoVal);
     if (!iso || !AppState.currentInspection || !AppState.currentFormData) return;
@@ -568,6 +611,9 @@ function updateReportNextDateManual(isoVal) {
 
 window.updateReportDateTimeField = updateReportDateTimeField;
 window.setReportEndTimeNow = setReportEndTimeNow;
+window.setReportEndTimeOffset = setReportEndTimeOffset;
+window.toggleCompanyDetailsEdit = toggleCompanyDetailsEdit;
+window.toggleDeviceRowDetails = toggleDeviceRowDetails;
 window.updateReportDateManual = updateReportDateManual;
 window.updateReportNextDateManual = updateReportNextDateManual;
 
@@ -581,7 +627,8 @@ function renderSharedCompanyInfoSection() {
 
     const ci = AppState.currentFormData.companyInfo;
 
-
+    const hasFirmData = Boolean((ci.firmName || '').trim());
+    const showFirmInputs = !hasFirmData || Boolean(AppState.showCompanyDetailsEdit);
 
     return `
 
@@ -591,61 +638,94 @@ function renderSharedCompanyInfoSection() {
 
                 <span>1. Firma ve Rapor Bilgileri</span>
 
-                <span class="text-[11px] text-slate-300 font-mono hidden sm:inline">${escapeHtml(ci.reportNo || insp.report_no || '')}</span>
+                <div class="flex items-center gap-2">
+                    <span class="text-[11px] text-slate-300 font-mono hidden sm:inline">${escapeHtml(ci.reportNo || insp.report_no || '')}</span>
+                    ${hasFirmData ? `
+                        <button type="button" onclick="toggleCompanyDetailsEdit()"
+                            class="px-2 py-0.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-100 text-[11px] font-bold flex items-center gap-1 transition">
+                            <i class="fa-solid ${showFirmInputs ? 'fa-chevron-up' : 'fa-pen'} text-[10px] text-sky-400"></i>
+                            <span>${showFirmInputs ? 'Firma Bilgilerini Gizle' : 'Firma Bilgilerini Düzenle'}</span>
+                        </button>
+                    ` : ''}
+                </div>
 
             </div>
 
-            <div class="p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+            <div class="p-3.5 space-y-2.5 text-xs">
 
-                <div class="sm:col-span-2">
+                ${hasFirmData && !showFirmInputs ? `
+                    <!-- SADE FİRMA ÖZET KARTI (Kafa karıştıran 5 mükerrer kutu yerine tek satır özet) -->
+                    <div onclick="toggleCompanyDetailsEdit()" class="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200 cursor-pointer flex items-center justify-between gap-2 transition">
+                        <div class="min-w-0 flex-1 space-y-0.5">
+                            <div class="font-bold text-slate-900 truncate flex items-center gap-1.5">
+                                <i class="fa-solid fa-building text-sky-600 text-[11px]"></i>
+                                <span>${escapeHtml(ci.firmName)}</span>
+                                ${ci.address ? `<span class="text-slate-400 font-normal">·</span><span class="text-slate-600 font-medium truncate">${escapeHtml(ci.address)}</span>` : ''}
+                            </div>
+                            <div class="text-[10px] text-slate-500 flex items-center gap-2 flex-wrap font-mono">
+                                ${ci.isgKatipNo ? `<span>İSG-KATİP: <strong>${escapeHtml(ci.isgKatipNo)}</strong></span>` : ''}
+                                ${ci.sgkSicilNo ? `<span>SGK: <strong>${escapeHtml(ci.sgkSicilNo)}</strong></span>` : ''}
+                                ${ci.contactEmail ? `<span><i class="fa-regular fa-envelope mr-0.5"></i>${escapeHtml(ci.contactEmail)}</span>` : ''}
+                            </div>
+                        </div>
+                        <span class="px-2 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 font-bold text-[10px] shrink-0">Düzenle ▾</span>
+                    </div>
+                ` : `
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-2.5 rounded-xl bg-slate-50/70 border border-slate-200">
+                        <div class="sm:col-span-2">
+                            <label class="block font-bold text-slate-700 mb-1">Firma Adı</label>
+                            <input type="text" value="${escapeHtml(ci.firmName || '')}" placeholder=""
+                                oninput="AppState.currentFormData.companyInfo.firmName=this.value; triggerAutoSave();"
+                                class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-semibold bg-white">
+                        </div>
 
-                    <label class="block font-bold text-slate-700 mb-1">Firma Adı</label>
+                        <div class="sm:col-span-2">
+                            <label class="block font-bold text-slate-700 mb-1">Periyodik Kontrol Adresi</label>
+                            <input type="text" value="${escapeHtml(ci.address || '')}" placeholder=""
+                                oninput="AppState.currentFormData.companyInfo.address=this.value; triggerAutoSave();"
+                                class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
+                        </div>
 
-                    <input type="text" value="${escapeHtml(ci.firmName || '')}" placeholder=""
+                        <div>
+                            <label class="block font-bold text-slate-700 mb-1">İSG-KATİP Sözleşme ID</label>
+                            <input type="text" value="${escapeHtml(ci.isgKatipNo || '')}" placeholder=""
+                                oninput="AppState.currentFormData.companyInfo.isgKatipNo=this.value; triggerAutoSave();"
+                                class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
+                        </div>
 
-                        oninput="AppState.currentFormData.companyInfo.firmName=this.value; triggerAutoSave();"
+                        <div>
+                            <label class="block font-bold text-slate-700 mb-1">SGK Sicil No</label>
+                            <input type="text" value="${escapeHtml(ci.sgkSicilNo || '')}" placeholder=""
+                                oninput="AppState.currentFormData.companyInfo.sgkSicilNo=this.value; triggerAutoSave();"
+                                class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
+                        </div>
 
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-semibold bg-white">
+                        <div class="sm:col-span-2">
+                            <label class="block font-bold text-slate-700 mb-1"><i class="fa-solid fa-envelope text-sky-600 mr-1"></i>Yetkili E-posta Adresi</label>
+                            <input type="email" value="${escapeHtml(ci.contactEmail || '')}" placeholder="yetkili@firma.com"
+                                oninput="AppState.currentFormData.companyInfo.contactEmail=this.value; AppState.currentInspection.contact_email=this.value; if(AppState.currentInspection.work_order_id && typeof saveWorkOrderEmailRealtime==='function'){saveWorkOrderEmailRealtime(AppState.currentInspection.work_order_id, this.value);} triggerAutoSave();"
+                                class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
+                        </div>
+                    </div>
+                `}
 
+                <div class="grid grid-cols-2 gap-2.5">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Seri No / Pano Kodu</label>
+                        <input type="text" value="${escapeHtml(ci.serialCode || '')}" placeholder="Örn: ADP-01"
+                            oninput="AppState.currentFormData.companyInfo.serialCode=this.value; AppState.currentInspection.serial_no=this.value; triggerAutoSave();"
+                            class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Rapor No</label>
+                        <input type="text" value="${escapeHtml(ci.reportNo || insp.report_no || '')}" placeholder=""
+                            oninput="AppState.currentFormData.companyInfo.reportNo=this.value; AppState.currentInspection.report_no=this.value; triggerAutoSave();"
+                            class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono bg-white">
+                    </div>
                 </div>
 
-                <div class="sm:col-span-2">
-
-                    <label class="block font-bold text-slate-700 mb-1">Periyodik Kontrol Adresi</label>
-
-                    <input type="text" value="${escapeHtml(ci.address || '')}" placeholder=""
-
-                        oninput="AppState.currentFormData.companyInfo.address=this.value; triggerAutoSave();"
-
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
-
-                </div>
-
-                <div>
-
-                    <label class="block font-bold text-slate-700 mb-1">Seri No / Pano Kodu</label>
-
-                    <input type="text" value="${escapeHtml(ci.serialCode || '')}" placeholder=""
-
-                        oninput="AppState.currentFormData.companyInfo.serialCode=this.value; AppState.currentInspection.serial_no=this.value; triggerAutoSave();"
-
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
-
-                </div>
-
-                <div>
-
-                    <label class="block font-bold text-slate-700 mb-1">Rapor No</label>
-
-                    <input type="text" value="${escapeHtml(ci.reportNo || insp.report_no || '')}" placeholder=""
-
-                        oninput="AppState.currentFormData.companyInfo.reportNo=this.value; AppState.currentInspection.report_no=this.value; triggerAutoSave();"
-
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono bg-white">
-
-                </div>
-
-                <div class="sm:col-span-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
 
                     <div class="flex items-center justify-between gap-2 flex-wrap">
 
@@ -703,31 +783,9 @@ function renderSharedCompanyInfoSection() {
 
                             <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Bitiş Saati</label>
 
-                            <div class="flex items-center gap-1">
+                            <input type="time" id="editorEndTimeInput" value="${escapeHtml(ci.controlEndTime || '')}"
 
-                                <input type="time" id="editorEndTimeInput" value="${escapeHtml(ci.controlEndTime || '')}"
-
-                                    onchange="updateReportDateTimeField('endTime', this.value)"
-
-                                    class="flex-1 min-w-0 border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-semibold bg-white">
-
-                                <button type="button" onclick="setReportEndTimeNow()" class="px-2 py-1.5 bg-sky-100 hover:bg-sky-200 text-sky-800 rounded-lg text-[10px] font-bold shrink-0 border border-sky-200 transition" title="Şu anki saati bitiş saati yap">Şimdi</button>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-slate-200/70">
-
-                        <div>
-
-                            <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Sonraki Periyodik Kontrol (${(typeof ReportDateTimePrefs !== 'undefined') ? ReportDateTimePrefs.getValidityMonths(insp.template_id) : 12} Ay)</label>
-
-                            <input type="date" id="editorQuickNextDateInput" value="${escapeHtml(toIsoDate(AppState.currentFormData.nextInspectionDate || ci.nextControlDate) || '')}"
-
-                                onchange="updateReportNextDateManual(this.value)"
+                                onchange="updateReportDateTimeField('endTime', this.value)"
 
                                 class="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-semibold bg-white">
 
@@ -735,41 +793,22 @@ function renderSharedCompanyInfoSection() {
 
                     </div>
 
-                </div>
+                    <div class="flex items-center justify-between gap-2 pt-1 border-t border-slate-200/70 flex-wrap">
+                        <div class="flex items-center gap-1 flex-wrap">
+                            <span class="text-[10px] font-bold text-slate-500 mr-0.5">Hızlı Bitiş:</span>
+                            <button type="button" onclick="setReportEndTimeOffset(20)" class="px-2 py-1 bg-white hover:bg-sky-50 text-slate-700 rounded-md text-[10px] font-bold border border-slate-300 transition">+20 dk</button>
+                            <button type="button" onclick="setReportEndTimeOffset(30)" class="px-2 py-1 bg-white hover:bg-sky-50 text-slate-700 rounded-md text-[10px] font-bold border border-slate-300 transition">+30 dk</button>
+                            <button type="button" onclick="setReportEndTimeOffset(60)" class="px-2 py-1 bg-white hover:bg-sky-50 text-slate-700 rounded-md text-[10px] font-bold border border-slate-300 transition">+1 Saat</button>
+                            <button type="button" onclick="setReportEndTimeNow()" class="px-2 py-1 bg-sky-100 hover:bg-sky-200 text-sky-800 rounded-md text-[10px] font-bold border border-sky-200 transition">Şimdi</button>
+                        </div>
 
-                <div>
-
-                    <label class="block font-bold text-slate-700 mb-1">İSG-KATİP Sözleşme ID</label>
-
-                    <input type="text" value="${escapeHtml(ci.isgKatipNo || '')}" placeholder=""
-
-                        oninput="AppState.currentFormData.companyInfo.isgKatipNo=this.value; triggerAutoSave();"
-
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
-
-                </div>
-
-                <div>
-
-                    <label class="block font-bold text-slate-700 mb-1">SGK Sicil No</label>
-
-                    <input type="text" value="${escapeHtml(ci.sgkSicilNo || '')}" placeholder=""
-
-                        oninput="AppState.currentFormData.companyInfo.sgkSicilNo=this.value; triggerAutoSave();"
-
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
-
-                </div>
-
-                <div class="sm:col-span-2">
-
-                    <label class="block font-bold text-slate-700 mb-1"><i class="fa-solid fa-envelope text-sky-600 mr-1"></i>Yetkili E-posta Adresi</label>
-
-                    <input type="email" value="${escapeHtml(ci.contactEmail || '')}" placeholder="yetkili@firma.com"
-
-                        oninput="AppState.currentFormData.companyInfo.contactEmail=this.value; AppState.currentInspection.contact_email=this.value; if(AppState.currentInspection.work_order_id && typeof saveWorkOrderEmailRealtime==='function'){saveWorkOrderEmailRealtime(AppState.currentInspection.work_order_id, this.value);} triggerAutoSave();"
-
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
+                        <div class="flex items-center gap-1.5">
+                            <label class="text-[10px] font-bold text-slate-600">Sonraki Kontrol:</label>
+                            <input type="date" id="editorQuickNextDateInput" value="${escapeHtml(toIsoDate(AppState.currentFormData.nextInspectionDate || ci.nextControlDate) || '')}"
+                                onchange="updateReportNextDateManual(this.value)"
+                                class="border border-slate-300 rounded-lg px-2 py-1 text-[11px] font-semibold bg-white">
+                        </div>
+                    </div>
 
                 </div>
 
@@ -887,36 +926,46 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
         const subLabel = [dev.brand, dev.model].filter(Boolean).join(' ').trim();
         const calStatus = (mgr && dev.validDate) ? mgr.getCalibrationStatus(dev.validDate) : null;
         const isTherm = Boolean(dev.isThermal || (String(dev.category || '').toLowerCase().includes('termal')) || (String(dev.name || '').toLowerCase().includes('termal')));
+        const isBlankRow = isSharedMeasuringDeviceRowBlank(dev);
+        const isExpanded = isBlankRow || Boolean(AppState.expandedDeviceRows && AppState.expandedDeviceRows[dIdx]);
+        const displayName = (dev.name || subLabel || `Cihaz #${dIdx + 1}`).trim();
 
         return `
                     <div class="p-2.5 rounded-xl border ${isTherm ? 'border-orange-200 bg-orange-50/30' : 'border-slate-200 bg-slate-50'} space-y-2">
 
-                        <div class="flex items-center justify-between border-b border-slate-200/80 pb-1.5 gap-2 flex-wrap">
+                        <div class="flex items-center justify-between gap-2 flex-wrap">
 
-                            <div class="flex items-center gap-1.5 flex-wrap min-w-0">
-                                <span class="font-bold text-slate-800">Cihaz #${dIdx + 1}</span>
-                                ${dev.code ? `<span class="px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 border border-sky-200 font-mono font-bold text-[10px]">${escapeHtml(dev.code)}</span>` : ''}
-                                ${subLabel ? `<span class="px-1.5 py-0.5 rounded bg-slate-200/80 text-slate-800 font-bold text-[10px] truncate max-w-[160px]">${escapeHtml(subLabel)}</span>` : ''}
+                            <div onclick="toggleDeviceRowDetails(${dIdx})" class="flex items-center gap-1.5 flex-wrap min-w-0 flex-1 cursor-pointer">
+                                <span class="w-5 h-5 rounded-md bg-slate-800 text-white font-mono font-bold text-[10px] flex items-center justify-center shrink-0">${dIdx + 1}</span>
+                                <span class="font-bold text-slate-900 truncate">${escapeHtml(displayName)}</span>
+                                ${subLabel && subLabel.toLowerCase() !== displayName.toLowerCase() ? `<span class="px-1.5 py-0.5 rounded bg-slate-200/80 text-slate-800 font-bold text-[10px] truncate max-w-[140px]">${escapeHtml(subLabel)}</span>` : ''}
+                                ${dev.serial ? `<span class="text-[10px] font-mono text-slate-500">SN: <strong>${escapeHtml(dev.serial)}</strong></span>` : ''}
                                 ${calStatus && calStatus.status !== 'unknown' ? `<span class="px-1.5 py-0.5 rounded-full border font-bold text-[9px] ${calStatus.badgeClass}">${escapeHtml(calStatus.label)}</span>` : ''}
                             </div>
 
-                            <div class="flex items-center gap-1.5 shrink-0">
+                            <div class="flex items-center gap-1 shrink-0">
+                                <button type="button" onclick="toggleDeviceRowDetails(${dIdx})"
+                                    class="px-2 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold text-[10px] flex items-center gap-1 transition"
+                                    title="Seri No ve Kalibrasyon detaylarını göster/gizle">
+                                    <span>${isExpanded ? 'Gizle ▴' : 'Detay ▾'}</span>
+                                </button>
                                 ${hasCatalogUi ? `
                                     <button type="button" onclick="openReportSwapDeviceModal(${dIdx})"
-                                        class="px-2 py-1 rounded-lg bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-bold text-[11px] flex items-center gap-1 shadow-2xs transition">
+                                        class="px-2 py-1 rounded-lg bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-bold text-[10px] flex items-center gap-1 shadow-2xs transition">
                                         <i class="fa-solid fa-right-left"></i>
                                         <span>Değiştir</span>
                                     </button>
                                 ` : ''}
                                 <button type="button" onclick="removeMeasuringDeviceRow(${dIdx})"
-                                    class="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-600 border border-rose-200 font-semibold text-[11px] flex items-center gap-1 transition">
-                                    <i class="fa-solid fa-trash-can"></i> Sil
+                                    class="px-1.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-600 border border-rose-200 font-semibold text-[10px] flex items-center transition" title="Cihazı Rapordan Kaldır">
+                                    <i class="fa-solid fa-trash-can"></i>
                                 </button>
                             </div>
 
                         </div>
 
-                        <div class="grid grid-cols-2 gap-2">
+                        ${!isExpanded ? '' : `
+                        <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200/80">
 
                             <div class="col-span-2">
 
@@ -979,6 +1028,7 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
                             </div>
 
                         </div>
+                        `}
 
                     </div>
         `;

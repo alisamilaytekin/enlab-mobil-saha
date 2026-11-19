@@ -2637,9 +2637,42 @@ function normalizeInspection(i) {
 
     } catch (e) {}
 
+    if (i.id !== undefined && i.id !== null) {
+        try {
+            const localRaw = localStorage.getItem(`enlab_insp_${i.id}`);
+            if (localRaw) {
+                const localParsed = JSON.parse(localRaw);
+                if (localParsed && typeof localParsed === 'object') {
+                    formData = Object.assign({}, formData, localParsed);
+                }
+            }
+        } catch (e) {}
+    }
+
+    const rawDefectLines = String(formData.defectNotes || '')
+        .split(/\r?\n/)
+        .map(l => l.trim())
+        .filter(l => l && l !== 'Kusur tespiti bulunmamaktadır.');
+    const cleanedDefectLines = (typeof window.deduplicateLegacy22DefectNotes === 'function')
+        ? window.deduplicateLegacy22DefectNotes(rawDefectLines.join('\n')).split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+        : rawDefectLines;
+    const itemDefectCount = formData.itemDefectSelections ? Object.keys(formData.itemDefectSelections).length : 0;
+    const defectCount = Math.max(cleanedDefectLines.length, itemDefectCount);
+
+    let resolvedResult = formData.overallResult || i.result || i.result_status || 'UYGUN';
+    if (defectCount > 0 && !formData.overallResult) {
+        resolvedResult = 'UYGUN DEĞİL';
+    }
+
+    const resolvedEqName = (formData.companyInfo && formData.companyInfo.equipmentName)
+        ? formData.companyInfo.equipmentName
+        : (i.equipment_name || '');
+
     const curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || null;
 
     return Object.assign({}, i, {
+
+        equipment_name: resolvedEqName || i.equipment_name || '',
 
         work_order_no: i.work_order_code || i.work_order_no || '',
 
@@ -2653,7 +2686,9 @@ function normalizeInspection(i) {
 
         diploma_no: i.diploma_no || (curUser ? curUser.diplomaNoDate : '249538 / 28.09.2022'),
 
-        result_status: i.result || i.result_status || 'UYGUN',
+        result_status: resolvedResult,
+
+        defect_count: defectCount,
 
         form_data: formData
 
@@ -2965,6 +3000,8 @@ window.handleAndroidBackButton = function () {
     }
 
     if (AppState.currentRoute === 'inspection-complete') {
+
+        if (typeof flushPendingAutoSave === 'function') flushPendingAutoSave();
 
         const woId = AppState.currentInspection?.work_order_id || AppState.currentWorkOrder?.id;
 
@@ -5479,11 +5516,11 @@ function renderWoInspectionRows(list, workOrderId) {
 
                         ${isPublished ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold text-sky-700 bg-sky-50 px-1.5 py-0.5 rounded-md border border-sky-200" title="Doğrulama: ${escapeHtml(item.portal_verify_code || '')}"><i class="fa-solid fa-globe text-[9px]"></i>Yayında</span>` : ''}
 
-                        <span class="inline-flex items-center gap-1 text-[10px] font-semibold ${isSuitable ? 'text-emerald-700' : 'text-rose-700'} bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200">
+                        <span class="inline-flex items-center gap-1 text-[10px] font-semibold ${isSuitable ? 'text-emerald-700 bg-emerald-50/70 border-emerald-200' : 'text-rose-700 bg-rose-50/70 border-rose-200'} px-2 py-0.5 rounded-md border">
 
                             <span class="w-1.5 h-1.5 rounded-full ${isSuitable ? 'bg-emerald-500' : 'bg-rose-500'}"></span>
 
-                            ${item.result_status || 'UYGUN'}
+                            ${item.result_status || 'UYGUN'}${(!isSuitable && item.defect_count > 0) ? ` (${item.defect_count})` : ''}
 
                         </span>
 
@@ -5545,19 +5582,20 @@ function renderWoInspectionRows(list, workOrderId) {
 
                 </div>
 
-                <div class="flex items-center gap-0.5 shrink-0">
+                <div class="flex items-center gap-1 shrink-0">
 
                     <button onclick="cloneInspectionReport('${item.id}', '${workOrderId}')"
 
-                        class="p-1 text-slate-400 hover:text-sky-600 active:scale-90 rounded-md transition" title="Raporu Klonla">
+                        class="px-2 py-1 text-[11px] font-bold text-slate-600 bg-slate-100 hover:bg-sky-50 hover:text-sky-700 active:scale-95 rounded-lg border border-slate-200 flex items-center gap-1 transition" title="Bu Panoyu / Raporu Çoğalt">
 
-                        <i class="fa-solid fa-clone text-xs"></i>
+                        <i class="fa-solid fa-clone text-[10px]"></i>
+                        <span>Çoğalt</span>
 
                     </button>
 
                     <button onclick="event.stopPropagation(); openRenameInspectionModal('${item.id}', '${escapeForJs(item.equipment_name || '')}', '${workOrderId}')"
 
-                        class="p-1 text-slate-400 hover:text-sky-600 active:scale-90 rounded-md transition" title="Pano İsmini Düzenle">
+                        class="p-1.5 text-slate-400 hover:text-sky-600 active:scale-90 rounded-md transition" title="Pano İsmini Düzenle">
 
                         <i class="fa-solid fa-pen text-xs"></i>
 
@@ -5565,7 +5603,7 @@ function renderWoInspectionRows(list, workOrderId) {
 
                     <button onclick="event.stopPropagation(); deleteInspectionItem('${item.id}', '${workOrderId}', '${(item.equipment_name || 'Muayene Raporu').replace(/'/g, "\'")}')"
 
-                        class="p-1 text-slate-400 hover:text-rose-600 active:scale-90 rounded-md transition" title="Raporu Sil">
+                        class="p-1.5 text-slate-400 hover:text-rose-600 active:scale-90 rounded-md transition" title="Raporu Sil">
 
                         <i class="fa-solid fa-trash-can text-xs text-rose-500"></i>
 
@@ -7959,7 +7997,7 @@ function paintInspectionEditorUI() {
 
                 <div class="flex items-center justify-between gap-2">
 
-                    <button onclick="navigateTo('work-order-details', {id: '${insp.work_order_id || 43129}'})" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs rounded-xl shrink-0 transition border border-slate-200">
+                    <button onclick="if(typeof flushPendingAutoSave==='function') flushPendingAutoSave(); navigateTo('work-order-details', {id: '${insp.work_order_id || 43129}'})" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs rounded-xl shrink-0 transition border border-slate-200">
 
                         <i class="fa-solid fa-arrow-left mr-1"></i>Geri
 
@@ -8121,6 +8159,14 @@ function updateInspectionName(newName) {
         if (!AppState.currentFormData.companyInfo) AppState.currentFormData.companyInfo = {};
 
         AppState.currentFormData.companyInfo.equipmentName = newName;
+
+        // 2201: 5.1 ve 6.1 Pano Adı alanlarını üstteki Ekipman Adı ile otomatik senkron tut
+        if (String(AppState.currentInspection.template_id) === '2201' && AppState.currentFormData.answers) {
+            const serial = (AppState.currentFormData.companyInfo.serialCode || AppState.currentInspection.serial_no || '').trim();
+            const fullPanelLabel = serial && newName ? `${newName} (${serial})` : (newName || '');
+            AppState.currentFormData.answers['q_4806ef6b-a811-4c26-b76f-6467779e5499'] = newName || '';
+            AppState.currentFormData.answers['q_3e5cfce4-bb64-4339-b086-f0947d8dbccb'] = fullPanelLabel;
+        }
 
     }
 
@@ -8291,6 +8337,41 @@ function setReportEndTimeNow() {
     updateReportDateTimeField('endTime', nowTime);
 }
 
+function setReportEndTimeOffset(offsetMinutes = 30) {
+    ensureCompanyInfo();
+    const ci = AppState.currentFormData.companyInfo;
+    const startStr = String(ci.controlStartTime || getLocalNowHHMM()).trim();
+    const m = startStr.match(/^(\d{1,2}):(\d{2})$/);
+    if (!m) return setReportEndTimeNow();
+    const baseMins = parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+    const nextTotal = baseMins + (parseInt(offsetMinutes, 10) || 30);
+    const dayShift = Math.floor(nextTotal / 1440);
+    const rem = ((nextTotal % 1440) + 1440) % 1440;
+    const hh = String(Math.floor(rem / 60)).padStart(2, '0');
+    const mm = String(rem % 60).padStart(2, '0');
+    const newEndTime = `${hh}:${mm}`;
+    const startIso = ci.controlStartDate || getLocalTodayIso();
+    const newEndIso = dayShift > 0 ? addDaysIso(startIso, dayShift) : startIso;
+    ci.controlEndDate = newEndIso;
+    ci.controlEndTime = newEndTime;
+    const endTimeEl = document.getElementById('editorEndTimeInput');
+    if (endTimeEl) endTimeEl.value = newEndTime;
+    const endDateEl = document.getElementById('editorEndDateInput');
+    if (endDateEl) endDateEl.value = newEndIso;
+    updateReportDateTimeField('endTime', newEndTime);
+}
+
+function toggleCompanyDetailsEdit() {
+    AppState.showCompanyDetailsEdit = !AppState.showCompanyDetailsEdit;
+    paintInspectionEditorUI();
+}
+
+function toggleDeviceRowDetails(dIdx) {
+    if (!AppState.expandedDeviceRows) AppState.expandedDeviceRows = {};
+    AppState.expandedDeviceRows[dIdx] = !AppState.expandedDeviceRows[dIdx];
+    paintInspectionEditorUI();
+}
+
 function updateReportDateManual(isoVal) {
     const iso = toIsoDate(isoVal);
     if (!iso || !AppState.currentInspection || !AppState.currentFormData) return;
@@ -8318,6 +8399,9 @@ function updateReportNextDateManual(isoVal) {
 
 window.updateReportDateTimeField = updateReportDateTimeField;
 window.setReportEndTimeNow = setReportEndTimeNow;
+window.setReportEndTimeOffset = setReportEndTimeOffset;
+window.toggleCompanyDetailsEdit = toggleCompanyDetailsEdit;
+window.toggleDeviceRowDetails = toggleDeviceRowDetails;
 window.updateReportDateManual = updateReportDateManual;
 window.updateReportNextDateManual = updateReportNextDateManual;
 
@@ -8331,7 +8415,8 @@ function renderSharedCompanyInfoSection() {
 
     const ci = AppState.currentFormData.companyInfo;
 
-
+    const hasFirmData = Boolean((ci.firmName || '').trim());
+    const showFirmInputs = !hasFirmData || Boolean(AppState.showCompanyDetailsEdit);
 
     return `
 
@@ -8341,61 +8426,94 @@ function renderSharedCompanyInfoSection() {
 
                 <span>1. Firma ve Rapor Bilgileri</span>
 
-                <span class="text-[11px] text-slate-300 font-mono hidden sm:inline">${escapeHtml(ci.reportNo || insp.report_no || '')}</span>
+                <div class="flex items-center gap-2">
+                    <span class="text-[11px] text-slate-300 font-mono hidden sm:inline">${escapeHtml(ci.reportNo || insp.report_no || '')}</span>
+                    ${hasFirmData ? `
+                        <button type="button" onclick="toggleCompanyDetailsEdit()"
+                            class="px-2 py-0.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-100 text-[11px] font-bold flex items-center gap-1 transition">
+                            <i class="fa-solid ${showFirmInputs ? 'fa-chevron-up' : 'fa-pen'} text-[10px] text-sky-400"></i>
+                            <span>${showFirmInputs ? 'Firma Bilgilerini Gizle' : 'Firma Bilgilerini Düzenle'}</span>
+                        </button>
+                    ` : ''}
+                </div>
 
             </div>
 
-            <div class="p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+            <div class="p-3.5 space-y-2.5 text-xs">
 
-                <div class="sm:col-span-2">
+                ${hasFirmData && !showFirmInputs ? `
+                    <!-- SADE FİRMA ÖZET KARTI (Kafa karıştıran 5 mükerrer kutu yerine tek satır özet) -->
+                    <div onclick="toggleCompanyDetailsEdit()" class="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200 cursor-pointer flex items-center justify-between gap-2 transition">
+                        <div class="min-w-0 flex-1 space-y-0.5">
+                            <div class="font-bold text-slate-900 truncate flex items-center gap-1.5">
+                                <i class="fa-solid fa-building text-sky-600 text-[11px]"></i>
+                                <span>${escapeHtml(ci.firmName)}</span>
+                                ${ci.address ? `<span class="text-slate-400 font-normal">·</span><span class="text-slate-600 font-medium truncate">${escapeHtml(ci.address)}</span>` : ''}
+                            </div>
+                            <div class="text-[10px] text-slate-500 flex items-center gap-2 flex-wrap font-mono">
+                                ${ci.isgKatipNo ? `<span>İSG-KATİP: <strong>${escapeHtml(ci.isgKatipNo)}</strong></span>` : ''}
+                                ${ci.sgkSicilNo ? `<span>SGK: <strong>${escapeHtml(ci.sgkSicilNo)}</strong></span>` : ''}
+                                ${ci.contactEmail ? `<span><i class="fa-regular fa-envelope mr-0.5"></i>${escapeHtml(ci.contactEmail)}</span>` : ''}
+                            </div>
+                        </div>
+                        <span class="px-2 py-1 rounded-lg bg-white border border-slate-200 text-slate-600 font-bold text-[10px] shrink-0">Düzenle ▾</span>
+                    </div>
+                ` : `
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 p-2.5 rounded-xl bg-slate-50/70 border border-slate-200">
+                        <div class="sm:col-span-2">
+                            <label class="block font-bold text-slate-700 mb-1">Firma Adı</label>
+                            <input type="text" value="${escapeHtml(ci.firmName || '')}" placeholder=""
+                                oninput="AppState.currentFormData.companyInfo.firmName=this.value; triggerAutoSave();"
+                                class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-semibold bg-white">
+                        </div>
 
-                    <label class="block font-bold text-slate-700 mb-1">Firma Adı</label>
+                        <div class="sm:col-span-2">
+                            <label class="block font-bold text-slate-700 mb-1">Periyodik Kontrol Adresi</label>
+                            <input type="text" value="${escapeHtml(ci.address || '')}" placeholder=""
+                                oninput="AppState.currentFormData.companyInfo.address=this.value; triggerAutoSave();"
+                                class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
+                        </div>
 
-                    <input type="text" value="${escapeHtml(ci.firmName || '')}" placeholder=""
+                        <div>
+                            <label class="block font-bold text-slate-700 mb-1">İSG-KATİP Sözleşme ID</label>
+                            <input type="text" value="${escapeHtml(ci.isgKatipNo || '')}" placeholder=""
+                                oninput="AppState.currentFormData.companyInfo.isgKatipNo=this.value; triggerAutoSave();"
+                                class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
+                        </div>
 
-                        oninput="AppState.currentFormData.companyInfo.firmName=this.value; triggerAutoSave();"
+                        <div>
+                            <label class="block font-bold text-slate-700 mb-1">SGK Sicil No</label>
+                            <input type="text" value="${escapeHtml(ci.sgkSicilNo || '')}" placeholder=""
+                                oninput="AppState.currentFormData.companyInfo.sgkSicilNo=this.value; triggerAutoSave();"
+                                class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
+                        </div>
 
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-semibold bg-white">
+                        <div class="sm:col-span-2">
+                            <label class="block font-bold text-slate-700 mb-1"><i class="fa-solid fa-envelope text-sky-600 mr-1"></i>Yetkili E-posta Adresi</label>
+                            <input type="email" value="${escapeHtml(ci.contactEmail || '')}" placeholder="yetkili@firma.com"
+                                oninput="AppState.currentFormData.companyInfo.contactEmail=this.value; AppState.currentInspection.contact_email=this.value; if(AppState.currentInspection.work_order_id && typeof saveWorkOrderEmailRealtime==='function'){saveWorkOrderEmailRealtime(AppState.currentInspection.work_order_id, this.value);} triggerAutoSave();"
+                                class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
+                        </div>
+                    </div>
+                `}
 
+                <div class="grid grid-cols-2 gap-2.5">
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Seri No / Pano Kodu</label>
+                        <input type="text" value="${escapeHtml(ci.serialCode || '')}" placeholder="Örn: ADP-01"
+                            oninput="AppState.currentFormData.companyInfo.serialCode=this.value; AppState.currentInspection.serial_no=this.value; triggerAutoSave();"
+                            class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-slate-700 mb-1">Rapor No</label>
+                        <input type="text" value="${escapeHtml(ci.reportNo || insp.report_no || '')}" placeholder=""
+                            oninput="AppState.currentFormData.companyInfo.reportNo=this.value; AppState.currentInspection.report_no=this.value; triggerAutoSave();"
+                            class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono bg-white">
+                    </div>
                 </div>
 
-                <div class="sm:col-span-2">
-
-                    <label class="block font-bold text-slate-700 mb-1">Periyodik Kontrol Adresi</label>
-
-                    <input type="text" value="${escapeHtml(ci.address || '')}" placeholder=""
-
-                        oninput="AppState.currentFormData.companyInfo.address=this.value; triggerAutoSave();"
-
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
-
-                </div>
-
-                <div>
-
-                    <label class="block font-bold text-slate-700 mb-1">Seri No / Pano Kodu</label>
-
-                    <input type="text" value="${escapeHtml(ci.serialCode || '')}" placeholder=""
-
-                        oninput="AppState.currentFormData.companyInfo.serialCode=this.value; AppState.currentInspection.serial_no=this.value; triggerAutoSave();"
-
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
-
-                </div>
-
-                <div>
-
-                    <label class="block font-bold text-slate-700 mb-1">Rapor No</label>
-
-                    <input type="text" value="${escapeHtml(ci.reportNo || insp.report_no || '')}" placeholder=""
-
-                        oninput="AppState.currentFormData.companyInfo.reportNo=this.value; AppState.currentInspection.report_no=this.value; triggerAutoSave();"
-
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono bg-white">
-
-                </div>
-
-                <div class="sm:col-span-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
 
                     <div class="flex items-center justify-between gap-2 flex-wrap">
 
@@ -8453,31 +8571,9 @@ function renderSharedCompanyInfoSection() {
 
                             <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Bitiş Saati</label>
 
-                            <div class="flex items-center gap-1">
+                            <input type="time" id="editorEndTimeInput" value="${escapeHtml(ci.controlEndTime || '')}"
 
-                                <input type="time" id="editorEndTimeInput" value="${escapeHtml(ci.controlEndTime || '')}"
-
-                                    onchange="updateReportDateTimeField('endTime', this.value)"
-
-                                    class="flex-1 min-w-0 border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-semibold bg-white">
-
-                                <button type="button" onclick="setReportEndTimeNow()" class="px-2 py-1.5 bg-sky-100 hover:bg-sky-200 text-sky-800 rounded-lg text-[10px] font-bold shrink-0 border border-sky-200 transition" title="Şu anki saati bitiş saati yap">Şimdi</button>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-slate-200/70">
-
-                        <div>
-
-                            <label class="block text-[10px] font-bold text-slate-600 mb-0.5">Sonraki Periyodik Kontrol (${(typeof ReportDateTimePrefs !== 'undefined') ? ReportDateTimePrefs.getValidityMonths(insp.template_id) : 12} Ay)</label>
-
-                            <input type="date" id="editorQuickNextDateInput" value="${escapeHtml(toIsoDate(AppState.currentFormData.nextInspectionDate || ci.nextControlDate) || '')}"
-
-                                onchange="updateReportNextDateManual(this.value)"
+                                onchange="updateReportDateTimeField('endTime', this.value)"
 
                                 class="w-full border border-slate-300 rounded-lg px-2 py-1.5 text-xs font-semibold bg-white">
 
@@ -8485,41 +8581,22 @@ function renderSharedCompanyInfoSection() {
 
                     </div>
 
-                </div>
+                    <div class="flex items-center justify-between gap-2 pt-1 border-t border-slate-200/70 flex-wrap">
+                        <div class="flex items-center gap-1 flex-wrap">
+                            <span class="text-[10px] font-bold text-slate-500 mr-0.5">Hızlı Bitiş:</span>
+                            <button type="button" onclick="setReportEndTimeOffset(20)" class="px-2 py-1 bg-white hover:bg-sky-50 text-slate-700 rounded-md text-[10px] font-bold border border-slate-300 transition">+20 dk</button>
+                            <button type="button" onclick="setReportEndTimeOffset(30)" class="px-2 py-1 bg-white hover:bg-sky-50 text-slate-700 rounded-md text-[10px] font-bold border border-slate-300 transition">+30 dk</button>
+                            <button type="button" onclick="setReportEndTimeOffset(60)" class="px-2 py-1 bg-white hover:bg-sky-50 text-slate-700 rounded-md text-[10px] font-bold border border-slate-300 transition">+1 Saat</button>
+                            <button type="button" onclick="setReportEndTimeNow()" class="px-2 py-1 bg-sky-100 hover:bg-sky-200 text-sky-800 rounded-md text-[10px] font-bold border border-sky-200 transition">Şimdi</button>
+                        </div>
 
-                <div>
-
-                    <label class="block font-bold text-slate-700 mb-1">İSG-KATİP Sözleşme ID</label>
-
-                    <input type="text" value="${escapeHtml(ci.isgKatipNo || '')}" placeholder=""
-
-                        oninput="AppState.currentFormData.companyInfo.isgKatipNo=this.value; triggerAutoSave();"
-
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
-
-                </div>
-
-                <div>
-
-                    <label class="block font-bold text-slate-700 mb-1">SGK Sicil No</label>
-
-                    <input type="text" value="${escapeHtml(ci.sgkSicilNo || '')}" placeholder=""
-
-                        oninput="AppState.currentFormData.companyInfo.sgkSicilNo=this.value; triggerAutoSave();"
-
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
-
-                </div>
-
-                <div class="sm:col-span-2">
-
-                    <label class="block font-bold text-slate-700 mb-1"><i class="fa-solid fa-envelope text-sky-600 mr-1"></i>Yetkili E-posta Adresi</label>
-
-                    <input type="email" value="${escapeHtml(ci.contactEmail || '')}" placeholder="yetkili@firma.com"
-
-                        oninput="AppState.currentFormData.companyInfo.contactEmail=this.value; AppState.currentInspection.contact_email=this.value; if(AppState.currentInspection.work_order_id && typeof saveWorkOrderEmailRealtime==='function'){saveWorkOrderEmailRealtime(AppState.currentInspection.work_order_id, this.value);} triggerAutoSave();"
-
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
+                        <div class="flex items-center gap-1.5">
+                            <label class="text-[10px] font-bold text-slate-600">Sonraki Kontrol:</label>
+                            <input type="date" id="editorQuickNextDateInput" value="${escapeHtml(toIsoDate(AppState.currentFormData.nextInspectionDate || ci.nextControlDate) || '')}"
+                                onchange="updateReportNextDateManual(this.value)"
+                                class="border border-slate-300 rounded-lg px-2 py-1 text-[11px] font-semibold bg-white">
+                        </div>
+                    </div>
 
                 </div>
 
@@ -8637,36 +8714,46 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
         const subLabel = [dev.brand, dev.model].filter(Boolean).join(' ').trim();
         const calStatus = (mgr && dev.validDate) ? mgr.getCalibrationStatus(dev.validDate) : null;
         const isTherm = Boolean(dev.isThermal || (String(dev.category || '').toLowerCase().includes('termal')) || (String(dev.name || '').toLowerCase().includes('termal')));
+        const isBlankRow = isSharedMeasuringDeviceRowBlank(dev);
+        const isExpanded = isBlankRow || Boolean(AppState.expandedDeviceRows && AppState.expandedDeviceRows[dIdx]);
+        const displayName = (dev.name || subLabel || `Cihaz #${dIdx + 1}`).trim();
 
         return `
                     <div class="p-2.5 rounded-xl border ${isTherm ? 'border-orange-200 bg-orange-50/30' : 'border-slate-200 bg-slate-50'} space-y-2">
 
-                        <div class="flex items-center justify-between border-b border-slate-200/80 pb-1.5 gap-2 flex-wrap">
+                        <div class="flex items-center justify-between gap-2 flex-wrap">
 
-                            <div class="flex items-center gap-1.5 flex-wrap min-w-0">
-                                <span class="font-bold text-slate-800">Cihaz #${dIdx + 1}</span>
-                                ${dev.code ? `<span class="px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 border border-sky-200 font-mono font-bold text-[10px]">${escapeHtml(dev.code)}</span>` : ''}
-                                ${subLabel ? `<span class="px-1.5 py-0.5 rounded bg-slate-200/80 text-slate-800 font-bold text-[10px] truncate max-w-[160px]">${escapeHtml(subLabel)}</span>` : ''}
+                            <div onclick="toggleDeviceRowDetails(${dIdx})" class="flex items-center gap-1.5 flex-wrap min-w-0 flex-1 cursor-pointer">
+                                <span class="w-5 h-5 rounded-md bg-slate-800 text-white font-mono font-bold text-[10px] flex items-center justify-center shrink-0">${dIdx + 1}</span>
+                                <span class="font-bold text-slate-900 truncate">${escapeHtml(displayName)}</span>
+                                ${subLabel && subLabel.toLowerCase() !== displayName.toLowerCase() ? `<span class="px-1.5 py-0.5 rounded bg-slate-200/80 text-slate-800 font-bold text-[10px] truncate max-w-[140px]">${escapeHtml(subLabel)}</span>` : ''}
+                                ${dev.serial ? `<span class="text-[10px] font-mono text-slate-500">SN: <strong>${escapeHtml(dev.serial)}</strong></span>` : ''}
                                 ${calStatus && calStatus.status !== 'unknown' ? `<span class="px-1.5 py-0.5 rounded-full border font-bold text-[9px] ${calStatus.badgeClass}">${escapeHtml(calStatus.label)}</span>` : ''}
                             </div>
 
-                            <div class="flex items-center gap-1.5 shrink-0">
+                            <div class="flex items-center gap-1 shrink-0">
+                                <button type="button" onclick="toggleDeviceRowDetails(${dIdx})"
+                                    class="px-2 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold text-[10px] flex items-center gap-1 transition"
+                                    title="Seri No ve Kalibrasyon detaylarını göster/gizle">
+                                    <span>${isExpanded ? 'Gizle ▴' : 'Detay ▾'}</span>
+                                </button>
                                 ${hasCatalogUi ? `
                                     <button type="button" onclick="openReportSwapDeviceModal(${dIdx})"
-                                        class="px-2 py-1 rounded-lg bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-bold text-[11px] flex items-center gap-1 shadow-2xs transition">
+                                        class="px-2 py-1 rounded-lg bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-bold text-[10px] flex items-center gap-1 shadow-2xs transition">
                                         <i class="fa-solid fa-right-left"></i>
                                         <span>Değiştir</span>
                                     </button>
                                 ` : ''}
                                 <button type="button" onclick="removeMeasuringDeviceRow(${dIdx})"
-                                    class="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-600 border border-rose-200 font-semibold text-[11px] flex items-center gap-1 transition">
-                                    <i class="fa-solid fa-trash-can"></i> Sil
+                                    class="px-1.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-600 border border-rose-200 font-semibold text-[10px] flex items-center transition" title="Cihazı Rapordan Kaldır">
+                                    <i class="fa-solid fa-trash-can"></i>
                                 </button>
                             </div>
 
                         </div>
 
-                        <div class="grid grid-cols-2 gap-2">
+                        ${!isExpanded ? '' : `
+                        <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200/80">
 
                             <div class="col-span-2">
 
@@ -8729,6 +8816,7 @@ function renderSharedMeasuringDevicesSection(title = 'Ölçüm Aletleri Bilgiler
                             </div>
 
                         </div>
+                        `}
 
                     </div>
         `;
@@ -9090,9 +9178,12 @@ function getElectrical22DefectLines(fd) {
     ELECTRICAL_22_LINK_RULES.forEach(rule => {
         const val = String(fd.answers[`q_${rule.guid}`] || '').trim();
         if (val === 'Uygunsuz') {
+            // Eğer bağlı olduğu 5.x Gözle Kontrol maddesinde veya 6.1 Linye tablosunda zaten kusur seçiliyse,
+            // Bölüm 7'ye aynı kusur cümlesini ikinci kez (mükerrer) ekleme!
             const linkedVisual = getElectrical22VisualDetailNotes(rule, fd);
-            const detail = linkedVisual || rule.defectText;
-            lines.push(`• [2.2 Tespit Edilen Bilgiler - ${rule.shortLabel}]: Uygunsuz (${detail})`);
+            if (linkedVisual) return;
+            if (rule.isRcdRule && evaluateElectrical22RuleStatus(rule, fd) === 'Uygunsuz') return;
+            lines.push(`• [2.2 Tespit Edilen Bilgiler - ${rule.shortLabel}]: Uygunsuz (${rule.defectText})`);
         }
     });
     return lines;
@@ -9540,6 +9631,107 @@ function ensureThermalCameraDevice() {
 
 }
 
+function ensureElectrical2201SmartRadioAndPanelDefaults() {
+    const insp = AppState.currentInspection;
+    const fd = AppState.currentFormData;
+    if (!insp || !fd || String(insp.template_id) !== '2201') return;
+    if (!fd.answers || typeof fd.answers !== 'object') fd.answers = {};
+    let changed = false;
+
+    // 1. Pano Adı (5.1 ve 6.1) üstteki Ekipman Adı ile otomatik senkron olsun (3 kez sorulmasın, PDF'te boş çıkmasın)
+    const eqName = String(insp.equipment_name || fd.companyInfo?.equipmentName || '').trim();
+    const serial = String(fd.companyInfo?.serialCode || insp.serial_no || '').trim();
+    if (eqName) {
+        const q51 = 'q_4806ef6b-a811-4c26-b76f-6467779e5499';
+        const q61 = 'q_3e5cfce4-bb64-4339-b086-f0947d8dbccb';
+        if (!String(fd.answers[q51] || '').trim()) {
+            fd.answers[q51] = eqName;
+            changed = true;
+        }
+        if (!String(fd.answers[q61] || '').trim()) {
+            fd.answers[q61] = serial ? `${eqName} (${serial})` : eqName;
+            changed = true;
+        }
+    }
+
+    // 2. Resmi PDF'te boş kalmaması gereken temel radyo butonları için akıllı varsayılanlar (ilk açılışta)
+    if (!fd._smartRadiosInitialized) {
+        const defaultRadioMap = {
+            'q_18337b76-c549-4c86-9149-0f7d093efc27': 'Periyodik Kontrol', // Kontrol nedeni
+            'q_03facbae-a3ef-4403-88db-2c86da421539': 'Var',               // Tesise ait proje var mı?
+            'q_f30211b6-9dcd-4c8d-9fad-5f45c6bb436a': 'Var',               // Tek hat şeması var mı?
+            'q_a1206df8-1147-4f44-8b29-b23005235b6b': 'AA(3 faz-4 tel)',   // Faz iletkenlerinin sayısı ve tipi
+            'q_ac5e5f99-6517-4c09-b8c3-2c38a8f0f1e8': '230/400',           // Şebeke gerilimi (V)
+            'q_4cb81e03-b7c1-4f66-b728-a98fc76cd0ef': '50',                // Nominal frekans, f (Hz)
+            'q_b5b1fe8c-0b83-4727-8d53-3064990806ce': 'Yok',               // Tesisatta kapsamlı değişiklik var mı?(>%20)
+            'q_ddb49ead-c7b4-42b9-b449-0cc456ce6fbc': 'Hayır',             // DKD/SPD kullanılmış mı?
+            'q_ac00a719-779a-4eed-a17c-153d5d1c2342': 'Var',               // Bir önceki periyodik kontrol etiketi var mı?
+            'q_97839257-ba72-480f-8e3f-b044a1b0a8f1': 'Çevrim empedansı',  // Ölçüm ve doğrulama metodu
+            'q_dc17ec9f-90bc-442a-a61b-729215d36fa0': 'Mevcut Değil'       // Aşırı gerilim koruma (DKD) tipi
+        };
+        Object.keys(defaultRadioMap).forEach(k => {
+            if (!String(fd.answers[k] || '').trim()) {
+                fd.answers[k] = defaultRadioMap[k];
+                changed = true;
+            }
+        });
+        fd._smartRadiosInitialized = true;
+    }
+
+    if (changed && typeof triggerAutoSave === 'function') {
+        triggerAutoSave();
+    }
+}
+
+function applyElectrical2201StandardFieldDefaults() {
+    const fd = AppState.currentFormData;
+    if (!fd) return;
+    if (!fd.answers) fd.answers = {};
+    const stdMap = {
+        'q_26ee591d-05ba-4a47-857d-e40120d312ee': 'TN-S',
+        'q_ac5e5f99-6517-4c09-b8c3-2c38a8f0f1e8': '230/400',
+        'q_03facbae-a3ef-4403-88db-2c86da421539': 'Var',
+        'q_f30211b6-9dcd-4c8d-9fad-5f45c6bb436a': 'Var',
+        'q_18337b76-c549-4c86-9149-0f7d093efc27': 'Periyodik Kontrol',
+        'q_4f035efc-81b9-4568-9ee9-8a3c0daa0bd6': 'Temel',
+        'q_06cdc2dc-0830-49c4-9b36-a6d26c7344cc': 'Endüstri',
+        'q_04faae5e-066a-4da0-a3a3-f8376a0f7a71': 'Elektrik Dağıtım ve Kuvvet/Aydınlatma Beslemesi',
+        'q_a1206df8-1147-4f44-8b29-b23005235b6b': 'AA(3 faz-4 tel)',
+        'q_480aca54-3a02-45d6-88e5-cbaa2353cfc6': '0,4',
+        'q_4cb81e03-b7c1-4f66-b728-a98fc76cd0ef': '50',
+        'q_b5b1fe8c-0b83-4727-8d53-3064990806ce': 'Yok',
+        'q_ac00a719-779a-4eed-a17c-153d5d1c2342': 'Var',
+        'q_97839257-ba72-480f-8e3f-b044a1b0a8f1': 'Çevrim empedansı',
+        'q_dc17ec9f-90bc-442a-a61b-729215d36fa0': 'Mevcut Değil'
+    };
+    let count = 0;
+    Object.keys(stdMap).forEach(k => {
+        if (!String(fd.answers[k] || '').trim()) {
+            fd.answers[k] = stdMap[k];
+            count++;
+        }
+    });
+    fd._details21Initialized = true;
+    fd._smartRadiosInitialized = true;
+    syncElectrical2201Section22FromTriggers(null, false);
+    triggerAutoSave();
+    paintInspectionEditorUI();
+    showToast(count > 0 ? `${count} adet boş tesisat alanı standart saha değerleriyle dolduruldu!` : 'Tüm standart alanlar zaten dolu.');
+}
+window.applyElectrical2201StandardFieldDefaults = applyElectrical2201StandardFieldDefaults;
+
+function toggleElectrical21AdvancedDrawer() {
+    AppState.showElectrical21Advanced = !AppState.showElectrical21Advanced;
+    paintInspectionEditorUI();
+}
+window.toggleElectrical21AdvancedDrawer = toggleElectrical21AdvancedDrawer;
+
+function toggleThermalManualDetail() {
+    AppState.showThermalManualDetail = !AppState.showThermalManualDetail;
+    paintInspectionEditorUI();
+}
+window.toggleThermalManualDetail = toggleThermalManualDetail;
+
 function renderElectrical2201Editor() {
 
     const tpl = AppState.electricalTemplate;
@@ -9560,6 +9752,8 @@ function renderElectrical2201Editor() {
 
     ensureElectrical2201Section61Defaults();
 
+    ensureElectrical2201SmartRadioAndPanelDefaults();
+
     ensureElectrical2201Section22Defaults();
 
 
@@ -9570,59 +9764,68 @@ function renderElectrical2201Editor() {
 
 
 
-    if (AppState.activeAreaIndex === undefined) AppState.activeAreaIndex = 0;
+    if (AppState.activeAreaIndex === undefined || AppState.activeAreaIndex === 1) AppState.activeAreaIndex = 0;
 
     const activeIdx = AppState.showAllAreas ? -1 : AppState.activeAreaIndex;
 
+    // Gözle kontrol uygunsuzluk sayısı
+    let visualDefectCount = 0;
+    (areas[2]?.topics || []).forEach(t => {
+        (t.questions || []).forEach(q => {
+            const v = fd.answers?.[`q_${q.guid}`];
+            if (v === 'Uygun Değil' || v === 'Kısmen Uygun') visualDefectCount++;
+        });
+    });
 
+    const linyeCount = (fd.tableRows?.topic_3_3 || []).filter(r => r && Object.values(r).some(v => String(v || '').trim())).length;
+    const photoCount = (fd.photos || []).length;
 
-    const tabs = [
-        { label: '1-2. Firma & Ekipman', id: 0 },
-        { label: '3-4. Cihazlar & Aletler', id: 1 },
-        { label: '5. Gözle Kontrol', id: 2 },
-        { label: '6. Fonksiyon Testleri', id: 3 },
-        { label: `8. Fotoğraflar (${(fd.photos || []).length})`, id: 4 },
-        { label: '7-11. Kusur, Not & Onay', id: 5 },
-        { label: 'Tüm Bölümler (1-11)', id: -1 }
+    // 5 Net, Mantıksal Sıralı Adım + Tümü
+    const steps = [
+        { label: '1. Genel & Cihaz', short: '1. Genel', id: 0, icon: 'fa-building-circle-check' },
+        { label: `2. Gözle Kontrol${visualDefectCount > 0 ? ` (${visualDefectCount}✕)` : ''}`, short: '2. Gözle', id: 2, icon: 'fa-eye', hasDefect: visualDefectCount > 0 },
+        { label: `3. Ölçüm & Test${linyeCount > 0 ? ` (${linyeCount})` : ''}`, short: '3. Ölçüm', id: 3, icon: 'fa-bolt-lightning' },
+        { label: `4. Fotoğraf (${photoCount})`, short: `4. Foto (${photoCount})`, id: 4, icon: 'fa-camera' },
+        { label: '5. Kusur & Sonuç', short: '5. Sonuç', id: 5, icon: 'fa-file-signature', isBad: fd.overallResult === 'UYGUN DEĞİL' }
     ];
 
 
 
     const tabsHtml = `
-
-        <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-
-            ${tabs.map(t => {
-
-                const isActive = activeIdx === t.id;
-
-                return `
-
-                    <button onclick="if (${t.id} === -1) { AppState.showAllAreas = true; } else { AppState.showAllAreas = false; AppState.activeAreaIndex = ${t.id}; } paintInspectionEditorUI();"
-
-                        class="py-2 px-2.5 rounded-lg text-xs font-bold text-center truncate transition ${
-
-                            isActive ? 'bg-slate-900 text-white shadow-2xs' : 'bg-slate-100 text-slate-700 active:bg-slate-200'
-
-                        } ${t.id === -1 ? 'col-span-2 sm:col-span-1' : ''}">
-
-                        ${t.label}
-
-                    </button>
-
-                `;
-
-            }).join('')}
-
+        <div class="bg-white p-1.5 rounded-xl border border-slate-200 shadow-2xs space-y-1.5">
+            <div class="grid grid-cols-5 gap-1">
+                ${steps.map(s => {
+                    const isActive = activeIdx === s.id;
+                    const defectStyle = s.hasDefect && !isActive ? 'bg-rose-50 text-rose-700 border border-rose-200' : '';
+                    const badResultStyle = s.isBad && !isActive ? 'bg-rose-50 text-rose-800 border border-rose-200' : '';
+                    return `
+                        <button type="button" onclick="AppState.showAllAreas = false; AppState.activeAreaIndex = ${s.id}; paintInspectionEditorUI(); document.getElementById('pageContent')?.scrollTo({top: 0, behavior: 'smooth'});"
+                            class="py-2 px-1 rounded-lg text-[11px] font-bold text-center truncate transition flex flex-col items-center justify-center gap-0.5 ${
+                                isActive
+                                    ? 'bg-slate-900 text-white shadow-xs'
+                                    : (defectStyle || badResultStyle || 'bg-slate-100 text-slate-700 hover:bg-slate-200/80')
+                            }">
+                            <i class="fa-solid ${s.icon} text-[11px] ${isActive ? 'text-amber-400' : (s.hasDefect || s.isBad ? 'text-rose-600' : 'text-slate-500')}"></i>
+                            <span class="truncate w-full">${s.short}</span>
+                        </button>
+                    `;
+                }).join('')}
+            </div>
+            <div class="flex items-center justify-between px-1 pt-0.5 text-[11px]">
+                <span class="font-bold text-slate-700 truncate">
+                    ${activeIdx === -1 ? '📋 Tüm Bölümler (1-11) Görünümü' : (steps.find(s => s.id === activeIdx)?.label || '')}
+                </span>
+                <button type="button" onclick="AppState.showAllAreas = ${activeIdx === -1 ? 'false' : 'true'}; paintInspectionEditorUI();"
+                    class="px-2 py-0.5 rounded-md font-bold text-[10px] transition ${activeIdx === -1 ? 'bg-slate-900 text-amber-400' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}">
+                    ${activeIdx === -1 ? 'Adım Görünümüne Dön' : 'Tüm Bölümleri Aç (1-11)'}
+                </button>
+            </div>
         </div>
-
     `;
 
 
 
     const showTab0 = (activeIdx === 0 || activeIdx === -1);
-
-    const showTab1 = (activeIdx === 1 || activeIdx === -1);
 
     const showTab2 = (activeIdx === 2 || activeIdx === -1);
 
@@ -9636,21 +9839,51 @@ function renderElectrical2201Editor() {
 
     const section1Html = showTab0 ? renderSharedCompanyInfoSection() : '';
 
-    const section4Html = showTab1 ? renderSharedMeasuringDevicesSection('4. Ölçüm Aletleri Bilgileri') : '';
+    const area0Html = (showTab0 && areas[0]) ? renderElectrical2201AreaBlock(areas[0], '2') : '';
+
+    const area1Html = (showTab0 && areas[1]) ? renderElectrical2201AreaBlock(areas[1], '3') : '';
+
+    const section4Html = showTab0 ? renderSharedMeasuringDevicesSection('4. Ölçüm Aletleri Bilgileri') : '';
+
+    const area2Html = (showTab2 && areas[2]) ? renderElectrical2201AreaBlock(areas[2], '5') : '';
+
+    const area3Html = (showTab3 && areas[3]) ? renderElectrical2201AreaBlock(areas[3], '6') : '';
 
     const photosHtml = showTab4 ? renderPhotoSectionUI() : '';
 
     const evaluationHtml = showTab5 ? renderEvaluationAndFooterSection() : '';
 
-
-
-    const area0Html = (showTab0 && areas[0]) ? renderElectrical2201AreaBlock(areas[0], '2') : '';
-
-    const area1Html = (showTab1 && areas[1]) ? renderElectrical2201AreaBlock(areas[1], '3') : '';
-
-    const area2Html = (showTab2 && areas[2]) ? renderElectrical2201AreaBlock(areas[2], '5') : '';
-
-    const area3Html = (showTab3 && areas[3]) ? renderElectrical2201AreaBlock(areas[3], '6') : '';
+    // Alt Adım Geçiş Çubuğu (Kullanıcının tekrar en üste kaydırmasına gerek kalmaz)
+    let stepNavFooterHtml = '';
+    if (activeIdx !== -1) {
+        const curStepPos = steps.findIndex(s => s.id === activeIdx);
+        const prevStep = curStepPos > 0 ? steps[curStepPos - 1] : null;
+        const nextStep = (curStepPos >= 0 && curStepPos < steps.length - 1) ? steps[curStepPos + 1] : null;
+        stepNavFooterHtml = `
+            <div class="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between gap-2">
+                ${prevStep ? `
+                    <button type="button" onclick="AppState.showAllAreas = false; AppState.activeAreaIndex = ${prevStep.id}; paintInspectionEditorUI(); document.getElementById('pageContent')?.scrollTo({top: 0, behavior: 'smooth'});"
+                        class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition">
+                        <i class="fa-solid fa-arrow-left text-[10px]"></i>
+                        <span>${prevStep.short}</span>
+                    </button>
+                ` : `<div></div>`}
+                ${nextStep ? `
+                    <button type="button" onclick="AppState.showAllAreas = false; AppState.activeAreaIndex = ${nextStep.id}; paintInspectionEditorUI(); document.getElementById('pageContent')?.scrollTo({top: 0, behavior: 'smooth'});"
+                        class="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 active:scale-95 text-amber-400 font-black text-xs flex items-center gap-1.5 shadow-2xs transition">
+                        <span>Sonraki: ${nextStep.short}</span>
+                        <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                    </button>
+                ` : `
+                    <button type="button" onclick="printOfficialReport()"
+                        class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black text-xs flex items-center gap-1.5 shadow-2xs transition">
+                        <i class="fa-solid fa-file-pdf"></i>
+                        <span>PDF Önizle &amp; İndir</span>
+                    </button>
+                `}
+            </div>
+        `;
+    }
 
 
 
@@ -9675,6 +9908,8 @@ function renderElectrical2201Editor() {
 
             ${evaluationHtml}
 
+            ${stepNavFooterHtml}
+
         </div>
 
     `;
@@ -9689,19 +9924,28 @@ function renderElectrical2201AreaBlock(area, secNum) {
 
         <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
 
-            <div class="px-3.5 py-2.5 bg-slate-800 text-white font-bold text-xs flex items-center justify-between gap-2">
+            <div class="px-3.5 py-2.5 bg-slate-800 text-white font-bold text-xs flex items-center justify-between gap-2 flex-wrap">
 
                 <span class="truncate">${secNum}. ${area.name}</span>
 
-                ${area.index === 2 ? `<button onclick="markAllVisualChecksSuitable()" class="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-[11px] shrink-0">Boş Kalanları Uygun Yap</button>` : ''}
+                ${area.index === 0 ? `
+                    <button type="button" onclick="applyElectrical2201StandardFieldDefaults()"
+                        class="px-2.5 py-1 bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 font-bold rounded-lg text-[11px] shrink-0 flex items-center gap-1 shadow-2xs transition"
+                        title="Boş kalan standart şebeke, frekans, proje ve kontrol nedeni alanlarını tek tıkla doldur">
+                        <i class="fa-solid fa-bolt"></i>
+                        <span>Standart Değerleri Doldur</span>
+                    </button>
+                ` : ''}
+
+                ${area.index === 2 ? `<button onclick="markAllVisualChecksSuitable(false)" class="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-[11px] shrink-0">Tümünü Uygun Yap (✓)</button>` : ''}
 
             </div>
 
             ${area.index === 2 ? `
 
-                <div class="p-2.5 bg-slate-100 border-b border-slate-200">
+                <div class="p-2.5 bg-slate-100 border-b border-slate-200 flex items-center justify-between gap-2 flex-wrap">
 
-                    <div class="relative">
+                    <div class="relative flex-1 min-w-[200px]">
 
                         <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
 
@@ -9709,17 +9953,21 @@ function renderElectrical2201AreaBlock(area, secNum) {
 
                             oninput="AppState.visualSearchQuery=this.value; filterVisualCheckQuestionsLive(this.value);"
 
-                            placeholder="🔍 Maddelerde ara (Örn: klemens, kablo, etiket, yangın, priz)..."
+                            placeholder="🔍 Maddelerde ara (Örn: kapak, kablo, etiket, yangın, zemin)..."
 
                             class="w-full bg-white border border-slate-300 rounded-lg pl-8 pr-3 py-1.5 text-xs font-semibold focus:border-sky-500 focus:outline-none">
 
+                    </div>
+
+                    <div class="text-[10px] font-bold text-slate-500 px-1">
+                        <span class="text-emerald-700">✓ Uygun</span> · <span class="text-rose-700">✕ Kusur</span> · <span class="text-slate-600">N Uyg.Yok</span> · <span class="text-amber-700">G Görülemedi</span>
                     </div>
 
                 </div>
 
             ` : ''}
 
-            <div class="p-3 space-y-4">
+            <div class="p-3 space-y-3">
 
                 ${area.topics.map(topic => renderElectrical2201Topic(area, topic, secNum)).join('')}
 
@@ -9735,7 +9983,21 @@ function renderElectrical2201AreaBlock(area, secNum) {
 
 function renderElectrical2201Topic(area, topic, secNum) {
 
-    const subNum = `${secNum}.${topic.index + 1}`;
+    // 5.1 Pano Adı ve 6.2 Pano Adı alanları üstteki sarı Ekipman Adı kutusuyla otomatik senkron olduğundan ekranda tekrar gösterip kafa karıştırma
+    if ((area.index === 2 && topic.index === 0) || (area.index === 3 && topic.index === 1)) {
+        return '';
+    }
+
+    // Resmi Bakanlık PDF'i ile birebir uyumlu numaralandırma:
+    // Bölüm 6: 6.0 Ölçüm Metodu, 6.1 Pano Genel Ölçümleri, 6.1 Linye Tablosu, 6.2 Potansiyel Dengeleme, 6.3 Zemin İzolasyonu
+    let subNum = `${secNum}.${topic.index + 1}`;
+    if (area.index === 3) {
+        if (topic.index === 0) subNum = '6.0';
+        else if (topic.index === 2) subNum = '6.1';
+        else if (topic.index === 3) subNum = '6.1';
+        else if (topic.index === 4) subNum = '6.2';
+        else if (topic.index === 5) subNum = '6.3';
+    }
 
     const tKey = `topic_${area.index}_${topic.index}`;
 
@@ -9765,27 +10027,36 @@ function renderElectrical2201Topic(area, topic, secNum) {
 
             const val = AppState.currentFormData.answers[qKey];
 
-            const badgeCls = val === 'Uygun'
-
-                ? 'border-emerald-500 bg-emerald-50 text-emerald-900 font-bold'
-
-                : val === 'Uygun Değil'
-
-                ? 'border-rose-500 bg-rose-50 text-rose-900 font-bold'
-
-                : 'border-slate-300 bg-slate-50 text-slate-700 font-semibold';
-
-
-
             const isDefect = (val === 'Uygun Değil' || val === 'Kısmen Uygun');
 
             const selectedDefect = AppState.currentFormData.itemDefectSelections && AppState.currentFormData.itemDefectSelections[qKey]?.sentence;
+
+            const safeQTitle = q.question.replace(/'/g, "\\'");
+
+            // Tek dokunuşlu 4'lü buton grubu (Açılır menü yerine anında seçim!)
+            const quickBtns = [
+                { v: 'Uygun', lbl: '✓', title: 'Uygun', activeCls: 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' },
+                { v: 'Uygun Değil', lbl: '✕', title: 'Uygun Değil (Kusur Seç)', activeCls: 'bg-rose-600 text-white border-rose-600 shadow-2xs' },
+                { v: 'Uygulaması Yok', lbl: 'N', title: 'Uygulaması Yok', activeCls: 'bg-slate-700 text-white border-slate-700 shadow-2xs' },
+                { v: 'Görülemedi', lbl: 'G', title: 'Görülemedi', activeCls: 'bg-amber-500 text-slate-950 border-amber-500 shadow-2xs' }
+            ].map(b => {
+                const isSel = val === b.v;
+                return `
+                    <button type="button" onclick="handleAnswerChange('${qKey}', '${b.v}', '${safeQTitle}')"
+                        title="${b.title}"
+                        class="w-8 h-7 rounded-lg border text-xs font-black flex items-center justify-center transition active:scale-90 ${
+                            isSel ? b.activeCls : 'bg-white hover:bg-slate-100 text-slate-600 border-slate-300'
+                        }">
+                        ${b.lbl}
+                    </button>
+                `;
+            }).join('');
 
 
 
             return `
 
-                <div class="border-b border-slate-100 last:border-b-0">
+                <div class="border-b border-slate-100 last:border-b-0 ${isDefect ? 'bg-rose-50/40' : ''}">
 
                     <div class="p-2.5 flex items-center justify-between gap-2 text-xs">
 
@@ -9795,21 +10066,9 @@ function renderElectrical2201Topic(area, topic, secNum) {
 
                         </div>
 
-                        <select onchange="handleAnswerChange('${qKey}', this.value, '${q.question.replace(/'/g, "\\'")}')"
-
-                            class="w-32 shrink-0 border rounded-lg px-2 py-1.5 text-xs ${badgeCls}">
-
-                            <option value="" ${val === '' ? 'selected' : ''}>Seçiniz...</option>
-
-                            <option value="Uygun" ${val === 'Uygun' ? 'selected' : ''}>✓ Uygun</option>
-
-                            <option value="Uygun Değil" ${val === 'Uygun Değil' ? 'selected' : ''}>✕ Uygun Değil</option>
-
-                            <option value="Uygulaması Yok" ${val === 'Uygulaması Yok' ? 'selected' : ''}>N Uyg. Yok</option>
-
-                            <option value="Görülemedi" ${val === 'Görülemedi' ? 'selected' : ''}>G Görülemedi</option>
-
-                        </select>
+                        <div class="flex items-center gap-1 shrink-0">
+                            ${quickBtns}
+                        </div>
 
                     </div>
 
@@ -9829,7 +10088,7 @@ function renderElectrical2201Topic(area, topic, secNum) {
 
                             </div>
 
-                            <button type="button" onclick="openItemDefectPickerModal('${qKey}', '${q.question.replace(/'/g, "\\'")}', 'answer')"
+                            <button type="button" onclick="openItemDefectPickerModal('${qKey}', '${safeQTitle}', 'answer')"
 
                                 class="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white rounded-lg font-bold text-[11px] shrink-0 flex items-center gap-1 shadow-2xs transition-all">
 
@@ -9869,6 +10128,43 @@ function renderElectrical2201Topic(area, topic, secNum) {
 
     }
 
+    // 2.1 Detay Bilgileri: İlk 12 temel soruyu doğrudan göster, 12 ikincil/besleme sorusunu katlanabilir çekmeceye al!
+    if (area.index === 0 && topic.index === 0 && topic.questions.length > 12) {
+        const coreQuestions = topic.questions.slice(0, 12);
+        const advQuestions = topic.questions.slice(12);
+        const filledAdvCount = advQuestions.filter(q => String(AppState.currentFormData?.answers?.[`q_${q.guid}`] || '').trim() !== '').length;
+        const showAdv = Boolean(AppState.showElectrical21Advanced);
+
+        return `
+            <div class="border border-slate-200 rounded-xl overflow-hidden bg-white">
+                <div class="px-3 py-2 bg-slate-100 border-b border-slate-200 font-bold text-xs text-slate-800 flex items-center justify-between">
+                    <span>${subNum}. ${topic.name}</span>
+                    <span class="text-[10px] font-semibold text-slate-500">Temel Tesisat Bilgileri</span>
+                </div>
+                <div class="p-3 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    ${coreQuestions.map(q => renderElectrical2201QuestionInput(q, area.index, topic.index)).join('')}
+                </div>
+                <div class="border-t border-slate-200 bg-slate-50/70">
+                    <button type="button" onclick="toggleElectrical21AdvancedDrawer()"
+                        class="w-full px-3 py-2.5 text-left font-bold text-xs text-slate-700 hover:bg-slate-100 flex items-center justify-between gap-2 transition">
+                        <span class="flex items-center gap-1.5">
+                            <i class="fa-solid fa-sliders text-sky-600"></i>
+                            <span>İlave Teknik &amp; Besleme Karakteristikleri (${filledAdvCount}/${advQuestions.length} Dolu - İsteğe Bağlı)</span>
+                        </span>
+                        <span class="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[10px] font-bold text-slate-600">
+                            ${showAdv ? 'Gizle ▴' : 'Göster ▾'}
+                        </span>
+                    </button>
+                    ${showAdv ? `
+                        <div class="p-3 pt-1 grid grid-cols-1 sm:grid-cols-2 gap-2.5 border-t border-slate-200/70 bg-white">
+                            ${advQuestions.map(q => renderElectrical2201QuestionInput(q, area.index, topic.index)).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }
+
 
 
     const colCount = Number(topic.columnCount) || 3;
@@ -9877,7 +10173,9 @@ function renderElectrical2201Topic(area, topic, secNum) {
 
     const questionsHtml = topic.questions.map(q => renderElectrical2201QuestionInput(q, area.index, topic.index)).join('');
 
-
+    const topicHeaderTitle = (area.index === 3 && topic.index === 3)
+        ? '6.1. Linye Ölçüm ve Test Tablosu'
+        : `${subNum}. ${topic.name}`;
 
     return `
 
@@ -9885,7 +10183,7 @@ function renderElectrical2201Topic(area, topic, secNum) {
 
             <div class="px-3 py-2 bg-slate-100 border-b border-slate-200 font-bold text-xs text-slate-800">
 
-                ${subNum}. ${topic.name}
+                ${topicHeaderTitle}
 
             </div>
 
@@ -9916,6 +10214,8 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
     const qKey = `q_${q.guid}`;
 
     const qTitle = q.question || '';
+    const cleanTitle = qTitle.replace(/^Tespit edilen bilgiler\s*\([^)]*\)\s*-\s*/i, '').trim();
+    const safeQTitle = qTitle.replace(/'/g, "\\'");
 
     let val = fd.answers[qKey];
 
@@ -9933,13 +10233,21 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
 
     if (q.type === 'YesNo') {
 
-        const opts = ['Uygun', 'Uygun Değil', 'Uygulaması Yok', 'Görülemedi'];
-
-        const optLabels = { 'Uygun': '✓ Uygun', 'Uygun Değil': '✕ Uygun Değil', 'Uygulaması Yok': 'N Uyg. Yok', 'Görülemedi': 'G Görülemedi' };
-
         const isDefect = (val === 'Uygun Değil' || val === 'Kısmen Uygun');
 
         const selectedDefect = fd.itemDefectSelections && fd.itemDefectSelections[qKey]?.sentence;
+
+        const quickBtns = [
+            { v: 'Uygun', lbl: '✓', activeCls: 'bg-emerald-600 text-white border-emerald-600' },
+            { v: 'Uygun Değil', lbl: '✕', activeCls: 'bg-rose-600 text-white border-rose-600' },
+            { v: 'Uygulaması Yok', lbl: 'N', activeCls: 'bg-slate-700 text-white border-slate-700' },
+            { v: 'Görülemedi', lbl: 'G', activeCls: 'bg-amber-500 text-slate-950 border-amber-500' }
+        ].map(b => `
+            <button type="button" onclick="handleAnswerChange('${qKey}', '${b.v}', '${safeQTitle}')"
+                class="w-8 h-7 rounded-lg border text-xs font-black flex items-center justify-center transition active:scale-90 ${
+                    val === b.v ? b.activeCls : 'bg-white hover:bg-slate-100 text-slate-600 border-slate-300'
+                }">${b.lbl}</button>
+        `).join('');
 
 
 
@@ -9947,19 +10255,11 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
 
             <div class="p-2.5 rounded-xl border ${isDefect ? 'border-rose-300 bg-rose-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between gap-2 transition-all">
 
-                <div class="flex items-start justify-between gap-2">
+                <div class="flex items-center justify-between gap-2">
 
-                    <label class="text-xs font-semibold text-slate-700 leading-snug">${qTitle}</label>
+                    <label class="text-xs font-semibold text-slate-700 leading-snug">${cleanTitle}</label>
 
-                    <select onchange="handleAnswerChange('${qKey}', this.value, '${qTitle.replace(/'/g, "\\'")}')"
-
-                        class="border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-bold bg-white shrink-0 ${isDefect ? 'text-rose-700 border-rose-400' : ''}">
-
-                        <option value="">Seçiniz...</option>
-
-                        ${opts.map(o => `<option value="${o}" ${val === o ? 'selected' : ''}>${optLabels[o]}</option>`).join('')}
-
-                    </select>
+                    <div class="flex items-center gap-1 shrink-0">${quickBtns}</div>
 
                 </div>
 
@@ -9979,7 +10279,7 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
 
                         </div>
 
-                        <button type="button" onclick="openItemDefectPickerModal('${qKey}', '${qTitle.replace(/'/g, "\\'")}', 'answer')"
+                        <button type="button" onclick="openItemDefectPickerModal('${qKey}', '${safeQTitle}', 'answer')"
 
                             class="px-2 py-1 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white rounded-lg font-bold text-[10px] shrink-0 flex items-center gap-1 shadow-2xs transition-all">
 
@@ -10003,16 +10303,49 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
 
     if (q.type === 'MultipleChoice' && Array.isArray(q.options) && q.options.length > 0) {
 
-        const hasValInOpts = !val || q.options.includes(val);
-        const optsList = hasValInOpts ? q.options : [...q.options, val];
-        const opts = optsList.map(o => `<option value="${escapeHtml(o)}" ${val === o ? 'selected' : ''}>${escapeHtml(o)}</option>`).join('');
-
+        const is22ProtectionItem = (areaIdx === 0 && topicIdx === 1 && q.options.includes('Uygunsuz'));
         const is22Defect = (areaIdx === 0 && topicIdx === 1 && val === 'Uygunsuz');
         const cardCls = is22Defect
             ? 'border-rose-400 bg-rose-50/70'
             : (areaIdx === 0 && topicIdx === 1 && (val === 'Var' || val === 'Uygun' || val === 'Evet'))
                 ? 'border-emerald-300 bg-emerald-50/30'
                 : 'border-slate-200 bg-slate-50/40';
+
+        // 2.2 Doğrudan dokunmaya karşı koruma önlemleri için sade 3'lü buton: [Var] [Yok] [Uygunsuz]
+        const pillOptions = is22ProtectionItem ? ['Var', 'Yok', 'Uygunsuz'] : q.options;
+
+        // 6 veya daha az seçeneği olan tüm çoktan seçmeli soruları TEK DOKUNUŞLU PILL BUTON yap!
+        if (pillOptions.length <= 6) {
+            const pillsHtml = pillOptions.map(opt => {
+                const isSel = (val === opt) || (is22ProtectionItem && opt === 'Var' && val === 'Uygun');
+                let activeCls = 'bg-slate-900 text-white border-slate-900 shadow-2xs';
+                if (isSel) {
+                    if (opt === 'Uygunsuz') activeCls = 'bg-rose-600 text-white border-rose-600 shadow-2xs';
+                    else if (opt === 'Var' || opt === 'Evet' || opt === 'Periyodik Kontrol') activeCls = 'bg-emerald-600 text-white border-emerald-600 shadow-2xs';
+                }
+                return `
+                    <button type="button" onclick="handleAnswerChange('${qKey}', '${escapeForJs(opt)}', '${safeQTitle}')"
+                        class="flex-1 min-w-[54px] py-1.5 px-2 rounded-lg border text-[11px] font-bold text-center transition active:scale-95 ${
+                            isSel ? activeCls : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
+                        }">
+                        ${escapeHtml(opt)}
+                    </button>
+                `;
+            }).join('');
+
+            return `
+                <div class="p-2.5 rounded-lg border ${cardCls} flex flex-col justify-between gap-1.5 transition-colors">
+                    <label class="block text-[11px] font-bold text-slate-700 leading-snug">${cleanTitle}</label>
+                    <div class="flex flex-wrap gap-1">
+                        ${pillsHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        const hasValInOpts = !val || q.options.includes(val);
+        const optsList = hasValInOpts ? q.options : [...q.options, val];
+        const opts = optsList.map(o => `<option value="${escapeHtml(o)}" ${val === o ? 'selected' : ''}>${escapeHtml(o)}</option>`).join('');
         const selCls = is22Defect
             ? 'border-rose-400 bg-white text-rose-700 font-bold'
             : 'border-slate-300 bg-white text-slate-900 font-semibold';
@@ -10021,9 +10354,9 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
 
             <div class="p-2.5 rounded-lg border ${cardCls} flex flex-col justify-between transition-colors">
 
-                <label class="block text-[11px] font-bold text-slate-700 mb-1 leading-snug">${qTitle}</label>
+                <label class="block text-[11px] font-bold text-slate-700 mb-1 leading-snug">${cleanTitle}</label>
 
-                <select onchange="handleAnswerChange('${qKey}', this.value, '${qTitle.replace(/'/g, "\\'")}')"
+                <select onchange="handleAnswerChange('${qKey}', this.value, '${safeQTitle}')"
 
                     class="w-full border rounded-lg px-2.5 py-1.5 text-xs ${selCls}">
 
@@ -10051,7 +10384,7 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
         <div class="p-2.5 rounded-lg border ${isMarkedX ? 'border-rose-300 bg-rose-50/40' : 'border-slate-200 bg-slate-50/40'} flex flex-col justify-between">
 
             <div class="flex items-center justify-between gap-2 mb-1">
-                <label class="block text-[11px] font-bold text-slate-700 leading-snug">${qTitle}</label>
+                <label class="block text-[11px] font-bold text-slate-700 leading-snug">${cleanTitle}</label>
                 ${isVFF ? `<button type="button" onclick="randomizeElectrical61Voltage()" class="px-2 py-0.5 rounded-md bg-sky-100 hover:bg-sky-200 active:scale-95 text-sky-800 text-[10px] font-bold shrink-0 transition" title="393-397 V arası rastgele seç">🎲 393-397</button>` : ''}
             </div>
 
@@ -10071,7 +10404,7 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
 
 
 
-// Short, compact abbreviations for Section 6.4 (Aşırı Akım Koruma Elemanı İle İletken Uyumu ve RCD)
+// Short, compact abbreviations for Section 6.1 Linye Tablosu
 
 function getShortTopicQuestionLabel(areaIdx, topicIdx, questionText) {
 
@@ -10103,13 +10436,147 @@ function getShortTopicQuestionLabel(areaIdx, topicIdx, questionText) {
 
         if (q.includes('TΔ')) return 'RCD Açma Süresi TΔ (ms)';
 
-        if (q.includes('Değerlendirme')) return 'Sonuç / Değerlendirme';
+        if (q.includes('Değerlendirme') || q.includes('Sonuç')) return 'Sonuç';
 
     }
 
     return q;
 
 }
+
+const STANDARD_CABLE_IZ_MAP = {
+    '1,5': { pe: '1,5', iz: '19,5' },
+    '1.5': { pe: '1,5', iz: '19,5' },
+    '2,5': { pe: '2,5', iz: '27' },
+    '2.5': { pe: '2,5', iz: '27' },
+    '4':   { pe: '4',   iz: '36' },
+    '6':   { pe: '6',   iz: '46' },
+    '10':  { pe: '10',  iz: '63' },
+    '16':  { pe: '16',  iz: '85' },
+    '25':  { pe: '16',  iz: '112' },
+    '35':  { pe: '16',  iz: '138' },
+    '50':  { pe: '25',  iz: '168' },
+    '70':  { pe: '35',  iz: '213' },
+    '95':  { pe: '50',  iz: '258' },
+    '120': { pe: '70',  iz: '299' }
+};
+
+const QUICK_LINYE_PRESETS = [
+    { label: 'B10 (1,5mm²)', curve: 'B', poles: '1', inAmp: '10', icu: '6', phase: '1,5', npen: '1,5', pe: '1,5', ib: '8', iz: '19,5', rcdI: '30', rcdT: '25' },
+    { label: 'B16 (2,5mm²)', curve: 'B', poles: '1', inAmp: '16', icu: '6', phase: '2,5', npen: '2,5', pe: '2,5', ib: '12', iz: '27', rcdI: '30', rcdT: '25' },
+    { label: 'C16 (2,5mm²)', curve: 'C', poles: '1', inAmp: '16', icu: '6', phase: '2,5', npen: '2,5', pe: '2,5', ib: '12', iz: '27', rcdI: '30', rcdT: '25' },
+    { label: 'C20 (4mm²)',   curve: 'C', poles: '1', inAmp: '20', icu: '6', phase: '4',   npen: '4',   pe: '4',   ib: '16', iz: '36', rcdI: '30', rcdT: '25' },
+    { label: 'C25 (4mm²)',   curve: 'C', poles: '1', inAmp: '25', icu: '6', phase: '4',   npen: '4',   pe: '4',   ib: '20', iz: '36', rcdI: '30', rcdT: '25' },
+    { label: 'C32 (6mm²)',   curve: 'C', poles: '1', inAmp: '32', icu: '6', phase: '6',   npen: '6',   pe: '6',   ib: '25', iz: '46', rcdI: '30', rcdT: '25' },
+    { label: '3P C25 (4mm²)', curve: 'C', poles: '3', inAmp: '25', icu: '10', phase: '4',  npen: '4',   pe: '4',   ib: '20', iz: '36', rcdI: '30', rcdT: '25' },
+    { label: '3P C32 (6mm²)', curve: 'C', poles: '3', inAmp: '32', icu: '10', phase: '6',  npen: '6',   pe: '6',   ib: '26', iz: '46', rcdI: '30', rcdT: '25' },
+    { label: '3P C40 (10mm²)', curve: 'C', poles: '3', inAmp: '40', icu: '10', phase: '10', npen: '10', pe: '10',  ib: '32', iz: '63', rcdI: '300', rcdT: '35' },
+    { label: '3P C63 (16mm²)', curve: 'C', poles: '3', inAmp: '63', icu: '10', phase: '16', npen: '16', pe: '16',  ib: '50', iz: '85', rcdI: '300', rcdT: '35' },
+    { label: '3P C100 (35mm²)', curve: 'C', poles: '3', inAmp: '100', icu: '25', phase: '35', npen: '35', pe: '16', ib: '80', iz: '138', rcdI: '300', rcdT: '35' }
+];
+
+function applyQuickLinyePreset(rowIndex, presetIdx) {
+    const fd = AppState.currentFormData;
+    const rows = fd?.tableRows?.topic_3_3;
+    const preset = QUICK_LINYE_PRESETS[presetIdx];
+    if (!rows || !rows[rowIndex] || !preset) return;
+    const r = rows[rowIndex];
+    const insp = AppState.currentInspection || {};
+    if (!String(r['405e297d-cea7-45ec-9c1e-6e2116cfb541'] || '').trim()) {
+        r['405e297d-cea7-45ec-9c1e-6e2116cfb541'] = (insp.equipment_name || `Linye-${rowIndex + 1}`) + (rows.length > 1 ? ` - L${rowIndex + 1}` : '');
+    }
+    r['7f4bdff7-97bd-47dd-8151-7eacc32f5d8e'] = preset.curve;
+    r['8c397b2d-a229-4bc9-b4ff-5fc78dd5a102'] = preset.poles;
+    r['bd17d9ca-3087-4406-9f16-867d10642df6'] = preset.inAmp;
+    r['ee0ef618-52cb-4dd9-9361-15200dcee077'] = preset.icu;
+    r['8e43f81a-34b3-4c8e-9baf-e4161f5ba11e'] = preset.phase;
+    r['07697e7d-212a-4c84-be0e-fd64e539b5b0'] = preset.npen;
+    r['e16540f3-b6b7-486a-8f40-2722add48bb7'] = preset.pe;
+    r['16c7e5ea-b08e-4d33-b9f1-49c4ae6c1437'] = preset.ib;
+    r['d3bb692d-56ca-4b1b-b609-81198be785b0'] = preset.iz;
+    r['e42d31e0-dbc3-4e34-88c2-5e95f8e85636'] = preset.rcdI;
+    r['016eca98-d8f9-4a4d-bdfd-36160d324726'] = preset.rcdT;
+    r['241bf571-43dd-46d1-836d-ecdff0c7acd2'] = 'Uygun';
+
+    if (typeof window.syncElectrical2201Section22FromTriggers === 'function') {
+        window.syncElectrical2201Section22FromTriggers('topic_3_3', true);
+    }
+    triggerAutoSave();
+    paintInspectionEditorUI();
+    showToast(`Satır #${rowIndex + 1}: ${preset.label} değerleri otomatik dolduruldu!`);
+}
+window.applyQuickLinyePreset = applyQuickLinyePreset;
+
+function applyQuickPotentialEquipotentialPreset(mode = 'standard') {
+    const fd = AppState.currentFormData;
+    if (!fd) return;
+    if (!fd.tableRows) fd.tableRows = {};
+    const insp = AppState.currentInspection || {};
+    const panelName = insp.equipment_name || 'Ana Pano Topraklama Barası';
+    if (mode === 'na') {
+        fd.tableRows.topic_3_4 = [{
+            '2f743a60-497c-41bc-84aa-a499220310a3': 'Uygulaması Yok',
+            '7a977dd5-098c-4a56-a047-f1fe69cc7ed2': '-',
+            '0cee7c0e-d915-4069-825a-b0984512cd08': '-',
+            '4980b506-7bc6-423e-898e-6f89536754f3': '-',
+            'b4af8cc0-2dad-4768-8fc3-5393757675af': '-',
+            'b21fd22e-6cd7-431c-8949-b67fdc46613c': 'Uygulaması Yok'
+        }];
+    } else {
+        fd.tableRows.topic_3_4 = [{
+            '2f743a60-497c-41bc-84aa-a499220310a3': `${panelName} - Gövde / Toprak Barası`,
+            '7a977dd5-098c-4a56-a047-f1fe69cc7ed2': '16',
+            '0cee7c0e-d915-4069-825a-b0984512cd08': '0,08',
+            '4980b506-7bc6-423e-898e-6f89536754f3': '6',
+            'b4af8cc0-2dad-4768-8fc3-5393757675af': '0,12',
+            'b21fd22e-6cd7-431c-8949-b67fdc46613c': 'Uygun'
+        }];
+    }
+    if (typeof syncAllDefectsToDefectNotes === 'function') syncAllDefectsToDefectNotes();
+    triggerAutoSave();
+    paintInspectionEditorUI();
+    showToast(mode === 'na' ? '6.2 Potansiyel Dengeleme: Uygulaması Yok seçildi' : '6.2 Potansiyel Dengeleme standart değerlerle dolduruldu');
+}
+window.applyQuickPotentialEquipotentialPreset = applyQuickPotentialEquipotentialPreset;
+
+function applyQuickFloorInsulationPreset(mode = 'standard') {
+    const fd = AppState.currentFormData;
+    if (!fd) return;
+    if (!fd.tableRows) fd.tableRows = {};
+    const insp = AppState.currentInspection || {};
+    const panelName = insp.equipment_name || 'Pano Önü';
+    if (mode === 'na') {
+        fd.tableRows.topic_3_5 = [{
+            'd0096971-113c-4f4c-ac4e-31ba59227c0b': 'Uygulaması Yok',
+            '8b095f55-b0a3-41c4-b8d9-6a4f4b7c9026': '-',
+            '0f614ecc-406f-46b3-8d63-a759c3e119e7': '-',
+            '33143091-c517-439e-b79d-6bde5d06143f': '-',
+            '1114914a-a154-4859-93f9-19b22fddc098': 'Uygulaması Yok'
+        }];
+    } else if (mode === 'missing') {
+        fd.tableRows.topic_3_5 = [{
+            'd0096971-113c-4f4c-ac4e-31ba59227c0b': `${panelName} Önü`,
+            '8b095f55-b0a3-41c4-b8d9-6a4f4b7c9026': 'X',
+            '0f614ecc-406f-46b3-8d63-a759c3e119e7': 'X',
+            '33143091-c517-439e-b79d-6bde5d06143f': 'X',
+            '1114914a-a154-4859-93f9-19b22fddc098': 'Uygun Değil'
+        }];
+        if (fd.answers) fd.answers['q_98379425-05fc-4db3-8285-c74176c9365d'] = 'Uygun Değil';
+    } else {
+        fd.tableRows.topic_3_5 = [{
+            'd0096971-113c-4f4c-ac4e-31ba59227c0b': `${panelName} Önü`,
+            '8b095f55-b0a3-41c4-b8d9-6a4f4b7c9026': '1,0',
+            '0f614ecc-406f-46b3-8d63-a759c3e119e7': '1,0',
+            '33143091-c517-439e-b79d-6bde5d06143f': '>50',
+            '1114914a-a154-4859-93f9-19b22fddc098': 'Uygun'
+        }];
+    }
+    if (typeof syncAllDefectsToDefectNotes === 'function') syncAllDefectsToDefectNotes();
+    triggerAutoSave();
+    paintInspectionEditorUI();
+    showToast(mode === 'missing' ? '6.3 Zemin İzolasyonu: Uygun Değil (X) işaretlendi' : mode === 'na' ? '6.3 Zemin İzolasyonu: Uygulaması Yok seçildi' : '6.3 Zemin İzolasyonu standart değerlerle dolduruldu');
+}
+window.applyQuickFloorInsulationPreset = applyQuickFloorInsulationPreset;
 
 
 
@@ -10135,19 +10602,16 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
 
     const isSection65 = area.index === 3 && topic.index === 4;
 
+    const isSection66 = area.index === 3 && topic.index === 5;
+
 
 
     // Geniş ve ferah grid düzeni:
-
-    // 6.4: Mobilde 2 sütun, tablette 4 sütun
-
-    // 6.5: Mobilde tek sütun (tam genişlik), tablette 2 sütun
-
     let gridClass = 'grid-cols-1 sm:grid-cols-2 gap-3';
 
     if (isSection64) {
 
-        gridClass = 'grid-cols-2 sm:grid-cols-4 gap-2.5';
+        gridClass = 'grid-cols-2 sm:grid-cols-4 gap-2';
 
     } else if (!isSection65) {
 
@@ -10158,6 +10622,23 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
 
 
     const cardsHtml = rows.map((rowObj, rIdx) => {
+
+        const linyeQuickPresetBar = isSection64 ? `
+            <div class="p-2 rounded-lg bg-white border border-slate-200 space-y-1">
+                <div class="text-[10px] font-bold text-slate-600 flex items-center justify-between">
+                    <span><i class="fa-solid fa-bolt text-amber-500 mr-1"></i>Tek Dokunuşla Linye Doldur (In / Kesit / Iz / RCD):</span>
+                    <span class="text-slate-400 font-normal">Seçip değiştirebilirsiniz</span>
+                </div>
+                <div class="flex items-center gap-1 overflow-x-auto py-0.5 no-scrollbar">
+                    ${QUICK_LINYE_PRESETS.map((pr, pIdx) => `
+                        <button type="button" onclick="applyQuickLinyePreset(${rIdx}, ${pIdx})"
+                            class="px-2 py-1 rounded-md bg-slate-100 hover:bg-sky-100 hover:text-sky-800 active:scale-95 text-slate-800 font-mono font-bold text-[10px] border border-slate-200 shrink-0 transition">
+                            ${pr.label}
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+        ` : '';
 
         const fieldsHtml = topic.questions.map((q, qIdx) => {
 
@@ -10177,7 +10658,7 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
 
                         <select data-table-cell="${tKey}_${rIdx}_${q.guid}" onchange="handleTopicTableCell('${tKey}', ${rIdx}, '${q.guid}', this.value)"
 
-                            class="w-full border rounded-lg px-2.5 py-2 text-xs font-bold shadow-2xs ${isNoGood ? 'border-rose-400 bg-rose-50 text-rose-700' : 'border-slate-300 bg-white text-slate-900'}">
+                            class="w-full border rounded-lg px-2.5 py-1.5 text-xs font-bold shadow-2xs ${isNoGood ? 'border-rose-400 bg-rose-50 text-rose-700' : 'border-slate-300 bg-white text-slate-900'}">
 
                             <option value="" ${cellVal === '' ? 'selected' : ''}>Seçiniz...</option>
 
@@ -10229,15 +10710,15 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
 
         return `
 
-            <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50 space-y-2.5">
+            <div class="p-3 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
 
-                <div class="flex items-center justify-between border-b border-slate-200 pb-2 gap-2">
+                <div class="flex items-center justify-between border-b border-slate-200 pb-1.5 gap-2">
 
-                    <span class="font-bold text-xs text-slate-800">Satır #${rIdx + 1}</span>
+                    <span class="font-bold text-xs text-slate-800">${isSection64 ? `Linye #${rIdx + 1}` : `Satır #${rIdx + 1}`}</span>
 
                     <div class="flex items-center gap-1.5">
 
-                        <button onclick="duplicateSpecificTopicRow('${tKey}', ${rIdx})" class="px-2.5 py-1 bg-sky-100 active:bg-sky-200 text-sky-800 rounded-lg text-xs font-bold flex items-center gap-1">
+                        <button onclick="duplicateSpecificTopicRow('${tKey}', ${rIdx})" class="px-2 py-1 bg-sky-100 active:bg-sky-200 text-sky-800 rounded-lg text-[11px] font-bold flex items-center gap-1">
 
                             <i class="fa-solid fa-copy"></i>
 
@@ -10245,7 +10726,7 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
 
                         </button>
 
-                        <button onclick="removeTopicTableRow('${tKey}', ${rIdx})" class="px-2 py-1 bg-rose-50 active:bg-rose-100 text-rose-600 rounded-lg text-xs font-semibold">
+                        <button onclick="removeTopicTableRow('${tKey}', ${rIdx})" class="px-2 py-1 bg-rose-50 active:bg-rose-100 text-rose-600 rounded-lg text-[11px] font-semibold">
 
                             <i class="fa-solid fa-trash-can mr-1"></i>Sil
 
@@ -10254,6 +10735,8 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
                     </div>
 
                 </div>
+
+                ${linyeQuickPresetBar}
 
                 <div class="grid ${gridClass}">
 
@@ -10270,39 +10753,41 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
 
 
     let thermalToolbarHtml = '';
+    let showBodyRows = true;
     if (isThermalSection) {
         const firstGuid = topic.questions?.[0]?.guid;
         const serialGuid = topic.questions?.[1]?.guid;
         const firstVal = String((rows[0] && firstGuid && rows[0][firstGuid]) || '').trim();
         const serialVal = String((rows[0] && serialGuid && rows[0][serialGuid]) || '').trim();
         const isNotApp = firstVal.includes('Uygulaması Yok');
+        const hasThermalSelected = Boolean(firstVal);
+        showBodyRows = !hasThermalSelected || Boolean(AppState.showThermalManualDetail);
+
         const activeLabelHtml = isNotApp
-            ? `<span class="px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-bold text-[10px]">Uygulaması Yok</span>`
+            ? `<span class="px-2.5 py-1 rounded-full bg-slate-200 text-slate-700 font-bold text-[11px]">Uygulaması Yok</span>`
             : firstVal
-                ? `<span class="px-2 py-0.5 rounded-full bg-orange-100 text-orange-900 border border-orange-300 font-bold text-[10px] truncate max-w-[200px]"><i class="fa-solid fa-temperature-half mr-1"></i>${escapeHtml(firstVal)}${serialVal ? ` (${escapeHtml(serialVal)})` : ''}</span>`
-                : `<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 font-bold text-[10px]">Termal kamera seçilmedi</span>`;
+                ? `<span class="px-2.5 py-1 rounded-full bg-orange-100 text-orange-900 border border-orange-300 font-bold text-[11px] truncate max-w-[220px]"><i class="fa-solid fa-temperature-half mr-1"></i>${escapeHtml(firstVal)}${serialVal ? ` (SN: ${escapeHtml(serialVal)})` : ''}</span>`
+                : `<span class="px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300 font-bold text-[11px]">Termal kamera seçilmedi</span>`;
 
         thermalToolbarHtml = `
-            <div class="px-3.5 py-2 bg-orange-50/80 border-b border-orange-200 flex items-center justify-between gap-2 flex-wrap">
-                <div class="flex items-center gap-1.5 min-w-0">
+            <div class="px-3.5 py-2.5 bg-orange-50/70 ${showBodyRows ? 'border-b border-orange-200' : ''} flex items-center justify-between gap-2 flex-wrap">
+                <div onclick="toggleThermalManualDetail()" class="flex items-center gap-1.5 min-w-0 cursor-pointer">
                     ${activeLabelHtml}
                 </div>
                 <div class="flex items-center gap-1.5 flex-wrap">
+                    <button type="button" onclick="toggleThermalManualDetail()"
+                        class="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold rounded-lg text-[10px] transition">
+                        ${showBodyRows ? 'Gizle ▴' : 'Detay ▾'}
+                    </button>
                     ${mgr ? `
                         <button type="button" onclick="openReportThermalSwapModal()"
-                            class="px-2.5 py-1.5 bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-bold rounded-lg text-[11px] flex items-center gap-1 shadow-2xs transition">
+                            class="px-2.5 py-1 bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-bold rounded-lg text-[10px] flex items-center gap-1 shadow-2xs transition">
                             <i class="fa-solid fa-right-left"></i>
-                            <span>Termal Kamera Değiştir</span>
-                        </button>
-                        <button type="button" onclick="applyAssignedThermalCameraToReport()"
-                            class="px-2.5 py-1.5 bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 font-bold rounded-lg text-[11px] flex items-center gap-1 shadow-2xs transition"
-                            title="Ayarlarda üzerinizde seçili termal kamerayı getir">
-                            <i class="fa-solid fa-arrows-rotate"></i>
-                            <span>Üzerimdekini Getir</span>
+                            <span>Değiştir</span>
                         </button>
                     ` : ''}
                     <button type="button" onclick="setThermalCameraNotApplicable('${tKey}')"
-                        class="px-2 py-1.5 bg-white hover:bg-slate-100 active:scale-95 text-slate-700 border border-slate-300 font-bold rounded-lg text-[11px] flex items-center gap-1 transition">
+                        class="px-2 py-1 bg-white hover:bg-slate-100 active:scale-95 text-slate-700 border border-slate-300 font-bold rounded-lg text-[10px] flex items-center gap-1 transition">
                         <i class="fa-solid fa-ban text-slate-500"></i>
                         <span>Uyg. Yok</span>
                     </button>
@@ -10311,33 +10796,45 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
         `;
     }
 
+    const displayHeaderTitle = isSection64
+        ? '6.1. Linye Ölçüm ve Test Tablosu'
+        : `${subNum}. ${topic.name}`;
+
+    const quickTableActionBtns = isSection65 ? `
+        <button type="button" onclick="applyQuickPotentialEquipotentialPreset('standard')" class="px-2.5 py-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold rounded-lg text-[11px] shrink-0 shadow-2xs">⚡ Standart Doldur</button>
+        <button type="button" onclick="applyQuickPotentialEquipotentialPreset('na')" class="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold rounded-lg text-[11px] shrink-0">N Uyg. Yok</button>
+    ` : isSection66 ? `
+        <button type="button" onclick="applyQuickFloorInsulationPreset('standard')" class="px-2.5 py-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold rounded-lg text-[11px] shrink-0 shadow-2xs">⚡ Standart Halı</button>
+        <button type="button" onclick="applyQuickFloorInsulationPreset('missing')" class="px-2 py-1 bg-rose-100 hover:bg-rose-200 text-rose-800 border border-rose-300 font-bold rounded-lg text-[11px] shrink-0">✕ Halı Yok</button>
+        <button type="button" onclick="applyQuickFloorInsulationPreset('na')" class="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold rounded-lg text-[11px] shrink-0">N Uyg. Yok</button>
+    ` : '';
+
     return `
 
         <div class="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
 
-            <div class="px-3.5 py-2.5 bg-slate-100 border-b border-slate-200 flex items-center justify-between gap-2">
+            <div class="px-3.5 py-2.5 bg-slate-100 border-b border-slate-200 flex items-center justify-between gap-2 flex-wrap">
 
-                <div class="font-bold text-xs text-slate-900 leading-snug flex-1">${subNum}. ${topic.name}</div>
+                <div class="font-bold text-xs text-slate-900 leading-snug flex-1 min-w-[160px]">${displayHeaderTitle}</div>
 
-                ${isLockedThermal ? '' : `
-
-                    <button onclick="addTopicTableRow('${tKey}', ${area.index}, ${topic.index})" class="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-xs shrink-0 shadow-2xs">
-
-                        + Satır Ekle
-
-                    </button>
-
-                `}
+                <div class="flex items-center gap-1.5 flex-wrap">
+                    ${quickTableActionBtns}
+                    ${isLockedThermal || isThermalSection ? '' : `
+                        <button onclick="addTopicTableRow('${tKey}', ${area.index}, ${topic.index})" class="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-[11px] shrink-0 shadow-2xs">
+                            + Satır Ekle
+                        </button>
+                    `}
+                </div>
 
             </div>
 
             ${thermalToolbarHtml}
 
-            <div class="p-3 space-y-3">
-
-                ${cardsHtml}
-
-            </div>
+            ${!showBodyRows ? '' : `
+                <div class="p-3 space-y-3">
+                    ${cardsHtml}
+                </div>
+            `}
 
         </div>
 
@@ -10399,6 +10896,31 @@ function handleTopicTableCell(tKey, rowIndex, qGuid, value) {
 
     const is2201 = String(AppState.currentInspection?.template_id) === '2201';
     if (is2201 && (tKey === 'topic_3_3' || tKey === 'topic_3_4' || tKey === 'topic_3_5')) {
+        // 6.1 Linye Tablosu: Faz Kesiti girildiğinde N/PEN, PE, Iz ve Sonuç alanlarını (boşsa) akıllı tamamla
+        if (tKey === 'topic_3_3' && qGuid === '8e43f81a-34b3-4c8e-9baf-e4161f5ba11e') {
+            const cleanSec = String(value || '').trim().replace('.', ',');
+            const mapEntry = STANDARD_CABLE_IZ_MAP[cleanSec] || STANDARD_CABLE_IZ_MAP[String(value || '').trim()];
+            if (mapEntry) {
+                const nPenGuid = '07697e7d-212a-4c84-be0e-fd64e539b5b0';
+                const peGuid = 'e16540f3-b6b7-486a-8f40-2722add48bb7';
+                const izGuid = 'd3bb692d-56ca-4b1b-b609-81198be785b0';
+                const resGuidLinye = '241bf571-43dd-46d1-836d-ecdff0c7acd2';
+                const autoFillCell = (g, v) => {
+                    if (!String(rows[rowIndex][g] || '').trim()) {
+                        rows[rowIndex][g] = v;
+                        if (typeof document !== 'undefined') {
+                            const el = document.querySelector(`[data-table-cell="${tKey}_${rowIndex}_${g}"]`);
+                            if (el) el.value = v;
+                        }
+                    }
+                };
+                autoFillCell(nPenGuid, cleanSec);
+                autoFillCell(peGuid, mapEntry.pe);
+                autoFillCell(izGuid, mapEntry.iz);
+                autoFillCell(resGuidLinye, 'Uygun');
+            }
+        }
+
         if (typeof document !== 'undefined') {
             const cellEl = document.querySelector(`[data-table-cell="${tKey}_${rowIndex}_${qGuid}"]`);
             if (cellEl && cellEl.tagName === 'INPUT') {
@@ -10537,9 +11059,23 @@ function setThermalCameraNotApplicable(tKey) {
     AppState.currentFormData._thermalInitialized = true;
     AppState.currentFormData._thermalSourceId = '';
 
+    // 5.7 Termal Kamera gözle kontrol maddelerini de otomatik Uygulaması Yok (N) yap (PDF Sayfa 2 tutarlılığı)
+    if (AppState.currentFormData.answers) {
+        [
+            '474e7fc2-5975-432c-b2dc-e3d2683e1b16',
+            '5524231c-cbf5-45f0-a32b-f925609b99d3',
+            '54d69dbf-94c0-41e8-bae8-cc71276f0d1e',
+            '759cc2dc-29bf-46b2-a769-1fc4ff7238b8'
+        ].forEach(g => {
+            AppState.currentFormData.answers[`q_${g}`] = 'Uygulaması Yok';
+        });
+    }
+
     triggerAutoSave();
 
     paintInspectionEditorUI();
+
+    showToast('Termal kamera ve 5.7 Termal Kontrol maddeleri "Uygulaması Yok (N)" yapıldı.');
 
 }
 
@@ -10782,41 +11318,35 @@ function renderSpecializedTemplateEditor() {
 
         const selectedDefect = fd.itemDefectSelections && fd.itemDefectSelections[cKey]?.sentence;
 
-        const colorCls = val === 'Uygun'
+        const safeChkTitle = chkText.replace(/'/g, "\\'");
 
-            ? 'border-emerald-400 bg-emerald-50 text-emerald-900 font-bold'
-
-            : isDefect
-
-            ? 'border-rose-400 bg-rose-50 text-rose-900 font-bold'
-
-            : 'border-slate-300 bg-slate-50 text-slate-700';
-
-
+        const quickBtns = [
+            { val: 'Uygun', short: '✓', title: 'Uygun', activeCls: 'bg-emerald-600 text-white border-emerald-600 shadow-2xs', idleCls: 'bg-white text-emerald-700 border-slate-200 hover:bg-emerald-50' },
+            { val: 'Uygun Değil', short: '✕', title: 'Uygun Değil', activeCls: 'bg-rose-600 text-white border-rose-600 shadow-2xs', idleCls: 'bg-white text-rose-700 border-slate-200 hover:bg-rose-50' },
+            { val: 'Uygulaması Yok', short: 'N', title: 'Uygulaması Yok', activeCls: 'bg-slate-700 text-white border-slate-700 shadow-2xs', idleCls: 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100' },
+            { val: 'Görülemedi', short: 'G', title: 'Görülemedi', activeCls: 'bg-amber-500 text-slate-950 border-amber-500 shadow-2xs', idleCls: 'bg-white text-amber-700 border-slate-200 hover:bg-amber-50' }
+        ].map(b => {
+            const isSel = (val === b.val);
+            return `
+                <button type="button" title="${b.title}"
+                    onclick="handleSpecializedCheckChange('${cKey}', '${b.val}', '${safeChkTitle}')"
+                    class="w-8 h-8 rounded-lg border text-xs font-black flex items-center justify-center transition-all active:scale-95 ${isSel ? b.activeCls : b.idleCls}">
+                    ${b.short}
+                </button>
+            `;
+        }).join('');
 
         return `
 
-            <div class="rounded-xl border ${isDefect ? 'border-rose-300 bg-rose-50/40' : 'border-slate-200 bg-slate-50/60'} overflow-hidden transition-all">
+            <div class="rounded-xl border ${isDefect ? 'border-rose-300 bg-rose-50/40' : val === 'Uygun' ? 'border-emerald-200 bg-emerald-50/20' : 'border-slate-200 bg-slate-50/60'} overflow-hidden transition-all">
 
                 <div class="p-2.5 flex items-center justify-between gap-2">
 
-                    <span class="text-xs font-medium text-slate-800 min-w-0 flex-1"><strong class="text-slate-900 mr-1">${idx + 1}.</strong>${chkText}</span>
+                    <span class="text-xs font-medium text-slate-800 min-w-0 flex-1 leading-snug"><strong class="text-slate-900 mr-1">${idx + 1}.</strong>${chkText}</span>
 
-                    <select onchange="handleSpecializedCheckChange('${cKey}', this.value, '${chkText.replace(/'/g, "\\'")}')"
-
-                        class="w-32 shrink-0 border rounded-lg px-2 py-1.5 text-xs ${colorCls}">
-
-                        <option value="" ${val === '' ? 'selected' : ''}>Seçiniz...</option>
-
-                        <option value="Uygun" ${val === 'Uygun' ? 'selected' : ''}>✓ Uygun</option>
-
-                        <option value="Uygun Değil" ${val === 'Uygun Değil' ? 'selected' : ''}>✕ Uygun Değil</option>
-
-                        <option value="Uygulaması Yok" ${val === 'Uygulaması Yok' ? 'selected' : ''}>N Uyg. Yok</option>
-
-                        <option value="Görülemedi" ${val === 'Görülemedi' ? 'selected' : ''}>G Görülemedi</option>
-
-                    </select>
+                    <div class="flex items-center gap-1 shrink-0">
+                        ${quickBtns}
+                    </div>
 
                 </div>
 
@@ -12244,19 +12774,53 @@ function applySelectedDefectsToReport() {
 
 
 
+function deduplicateLegacy22DefectNotes(rawNotes) {
+    if (!rawNotes || typeof rawNotes !== 'string') return rawNotes || '';
+    const allLines = rawNotes.split(/\r?\n/);
+    const non22Lines = allLines.filter(l => !l.trim().startsWith('• [2.2 Tespit Edilen Bilgiler'));
+    const cleaned = allLines.filter(line => {
+        const t = line.trim();
+        if (!t.startsWith('• [2.2 Tespit Edilen Bilgiler')) return true;
+        const m = t.match(/:\s*Uygunsuz\s*\((.+)\)\s*$/);
+        if (m && m[1]) {
+            const inner = m[1].trim();
+            if (inner && non22Lines.some(other => other.includes(inner))) {
+                return false;
+            }
+        }
+        return true;
+    });
+    return cleaned.join('\n');
+}
+window.deduplicateLegacy22DefectNotes = deduplicateLegacy22DefectNotes;
+
 function renderEvaluationAndFooterSection() {
 
     const fd = AppState.currentFormData;
+    const insp = AppState.currentInspection;
+    const is2201 = String(insp?.template_id) === '2201';
+
+    if (fd.defectNotes && fd.defectNotes.includes('• [2.2 Tespit Edilen Bilgiler')) {
+        const cleanedNotes = deduplicateLegacy22DefectNotes(fd.defectNotes);
+        if (cleanedNotes !== fd.defectNotes) {
+            fd.defectNotes = cleanedNotes;
+        }
+    }
 
     const isSuitable = fd.overallResult !== 'UYGUN DEĞİL';
-
-
+    if (!fd.defectGrade) fd.defectGrade = 'C1';
+    const grade = fd.defectGrade;
+    const gradeDescriptions = {
+        'C1': 'C1 – Tehlike mevcut. Yaralanma riski. Derhal düzeltici eylem gerekli.',
+        'C2': 'C2 – Potansiyel olarak tehlikeli – acil düzeltici eylem gerekli.',
+        'C3': 'C3 – İyileştirme önerilir.'
+    };
 
     const concludingSentence = isSuitable
 
         ? '✓ Yapılan periyodik kontrol, muayene ve test sonuçlarına göre söz konusu ekipmanın / tesisatın mevcut şartlar altında İSG mevzuatı ve ilgili standartlar açısından KULLANIMI UYGUNDUR.'
 
-        : '✕ Yapılan periyodik kontrol, muayene ve test sonuçlarına göre tespit edilen kusur ve uygunsuzluklar giderilinceye kadar söz konusu ekipmanın / tesisatın KULLANIMI UYGUN DEĞİLDİR.';
+        : `✕ Yapılan periyodik kontrol, muayene ve test sonuçlarına göre tespit edilen kusur ve uygunsuzluklar giderilinceye kadar söz konusu ekipmanın / tesisatın KULLANIMI UYGUN DEĞİLDİR.${is2201 ? ' (' + (gradeDescriptions[grade] || gradeDescriptions.C1) + ')' : ''}`;
 
 
 
@@ -12266,13 +12830,14 @@ function renderEvaluationAndFooterSection() {
 
         : 'bg-rose-50 border-2 border-rose-400 text-rose-800';
 
-
+    const rptDateDisp = insp?.inspection_date || fd?.companyInfo?.reportDate || '-';
+    const nextDateDisp = fd?.nextInspectionDate || fd?.companyInfo?.nextControlDate || '-';
 
     return `
 
         <div class="bg-white rounded-xl border border-slate-200 overflow-hidden space-y-3 p-3.5 text-xs">
 
-            <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+            <div class="flex flex-wrap items-center justify-between border-b border-slate-100 pb-2 gap-2">
 
                 <span class="font-black text-xs text-slate-800 uppercase tracking-wide">7-10. KUSUR, NOT VE SONUÇ</span>
 
@@ -12314,8 +12879,6 @@ function renderEvaluationAndFooterSection() {
 
                         <label class="block font-bold text-slate-800">7. KUSUR AÇIKLAMALARI / UYGUNSUZLUKLAR</label>
 
-
-
                     </div>
 
                     ${fd.defectNotes ? `
@@ -12336,7 +12899,7 @@ function renderEvaluationAndFooterSection() {
 
                     oninput="AppState.currentFormData.defectNotes=this.value; triggerAutoSave();"
 
-                    placeholder="Uygunsuzluk açıklamaları..."
+                    placeholder="Gözle kontrol ve ölçümlerde işaretlenen kusurlar buraya otomatik eklenir..."
 
                     class="w-full border border-slate-300 rounded-xl p-2.5 text-slate-800 leading-relaxed focus:border-sky-500 focus:outline-none font-medium">${fd.defectNotes || ''}</textarea>
 
@@ -12346,13 +12909,13 @@ function renderEvaluationAndFooterSection() {
 
             <div>
 
-                <label class="block font-bold text-slate-800 mb-1">9. NOTLAR (Proje Bilgileri & Saha Notları)</label>
+                <label class="block font-bold text-slate-800 mb-1">9. NOTLAR (Proje Bilgileri & Saha Notları - İsteğe Bağlı)</label>
 
                 <textarea rows="2"
 
                     oninput="AppState.currentFormData.generalNotes=this.value; triggerAutoSave();"
 
-                    placeholder="Proje sorumlusu veya saha notları..."
+                    placeholder="Boş bırakılırsa 2.1'deki Proje / Tek Hat Şeması seçiminize göre otomatik standart not yazılır..."
 
                     class="w-full border border-slate-300 rounded-xl p-2.5 text-slate-700 focus:border-sky-500 focus:outline-none">${fd.generalNotes || ''}</textarea>
 
@@ -12360,52 +12923,74 @@ function renderEvaluationAndFooterSection() {
 
 
 
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div class="space-y-2.5 pt-1">
 
                 <div>
 
-                    <label class="block font-bold text-slate-800 mb-1">10. SONUÇ VE KANAAT</label>
+                    <label class="block font-bold text-slate-800 mb-1.5">10. SONUÇ VE KANAAT</label>
 
-                    <select onchange="AppState.currentFormData.overallResult=this.value; if(AppState.currentInspection) AppState.currentInspection.result_status=this.value; triggerAutoSave(); paintInspectionEditorUI();"
-
-                        class="w-full border-2 rounded-lg px-2.5 py-2 text-xs font-black ${
-
-                            !isSuitable ? 'border-rose-500 bg-rose-50 text-rose-800' :
-
-                            'border-emerald-500 bg-emerald-50 text-emerald-800'
-
-                        }">
-
-                        <option value="UYGUN" ${isSuitable ? 'selected' : ''}>✓ UYGUN</option>
-
-                        <option value="UYGUN DEĞİL" ${!isSuitable ? 'selected' : ''}>✕ UYGUN DEĞİL</option>
-
-                    </select>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button"
+                            onclick="AppState.currentFormData.overallResult='UYGUN'; if(AppState.currentInspection) AppState.currentInspection.result_status='UYGUN'; triggerAutoSave(); paintInspectionEditorUI();"
+                            class="py-2.5 px-3 rounded-xl border-2 font-black text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
+                                isSuitable
+                                    ? 'border-emerald-600 bg-emerald-600 text-white shadow-2xs'
+                                    : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-300'
+                            }">
+                            <i class="fa-solid fa-circle-check"></i>
+                            <span>✓ UYGUN</span>
+                        </button>
+                        <button type="button"
+                            onclick="AppState.currentFormData.overallResult='UYGUN DEĞİL'; if(AppState.currentInspection) AppState.currentInspection.result_status='UYGUN DEĞİL'; triggerAutoSave(); paintInspectionEditorUI();"
+                            class="py-2.5 px-3 rounded-xl border-2 font-black text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
+                                !isSuitable
+                                    ? 'border-rose-600 bg-rose-600 text-white shadow-2xs'
+                                    : 'border-slate-200 bg-white text-slate-600 hover:border-rose-300'
+                            }">
+                            <i class="fa-solid fa-circle-xmark"></i>
+                            <span>✕ UYGUN DEĞİL</span>
+                        </button>
+                    </div>
 
                 </div>
 
-                <div>
+                ${(!isSuitable && is2201) ? `
+                    <div class="p-2.5 rounded-xl bg-rose-50/70 border border-rose-200 space-y-1.5">
+                        <label class="block text-[11px] font-bold text-rose-900">TS HD 60364 Kusur / Risk Sınıfı (PDF Sonuç Cümlesi)</label>
+                        <div class="grid grid-cols-3 gap-1.5">
+                            ${[
+                                { code: 'C1', title: 'C1 • Tehlike Mevcut', sub: 'Derhal düzeltilmeli' },
+                                { code: 'C2', title: 'C2 • Potansiyel Tehlike', sub: 'Acil düzeltilmeli' },
+                                { code: 'C3', title: 'C3 • İyileştirme', sub: 'İyileştirme önerilir' }
+                            ].map(g => {
+                                const isSel = grade === g.code;
+                                return `
+                                    <button type="button"
+                                        onclick="AppState.currentFormData.defectGrade='${g.code}'; triggerAutoSave(); paintInspectionEditorUI();"
+                                        class="p-2 rounded-lg border text-left transition-all active:scale-95 ${
+                                            isSel
+                                                ? 'border-rose-600 bg-rose-600 text-white shadow-2xs'
+                                                : 'border-rose-200 bg-white text-slate-700 hover:bg-rose-50'
+                                        }">
+                                        <div class="font-black text-[11px] leading-tight">${g.title}</div>
+                                        <div class="text-[10px] ${isSel ? 'text-rose-100' : 'text-slate-400'} mt-0.5">${g.sub}</div>
+                                    </button>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                ` : ''}
 
-                    <label class="block font-bold text-slate-800 mb-1">Rapor Tarihi</label>
-
-                    <input type="date" id="editorReportDateInput" value="${escapeHtml((typeof toIsoDate === 'function' ? toIsoDate(AppState.currentInspection?.inspection_date || AppState.currentFormData?.companyInfo?.reportDate) : '') || '')}"
-
-                        onchange="if(typeof updateReportDateManual === 'function') updateReportDateManual(this.value);"
-
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-2 bg-white">
-
-                </div>
-
-                <div>
-
-                    <label class="block font-bold text-slate-800 mb-1">Sonraki Kontrol Tarihi</label>
-
-                    <input type="date" id="editorNextControlDateInput" value="${escapeHtml((typeof toIsoDate === 'function' ? toIsoDate(fd.nextInspectionDate || AppState.currentFormData?.companyInfo?.nextControlDate) : '') || '')}"
-
-                        onchange="if(typeof updateReportNextDateManual === 'function') updateReportNextDateManual(this.value);"
-
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-2 bg-white">
-
+                <div class="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600">
+                    <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                        <span><i class="fa-regular fa-calendar-check text-sky-600 mr-1"></i>Kontrol Tarihi: <strong class="text-slate-800">${escapeHtml(rptDateDisp)}</strong></span>
+                        <span><i class="fa-solid fa-calendar-plus text-emerald-600 mr-1"></i>Sonraki Kontrol: <strong class="text-slate-800">${escapeHtml(nextDateDisp)}</strong></span>
+                    </div>
+                    <button type="button"
+                        onclick="AppState.activeEditorSection=0; AppState.activeSpecTab=0; AppState.activeGenTab=0; paintInspectionEditorUI(); window.scrollTo({top:0,behavior:'smooth'});"
+                        class="text-sky-600 hover:underline font-bold shrink-0 ml-2">
+                        1. Adımda Düzenle
+                    </button>
                 </div>
 
             </div>
@@ -12473,6 +13058,13 @@ function autoCompileDefectNotes() {
             const val = fd.answers[k];
 
             if (val === 'Uygun Değil' || val === 'Kısmen Uygun') {
+
+                const customSel = fd.itemDefectSelections && fd.itemDefectSelections[k];
+                if (customSel && customSel.sentence) {
+                    const line = `• [${customSel.title}]: ${customSel.sentence}`;
+                    if (!detectedDefects.includes(line)) detectedDefects.push(line);
+                    return;
+                }
 
                 const guid = k.replace(/^q_/, '');
 
@@ -16328,7 +16920,9 @@ function syncAllDefectsToDefectNotes() {
 
         if (item && item.sentence) {
 
-            lines.push(`• [${item.title}]: ${item.sentence}`);
+            const lineStr = `• [${item.title}]: ${item.sentence}`;
+
+            if (!lines.includes(lineStr)) lines.push(lineStr);
 
         }
 
@@ -16336,7 +16930,11 @@ function syncAllDefectsToDefectNotes() {
 
     if (String(AppState.currentInspection?.template_id) === '2201' && typeof window.getElectrical22DefectLines === 'function') {
 
-        window.getElectrical22DefectLines(fd).forEach(l => lines.push(l));
+        window.getElectrical22DefectLines(fd).forEach(l => {
+
+            if (!lines.includes(l)) lines.push(l);
+
+        });
 
     }
 
@@ -16354,7 +16952,17 @@ function syncAllDefectsToDefectNotes() {
 
     const cur = (fd.defectNotes || '').trim();
 
-    const existingManual = cur ? cur.split('\n').filter(l => l.trim() && !l.trim().startsWith('• [')) : [];
+    const existingManual = cur ? cur.split('\n').filter(l => {
+
+        const t = l.trim();
+
+        if (!t) return false;
+
+        if (t.startsWith('• [')) return false;
+
+        return true;
+
+    }) : [];
 
 
 
@@ -18207,6 +18815,33 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
 
     if (is2201) {
+        if (typeof window.ensureElectrical2201SmartRadioAndPanelDefaults === 'function') {
+            window.ensureElectrical2201SmartRadioAndPanelDefaults(fd, insp);
+        }
+        if (typeof window.syncElectrical2201Section22FromTriggers === 'function') {
+            window.syncElectrical2201Section22FromTriggers(null, true);
+        }
+        if (!silentRender && !directPrint) {
+            const missingHints = [];
+            const zxVal = (fd.answers?.['q_6e02fa60-7627-4361-a8d0-0a68162eb123'] || '').trim();
+            const vFF = (fd.answers?.['q_314d6833-ba97-4209-9d63-112fc4557cf2'] || '').trim();
+            const vLN = (fd.answers?.['q_5d61243b-e63f-4fa1-8e9f-cc4853b3a2e6'] || '').trim();
+            if (!zxVal && !vFF && !vLN) {
+                missingHints.push('6.1 Pano Empedans/Gerilim');
+            }
+            const linyeRows = fd.tableRows?.['topic_3_3'] || [];
+            const hasFilledLinye = linyeRows.some(r => {
+                const inVal = (r['1753eb8f-8cf2-4847-8ec2-9f97e12c8225'] || '').trim();
+                const fazVal = (r['1655264f-6533-4a9c-9a04-4e580745015b'] || '').trim();
+                return Boolean(inVal || fazVal);
+            });
+            if (!hasFilledLinye) {
+                missingHints.push('6.1 Linye Tablosu');
+            }
+            if (missingHints.length > 0 && typeof showToast === 'function') {
+                showToast(`Hatırlatma: ${missingHints.join(' ve ')} henüz boş`, 'warning');
+            }
+        }
         pagesArray = buildPdfPages2201(insp, fd, ci, reportNo, formCode, activePdfTheme);
     } else if (isGrounding2202) {
         pagesArray = buildPdfPages2202(insp, fd, ci, reportNo, activePdfTheme);
@@ -18990,13 +19625,16 @@ function buildPdfPages2201(insp, fd, ci, reportNo, formCode, activePdfTheme) {
 
         // Block 6: 5. TEST VE KONTROLLER Title + 5.1. PANO ADI/EKİPMAN TANIMLAMASI
         const qPano51 = area2.topics[0].questions[0];
+        const fallbackPanelName = (insp.equipment_name || ci.equipmentName || '').trim();
+        const fallbackSerialCode = (ci.serialCode || insp.serial_no || '').trim();
+        const pano51Val = getAns(qPano51) || fallbackPanelName;
         const sec51TableHtml = useRamsMinistryEnhanced2201 ? `
             <table class="tkm-table">
                 <colgroup><col style="width:32%;"><col style="width:68%;"></colgroup>
                 <tbody>
                     <tr>
                         <td class="tkm-label-cell" style="text-align:left;padding:2px 6px;">${qPano51 ? qPano51.question : 'Pano Adı/Ekipman Tanımlaması'}</td>
-                        <td class="tkm-val-cell" style="text-align:left;padding:2px 6px;">${escapeHtml(getAns(qPano51))}</td>
+                        <td class="tkm-val-cell" style="text-align:left;padding:2px 6px;">${escapeHtml(pano51Val)}</td>
                     </tr>
                 </tbody>
             </table>
@@ -19080,7 +19718,7 @@ function buildPdfPages2201(insp, fd, ci, reportNo, formCode, activePdfTheme) {
                     <tbody>
                         <tr>
                             <td class="tkm-label-cell" style="text-align:left;padding:2.5px 6px;">${qPano61 ? qPano61.question : 'Pano (Ekipman) Adı-Etiketi veya Kodu'}</td>
-                            <td class="tkm-val-cell" colspan="5" style="text-align:left;padding:2.5px 6px;">${escapeHtml(getAns(qPano61))}</td>
+                            <td class="tkm-val-cell" colspan="5" style="text-align:left;padding:2.5px 6px;">${escapeHtml(getAns(qPano61) || (fallbackSerialCode && fallbackPanelName && !fallbackPanelName.includes(fallbackSerialCode) ? `${fallbackPanelName} (${fallbackSerialCode})` : (fallbackPanelName || fallbackSerialCode)))}</td>
                         </tr>
                         <tr>
                             <td class="tkm-label-cell" style="text-align:left;padding:2px 5px;">${q61[0] ? q61[0].question : 'Panodan ölçülen faz-toprak çevrim empedansı (Zx) (Ω)'}</td>
@@ -19264,7 +19902,10 @@ function buildPdfPages2201(insp, fd, ci, reportNo, formCode, activePdfTheme) {
         pushMultiRowTopicBlocks(area3.topics[5], 'topic_3_5', '6.3. ' + area3.topics[5].name, true);
 
         // Block for 7. KUSUR AÇIKLAMALARI
-        const rawDefectNotes = (fd.defectNotes || 'Kusur tespiti bulunmamaktadır.').trim();
+        const cleanedRawDefects = typeof window.deduplicateLegacy22DefectNotes === 'function'
+            ? window.deduplicateLegacy22DefectNotes(fd.defectNotes || '')
+            : (fd.defectNotes || '');
+        const rawDefectNotes = (cleanedRawDefects.trim() || 'Kusur tespiti bulunmamaktadır.');
         const renderRamsDefectNotesContent = () => {
             if (!rawDefectNotes || rawDefectNotes === 'Kusur tespiti bulunmamaktadır.') {
                 return `<div style="color:#14573a;font-weight:700;font-size:7.3pt;">✓ Kusur tespiti bulunmamaktadır.</div>`;
@@ -19397,13 +20038,27 @@ function buildPdfPages2201(insp, fd, ci, reportNo, formCode, activePdfTheme) {
         }
 
         // Block 9: 9. NOTLAR (Bakanlık Formatı: SABİT 9. BÖLÜM)
+        const hasProjectAns = (fd.answers?.['q_03facbae-a3ef-4403-88db-2c86da421539'] || '').trim();
+        const hasDiagramAns = (fd.answers?.['q_f30211b6-9dcd-4c8d-9fad-5f45c6bb436a'] || '').trim();
+        const smartDefaultGeneralNote = (() => {
+            if (hasProjectAns === 'Yok' && hasDiagramAns === 'Yok') {
+                return 'Proje Bilgileri: Kontrol esnasında tesise ait onaylı elektrik tesisat projesi ve tek hat şeması ibraz edilmemiş olup, periyodik kontroller mevcut tesisat durumu üzerinden gerçekleştirilmiştir.';
+            }
+            if (hasProjectAns === 'Yok' && hasDiagramAns === 'Var') {
+                return 'Proje Bilgileri: Kontrol esnasında pano tek hat şeması yerinde incelenmiş, elektrik tesisat projesi ibraz edilmemiştir.';
+            }
+            if (hasProjectAns === 'Var' && hasDiagramAns === 'Yok') {
+                return 'Proje Bilgileri: Kontrol esnasında tesise ait elektrik tesisat projesi incelenmiş, pano içerisinde tek hat şeması bulunmadığı tespit edilmiştir.';
+            }
+            return 'Proje Bilgileri: Tesisin elektrik tesisat projeleri ve tek hat şeması yerinde incelenmiş olup kontroller bu doğrultuda gerçekleştirilmiştir.';
+        })();
         blocks.push(`
             <div class="tkm-sec-title">9. NOTLAR</div>
             <table class="tkm-table ${useRamsMinistryEnhanced2201 ? 'tkm-general-notes-box' : ''}">
                 <tbody>
                     <tr>
                         <td style="min-height:22px;height:22px;vertical-align:top;text-align:left;padding:3.5px 6px;font-size:7.2pt;line-height:1.2;">
-                            ${escapeHtml(fd.generalNotes || "Proje Bilgileri: Tesisin elektrik tesisat projeleri ve tek hat şeması yerinde incelenmiş olup kontroller bu doğrultuda gerçekleştirilmiştir.").replace(/\n/g, '<br>')}
+                            ${escapeHtml(fd.generalNotes || smartDefaultGeneralNote).replace(/\n/g, '<br>')}
                         </td>
                     </tr>
                 </tbody>
@@ -19412,9 +20067,15 @@ function buildPdfPages2201(insp, fd, ci, reportNo, formCode, activePdfTheme) {
 
         // Block 10: 10. SONUÇ VE KANAAT (Bakanlık Formatı: SABİT 10. BÖLÜM)
         const isSuitable = fd.overallResult !== 'UYGUN DEĞİL';
+        const gradeMap = {
+            'C1': 'C1 – Tehlike mevcut. Yaralanma riski. Derhal düzeltici eylem gerekli.',
+            'C2': 'C2 – Potansiyel olarak tehlikeli – acil düzeltici eylem gerekli.',
+            'C3': 'C3 – İyileştirme önerilir.'
+        };
+        const selectedGradeText = gradeMap[fd.defectGrade] || gradeMap.C1;
         const conclusionText = isSuitable 
             ? 'KULLANILMASI UYGUNDUR.' 
-            : 'KULLANILMASI UYGUN DEĞİLDİR. C1 – Tehlike mevcut. Yaralanma riski. Derhal düzeltici eylem gerekli.';
+            : `KULLANILMASI UYGUN DEĞİLDİR. ${selectedGradeText}`;
 
         const conclusionBannerHtml = `
             <div class="tkm-conclusion-box ${isSuitable ? 'tkm-result-box-ok' : 'tkm-result-box-bad'}" style="margin-top:2px;margin-bottom:3px;font-size:7.4pt;font-weight:700;color:${isSuitable ? '#047857' : '#c00000'};line-height:1.25;">
@@ -21990,12 +22651,11 @@ function openTabNavSheet() {
 
     if (String(insp.template_id) === '2201') {
         tabs = [
-            { label: '1-2. Firma & Ekipman', id: 0 },
-            { label: '3-4. Cihazlar & Aletler', id: 1 },
-            { label: '5. Gözle Kontrol', id: 2 },
-            { label: '6. Fonksiyon Testleri', id: 3 },
-            { label: `8. Fotoğraflar (${(AppState.currentFormData.photos || []).length})`, id: 4 },
-            { label: '7-11. Kusur, Not & Onay', id: 5 },
+            { label: '1. Genel & Cihaz', id: 0 },
+            { label: '2. Gözle Kontrol', id: 2 },
+            { label: '3. Ölçüm & Test', id: 3 },
+            { label: `4. Fotoğraf (${(AppState.currentFormData.photos || []).length})`, id: 4 },
+            { label: '5. Kusur & Sonuç', id: 5 },
             { label: 'Tüm Bölümler (1-11)', id: -1 }
         ];
 
@@ -22717,61 +23377,155 @@ function syncCompanyAndDevicesToAllReports() {
 
 
 
-// --- 13.4 GEÇMİŞ RAPORU KLONLAMA ---
+// --- 13.4 GEÇMİŞ RAPORU / PANOYU AKILLI ÇOĞALTMA ---
+
+function suggestNextPanelName(rawName) {
+    const base = String(rawName || 'Pano').trim().replace(/\s*\(Kopya\)\s*$/i, '');
+    const m = base.match(/^(.*?)(\d+)$/);
+    if (m) {
+        const prefix = m[1];
+        const numStr = m[2];
+        const nextNum = String(parseInt(numStr, 10) + 1).padStart(numStr.length, '0');
+        return `${prefix}${nextNum}`;
+    }
+    return `${base}-2`;
+}
 
 function cloneInspectionReport(sourceId, workOrderId) {
-
-    if (!confirm('Bu raporu tüm ölçüm satırları ve ayarlarıyla klonlamak istediğinize emin misiniz?')) return;
-
-
-
     OfflineDB.init();
-
-    const sourceInsp = (OfflineDB.state.inspections || []).find(i => String(i.id) === String(sourceId));
-
+    const sourceInsp = (OfflineDB.state.inspections || []).find(i => String(i.id) === String(sourceId))
+        || (AppState.inspectionsCache || []).find(i => String(i.id) === String(sourceId));
     if (!sourceInsp) return showToast('Kaynak rapor bulunamadı', 'error');
 
+    const suggestedName = suggestNextPanelName(sourceInsp.equipment_name);
+    const safeWoId = workOrderId || sourceInsp.work_order_id || '';
 
+    openModal(
+        '<i class="fa-solid fa-clone mr-2 text-sky-400"></i>Panoyu / Raporu Çoğalt',
+        `<div class="space-y-3 text-xs">
+            <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-600">
+                Kaynak Rapor: <strong class="text-slate-900">${escapeHtml(sourceInsp.equipment_name || 'Rapor')}</strong>
+            </div>
+            <div>
+                <label class="block font-bold text-slate-800 mb-1">Yeni Pano / Ekipman Adı <span class="text-rose-500">*</span></label>
+                <input type="text" id="cloneNewEqNameInput" value="${escapeHtml(suggestedName)}"
+                    placeholder="Örn: TDP-2, ADP-2..."
+                    class="w-full border-2 border-slate-300 focus:border-sky-500 rounded-lg px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none">
+            </div>
+            <label class="flex items-start gap-2.5 p-2.5 rounded-xl border border-emerald-200 bg-emerald-50/60 cursor-pointer select-none">
+                <input type="checkbox" id="cloneResetDefectsCheckbox" checked class="w-4 h-4 accent-emerald-600 rounded mt-0.5 shrink-0">
+                <div class="min-w-0">
+                    <div class="font-bold text-emerald-950 text-xs">Yeni Pano İçin Kusurları & Fotoğrafları Temizle (Önerilen)</div>
+                    <div class="text-[11px] text-emerald-800 mt-0.5 leading-snug">Firma, cihaz, şebeke ayarları ve linye şablonunu korur; önceki panonun kusur ve fotoğraflarını sıfırlayıp yeni panoyu <strong>✓ Uygun</strong> başlatır.</div>
+                </div>
+            </label>
+        </div>`,
+        `<button type="button" onclick="closeModal()" class="px-3 py-2 rounded-lg bg-slate-200 text-slate-700 font-bold text-xs">İptal</button>
+         <button type="button" onclick="executeCloneInspectionReport('${escapeForJs(sourceId)}', '${escapeForJs(safeWoId)}', false)"
+            class="px-3 py-2 rounded-lg bg-slate-800 text-white font-bold text-xs active:scale-95">
+            Listeye Ekle
+         </button>
+         <button type="button" onclick="executeCloneInspectionReport('${escapeForJs(sourceId)}', '${escapeForJs(safeWoId)}', true)"
+            class="px-3.5 py-2 rounded-lg bg-emerald-500 text-slate-950 font-black text-xs flex items-center gap-1 shadow-2xs active:scale-95">
+            <i class="fa-solid fa-bolt"></i>
+            <span>Çoğalt ve Aç</span>
+         </button>`
+    );
+
+    setTimeout(() => {
+        const inp = document.getElementById('cloneNewEqNameInput');
+        if (inp) { inp.focus(); inp.select(); }
+    }, 100);
+}
+
+function executeCloneInspectionReport(sourceId, workOrderId, openImmediately = false) {
+    OfflineDB.init();
+    const sourceInsp = (OfflineDB.state.inspections || []).find(i => String(i.id) === String(sourceId))
+        || (AppState.inspectionsCache || []).find(i => String(i.id) === String(sourceId));
+    if (!sourceInsp) return showToast('Kaynak rapor bulunamadı', 'error');
+
+    const nameInp = document.getElementById('cloneNewEqNameInput');
+    const newEqName = (nameInp?.value || '').trim() || suggestNextPanelName(sourceInsp.equipment_name);
+    const resetDefects = document.getElementById('cloneResetDefectsCheckbox') ? Boolean(document.getElementById('cloneResetDefectsCheckbox').checked) : true;
 
     const newId = String(Date.now() + Math.floor(Math.random() * 1000));
-
+    const newReportNo = `TKM-26-02-${newId.slice(-5)}`;
     const clonedInsp = JSON.parse(JSON.stringify(sourceInsp));
 
     clonedInsp.id = newId;
+    clonedInsp.equipment_name = newEqName;
+    clonedInsp.report_no = newReportNo;
+    delete clonedInsp.portal_report_url;
+    delete clonedInsp.portal_verify_code;
+    delete clonedInsp.cloud_id;
 
-    clonedInsp.equipment_name = (clonedInsp.equipment_name || 'Rapor') + ' (Kopya)';
+    let clonedFd = {};
+    try {
+        const rawSource = localStorage.getItem(`enlab_insp_${sourceId}`);
+        if (rawSource) {
+            clonedFd = JSON.parse(rawSource);
+        } else if (sourceInsp.data_json) {
+            clonedFd = typeof sourceInsp.data_json === 'string' ? JSON.parse(sourceInsp.data_json) : JSON.parse(JSON.stringify(sourceInsp.data_json));
+        } else if (sourceInsp.form_data) {
+            clonedFd = JSON.parse(JSON.stringify(sourceInsp.form_data));
+        }
+    } catch (e) {
+        clonedFd = {};
+    }
 
-    clonedInsp.report_no = `TKM-26-02-${newId.slice(-5)}`;
+    if (!clonedFd.companyInfo) clonedFd.companyInfo = {};
+    clonedFd.companyInfo.equipmentName = newEqName;
+    clonedFd.companyInfo.reportNo = newReportNo;
 
+    if (!clonedFd.answers) clonedFd.answers = {};
+    // Sync 5.1 & 6.1 Pano Adı to the new equipment name
+    clonedFd.answers['q_4806ef6b-a811-4c26-b76f-6467779e5499'] = newEqName;
+    clonedFd.answers['q_3e5cfce4-bb64-4339-b086-f0947d8dbccb'] = newEqName;
 
+    if (resetDefects) {
+        clonedFd.overallResult = 'UYGUN';
+        clonedFd.defectNotes = '';
+        clonedFd.itemDefectSelections = {};
+        clonedFd.photos = [];
+        clonedInsp.result = 'UYGUN';
+        clonedInsp.result_status = 'UYGUN';
 
-    // Clone localStorage data
+        Object.keys(clonedFd.answers).forEach(k => {
+            if (clonedFd.answers[k] === 'Uygun Değil' || clonedFd.answers[k] === 'Kısmen Uygun') {
+                clonedFd.answers[k] = 'Uygun';
+            } else if (clonedFd.answers[k] === 'Uygunsuz') {
+                clonedFd.answers[k] = 'Uygun';
+            }
+        });
+        if (clonedFd.specializedChecks) {
+            Object.keys(clonedFd.specializedChecks).forEach(k => {
+                if (clonedFd.specializedChecks[k] === 'Uygun Değil' || clonedFd.specializedChecks[k] === 'Kısmen Uygun') {
+                    clonedFd.specializedChecks[k] = 'Uygun';
+                }
+            });
+        }
+    }
+
+    clonedInsp.data_json = JSON.stringify(clonedFd);
+    clonedInsp.form_data = clonedFd;
 
     try {
-
-        const rawSource = localStorage.getItem(`enlab_insp_${sourceId}`);
-
-        if (rawSource) {
-
-            localStorage.setItem(`enlab_insp_${newId}`, rawSource);
-
-        }
-
+        localStorage.setItem(`enlab_insp_${newId}`, JSON.stringify(clonedFd));
     } catch (e) {}
 
-
-
     OfflineDB.state.inspections.push(clonedInsp);
-
     OfflineDB.save();
 
+    closeModal();
+    showToast(`"${newEqName}" raporu oluşturuldu!`);
 
-
-    renderWorkOrderDetails(workOrderId);
-
-    showToast('Rapor başarıyla klonlandı!');
-
+    if (openImmediately) {
+        navigateTo('inspection-complete', { id: newId, templateId: clonedInsp.template_id });
+    } else {
+        renderWorkOrderDetails(workOrderId || clonedInsp.work_order_id);
+    }
 }
+window.executeCloneInspectionReport = executeCloneInspectionReport;
 
 
 

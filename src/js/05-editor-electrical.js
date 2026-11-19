@@ -218,9 +218,12 @@ function getElectrical22DefectLines(fd) {
     ELECTRICAL_22_LINK_RULES.forEach(rule => {
         const val = String(fd.answers[`q_${rule.guid}`] || '').trim();
         if (val === 'Uygunsuz') {
+            // Eğer bağlı olduğu 5.x Gözle Kontrol maddesinde veya 6.1 Linye tablosunda zaten kusur seçiliyse,
+            // Bölüm 7'ye aynı kusur cümlesini ikinci kez (mükerrer) ekleme!
             const linkedVisual = getElectrical22VisualDetailNotes(rule, fd);
-            const detail = linkedVisual || rule.defectText;
-            lines.push(`• [2.2 Tespit Edilen Bilgiler - ${rule.shortLabel}]: Uygunsuz (${detail})`);
+            if (linkedVisual) return;
+            if (rule.isRcdRule && evaluateElectrical22RuleStatus(rule, fd) === 'Uygunsuz') return;
+            lines.push(`• [2.2 Tespit Edilen Bilgiler - ${rule.shortLabel}]: Uygunsuz (${rule.defectText})`);
         }
     });
     return lines;
@@ -668,6 +671,107 @@ function ensureThermalCameraDevice() {
 
 }
 
+function ensureElectrical2201SmartRadioAndPanelDefaults() {
+    const insp = AppState.currentInspection;
+    const fd = AppState.currentFormData;
+    if (!insp || !fd || String(insp.template_id) !== '2201') return;
+    if (!fd.answers || typeof fd.answers !== 'object') fd.answers = {};
+    let changed = false;
+
+    // 1. Pano Adı (5.1 ve 6.1) üstteki Ekipman Adı ile otomatik senkron olsun (3 kez sorulmasın, PDF'te boş çıkmasın)
+    const eqName = String(insp.equipment_name || fd.companyInfo?.equipmentName || '').trim();
+    const serial = String(fd.companyInfo?.serialCode || insp.serial_no || '').trim();
+    if (eqName) {
+        const q51 = 'q_4806ef6b-a811-4c26-b76f-6467779e5499';
+        const q61 = 'q_3e5cfce4-bb64-4339-b086-f0947d8dbccb';
+        if (!String(fd.answers[q51] || '').trim()) {
+            fd.answers[q51] = eqName;
+            changed = true;
+        }
+        if (!String(fd.answers[q61] || '').trim()) {
+            fd.answers[q61] = serial ? `${eqName} (${serial})` : eqName;
+            changed = true;
+        }
+    }
+
+    // 2. Resmi PDF'te boş kalmaması gereken temel radyo butonları için akıllı varsayılanlar (ilk açılışta)
+    if (!fd._smartRadiosInitialized) {
+        const defaultRadioMap = {
+            'q_18337b76-c549-4c86-9149-0f7d093efc27': 'Periyodik Kontrol', // Kontrol nedeni
+            'q_03facbae-a3ef-4403-88db-2c86da421539': 'Var',               // Tesise ait proje var mı?
+            'q_f30211b6-9dcd-4c8d-9fad-5f45c6bb436a': 'Var',               // Tek hat şeması var mı?
+            'q_a1206df8-1147-4f44-8b29-b23005235b6b': 'AA(3 faz-4 tel)',   // Faz iletkenlerinin sayısı ve tipi
+            'q_ac5e5f99-6517-4c09-b8c3-2c38a8f0f1e8': '230/400',           // Şebeke gerilimi (V)
+            'q_4cb81e03-b7c1-4f66-b728-a98fc76cd0ef': '50',                // Nominal frekans, f (Hz)
+            'q_b5b1fe8c-0b83-4727-8d53-3064990806ce': 'Yok',               // Tesisatta kapsamlı değişiklik var mı?(>%20)
+            'q_ddb49ead-c7b4-42b9-b449-0cc456ce6fbc': 'Hayır',             // DKD/SPD kullanılmış mı?
+            'q_ac00a719-779a-4eed-a17c-153d5d1c2342': 'Var',               // Bir önceki periyodik kontrol etiketi var mı?
+            'q_97839257-ba72-480f-8e3f-b044a1b0a8f1': 'Çevrim empedansı',  // Ölçüm ve doğrulama metodu
+            'q_dc17ec9f-90bc-442a-a61b-729215d36fa0': 'Mevcut Değil'       // Aşırı gerilim koruma (DKD) tipi
+        };
+        Object.keys(defaultRadioMap).forEach(k => {
+            if (!String(fd.answers[k] || '').trim()) {
+                fd.answers[k] = defaultRadioMap[k];
+                changed = true;
+            }
+        });
+        fd._smartRadiosInitialized = true;
+    }
+
+    if (changed && typeof triggerAutoSave === 'function') {
+        triggerAutoSave();
+    }
+}
+
+function applyElectrical2201StandardFieldDefaults() {
+    const fd = AppState.currentFormData;
+    if (!fd) return;
+    if (!fd.answers) fd.answers = {};
+    const stdMap = {
+        'q_26ee591d-05ba-4a47-857d-e40120d312ee': 'TN-S',
+        'q_ac5e5f99-6517-4c09-b8c3-2c38a8f0f1e8': '230/400',
+        'q_03facbae-a3ef-4403-88db-2c86da421539': 'Var',
+        'q_f30211b6-9dcd-4c8d-9fad-5f45c6bb436a': 'Var',
+        'q_18337b76-c549-4c86-9149-0f7d093efc27': 'Periyodik Kontrol',
+        'q_4f035efc-81b9-4568-9ee9-8a3c0daa0bd6': 'Temel',
+        'q_06cdc2dc-0830-49c4-9b36-a6d26c7344cc': 'Endüstri',
+        'q_04faae5e-066a-4da0-a3a3-f8376a0f7a71': 'Elektrik Dağıtım ve Kuvvet/Aydınlatma Beslemesi',
+        'q_a1206df8-1147-4f44-8b29-b23005235b6b': 'AA(3 faz-4 tel)',
+        'q_480aca54-3a02-45d6-88e5-cbaa2353cfc6': '0,4',
+        'q_4cb81e03-b7c1-4f66-b728-a98fc76cd0ef': '50',
+        'q_b5b1fe8c-0b83-4727-8d53-3064990806ce': 'Yok',
+        'q_ac00a719-779a-4eed-a17c-153d5d1c2342': 'Var',
+        'q_97839257-ba72-480f-8e3f-b044a1b0a8f1': 'Çevrim empedansı',
+        'q_dc17ec9f-90bc-442a-a61b-729215d36fa0': 'Mevcut Değil'
+    };
+    let count = 0;
+    Object.keys(stdMap).forEach(k => {
+        if (!String(fd.answers[k] || '').trim()) {
+            fd.answers[k] = stdMap[k];
+            count++;
+        }
+    });
+    fd._details21Initialized = true;
+    fd._smartRadiosInitialized = true;
+    syncElectrical2201Section22FromTriggers(null, false);
+    triggerAutoSave();
+    paintInspectionEditorUI();
+    showToast(count > 0 ? `${count} adet boş tesisat alanı standart saha değerleriyle dolduruldu!` : 'Tüm standart alanlar zaten dolu.');
+}
+window.applyElectrical2201StandardFieldDefaults = applyElectrical2201StandardFieldDefaults;
+
+function toggleElectrical21AdvancedDrawer() {
+    AppState.showElectrical21Advanced = !AppState.showElectrical21Advanced;
+    paintInspectionEditorUI();
+}
+window.toggleElectrical21AdvancedDrawer = toggleElectrical21AdvancedDrawer;
+
+function toggleThermalManualDetail() {
+    AppState.showThermalManualDetail = !AppState.showThermalManualDetail;
+    paintInspectionEditorUI();
+}
+window.toggleThermalManualDetail = toggleThermalManualDetail;
+
 function renderElectrical2201Editor() {
 
     const tpl = AppState.electricalTemplate;
@@ -688,6 +792,8 @@ function renderElectrical2201Editor() {
 
     ensureElectrical2201Section61Defaults();
 
+    ensureElectrical2201SmartRadioAndPanelDefaults();
+
     ensureElectrical2201Section22Defaults();
 
 
@@ -698,59 +804,68 @@ function renderElectrical2201Editor() {
 
 
 
-    if (AppState.activeAreaIndex === undefined) AppState.activeAreaIndex = 0;
+    if (AppState.activeAreaIndex === undefined || AppState.activeAreaIndex === 1) AppState.activeAreaIndex = 0;
 
     const activeIdx = AppState.showAllAreas ? -1 : AppState.activeAreaIndex;
 
+    // Gözle kontrol uygunsuzluk sayısı
+    let visualDefectCount = 0;
+    (areas[2]?.topics || []).forEach(t => {
+        (t.questions || []).forEach(q => {
+            const v = fd.answers?.[`q_${q.guid}`];
+            if (v === 'Uygun Değil' || v === 'Kısmen Uygun') visualDefectCount++;
+        });
+    });
 
+    const linyeCount = (fd.tableRows?.topic_3_3 || []).filter(r => r && Object.values(r).some(v => String(v || '').trim())).length;
+    const photoCount = (fd.photos || []).length;
 
-    const tabs = [
-        { label: '1-2. Firma & Ekipman', id: 0 },
-        { label: '3-4. Cihazlar & Aletler', id: 1 },
-        { label: '5. Gözle Kontrol', id: 2 },
-        { label: '6. Fonksiyon Testleri', id: 3 },
-        { label: `8. Fotoğraflar (${(fd.photos || []).length})`, id: 4 },
-        { label: '7-11. Kusur, Not & Onay', id: 5 },
-        { label: 'Tüm Bölümler (1-11)', id: -1 }
+    // 5 Net, Mantıksal Sıralı Adım + Tümü
+    const steps = [
+        { label: '1. Genel & Cihaz', short: '1. Genel', id: 0, icon: 'fa-building-circle-check' },
+        { label: `2. Gözle Kontrol${visualDefectCount > 0 ? ` (${visualDefectCount}✕)` : ''}`, short: '2. Gözle', id: 2, icon: 'fa-eye', hasDefect: visualDefectCount > 0 },
+        { label: `3. Ölçüm & Test${linyeCount > 0 ? ` (${linyeCount})` : ''}`, short: '3. Ölçüm', id: 3, icon: 'fa-bolt-lightning' },
+        { label: `4. Fotoğraf (${photoCount})`, short: `4. Foto (${photoCount})`, id: 4, icon: 'fa-camera' },
+        { label: '5. Kusur & Sonuç', short: '5. Sonuç', id: 5, icon: 'fa-file-signature', isBad: fd.overallResult === 'UYGUN DEĞİL' }
     ];
 
 
 
     const tabsHtml = `
-
-        <div class="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-
-            ${tabs.map(t => {
-
-                const isActive = activeIdx === t.id;
-
-                return `
-
-                    <button onclick="if (${t.id} === -1) { AppState.showAllAreas = true; } else { AppState.showAllAreas = false; AppState.activeAreaIndex = ${t.id}; } paintInspectionEditorUI();"
-
-                        class="py-2 px-2.5 rounded-lg text-xs font-bold text-center truncate transition ${
-
-                            isActive ? 'bg-slate-900 text-white shadow-2xs' : 'bg-slate-100 text-slate-700 active:bg-slate-200'
-
-                        } ${t.id === -1 ? 'col-span-2 sm:col-span-1' : ''}">
-
-                        ${t.label}
-
-                    </button>
-
-                `;
-
-            }).join('')}
-
+        <div class="bg-white p-1.5 rounded-xl border border-slate-200 shadow-2xs space-y-1.5">
+            <div class="grid grid-cols-5 gap-1">
+                ${steps.map(s => {
+                    const isActive = activeIdx === s.id;
+                    const defectStyle = s.hasDefect && !isActive ? 'bg-rose-50 text-rose-700 border border-rose-200' : '';
+                    const badResultStyle = s.isBad && !isActive ? 'bg-rose-50 text-rose-800 border border-rose-200' : '';
+                    return `
+                        <button type="button" onclick="AppState.showAllAreas = false; AppState.activeAreaIndex = ${s.id}; paintInspectionEditorUI(); document.getElementById('pageContent')?.scrollTo({top: 0, behavior: 'smooth'});"
+                            class="py-2 px-1 rounded-lg text-[11px] font-bold text-center truncate transition flex flex-col items-center justify-center gap-0.5 ${
+                                isActive
+                                    ? 'bg-slate-900 text-white shadow-xs'
+                                    : (defectStyle || badResultStyle || 'bg-slate-100 text-slate-700 hover:bg-slate-200/80')
+                            }">
+                            <i class="fa-solid ${s.icon} text-[11px] ${isActive ? 'text-amber-400' : (s.hasDefect || s.isBad ? 'text-rose-600' : 'text-slate-500')}"></i>
+                            <span class="truncate w-full">${s.short}</span>
+                        </button>
+                    `;
+                }).join('')}
+            </div>
+            <div class="flex items-center justify-between px-1 pt-0.5 text-[11px]">
+                <span class="font-bold text-slate-700 truncate">
+                    ${activeIdx === -1 ? '📋 Tüm Bölümler (1-11) Görünümü' : (steps.find(s => s.id === activeIdx)?.label || '')}
+                </span>
+                <button type="button" onclick="AppState.showAllAreas = ${activeIdx === -1 ? 'false' : 'true'}; paintInspectionEditorUI();"
+                    class="px-2 py-0.5 rounded-md font-bold text-[10px] transition ${activeIdx === -1 ? 'bg-slate-900 text-amber-400' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}">
+                    ${activeIdx === -1 ? 'Adım Görünümüne Dön' : 'Tüm Bölümleri Aç (1-11)'}
+                </button>
+            </div>
         </div>
-
     `;
 
 
 
     const showTab0 = (activeIdx === 0 || activeIdx === -1);
-
-    const showTab1 = (activeIdx === 1 || activeIdx === -1);
 
     const showTab2 = (activeIdx === 2 || activeIdx === -1);
 
@@ -764,21 +879,51 @@ function renderElectrical2201Editor() {
 
     const section1Html = showTab0 ? renderSharedCompanyInfoSection() : '';
 
-    const section4Html = showTab1 ? renderSharedMeasuringDevicesSection('4. Ölçüm Aletleri Bilgileri') : '';
+    const area0Html = (showTab0 && areas[0]) ? renderElectrical2201AreaBlock(areas[0], '2') : '';
+
+    const area1Html = (showTab0 && areas[1]) ? renderElectrical2201AreaBlock(areas[1], '3') : '';
+
+    const section4Html = showTab0 ? renderSharedMeasuringDevicesSection('4. Ölçüm Aletleri Bilgileri') : '';
+
+    const area2Html = (showTab2 && areas[2]) ? renderElectrical2201AreaBlock(areas[2], '5') : '';
+
+    const area3Html = (showTab3 && areas[3]) ? renderElectrical2201AreaBlock(areas[3], '6') : '';
 
     const photosHtml = showTab4 ? renderPhotoSectionUI() : '';
 
     const evaluationHtml = showTab5 ? renderEvaluationAndFooterSection() : '';
 
-
-
-    const area0Html = (showTab0 && areas[0]) ? renderElectrical2201AreaBlock(areas[0], '2') : '';
-
-    const area1Html = (showTab1 && areas[1]) ? renderElectrical2201AreaBlock(areas[1], '3') : '';
-
-    const area2Html = (showTab2 && areas[2]) ? renderElectrical2201AreaBlock(areas[2], '5') : '';
-
-    const area3Html = (showTab3 && areas[3]) ? renderElectrical2201AreaBlock(areas[3], '6') : '';
+    // Alt Adım Geçiş Çubuğu (Kullanıcının tekrar en üste kaydırmasına gerek kalmaz)
+    let stepNavFooterHtml = '';
+    if (activeIdx !== -1) {
+        const curStepPos = steps.findIndex(s => s.id === activeIdx);
+        const prevStep = curStepPos > 0 ? steps[curStepPos - 1] : null;
+        const nextStep = (curStepPos >= 0 && curStepPos < steps.length - 1) ? steps[curStepPos + 1] : null;
+        stepNavFooterHtml = `
+            <div class="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between gap-2">
+                ${prevStep ? `
+                    <button type="button" onclick="AppState.showAllAreas = false; AppState.activeAreaIndex = ${prevStep.id}; paintInspectionEditorUI(); document.getElementById('pageContent')?.scrollTo({top: 0, behavior: 'smooth'});"
+                        class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition">
+                        <i class="fa-solid fa-arrow-left text-[10px]"></i>
+                        <span>${prevStep.short}</span>
+                    </button>
+                ` : `<div></div>`}
+                ${nextStep ? `
+                    <button type="button" onclick="AppState.showAllAreas = false; AppState.activeAreaIndex = ${nextStep.id}; paintInspectionEditorUI(); document.getElementById('pageContent')?.scrollTo({top: 0, behavior: 'smooth'});"
+                        class="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 active:scale-95 text-amber-400 font-black text-xs flex items-center gap-1.5 shadow-2xs transition">
+                        <span>Sonraki: ${nextStep.short}</span>
+                        <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                    </button>
+                ` : `
+                    <button type="button" onclick="printOfficialReport()"
+                        class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black text-xs flex items-center gap-1.5 shadow-2xs transition">
+                        <i class="fa-solid fa-file-pdf"></i>
+                        <span>PDF Önizle &amp; İndir</span>
+                    </button>
+                `}
+            </div>
+        `;
+    }
 
 
 
@@ -803,6 +948,8 @@ function renderElectrical2201Editor() {
 
             ${evaluationHtml}
 
+            ${stepNavFooterHtml}
+
         </div>
 
     `;
@@ -817,19 +964,28 @@ function renderElectrical2201AreaBlock(area, secNum) {
 
         <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
 
-            <div class="px-3.5 py-2.5 bg-slate-800 text-white font-bold text-xs flex items-center justify-between gap-2">
+            <div class="px-3.5 py-2.5 bg-slate-800 text-white font-bold text-xs flex items-center justify-between gap-2 flex-wrap">
 
                 <span class="truncate">${secNum}. ${area.name}</span>
 
-                ${area.index === 2 ? `<button onclick="markAllVisualChecksSuitable()" class="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-[11px] shrink-0">Boş Kalanları Uygun Yap</button>` : ''}
+                ${area.index === 0 ? `
+                    <button type="button" onclick="applyElectrical2201StandardFieldDefaults()"
+                        class="px-2.5 py-1 bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 font-bold rounded-lg text-[11px] shrink-0 flex items-center gap-1 shadow-2xs transition"
+                        title="Boş kalan standart şebeke, frekans, proje ve kontrol nedeni alanlarını tek tıkla doldur">
+                        <i class="fa-solid fa-bolt"></i>
+                        <span>Standart Değerleri Doldur</span>
+                    </button>
+                ` : ''}
+
+                ${area.index === 2 ? `<button onclick="markAllVisualChecksSuitable(false)" class="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-[11px] shrink-0">Tümünü Uygun Yap (✓)</button>` : ''}
 
             </div>
 
             ${area.index === 2 ? `
 
-                <div class="p-2.5 bg-slate-100 border-b border-slate-200">
+                <div class="p-2.5 bg-slate-100 border-b border-slate-200 flex items-center justify-between gap-2 flex-wrap">
 
-                    <div class="relative">
+                    <div class="relative flex-1 min-w-[200px]">
 
                         <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
 
@@ -837,17 +993,21 @@ function renderElectrical2201AreaBlock(area, secNum) {
 
                             oninput="AppState.visualSearchQuery=this.value; filterVisualCheckQuestionsLive(this.value);"
 
-                            placeholder="🔍 Maddelerde ara (Örn: klemens, kablo, etiket, yangın, priz)..."
+                            placeholder="🔍 Maddelerde ara (Örn: kapak, kablo, etiket, yangın, zemin)..."
 
                             class="w-full bg-white border border-slate-300 rounded-lg pl-8 pr-3 py-1.5 text-xs font-semibold focus:border-sky-500 focus:outline-none">
 
+                    </div>
+
+                    <div class="text-[10px] font-bold text-slate-500 px-1">
+                        <span class="text-emerald-700">✓ Uygun</span> · <span class="text-rose-700">✕ Kusur</span> · <span class="text-slate-600">N Uyg.Yok</span> · <span class="text-amber-700">G Görülemedi</span>
                     </div>
 
                 </div>
 
             ` : ''}
 
-            <div class="p-3 space-y-4">
+            <div class="p-3 space-y-3">
 
                 ${area.topics.map(topic => renderElectrical2201Topic(area, topic, secNum)).join('')}
 
@@ -863,7 +1023,21 @@ function renderElectrical2201AreaBlock(area, secNum) {
 
 function renderElectrical2201Topic(area, topic, secNum) {
 
-    const subNum = `${secNum}.${topic.index + 1}`;
+    // 5.1 Pano Adı ve 6.2 Pano Adı alanları üstteki sarı Ekipman Adı kutusuyla otomatik senkron olduğundan ekranda tekrar gösterip kafa karıştırma
+    if ((area.index === 2 && topic.index === 0) || (area.index === 3 && topic.index === 1)) {
+        return '';
+    }
+
+    // Resmi Bakanlık PDF'i ile birebir uyumlu numaralandırma:
+    // Bölüm 6: 6.0 Ölçüm Metodu, 6.1 Pano Genel Ölçümleri, 6.1 Linye Tablosu, 6.2 Potansiyel Dengeleme, 6.3 Zemin İzolasyonu
+    let subNum = `${secNum}.${topic.index + 1}`;
+    if (area.index === 3) {
+        if (topic.index === 0) subNum = '6.0';
+        else if (topic.index === 2) subNum = '6.1';
+        else if (topic.index === 3) subNum = '6.1';
+        else if (topic.index === 4) subNum = '6.2';
+        else if (topic.index === 5) subNum = '6.3';
+    }
 
     const tKey = `topic_${area.index}_${topic.index}`;
 
@@ -893,27 +1067,36 @@ function renderElectrical2201Topic(area, topic, secNum) {
 
             const val = AppState.currentFormData.answers[qKey];
 
-            const badgeCls = val === 'Uygun'
-
-                ? 'border-emerald-500 bg-emerald-50 text-emerald-900 font-bold'
-
-                : val === 'Uygun Değil'
-
-                ? 'border-rose-500 bg-rose-50 text-rose-900 font-bold'
-
-                : 'border-slate-300 bg-slate-50 text-slate-700 font-semibold';
-
-
-
             const isDefect = (val === 'Uygun Değil' || val === 'Kısmen Uygun');
 
             const selectedDefect = AppState.currentFormData.itemDefectSelections && AppState.currentFormData.itemDefectSelections[qKey]?.sentence;
+
+            const safeQTitle = q.question.replace(/'/g, "\\'");
+
+            // Tek dokunuşlu 4'lü buton grubu (Açılır menü yerine anında seçim!)
+            const quickBtns = [
+                { v: 'Uygun', lbl: '✓', title: 'Uygun', activeCls: 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' },
+                { v: 'Uygun Değil', lbl: '✕', title: 'Uygun Değil (Kusur Seç)', activeCls: 'bg-rose-600 text-white border-rose-600 shadow-2xs' },
+                { v: 'Uygulaması Yok', lbl: 'N', title: 'Uygulaması Yok', activeCls: 'bg-slate-700 text-white border-slate-700 shadow-2xs' },
+                { v: 'Görülemedi', lbl: 'G', title: 'Görülemedi', activeCls: 'bg-amber-500 text-slate-950 border-amber-500 shadow-2xs' }
+            ].map(b => {
+                const isSel = val === b.v;
+                return `
+                    <button type="button" onclick="handleAnswerChange('${qKey}', '${b.v}', '${safeQTitle}')"
+                        title="${b.title}"
+                        class="w-8 h-7 rounded-lg border text-xs font-black flex items-center justify-center transition active:scale-90 ${
+                            isSel ? b.activeCls : 'bg-white hover:bg-slate-100 text-slate-600 border-slate-300'
+                        }">
+                        ${b.lbl}
+                    </button>
+                `;
+            }).join('');
 
 
 
             return `
 
-                <div class="border-b border-slate-100 last:border-b-0">
+                <div class="border-b border-slate-100 last:border-b-0 ${isDefect ? 'bg-rose-50/40' : ''}">
 
                     <div class="p-2.5 flex items-center justify-between gap-2 text-xs">
 
@@ -923,21 +1106,9 @@ function renderElectrical2201Topic(area, topic, secNum) {
 
                         </div>
 
-                        <select onchange="handleAnswerChange('${qKey}', this.value, '${q.question.replace(/'/g, "\\'")}')"
-
-                            class="w-32 shrink-0 border rounded-lg px-2 py-1.5 text-xs ${badgeCls}">
-
-                            <option value="" ${val === '' ? 'selected' : ''}>Seçiniz...</option>
-
-                            <option value="Uygun" ${val === 'Uygun' ? 'selected' : ''}>✓ Uygun</option>
-
-                            <option value="Uygun Değil" ${val === 'Uygun Değil' ? 'selected' : ''}>✕ Uygun Değil</option>
-
-                            <option value="Uygulaması Yok" ${val === 'Uygulaması Yok' ? 'selected' : ''}>N Uyg. Yok</option>
-
-                            <option value="Görülemedi" ${val === 'Görülemedi' ? 'selected' : ''}>G Görülemedi</option>
-
-                        </select>
+                        <div class="flex items-center gap-1 shrink-0">
+                            ${quickBtns}
+                        </div>
 
                     </div>
 
@@ -957,7 +1128,7 @@ function renderElectrical2201Topic(area, topic, secNum) {
 
                             </div>
 
-                            <button type="button" onclick="openItemDefectPickerModal('${qKey}', '${q.question.replace(/'/g, "\\'")}', 'answer')"
+                            <button type="button" onclick="openItemDefectPickerModal('${qKey}', '${safeQTitle}', 'answer')"
 
                                 class="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white rounded-lg font-bold text-[11px] shrink-0 flex items-center gap-1 shadow-2xs transition-all">
 
@@ -997,6 +1168,43 @@ function renderElectrical2201Topic(area, topic, secNum) {
 
     }
 
+    // 2.1 Detay Bilgileri: İlk 12 temel soruyu doğrudan göster, 12 ikincil/besleme sorusunu katlanabilir çekmeceye al!
+    if (area.index === 0 && topic.index === 0 && topic.questions.length > 12) {
+        const coreQuestions = topic.questions.slice(0, 12);
+        const advQuestions = topic.questions.slice(12);
+        const filledAdvCount = advQuestions.filter(q => String(AppState.currentFormData?.answers?.[`q_${q.guid}`] || '').trim() !== '').length;
+        const showAdv = Boolean(AppState.showElectrical21Advanced);
+
+        return `
+            <div class="border border-slate-200 rounded-xl overflow-hidden bg-white">
+                <div class="px-3 py-2 bg-slate-100 border-b border-slate-200 font-bold text-xs text-slate-800 flex items-center justify-between">
+                    <span>${subNum}. ${topic.name}</span>
+                    <span class="text-[10px] font-semibold text-slate-500">Temel Tesisat Bilgileri</span>
+                </div>
+                <div class="p-3 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    ${coreQuestions.map(q => renderElectrical2201QuestionInput(q, area.index, topic.index)).join('')}
+                </div>
+                <div class="border-t border-slate-200 bg-slate-50/70">
+                    <button type="button" onclick="toggleElectrical21AdvancedDrawer()"
+                        class="w-full px-3 py-2.5 text-left font-bold text-xs text-slate-700 hover:bg-slate-100 flex items-center justify-between gap-2 transition">
+                        <span class="flex items-center gap-1.5">
+                            <i class="fa-solid fa-sliders text-sky-600"></i>
+                            <span>İlave Teknik &amp; Besleme Karakteristikleri (${filledAdvCount}/${advQuestions.length} Dolu - İsteğe Bağlı)</span>
+                        </span>
+                        <span class="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[10px] font-bold text-slate-600">
+                            ${showAdv ? 'Gizle ▴' : 'Göster ▾'}
+                        </span>
+                    </button>
+                    ${showAdv ? `
+                        <div class="p-3 pt-1 grid grid-cols-1 sm:grid-cols-2 gap-2.5 border-t border-slate-200/70 bg-white">
+                            ${advQuestions.map(q => renderElectrical2201QuestionInput(q, area.index, topic.index)).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }
+
 
 
     const colCount = Number(topic.columnCount) || 3;
@@ -1005,7 +1213,9 @@ function renderElectrical2201Topic(area, topic, secNum) {
 
     const questionsHtml = topic.questions.map(q => renderElectrical2201QuestionInput(q, area.index, topic.index)).join('');
 
-
+    const topicHeaderTitle = (area.index === 3 && topic.index === 3)
+        ? '6.1. Linye Ölçüm ve Test Tablosu'
+        : `${subNum}. ${topic.name}`;
 
     return `
 
@@ -1013,7 +1223,7 @@ function renderElectrical2201Topic(area, topic, secNum) {
 
             <div class="px-3 py-2 bg-slate-100 border-b border-slate-200 font-bold text-xs text-slate-800">
 
-                ${subNum}. ${topic.name}
+                ${topicHeaderTitle}
 
             </div>
 
@@ -1044,6 +1254,8 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
     const qKey = `q_${q.guid}`;
 
     const qTitle = q.question || '';
+    const cleanTitle = qTitle.replace(/^Tespit edilen bilgiler\s*\([^)]*\)\s*-\s*/i, '').trim();
+    const safeQTitle = qTitle.replace(/'/g, "\\'");
 
     let val = fd.answers[qKey];
 
@@ -1061,13 +1273,21 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
 
     if (q.type === 'YesNo') {
 
-        const opts = ['Uygun', 'Uygun Değil', 'Uygulaması Yok', 'Görülemedi'];
-
-        const optLabels = { 'Uygun': '✓ Uygun', 'Uygun Değil': '✕ Uygun Değil', 'Uygulaması Yok': 'N Uyg. Yok', 'Görülemedi': 'G Görülemedi' };
-
         const isDefect = (val === 'Uygun Değil' || val === 'Kısmen Uygun');
 
         const selectedDefect = fd.itemDefectSelections && fd.itemDefectSelections[qKey]?.sentence;
+
+        const quickBtns = [
+            { v: 'Uygun', lbl: '✓', activeCls: 'bg-emerald-600 text-white border-emerald-600' },
+            { v: 'Uygun Değil', lbl: '✕', activeCls: 'bg-rose-600 text-white border-rose-600' },
+            { v: 'Uygulaması Yok', lbl: 'N', activeCls: 'bg-slate-700 text-white border-slate-700' },
+            { v: 'Görülemedi', lbl: 'G', activeCls: 'bg-amber-500 text-slate-950 border-amber-500' }
+        ].map(b => `
+            <button type="button" onclick="handleAnswerChange('${qKey}', '${b.v}', '${safeQTitle}')"
+                class="w-8 h-7 rounded-lg border text-xs font-black flex items-center justify-center transition active:scale-90 ${
+                    val === b.v ? b.activeCls : 'bg-white hover:bg-slate-100 text-slate-600 border-slate-300'
+                }">${b.lbl}</button>
+        `).join('');
 
 
 
@@ -1075,19 +1295,11 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
 
             <div class="p-2.5 rounded-xl border ${isDefect ? 'border-rose-300 bg-rose-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between gap-2 transition-all">
 
-                <div class="flex items-start justify-between gap-2">
+                <div class="flex items-center justify-between gap-2">
 
-                    <label class="text-xs font-semibold text-slate-700 leading-snug">${qTitle}</label>
+                    <label class="text-xs font-semibold text-slate-700 leading-snug">${cleanTitle}</label>
 
-                    <select onchange="handleAnswerChange('${qKey}', this.value, '${qTitle.replace(/'/g, "\\'")}')"
-
-                        class="border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-bold bg-white shrink-0 ${isDefect ? 'text-rose-700 border-rose-400' : ''}">
-
-                        <option value="">Seçiniz...</option>
-
-                        ${opts.map(o => `<option value="${o}" ${val === o ? 'selected' : ''}>${optLabels[o]}</option>`).join('')}
-
-                    </select>
+                    <div class="flex items-center gap-1 shrink-0">${quickBtns}</div>
 
                 </div>
 
@@ -1107,7 +1319,7 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
 
                         </div>
 
-                        <button type="button" onclick="openItemDefectPickerModal('${qKey}', '${qTitle.replace(/'/g, "\\'")}', 'answer')"
+                        <button type="button" onclick="openItemDefectPickerModal('${qKey}', '${safeQTitle}', 'answer')"
 
                             class="px-2 py-1 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white rounded-lg font-bold text-[10px] shrink-0 flex items-center gap-1 shadow-2xs transition-all">
 
@@ -1131,16 +1343,49 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
 
     if (q.type === 'MultipleChoice' && Array.isArray(q.options) && q.options.length > 0) {
 
-        const hasValInOpts = !val || q.options.includes(val);
-        const optsList = hasValInOpts ? q.options : [...q.options, val];
-        const opts = optsList.map(o => `<option value="${escapeHtml(o)}" ${val === o ? 'selected' : ''}>${escapeHtml(o)}</option>`).join('');
-
+        const is22ProtectionItem = (areaIdx === 0 && topicIdx === 1 && q.options.includes('Uygunsuz'));
         const is22Defect = (areaIdx === 0 && topicIdx === 1 && val === 'Uygunsuz');
         const cardCls = is22Defect
             ? 'border-rose-400 bg-rose-50/70'
             : (areaIdx === 0 && topicIdx === 1 && (val === 'Var' || val === 'Uygun' || val === 'Evet'))
                 ? 'border-emerald-300 bg-emerald-50/30'
                 : 'border-slate-200 bg-slate-50/40';
+
+        // 2.2 Doğrudan dokunmaya karşı koruma önlemleri için sade 3'lü buton: [Var] [Yok] [Uygunsuz]
+        const pillOptions = is22ProtectionItem ? ['Var', 'Yok', 'Uygunsuz'] : q.options;
+
+        // 6 veya daha az seçeneği olan tüm çoktan seçmeli soruları TEK DOKUNUŞLU PILL BUTON yap!
+        if (pillOptions.length <= 6) {
+            const pillsHtml = pillOptions.map(opt => {
+                const isSel = (val === opt) || (is22ProtectionItem && opt === 'Var' && val === 'Uygun');
+                let activeCls = 'bg-slate-900 text-white border-slate-900 shadow-2xs';
+                if (isSel) {
+                    if (opt === 'Uygunsuz') activeCls = 'bg-rose-600 text-white border-rose-600 shadow-2xs';
+                    else if (opt === 'Var' || opt === 'Evet' || opt === 'Periyodik Kontrol') activeCls = 'bg-emerald-600 text-white border-emerald-600 shadow-2xs';
+                }
+                return `
+                    <button type="button" onclick="handleAnswerChange('${qKey}', '${escapeForJs(opt)}', '${safeQTitle}')"
+                        class="flex-1 min-w-[54px] py-1.5 px-2 rounded-lg border text-[11px] font-bold text-center transition active:scale-95 ${
+                            isSel ? activeCls : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
+                        }">
+                        ${escapeHtml(opt)}
+                    </button>
+                `;
+            }).join('');
+
+            return `
+                <div class="p-2.5 rounded-lg border ${cardCls} flex flex-col justify-between gap-1.5 transition-colors">
+                    <label class="block text-[11px] font-bold text-slate-700 leading-snug">${cleanTitle}</label>
+                    <div class="flex flex-wrap gap-1">
+                        ${pillsHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        const hasValInOpts = !val || q.options.includes(val);
+        const optsList = hasValInOpts ? q.options : [...q.options, val];
+        const opts = optsList.map(o => `<option value="${escapeHtml(o)}" ${val === o ? 'selected' : ''}>${escapeHtml(o)}</option>`).join('');
         const selCls = is22Defect
             ? 'border-rose-400 bg-white text-rose-700 font-bold'
             : 'border-slate-300 bg-white text-slate-900 font-semibold';
@@ -1149,9 +1394,9 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
 
             <div class="p-2.5 rounded-lg border ${cardCls} flex flex-col justify-between transition-colors">
 
-                <label class="block text-[11px] font-bold text-slate-700 mb-1 leading-snug">${qTitle}</label>
+                <label class="block text-[11px] font-bold text-slate-700 mb-1 leading-snug">${cleanTitle}</label>
 
-                <select onchange="handleAnswerChange('${qKey}', this.value, '${qTitle.replace(/'/g, "\\'")}')"
+                <select onchange="handleAnswerChange('${qKey}', this.value, '${safeQTitle}')"
 
                     class="w-full border rounded-lg px-2.5 py-1.5 text-xs ${selCls}">
 
@@ -1179,7 +1424,7 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
         <div class="p-2.5 rounded-lg border ${isMarkedX ? 'border-rose-300 bg-rose-50/40' : 'border-slate-200 bg-slate-50/40'} flex flex-col justify-between">
 
             <div class="flex items-center justify-between gap-2 mb-1">
-                <label class="block text-[11px] font-bold text-slate-700 leading-snug">${qTitle}</label>
+                <label class="block text-[11px] font-bold text-slate-700 leading-snug">${cleanTitle}</label>
                 ${isVFF ? `<button type="button" onclick="randomizeElectrical61Voltage()" class="px-2 py-0.5 rounded-md bg-sky-100 hover:bg-sky-200 active:scale-95 text-sky-800 text-[10px] font-bold shrink-0 transition" title="393-397 V arası rastgele seç">🎲 393-397</button>` : ''}
             </div>
 
@@ -1199,7 +1444,7 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
 
 
 
-// Short, compact abbreviations for Section 6.4 (Aşırı Akım Koruma Elemanı İle İletken Uyumu ve RCD)
+// Short, compact abbreviations for Section 6.1 Linye Tablosu
 
 function getShortTopicQuestionLabel(areaIdx, topicIdx, questionText) {
 
@@ -1231,13 +1476,147 @@ function getShortTopicQuestionLabel(areaIdx, topicIdx, questionText) {
 
         if (q.includes('TΔ')) return 'RCD Açma Süresi TΔ (ms)';
 
-        if (q.includes('Değerlendirme')) return 'Sonuç / Değerlendirme';
+        if (q.includes('Değerlendirme') || q.includes('Sonuç')) return 'Sonuç';
 
     }
 
     return q;
 
 }
+
+const STANDARD_CABLE_IZ_MAP = {
+    '1,5': { pe: '1,5', iz: '19,5' },
+    '1.5': { pe: '1,5', iz: '19,5' },
+    '2,5': { pe: '2,5', iz: '27' },
+    '2.5': { pe: '2,5', iz: '27' },
+    '4':   { pe: '4',   iz: '36' },
+    '6':   { pe: '6',   iz: '46' },
+    '10':  { pe: '10',  iz: '63' },
+    '16':  { pe: '16',  iz: '85' },
+    '25':  { pe: '16',  iz: '112' },
+    '35':  { pe: '16',  iz: '138' },
+    '50':  { pe: '25',  iz: '168' },
+    '70':  { pe: '35',  iz: '213' },
+    '95':  { pe: '50',  iz: '258' },
+    '120': { pe: '70',  iz: '299' }
+};
+
+const QUICK_LINYE_PRESETS = [
+    { label: 'B10 (1,5mm²)', curve: 'B', poles: '1', inAmp: '10', icu: '6', phase: '1,5', npen: '1,5', pe: '1,5', ib: '8', iz: '19,5', rcdI: '30', rcdT: '25' },
+    { label: 'B16 (2,5mm²)', curve: 'B', poles: '1', inAmp: '16', icu: '6', phase: '2,5', npen: '2,5', pe: '2,5', ib: '12', iz: '27', rcdI: '30', rcdT: '25' },
+    { label: 'C16 (2,5mm²)', curve: 'C', poles: '1', inAmp: '16', icu: '6', phase: '2,5', npen: '2,5', pe: '2,5', ib: '12', iz: '27', rcdI: '30', rcdT: '25' },
+    { label: 'C20 (4mm²)',   curve: 'C', poles: '1', inAmp: '20', icu: '6', phase: '4',   npen: '4',   pe: '4',   ib: '16', iz: '36', rcdI: '30', rcdT: '25' },
+    { label: 'C25 (4mm²)',   curve: 'C', poles: '1', inAmp: '25', icu: '6', phase: '4',   npen: '4',   pe: '4',   ib: '20', iz: '36', rcdI: '30', rcdT: '25' },
+    { label: 'C32 (6mm²)',   curve: 'C', poles: '1', inAmp: '32', icu: '6', phase: '6',   npen: '6',   pe: '6',   ib: '25', iz: '46', rcdI: '30', rcdT: '25' },
+    { label: '3P C25 (4mm²)', curve: 'C', poles: '3', inAmp: '25', icu: '10', phase: '4',  npen: '4',   pe: '4',   ib: '20', iz: '36', rcdI: '30', rcdT: '25' },
+    { label: '3P C32 (6mm²)', curve: 'C', poles: '3', inAmp: '32', icu: '10', phase: '6',  npen: '6',   pe: '6',   ib: '26', iz: '46', rcdI: '30', rcdT: '25' },
+    { label: '3P C40 (10mm²)', curve: 'C', poles: '3', inAmp: '40', icu: '10', phase: '10', npen: '10', pe: '10',  ib: '32', iz: '63', rcdI: '300', rcdT: '35' },
+    { label: '3P C63 (16mm²)', curve: 'C', poles: '3', inAmp: '63', icu: '10', phase: '16', npen: '16', pe: '16',  ib: '50', iz: '85', rcdI: '300', rcdT: '35' },
+    { label: '3P C100 (35mm²)', curve: 'C', poles: '3', inAmp: '100', icu: '25', phase: '35', npen: '35', pe: '16', ib: '80', iz: '138', rcdI: '300', rcdT: '35' }
+];
+
+function applyQuickLinyePreset(rowIndex, presetIdx) {
+    const fd = AppState.currentFormData;
+    const rows = fd?.tableRows?.topic_3_3;
+    const preset = QUICK_LINYE_PRESETS[presetIdx];
+    if (!rows || !rows[rowIndex] || !preset) return;
+    const r = rows[rowIndex];
+    const insp = AppState.currentInspection || {};
+    if (!String(r['405e297d-cea7-45ec-9c1e-6e2116cfb541'] || '').trim()) {
+        r['405e297d-cea7-45ec-9c1e-6e2116cfb541'] = (insp.equipment_name || `Linye-${rowIndex + 1}`) + (rows.length > 1 ? ` - L${rowIndex + 1}` : '');
+    }
+    r['7f4bdff7-97bd-47dd-8151-7eacc32f5d8e'] = preset.curve;
+    r['8c397b2d-a229-4bc9-b4ff-5fc78dd5a102'] = preset.poles;
+    r['bd17d9ca-3087-4406-9f16-867d10642df6'] = preset.inAmp;
+    r['ee0ef618-52cb-4dd9-9361-15200dcee077'] = preset.icu;
+    r['8e43f81a-34b3-4c8e-9baf-e4161f5ba11e'] = preset.phase;
+    r['07697e7d-212a-4c84-be0e-fd64e539b5b0'] = preset.npen;
+    r['e16540f3-b6b7-486a-8f40-2722add48bb7'] = preset.pe;
+    r['16c7e5ea-b08e-4d33-b9f1-49c4ae6c1437'] = preset.ib;
+    r['d3bb692d-56ca-4b1b-b609-81198be785b0'] = preset.iz;
+    r['e42d31e0-dbc3-4e34-88c2-5e95f8e85636'] = preset.rcdI;
+    r['016eca98-d8f9-4a4d-bdfd-36160d324726'] = preset.rcdT;
+    r['241bf571-43dd-46d1-836d-ecdff0c7acd2'] = 'Uygun';
+
+    if (typeof window.syncElectrical2201Section22FromTriggers === 'function') {
+        window.syncElectrical2201Section22FromTriggers('topic_3_3', true);
+    }
+    triggerAutoSave();
+    paintInspectionEditorUI();
+    showToast(`Satır #${rowIndex + 1}: ${preset.label} değerleri otomatik dolduruldu!`);
+}
+window.applyQuickLinyePreset = applyQuickLinyePreset;
+
+function applyQuickPotentialEquipotentialPreset(mode = 'standard') {
+    const fd = AppState.currentFormData;
+    if (!fd) return;
+    if (!fd.tableRows) fd.tableRows = {};
+    const insp = AppState.currentInspection || {};
+    const panelName = insp.equipment_name || 'Ana Pano Topraklama Barası';
+    if (mode === 'na') {
+        fd.tableRows.topic_3_4 = [{
+            '2f743a60-497c-41bc-84aa-a499220310a3': 'Uygulaması Yok',
+            '7a977dd5-098c-4a56-a047-f1fe69cc7ed2': '-',
+            '0cee7c0e-d915-4069-825a-b0984512cd08': '-',
+            '4980b506-7bc6-423e-898e-6f89536754f3': '-',
+            'b4af8cc0-2dad-4768-8fc3-5393757675af': '-',
+            'b21fd22e-6cd7-431c-8949-b67fdc46613c': 'Uygulaması Yok'
+        }];
+    } else {
+        fd.tableRows.topic_3_4 = [{
+            '2f743a60-497c-41bc-84aa-a499220310a3': `${panelName} - Gövde / Toprak Barası`,
+            '7a977dd5-098c-4a56-a047-f1fe69cc7ed2': '16',
+            '0cee7c0e-d915-4069-825a-b0984512cd08': '0,08',
+            '4980b506-7bc6-423e-898e-6f89536754f3': '6',
+            'b4af8cc0-2dad-4768-8fc3-5393757675af': '0,12',
+            'b21fd22e-6cd7-431c-8949-b67fdc46613c': 'Uygun'
+        }];
+    }
+    if (typeof syncAllDefectsToDefectNotes === 'function') syncAllDefectsToDefectNotes();
+    triggerAutoSave();
+    paintInspectionEditorUI();
+    showToast(mode === 'na' ? '6.2 Potansiyel Dengeleme: Uygulaması Yok seçildi' : '6.2 Potansiyel Dengeleme standart değerlerle dolduruldu');
+}
+window.applyQuickPotentialEquipotentialPreset = applyQuickPotentialEquipotentialPreset;
+
+function applyQuickFloorInsulationPreset(mode = 'standard') {
+    const fd = AppState.currentFormData;
+    if (!fd) return;
+    if (!fd.tableRows) fd.tableRows = {};
+    const insp = AppState.currentInspection || {};
+    const panelName = insp.equipment_name || 'Pano Önü';
+    if (mode === 'na') {
+        fd.tableRows.topic_3_5 = [{
+            'd0096971-113c-4f4c-ac4e-31ba59227c0b': 'Uygulaması Yok',
+            '8b095f55-b0a3-41c4-b8d9-6a4f4b7c9026': '-',
+            '0f614ecc-406f-46b3-8d63-a759c3e119e7': '-',
+            '33143091-c517-439e-b79d-6bde5d06143f': '-',
+            '1114914a-a154-4859-93f9-19b22fddc098': 'Uygulaması Yok'
+        }];
+    } else if (mode === 'missing') {
+        fd.tableRows.topic_3_5 = [{
+            'd0096971-113c-4f4c-ac4e-31ba59227c0b': `${panelName} Önü`,
+            '8b095f55-b0a3-41c4-b8d9-6a4f4b7c9026': 'X',
+            '0f614ecc-406f-46b3-8d63-a759c3e119e7': 'X',
+            '33143091-c517-439e-b79d-6bde5d06143f': 'X',
+            '1114914a-a154-4859-93f9-19b22fddc098': 'Uygun Değil'
+        }];
+        if (fd.answers) fd.answers['q_98379425-05fc-4db3-8285-c74176c9365d'] = 'Uygun Değil';
+    } else {
+        fd.tableRows.topic_3_5 = [{
+            'd0096971-113c-4f4c-ac4e-31ba59227c0b': `${panelName} Önü`,
+            '8b095f55-b0a3-41c4-b8d9-6a4f4b7c9026': '1,0',
+            '0f614ecc-406f-46b3-8d63-a759c3e119e7': '1,0',
+            '33143091-c517-439e-b79d-6bde5d06143f': '>50',
+            '1114914a-a154-4859-93f9-19b22fddc098': 'Uygun'
+        }];
+    }
+    if (typeof syncAllDefectsToDefectNotes === 'function') syncAllDefectsToDefectNotes();
+    triggerAutoSave();
+    paintInspectionEditorUI();
+    showToast(mode === 'missing' ? '6.3 Zemin İzolasyonu: Uygun Değil (X) işaretlendi' : mode === 'na' ? '6.3 Zemin İzolasyonu: Uygulaması Yok seçildi' : '6.3 Zemin İzolasyonu standart değerlerle dolduruldu');
+}
+window.applyQuickFloorInsulationPreset = applyQuickFloorInsulationPreset;
 
 
 
@@ -1263,19 +1642,16 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
 
     const isSection65 = area.index === 3 && topic.index === 4;
 
+    const isSection66 = area.index === 3 && topic.index === 5;
+
 
 
     // Geniş ve ferah grid düzeni:
-
-    // 6.4: Mobilde 2 sütun, tablette 4 sütun
-
-    // 6.5: Mobilde tek sütun (tam genişlik), tablette 2 sütun
-
     let gridClass = 'grid-cols-1 sm:grid-cols-2 gap-3';
 
     if (isSection64) {
 
-        gridClass = 'grid-cols-2 sm:grid-cols-4 gap-2.5';
+        gridClass = 'grid-cols-2 sm:grid-cols-4 gap-2';
 
     } else if (!isSection65) {
 
@@ -1286,6 +1662,23 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
 
 
     const cardsHtml = rows.map((rowObj, rIdx) => {
+
+        const linyeQuickPresetBar = isSection64 ? `
+            <div class="p-2 rounded-lg bg-white border border-slate-200 space-y-1">
+                <div class="text-[10px] font-bold text-slate-600 flex items-center justify-between">
+                    <span><i class="fa-solid fa-bolt text-amber-500 mr-1"></i>Tek Dokunuşla Linye Doldur (In / Kesit / Iz / RCD):</span>
+                    <span class="text-slate-400 font-normal">Seçip değiştirebilirsiniz</span>
+                </div>
+                <div class="flex items-center gap-1 overflow-x-auto py-0.5 no-scrollbar">
+                    ${QUICK_LINYE_PRESETS.map((pr, pIdx) => `
+                        <button type="button" onclick="applyQuickLinyePreset(${rIdx}, ${pIdx})"
+                            class="px-2 py-1 rounded-md bg-slate-100 hover:bg-sky-100 hover:text-sky-800 active:scale-95 text-slate-800 font-mono font-bold text-[10px] border border-slate-200 shrink-0 transition">
+                            ${pr.label}
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+        ` : '';
 
         const fieldsHtml = topic.questions.map((q, qIdx) => {
 
@@ -1305,7 +1698,7 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
 
                         <select data-table-cell="${tKey}_${rIdx}_${q.guid}" onchange="handleTopicTableCell('${tKey}', ${rIdx}, '${q.guid}', this.value)"
 
-                            class="w-full border rounded-lg px-2.5 py-2 text-xs font-bold shadow-2xs ${isNoGood ? 'border-rose-400 bg-rose-50 text-rose-700' : 'border-slate-300 bg-white text-slate-900'}">
+                            class="w-full border rounded-lg px-2.5 py-1.5 text-xs font-bold shadow-2xs ${isNoGood ? 'border-rose-400 bg-rose-50 text-rose-700' : 'border-slate-300 bg-white text-slate-900'}">
 
                             <option value="" ${cellVal === '' ? 'selected' : ''}>Seçiniz...</option>
 
@@ -1357,15 +1750,15 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
 
         return `
 
-            <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50 space-y-2.5">
+            <div class="p-3 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
 
-                <div class="flex items-center justify-between border-b border-slate-200 pb-2 gap-2">
+                <div class="flex items-center justify-between border-b border-slate-200 pb-1.5 gap-2">
 
-                    <span class="font-bold text-xs text-slate-800">Satır #${rIdx + 1}</span>
+                    <span class="font-bold text-xs text-slate-800">${isSection64 ? `Linye #${rIdx + 1}` : `Satır #${rIdx + 1}`}</span>
 
                     <div class="flex items-center gap-1.5">
 
-                        <button onclick="duplicateSpecificTopicRow('${tKey}', ${rIdx})" class="px-2.5 py-1 bg-sky-100 active:bg-sky-200 text-sky-800 rounded-lg text-xs font-bold flex items-center gap-1">
+                        <button onclick="duplicateSpecificTopicRow('${tKey}', ${rIdx})" class="px-2 py-1 bg-sky-100 active:bg-sky-200 text-sky-800 rounded-lg text-[11px] font-bold flex items-center gap-1">
 
                             <i class="fa-solid fa-copy"></i>
 
@@ -1373,7 +1766,7 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
 
                         </button>
 
-                        <button onclick="removeTopicTableRow('${tKey}', ${rIdx})" class="px-2 py-1 bg-rose-50 active:bg-rose-100 text-rose-600 rounded-lg text-xs font-semibold">
+                        <button onclick="removeTopicTableRow('${tKey}', ${rIdx})" class="px-2 py-1 bg-rose-50 active:bg-rose-100 text-rose-600 rounded-lg text-[11px] font-semibold">
 
                             <i class="fa-solid fa-trash-can mr-1"></i>Sil
 
@@ -1382,6 +1775,8 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
                     </div>
 
                 </div>
+
+                ${linyeQuickPresetBar}
 
                 <div class="grid ${gridClass}">
 
@@ -1398,39 +1793,41 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
 
 
     let thermalToolbarHtml = '';
+    let showBodyRows = true;
     if (isThermalSection) {
         const firstGuid = topic.questions?.[0]?.guid;
         const serialGuid = topic.questions?.[1]?.guid;
         const firstVal = String((rows[0] && firstGuid && rows[0][firstGuid]) || '').trim();
         const serialVal = String((rows[0] && serialGuid && rows[0][serialGuid]) || '').trim();
         const isNotApp = firstVal.includes('Uygulaması Yok');
+        const hasThermalSelected = Boolean(firstVal);
+        showBodyRows = !hasThermalSelected || Boolean(AppState.showThermalManualDetail);
+
         const activeLabelHtml = isNotApp
-            ? `<span class="px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-bold text-[10px]">Uygulaması Yok</span>`
+            ? `<span class="px-2.5 py-1 rounded-full bg-slate-200 text-slate-700 font-bold text-[11px]">Uygulaması Yok</span>`
             : firstVal
-                ? `<span class="px-2 py-0.5 rounded-full bg-orange-100 text-orange-900 border border-orange-300 font-bold text-[10px] truncate max-w-[200px]"><i class="fa-solid fa-temperature-half mr-1"></i>${escapeHtml(firstVal)}${serialVal ? ` (${escapeHtml(serialVal)})` : ''}</span>`
-                : `<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 font-bold text-[10px]">Termal kamera seçilmedi</span>`;
+                ? `<span class="px-2.5 py-1 rounded-full bg-orange-100 text-orange-900 border border-orange-300 font-bold text-[11px] truncate max-w-[220px]"><i class="fa-solid fa-temperature-half mr-1"></i>${escapeHtml(firstVal)}${serialVal ? ` (SN: ${escapeHtml(serialVal)})` : ''}</span>`
+                : `<span class="px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300 font-bold text-[11px]">Termal kamera seçilmedi</span>`;
 
         thermalToolbarHtml = `
-            <div class="px-3.5 py-2 bg-orange-50/80 border-b border-orange-200 flex items-center justify-between gap-2 flex-wrap">
-                <div class="flex items-center gap-1.5 min-w-0">
+            <div class="px-3.5 py-2.5 bg-orange-50/70 ${showBodyRows ? 'border-b border-orange-200' : ''} flex items-center justify-between gap-2 flex-wrap">
+                <div onclick="toggleThermalManualDetail()" class="flex items-center gap-1.5 min-w-0 cursor-pointer">
                     ${activeLabelHtml}
                 </div>
                 <div class="flex items-center gap-1.5 flex-wrap">
+                    <button type="button" onclick="toggleThermalManualDetail()"
+                        class="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold rounded-lg text-[10px] transition">
+                        ${showBodyRows ? 'Gizle ▴' : 'Detay ▾'}
+                    </button>
                     ${mgr ? `
                         <button type="button" onclick="openReportThermalSwapModal()"
-                            class="px-2.5 py-1.5 bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-bold rounded-lg text-[11px] flex items-center gap-1 shadow-2xs transition">
+                            class="px-2.5 py-1 bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-bold rounded-lg text-[10px] flex items-center gap-1 shadow-2xs transition">
                             <i class="fa-solid fa-right-left"></i>
-                            <span>Termal Kamera Değiştir</span>
-                        </button>
-                        <button type="button" onclick="applyAssignedThermalCameraToReport()"
-                            class="px-2.5 py-1.5 bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 font-bold rounded-lg text-[11px] flex items-center gap-1 shadow-2xs transition"
-                            title="Ayarlarda üzerinizde seçili termal kamerayı getir">
-                            <i class="fa-solid fa-arrows-rotate"></i>
-                            <span>Üzerimdekini Getir</span>
+                            <span>Değiştir</span>
                         </button>
                     ` : ''}
                     <button type="button" onclick="setThermalCameraNotApplicable('${tKey}')"
-                        class="px-2 py-1.5 bg-white hover:bg-slate-100 active:scale-95 text-slate-700 border border-slate-300 font-bold rounded-lg text-[11px] flex items-center gap-1 transition">
+                        class="px-2 py-1 bg-white hover:bg-slate-100 active:scale-95 text-slate-700 border border-slate-300 font-bold rounded-lg text-[10px] flex items-center gap-1 transition">
                         <i class="fa-solid fa-ban text-slate-500"></i>
                         <span>Uyg. Yok</span>
                     </button>
@@ -1439,33 +1836,45 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
         `;
     }
 
+    const displayHeaderTitle = isSection64
+        ? '6.1. Linye Ölçüm ve Test Tablosu'
+        : `${subNum}. ${topic.name}`;
+
+    const quickTableActionBtns = isSection65 ? `
+        <button type="button" onclick="applyQuickPotentialEquipotentialPreset('standard')" class="px-2.5 py-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold rounded-lg text-[11px] shrink-0 shadow-2xs">⚡ Standart Doldur</button>
+        <button type="button" onclick="applyQuickPotentialEquipotentialPreset('na')" class="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold rounded-lg text-[11px] shrink-0">N Uyg. Yok</button>
+    ` : isSection66 ? `
+        <button type="button" onclick="applyQuickFloorInsulationPreset('standard')" class="px-2.5 py-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold rounded-lg text-[11px] shrink-0 shadow-2xs">⚡ Standart Halı</button>
+        <button type="button" onclick="applyQuickFloorInsulationPreset('missing')" class="px-2 py-1 bg-rose-100 hover:bg-rose-200 text-rose-800 border border-rose-300 font-bold rounded-lg text-[11px] shrink-0">✕ Halı Yok</button>
+        <button type="button" onclick="applyQuickFloorInsulationPreset('na')" class="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold rounded-lg text-[11px] shrink-0">N Uyg. Yok</button>
+    ` : '';
+
     return `
 
         <div class="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-2xs">
 
-            <div class="px-3.5 py-2.5 bg-slate-100 border-b border-slate-200 flex items-center justify-between gap-2">
+            <div class="px-3.5 py-2.5 bg-slate-100 border-b border-slate-200 flex items-center justify-between gap-2 flex-wrap">
 
-                <div class="font-bold text-xs text-slate-900 leading-snug flex-1">${subNum}. ${topic.name}</div>
+                <div class="font-bold text-xs text-slate-900 leading-snug flex-1 min-w-[160px]">${displayHeaderTitle}</div>
 
-                ${isLockedThermal ? '' : `
-
-                    <button onclick="addTopicTableRow('${tKey}', ${area.index}, ${topic.index})" class="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-xs shrink-0 shadow-2xs">
-
-                        + Satır Ekle
-
-                    </button>
-
-                `}
+                <div class="flex items-center gap-1.5 flex-wrap">
+                    ${quickTableActionBtns}
+                    ${isLockedThermal || isThermalSection ? '' : `
+                        <button onclick="addTopicTableRow('${tKey}', ${area.index}, ${topic.index})" class="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-lg text-[11px] shrink-0 shadow-2xs">
+                            + Satır Ekle
+                        </button>
+                    `}
+                </div>
 
             </div>
 
             ${thermalToolbarHtml}
 
-            <div class="p-3 space-y-3">
-
-                ${cardsHtml}
-
-            </div>
+            ${!showBodyRows ? '' : `
+                <div class="p-3 space-y-3">
+                    ${cardsHtml}
+                </div>
+            `}
 
         </div>
 
@@ -1527,6 +1936,31 @@ function handleTopicTableCell(tKey, rowIndex, qGuid, value) {
 
     const is2201 = String(AppState.currentInspection?.template_id) === '2201';
     if (is2201 && (tKey === 'topic_3_3' || tKey === 'topic_3_4' || tKey === 'topic_3_5')) {
+        // 6.1 Linye Tablosu: Faz Kesiti girildiğinde N/PEN, PE, Iz ve Sonuç alanlarını (boşsa) akıllı tamamla
+        if (tKey === 'topic_3_3' && qGuid === '8e43f81a-34b3-4c8e-9baf-e4161f5ba11e') {
+            const cleanSec = String(value || '').trim().replace('.', ',');
+            const mapEntry = STANDARD_CABLE_IZ_MAP[cleanSec] || STANDARD_CABLE_IZ_MAP[String(value || '').trim()];
+            if (mapEntry) {
+                const nPenGuid = '07697e7d-212a-4c84-be0e-fd64e539b5b0';
+                const peGuid = 'e16540f3-b6b7-486a-8f40-2722add48bb7';
+                const izGuid = 'd3bb692d-56ca-4b1b-b609-81198be785b0';
+                const resGuidLinye = '241bf571-43dd-46d1-836d-ecdff0c7acd2';
+                const autoFillCell = (g, v) => {
+                    if (!String(rows[rowIndex][g] || '').trim()) {
+                        rows[rowIndex][g] = v;
+                        if (typeof document !== 'undefined') {
+                            const el = document.querySelector(`[data-table-cell="${tKey}_${rowIndex}_${g}"]`);
+                            if (el) el.value = v;
+                        }
+                    }
+                };
+                autoFillCell(nPenGuid, cleanSec);
+                autoFillCell(peGuid, mapEntry.pe);
+                autoFillCell(izGuid, mapEntry.iz);
+                autoFillCell(resGuidLinye, 'Uygun');
+            }
+        }
+
         if (typeof document !== 'undefined') {
             const cellEl = document.querySelector(`[data-table-cell="${tKey}_${rowIndex}_${qGuid}"]`);
             if (cellEl && cellEl.tagName === 'INPUT') {
@@ -1665,9 +2099,23 @@ function setThermalCameraNotApplicable(tKey) {
     AppState.currentFormData._thermalInitialized = true;
     AppState.currentFormData._thermalSourceId = '';
 
+    // 5.7 Termal Kamera gözle kontrol maddelerini de otomatik Uygulaması Yok (N) yap (PDF Sayfa 2 tutarlılığı)
+    if (AppState.currentFormData.answers) {
+        [
+            '474e7fc2-5975-432c-b2dc-e3d2683e1b16',
+            '5524231c-cbf5-45f0-a32b-f925609b99d3',
+            '54d69dbf-94c0-41e8-bae8-cc71276f0d1e',
+            '759cc2dc-29bf-46b2-a769-1fc4ff7238b8'
+        ].forEach(g => {
+            AppState.currentFormData.answers[`q_${g}`] = 'Uygulaması Yok';
+        });
+    }
+
     triggerAutoSave();
 
     paintInspectionEditorUI();
+
+    showToast('Termal kamera ve 5.7 Termal Kontrol maddeleri "Uygulaması Yok (N)" yapıldı.');
 
 }
 

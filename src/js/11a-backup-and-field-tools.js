@@ -845,12 +845,11 @@ function openTabNavSheet() {
 
     if (String(insp.template_id) === '2201') {
         tabs = [
-            { label: '1-2. Firma & Ekipman', id: 0 },
-            { label: '3-4. Cihazlar & Aletler', id: 1 },
-            { label: '5. Gözle Kontrol', id: 2 },
-            { label: '6. Fonksiyon Testleri', id: 3 },
-            { label: `8. Fotoğraflar (${(AppState.currentFormData.photos || []).length})`, id: 4 },
-            { label: '7-11. Kusur, Not & Onay', id: 5 },
+            { label: '1. Genel & Cihaz', id: 0 },
+            { label: '2. Gözle Kontrol', id: 2 },
+            { label: '3. Ölçüm & Test', id: 3 },
+            { label: `4. Fotoğraf (${(AppState.currentFormData.photos || []).length})`, id: 4 },
+            { label: '5. Kusur & Sonuç', id: 5 },
             { label: 'Tüm Bölümler (1-11)', id: -1 }
         ];
 
@@ -1572,61 +1571,155 @@ function syncCompanyAndDevicesToAllReports() {
 
 
 
-// --- 13.4 GEÇMİŞ RAPORU KLONLAMA ---
+// --- 13.4 GEÇMİŞ RAPORU / PANOYU AKILLI ÇOĞALTMA ---
+
+function suggestNextPanelName(rawName) {
+    const base = String(rawName || 'Pano').trim().replace(/\s*\(Kopya\)\s*$/i, '');
+    const m = base.match(/^(.*?)(\d+)$/);
+    if (m) {
+        const prefix = m[1];
+        const numStr = m[2];
+        const nextNum = String(parseInt(numStr, 10) + 1).padStart(numStr.length, '0');
+        return `${prefix}${nextNum}`;
+    }
+    return `${base}-2`;
+}
 
 function cloneInspectionReport(sourceId, workOrderId) {
-
-    if (!confirm('Bu raporu tüm ölçüm satırları ve ayarlarıyla klonlamak istediğinize emin misiniz?')) return;
-
-
-
     OfflineDB.init();
-
-    const sourceInsp = (OfflineDB.state.inspections || []).find(i => String(i.id) === String(sourceId));
-
+    const sourceInsp = (OfflineDB.state.inspections || []).find(i => String(i.id) === String(sourceId))
+        || (AppState.inspectionsCache || []).find(i => String(i.id) === String(sourceId));
     if (!sourceInsp) return showToast('Kaynak rapor bulunamadı', 'error');
 
+    const suggestedName = suggestNextPanelName(sourceInsp.equipment_name);
+    const safeWoId = workOrderId || sourceInsp.work_order_id || '';
 
+    openModal(
+        '<i class="fa-solid fa-clone mr-2 text-sky-400"></i>Panoyu / Raporu Çoğalt',
+        `<div class="space-y-3 text-xs">
+            <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-600">
+                Kaynak Rapor: <strong class="text-slate-900">${escapeHtml(sourceInsp.equipment_name || 'Rapor')}</strong>
+            </div>
+            <div>
+                <label class="block font-bold text-slate-800 mb-1">Yeni Pano / Ekipman Adı <span class="text-rose-500">*</span></label>
+                <input type="text" id="cloneNewEqNameInput" value="${escapeHtml(suggestedName)}"
+                    placeholder="Örn: TDP-2, ADP-2..."
+                    class="w-full border-2 border-slate-300 focus:border-sky-500 rounded-lg px-3 py-2 text-xs font-bold text-slate-900 focus:outline-none">
+            </div>
+            <label class="flex items-start gap-2.5 p-2.5 rounded-xl border border-emerald-200 bg-emerald-50/60 cursor-pointer select-none">
+                <input type="checkbox" id="cloneResetDefectsCheckbox" checked class="w-4 h-4 accent-emerald-600 rounded mt-0.5 shrink-0">
+                <div class="min-w-0">
+                    <div class="font-bold text-emerald-950 text-xs">Yeni Pano İçin Kusurları & Fotoğrafları Temizle (Önerilen)</div>
+                    <div class="text-[11px] text-emerald-800 mt-0.5 leading-snug">Firma, cihaz, şebeke ayarları ve linye şablonunu korur; önceki panonun kusur ve fotoğraflarını sıfırlayıp yeni panoyu <strong>✓ Uygun</strong> başlatır.</div>
+                </div>
+            </label>
+        </div>`,
+        `<button type="button" onclick="closeModal()" class="px-3 py-2 rounded-lg bg-slate-200 text-slate-700 font-bold text-xs">İptal</button>
+         <button type="button" onclick="executeCloneInspectionReport('${escapeForJs(sourceId)}', '${escapeForJs(safeWoId)}', false)"
+            class="px-3 py-2 rounded-lg bg-slate-800 text-white font-bold text-xs active:scale-95">
+            Listeye Ekle
+         </button>
+         <button type="button" onclick="executeCloneInspectionReport('${escapeForJs(sourceId)}', '${escapeForJs(safeWoId)}', true)"
+            class="px-3.5 py-2 rounded-lg bg-emerald-500 text-slate-950 font-black text-xs flex items-center gap-1 shadow-2xs active:scale-95">
+            <i class="fa-solid fa-bolt"></i>
+            <span>Çoğalt ve Aç</span>
+         </button>`
+    );
+
+    setTimeout(() => {
+        const inp = document.getElementById('cloneNewEqNameInput');
+        if (inp) { inp.focus(); inp.select(); }
+    }, 100);
+}
+
+function executeCloneInspectionReport(sourceId, workOrderId, openImmediately = false) {
+    OfflineDB.init();
+    const sourceInsp = (OfflineDB.state.inspections || []).find(i => String(i.id) === String(sourceId))
+        || (AppState.inspectionsCache || []).find(i => String(i.id) === String(sourceId));
+    if (!sourceInsp) return showToast('Kaynak rapor bulunamadı', 'error');
+
+    const nameInp = document.getElementById('cloneNewEqNameInput');
+    const newEqName = (nameInp?.value || '').trim() || suggestNextPanelName(sourceInsp.equipment_name);
+    const resetDefects = document.getElementById('cloneResetDefectsCheckbox') ? Boolean(document.getElementById('cloneResetDefectsCheckbox').checked) : true;
 
     const newId = String(Date.now() + Math.floor(Math.random() * 1000));
-
+    const newReportNo = `TKM-26-02-${newId.slice(-5)}`;
     const clonedInsp = JSON.parse(JSON.stringify(sourceInsp));
 
     clonedInsp.id = newId;
+    clonedInsp.equipment_name = newEqName;
+    clonedInsp.report_no = newReportNo;
+    delete clonedInsp.portal_report_url;
+    delete clonedInsp.portal_verify_code;
+    delete clonedInsp.cloud_id;
 
-    clonedInsp.equipment_name = (clonedInsp.equipment_name || 'Rapor') + ' (Kopya)';
+    let clonedFd = {};
+    try {
+        const rawSource = localStorage.getItem(`enlab_insp_${sourceId}`);
+        if (rawSource) {
+            clonedFd = JSON.parse(rawSource);
+        } else if (sourceInsp.data_json) {
+            clonedFd = typeof sourceInsp.data_json === 'string' ? JSON.parse(sourceInsp.data_json) : JSON.parse(JSON.stringify(sourceInsp.data_json));
+        } else if (sourceInsp.form_data) {
+            clonedFd = JSON.parse(JSON.stringify(sourceInsp.form_data));
+        }
+    } catch (e) {
+        clonedFd = {};
+    }
 
-    clonedInsp.report_no = `TKM-26-02-${newId.slice(-5)}`;
+    if (!clonedFd.companyInfo) clonedFd.companyInfo = {};
+    clonedFd.companyInfo.equipmentName = newEqName;
+    clonedFd.companyInfo.reportNo = newReportNo;
 
+    if (!clonedFd.answers) clonedFd.answers = {};
+    // Sync 5.1 & 6.1 Pano Adı to the new equipment name
+    clonedFd.answers['q_4806ef6b-a811-4c26-b76f-6467779e5499'] = newEqName;
+    clonedFd.answers['q_3e5cfce4-bb64-4339-b086-f0947d8dbccb'] = newEqName;
 
+    if (resetDefects) {
+        clonedFd.overallResult = 'UYGUN';
+        clonedFd.defectNotes = '';
+        clonedFd.itemDefectSelections = {};
+        clonedFd.photos = [];
+        clonedInsp.result = 'UYGUN';
+        clonedInsp.result_status = 'UYGUN';
 
-    // Clone localStorage data
+        Object.keys(clonedFd.answers).forEach(k => {
+            if (clonedFd.answers[k] === 'Uygun Değil' || clonedFd.answers[k] === 'Kısmen Uygun') {
+                clonedFd.answers[k] = 'Uygun';
+            } else if (clonedFd.answers[k] === 'Uygunsuz') {
+                clonedFd.answers[k] = 'Uygun';
+            }
+        });
+        if (clonedFd.specializedChecks) {
+            Object.keys(clonedFd.specializedChecks).forEach(k => {
+                if (clonedFd.specializedChecks[k] === 'Uygun Değil' || clonedFd.specializedChecks[k] === 'Kısmen Uygun') {
+                    clonedFd.specializedChecks[k] = 'Uygun';
+                }
+            });
+        }
+    }
+
+    clonedInsp.data_json = JSON.stringify(clonedFd);
+    clonedInsp.form_data = clonedFd;
 
     try {
-
-        const rawSource = localStorage.getItem(`enlab_insp_${sourceId}`);
-
-        if (rawSource) {
-
-            localStorage.setItem(`enlab_insp_${newId}`, rawSource);
-
-        }
-
+        localStorage.setItem(`enlab_insp_${newId}`, JSON.stringify(clonedFd));
     } catch (e) {}
 
-
-
     OfflineDB.state.inspections.push(clonedInsp);
-
     OfflineDB.save();
 
+    closeModal();
+    showToast(`"${newEqName}" raporu oluşturuldu!`);
 
-
-    renderWorkOrderDetails(workOrderId);
-
-    showToast('Rapor başarıyla klonlandı!');
-
+    if (openImmediately) {
+        navigateTo('inspection-complete', { id: newId, templateId: clonedInsp.template_id });
+    } else {
+        renderWorkOrderDetails(workOrderId || clonedInsp.work_order_id);
+    }
 }
+window.executeCloneInspectionReport = executeCloneInspectionReport;
 
 
 
