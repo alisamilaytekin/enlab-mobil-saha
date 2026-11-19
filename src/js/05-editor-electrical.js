@@ -590,6 +590,108 @@ function getElectrical61DefectLines(fd) {
 }
 window.getElectrical61DefectLines = getElectrical61DefectLines;
 
+const ELEC_21_GUIDS = {
+    NETWORK_TYPE: '26ee591d-05ba-4a47-857d-e40120d312ee',
+    GRID_VOLTAGE: 'ac5e5f99-6517-4c09-b8c3-2c38a8f0f1e8',
+    HAS_PROJECT: '03facbae-a3ef-4403-88db-2c86da421539',
+    HAS_SINGLE_LINE: 'f30211b6-9dcd-4c8d-9fad-5f45c6bb436a',
+    GROUNDER_TYPE: '4f035efc-81b9-4568-9ee9-8a3c0daa0bd6',
+    LAST_CONTROL_DATE: '8613340f-35df-4930-a2d2-daf45e08997f',
+    EXTRA_ELECTRODE: '045b232d-d221-4dc6-b104-6fd9fa994c8d',
+    SUPPLY_VOLTAGE_KV: '480aca54-3a02-45d6-88e5-cbaa2353cfc6',
+    MAIN_BREAKER_TYPE: '1203adb0-74e0-4260-aaec-f619ef290bef',
+    MAIN_BREAKER_IN: '98e0d12e-16c9-45fe-9f7e-81e3fecbcafb',
+    MAIN_RCD_IN: 'c38c11fa-81c8-4120-bfba-d6f77c684bd7',
+    MAIN_RCD_TRIP_MA: '3c9d406a-3a6e-47d8-97d2-3f44034a74c1',
+    MAIN_RCD_TRIP_MS: '622a425b-1739-4a70-94d5-433b9af7051c'
+};
+
+const WorkOrderRcdMemoryManager = {
+    STORAGE_KEY: 'enlab_wo_rcd_memory_v1',
+    loadAll() {
+        try {
+            const raw = localStorage.getItem(this.STORAGE_KEY);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (parsed && typeof parsed === 'object') return parsed;
+            }
+        } catch (e) {}
+        return {};
+    },
+    saveAll(map) {
+        try {
+            localStorage.setItem(this.STORAGE_KEY, JSON.stringify(map || {}));
+        } catch (e) {}
+    },
+    get(workOrderId) {
+        const woKey = String(workOrderId || '').trim();
+        if (!woKey) return { tripCurrentMa: '', tripTimeMs: '', historyCurrentMa: [], historyTimeMs: [], byInspection: {} };
+        const all = this.loadAll();
+        let entry = all[woKey];
+        if (!entry && window.OfflineDB?.state?.workOrders) {
+            const wo = window.OfflineDB.state.workOrders.find(w => String(w.id) === woKey);
+            if (wo && wo.rcd_memory) entry = wo.rcd_memory;
+        }
+        if (!entry || typeof entry !== 'object') {
+            return { tripCurrentMa: '', tripTimeMs: '', historyCurrentMa: [], historyTimeMs: [], byInspection: {} };
+        }
+        return {
+            tripCurrentMa: String(entry.tripCurrentMa || ''),
+            tripTimeMs: String(entry.tripTimeMs || ''),
+            historyCurrentMa: Array.isArray(entry.historyCurrentMa) ? entry.historyCurrentMa : [],
+            historyTimeMs: Array.isArray(entry.historyTimeMs) ? entry.historyTimeMs : [],
+            byInspection: (entry.byInspection && typeof entry.byInspection === 'object') ? entry.byInspection : {},
+            updatedAt: entry.updatedAt || ''
+        };
+    },
+    record(workOrderId, field, value, inspMeta = null) {
+        const woKey = String(workOrderId || '').trim();
+        if (!woKey) return;
+        const cleanVal = String(value ?? '').trim();
+        const all = this.loadAll();
+        const cur = this.get(woKey);
+        const nowIso = new Date().toISOString();
+
+        if (field === 'tripCurrentMa') {
+            cur.tripCurrentMa = cleanVal;
+            if (cleanVal) {
+                cur.historyCurrentMa = [cleanVal, ...cur.historyCurrentMa.filter(x => x !== cleanVal)].slice(0, 12);
+            }
+        } else if (field === 'tripTimeMs') {
+            cur.tripTimeMs = cleanVal;
+            if (cleanVal) {
+                cur.historyTimeMs = [cleanVal, ...cur.historyTimeMs.filter(x => x !== cleanVal)].slice(0, 12);
+            }
+        }
+
+        const inspId = inspMeta?.id ? String(inspMeta.id) : '';
+        if (inspId) {
+            const prevRec = cur.byInspection[inspId] || {};
+            cur.byInspection[inspId] = {
+                equipmentName: inspMeta.equipment_name || prevRec.equipmentName || '',
+                tripCurrentMa: field === 'tripCurrentMa' ? cleanVal : (prevRec.tripCurrentMa || ''),
+                tripTimeMs: field === 'tripTimeMs' ? cleanVal : (prevRec.tripTimeMs || ''),
+                updatedAt: nowIso
+            };
+        }
+
+        cur.updatedAt = nowIso;
+        all[woKey] = cur;
+        this.saveAll(all);
+
+        try {
+            if (window.OfflineDB?.state?.workOrders) {
+                const wo = window.OfflineDB.state.workOrders.find(w => String(w.id) === woKey);
+                if (wo) {
+                    wo.rcd_memory = cur;
+                    if (typeof window.OfflineDB.save === 'function') window.OfflineDB.save();
+                }
+            }
+        } catch (e) {}
+    }
+};
+window.WorkOrderRcdMemoryManager = WorkOrderRcdMemoryManager;
+
 function onElectrical2201AnswerUpdated(qKey, value, isDirectInput = false) {
     const fd = AppState.currentFormData;
     if (!fd) return;
@@ -597,6 +699,18 @@ function onElectrical2201AnswerUpdated(qKey, value, isDirectInput = false) {
 
     if (getElectrical21Guids().includes(cleanGuid)) {
         fd._details21Initialized = true;
+        if (cleanGuid === ELEC_21_GUIDS.MAIN_RCD_TRIP_MA || cleanGuid === ELEC_21_GUIDS.MAIN_RCD_TRIP_MS) {
+            const insp = AppState.currentInspection;
+            const woId = insp?.work_order_id || AppState.currentWorkOrder?.id;
+            if (woId) {
+                WorkOrderRcdMemoryManager.record(
+                    woId,
+                    cleanGuid === ELEC_21_GUIDS.MAIN_RCD_TRIP_MA ? 'tripCurrentMa' : 'tripTimeMs',
+                    value,
+                    insp
+                );
+            }
+        }
         return;
     }
 
@@ -716,6 +830,46 @@ function ensureElectrical2201SmartRadioAndPanelDefaults() {
             }
         });
         fd._smartRadiosInitialized = true;
+    }
+
+    // 3. Son kontrol tarihi ve İlave topraklama elektrotu detayları varsayılan olarak "-" gelsin (değiştirilebilir)
+    if (!fd._smart21DashDefaultsInitialized) {
+        const qLastCtrl = `q_${ELEC_21_GUIDS.LAST_CONTROL_DATE}`;
+        const qExtraEl = `q_${ELEC_21_GUIDS.EXTRA_ELECTRODE}`;
+        if (!String(fd.answers[qLastCtrl] || '').trim()) {
+            fd.answers[qLastCtrl] = '-';
+            changed = true;
+        }
+        if (!String(fd.answers[qExtraEl] || '').trim()) {
+            fd.answers[qExtraEl] = '-';
+            changed = true;
+        }
+        fd._smart21DashDefaultsInitialized = true;
+    }
+
+    // 4. İş emri bazlı Ana RCD açma akımı (mA) ve açma zamanı (ms) hafıza senkronizasyonu
+    const woId = insp.work_order_id || AppState.currentWorkOrder?.id;
+    if (woId && !fd._woRcdMemorySynced) {
+        const qRcdMa = `q_${ELEC_21_GUIDS.MAIN_RCD_TRIP_MA}`;
+        const qRcdMs = `q_${ELEC_21_GUIDS.MAIN_RCD_TRIP_MS}`;
+        const curMa = String(fd.answers[qRcdMa] || '').trim();
+        const curMs = String(fd.answers[qRcdMs] || '').trim();
+        const woMem = WorkOrderRcdMemoryManager.get(woId);
+
+        if (curMa) {
+            WorkOrderRcdMemoryManager.record(woId, 'tripCurrentMa', curMa, insp);
+        } else if (woMem.tripCurrentMa) {
+            fd.answers[qRcdMa] = woMem.tripCurrentMa;
+            changed = true;
+        }
+
+        if (curMs) {
+            WorkOrderRcdMemoryManager.record(woId, 'tripTimeMs', curMs, insp);
+        } else if (woMem.tripTimeMs) {
+            fd.answers[qRcdMs] = woMem.tripTimeMs;
+            changed = true;
+        }
+        fd._woRcdMemorySynced = true;
     }
 
     if (changed && typeof triggerAutoSave === 'function') {
@@ -1174,45 +1328,6 @@ function renderElectrical2201Topic(area, topic, secNum) {
 
     }
 
-    // 2.1 Detay Bilgileri: İlk 12 temel soruyu doğrudan göster, 12 ikincil/besleme sorusunu katlanabilir çekmeceye al!
-    if (area.index === 0 && topic.index === 0 && topic.questions.length > 12) {
-        const coreQuestions = topic.questions.slice(0, 12);
-        const advQuestions = topic.questions.slice(12);
-        const filledAdvCount = advQuestions.filter(q => String(AppState.currentFormData?.answers?.[`q_${q.guid}`] || '').trim() !== '').length;
-        const showAdv = Boolean(AppState.showElectrical21Advanced);
-
-        return `
-            <div class="border border-slate-200 rounded-xl overflow-hidden bg-white">
-                <div class="px-3 py-2 bg-slate-100 border-b border-slate-200 font-bold text-xs text-slate-800 flex items-center justify-between">
-                    <span>${subNum}. ${topic.name}</span>
-                    <span class="text-[10px] font-semibold text-slate-500">Temel Tesisat Bilgileri</span>
-                </div>
-                <div class="p-3 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    ${coreQuestions.map(q => renderElectrical2201QuestionInput(q, area.index, topic.index)).join('')}
-                </div>
-                <div class="border-t border-slate-200 bg-slate-50/70">
-                    <button type="button" onclick="toggleElectrical21AdvancedDrawer()"
-                        class="w-full px-3 py-2.5 text-left font-bold text-xs text-slate-700 hover:bg-slate-100 flex items-center justify-between gap-2 transition">
-                        <span class="flex items-center gap-1.5">
-                            <i class="fa-solid fa-sliders text-sky-600"></i>
-                            <span>İlave Teknik &amp; Besleme Karakteristikleri (${filledAdvCount}/${advQuestions.length} Dolu - İsteğe Bağlı)</span>
-                        </span>
-                        <span class="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[10px] font-bold text-slate-600">
-                            ${showAdv ? 'Gizle ▴' : 'Göster ▾'}
-                        </span>
-                    </button>
-                    ${showAdv ? `
-                        <div class="p-3 pt-1 grid grid-cols-1 sm:grid-cols-2 gap-2.5 border-t border-slate-200/70 bg-white">
-                            ${advQuestions.map(q => renderElectrical2201QuestionInput(q, area.index, topic.index)).join('')}
-                        </div>
-                    ` : ''}
-                </div>
-            </div>
-        `;
-    }
-
-
-
     const colCount = Number(topic.columnCount) || 3;
 
     const gridCls = colCount === 1 ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2';
@@ -1352,22 +1467,94 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
 
         const is22ProtectionItem = (areaIdx === 0 && topicIdx === 1 && q.options.includes('Uygunsuz'));
         const is22Defect = (areaIdx === 0 && topicIdx === 1 && val === 'Uygunsuz');
-        const hasValidSelection = Boolean(val && val !== 'Uygunsuz');
-        const cardCls = is22Defect
+        const isRedWhenYok = (q.guid === ELEC_21_GUIDS.HAS_PROJECT || q.guid === ELEC_21_GUIDS.HAS_SINGLE_LINE);
+        const isDangerSelected = is22Defect || (isRedWhenYok && String(val || '').toLowerCase() === 'yok');
+        const hasValidSelection = Boolean(val && !isDangerSelected);
+        const cardCls = isDangerSelected
             ? 'border-rose-400 bg-rose-50/70'
             : hasValidSelection
                 ? 'border-emerald-300 bg-emerald-50/30'
                 : 'border-slate-200 bg-slate-50/40';
 
+        // Özel 2 satırlı yerleşim: 2.1 Şebeke Tipi -> Üst satır: [TT] [TN-S], Alt satır sıkışık: [TN] [TN-CS] [TN-C] [IT]
+        if (q.guid === ELEC_21_GUIDS.NETWORK_TYPE) {
+            const topRow = ['TT', 'TN-S'];
+            const bottomRow = ['TN', 'TN-CS', 'TN-C', 'IT'];
+            const renderNetBtn = (opt, extraCls) => {
+                const isSel = String(val || '').toLowerCase() === String(opt).toLowerCase();
+                return `
+                    <button type="button" onclick="handleAnswerChange('${qKey}', '${escapeForJs(opt)}', '${safeQTitle}')"
+                        class="rounded-lg border font-bold text-center whitespace-nowrap transition active:scale-95 ${extraCls} ${
+                            isSel
+                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                                : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
+                        }">
+                        ${escapeHtml(opt)}
+                    </button>
+                `;
+            };
+            return `
+                <div class="p-2.5 rounded-lg border ${cardCls} flex flex-col justify-between gap-1.5 transition-colors">
+                    <label class="block text-[11px] font-bold text-slate-700 leading-snug">${cleanTitle}</label>
+                    <div class="space-y-1.5">
+                        <div class="grid grid-cols-2 gap-1.5">
+                            ${topRow.map(opt => renderNetBtn(opt, 'py-2 px-2 text-xs')).join('')}
+                        </div>
+                        <div class="grid grid-cols-4 gap-1">
+                            ${bottomRow.map(opt => renderNetBtn(opt, 'py-1 px-1 text-[10px]')).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Özel 2 satırlı yerleşim: 2.1 Topraklayıcı Tipi -> Üst satır: [Temel] [Yüzeysel], Alt satır sıkışık: [Ring] [Derin] [Belirlenemedi]
+        if (q.guid === ELEC_21_GUIDS.GROUNDER_TYPE) {
+            const topRow = ['Temel', 'Yüzeysel'];
+            const bottomRow = [
+                { opt: 'Ring', flexCls: 'flex-1 min-w-0' },
+                { opt: 'Derin', flexCls: 'flex-1 min-w-0' },
+                { opt: 'Belirlenemedi', flexCls: 'flex-[1.85] min-w-0' }
+            ];
+            const renderGndBtn = (opt, extraCls) => {
+                const isSel = String(val || '').toLowerCase() === String(opt).toLowerCase();
+                return `
+                    <button type="button" onclick="handleAnswerChange('${qKey}', '${escapeForJs(opt)}', '${safeQTitle}')"
+                        class="rounded-lg border font-bold text-center whitespace-nowrap transition active:scale-95 ${extraCls} ${
+                            isSel
+                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                                : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
+                        }">
+                        ${escapeHtml(opt)}
+                    </button>
+                `;
+            };
+            return `
+                <div class="p-2.5 rounded-lg border ${cardCls} flex flex-col justify-between gap-1.5 transition-colors">
+                    <label class="block text-[11px] font-bold text-slate-700 leading-snug">${cleanTitle}</label>
+                    <div class="space-y-1.5">
+                        <div class="grid grid-cols-2 gap-1.5">
+                            ${topRow.map(opt => renderGndBtn(opt, 'py-2 px-2 text-xs')).join('')}
+                        </div>
+                        <div class="flex items-center gap-1">
+                            ${bottomRow.map(item => renderGndBtn(item.opt, `${item.flexCls} py-1.5 px-1 text-[10px]`)).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
         // 2.2 Doğrudan dokunmaya karşı koruma önlemleri için sade 3'lü buton: [Var] [Yok] [Uygunsuz]
         const pillOptions = is22ProtectionItem ? ['Var', 'Yok', 'Uygunsuz'] : q.options;
 
-        // Tüm çoktan seçmeli soruları TEK DOKUNUŞLU YEŞİL PILL BUTON yap!
+        // Tüm çoktan seçmeli soruları TEK DOKUNUŞLU PILL BUTON yap!
         if (pillOptions.length <= 8) {
             const pillsHtml = pillOptions.map(opt => {
                 const isSel = (String(val || '').toLowerCase() === String(opt || '').toLowerCase())
                     || (is22ProtectionItem && opt === 'Var' && val === 'Uygun');
-                const activeCls = (opt === 'Uygunsuz' || opt === 'Uygun Değil')
+                const isOptRed = (opt === 'Uygunsuz' || opt === 'Uygun Değil')
+                    || (isRedWhenYok && String(opt || '').toLowerCase() === 'yok');
+                const activeCls = isOptRed
                     ? 'bg-rose-600 text-white border-rose-600 shadow-2xs'
                     : 'bg-emerald-600 text-white border-emerald-600 shadow-2xs';
                 return `
@@ -1417,6 +1604,111 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
 
         `;
 
+    }
+
+    // 2.1 Seçilebilir Hızlı Seçenekli Metin Alanları (Gerilimler, Ana Kesici Tip/Akım, RCD Toroid, İş Emri Hafızalı RCD Açma Akım/Zamanı)
+    const renderSelectableTextCard = (chips, opts = {}) => {
+        const hasVal = Boolean(String(val || '').trim());
+        const cardBorder = hasVal ? 'border-emerald-300 bg-emerald-50/25' : 'border-slate-200 bg-slate-50/40';
+        let chipsBlockHtml = '';
+        if (opts.twoTier && Array.isArray(opts.topRow) && Array.isArray(opts.bottomRow)) {
+            const renderTierBtn = (opt, extraCls) => {
+                const isSel = String(val || '').trim().toLowerCase() === String(opt).trim().toLowerCase();
+                return `
+                    <button type="button" onclick="handleAnswerChange('${qKey}', '${escapeForJs(opt)}', '${safeQTitle}')"
+                        class="rounded-lg border font-bold text-center whitespace-nowrap transition active:scale-95 ${extraCls} ${
+                            isSel
+                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                                : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
+                        }">
+                        ${escapeHtml(opt)}
+                    </button>
+                `;
+            };
+            chipsBlockHtml = `
+                <div class="space-y-1">
+                    <div class="grid ${opts.topRow.length === 1 ? 'grid-cols-1' : 'grid-cols-2'} gap-1">
+                        ${opts.topRow.map(opt => renderTierBtn(opt, 'py-1.5 px-2 text-[11px]')).join('')}
+                    </div>
+                    <div class="grid grid-cols-${opts.bottomRow.length} gap-1">
+                        ${opts.bottomRow.map(opt => renderTierBtn(opt, 'py-1.5 px-1 text-[10px]')).join('')}
+                    </div>
+                </div>
+            `;
+        } else if (Array.isArray(chips) && chips.length > 0) {
+            chipsBlockHtml = `
+                <div class="flex flex-wrap gap-1">
+                    ${chips.map(opt => {
+                        const isSel = String(val || '').trim().toLowerCase() === String(opt).trim().toLowerCase();
+                        return `
+                            <button type="button" onclick="handleAnswerChange('${qKey}', '${escapeForJs(opt)}', '${safeQTitle}')"
+                                class="px-2 py-1 rounded-lg border text-[11px] font-bold whitespace-nowrap transition active:scale-95 ${
+                                    isSel
+                                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                                        : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
+                                }">
+                                ${escapeHtml(opt)}
+                            </button>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        return `
+            <div class="p-2.5 rounded-lg border ${cardBorder} flex flex-col justify-between gap-1.5 transition-colors">
+                <div class="flex items-center justify-between gap-1.5">
+                    <label class="block text-[11px] font-bold text-slate-700 leading-snug">${cleanTitle}</label>
+                    ${opts.badgeHtml || ''}
+                </div>
+                ${chipsBlockHtml}
+                <input type="text" data-qkey="${qKey}" value="${String(val || '').replace(/"/g, '&quot;')}"
+                    oninput="handleAnswerInput('${qKey}', this.value)"
+                    placeholder="${escapeHtml(opts.placeholder || 'Seçin veya yazın...')}"
+                    class="w-full border border-slate-300 bg-white rounded-lg px-2.5 py-1.5 text-xs font-medium focus:border-sky-500 focus:outline-none">
+            </div>
+        `;
+    };
+
+    if (q.guid === ELEC_21_GUIDS.GRID_VOLTAGE) {
+        return renderSelectableTextCard(['230/400', '400', '230', '400/690'], { placeholder: 'Örn: 230/400' });
+    }
+
+    if (q.guid === ELEC_21_GUIDS.SUPPLY_VOLTAGE_KV) {
+        return renderSelectableTextCard(['0,4/0,23', '0,4', '0,23', '15,8', '31,5', '34,5'], { placeholder: 'Örn: 0,4/0,23' });
+    }
+
+    if (q.guid === ELEC_21_GUIDS.MAIN_BREAKER_TYPE) {
+        return renderSelectableTextCard(null, {
+            twoTier: true,
+            topRow: ['Termik-Manyetik Şalter'],
+            bottomRow: ['C Tipi Sigorta', 'D Tipi Sigorta', 'B Tipi Sigorta'],
+            placeholder: 'Tip seçin veya yazın...'
+        });
+    }
+
+    if (q.guid === ELEC_21_GUIDS.MAIN_BREAKER_IN) {
+        return renderSelectableTextCard(['32', '40', '63', '80', '100', '125', '160', '250', '400', '630'], { placeholder: 'Nominal akım (A)...' });
+    }
+
+    if (q.guid === ELEC_21_GUIDS.MAIN_RCD_IN) {
+        return renderSelectableTextCard(['Toroid', '40', '63', '100', '125', '-'], { placeholder: 'Örn: Toroid veya 63' });
+    }
+
+    if (q.guid === ELEC_21_GUIDS.MAIN_RCD_TRIP_MA) {
+        const woId = AppState.currentInspection?.work_order_id || AppState.currentWorkOrder?.id;
+        const woMem = WorkOrderRcdMemoryManager.get(woId);
+        const mergedMa = [...new Set([...(woMem.historyCurrentMa || []), '30', '300', '500', '1000'])];
+        const badgeHtml = `<span class="px-1.5 py-0.5 rounded bg-sky-50 border border-sky-200 text-sky-700 text-[9px] font-bold shrink-0" title="Bu iş emri için hafızada saklanır"><i class="fa-solid fa-bookmark mr-0.5"></i>İş Emri Hafızası</span>`;
+        return renderSelectableTextCard(mergedMa, { badgeHtml, placeholder: 'Açma akımı (mA)...' });
+    }
+
+    if (q.guid === ELEC_21_GUIDS.MAIN_RCD_TRIP_MS) {
+        const woId = AppState.currentInspection?.work_order_id || AppState.currentWorkOrder?.id;
+        const woMem = WorkOrderRcdMemoryManager.get(woId);
+        const mergedMs = [...new Set([...(woMem.historyTimeMs || []), '25', '40', '150', '300'])];
+        const badgeHtml = `<span class="px-1.5 py-0.5 rounded bg-sky-50 border border-sky-200 text-sky-700 text-[9px] font-bold shrink-0" title="Bu iş emri için hafızada saklanır"><i class="fa-solid fa-bookmark mr-0.5"></i>İş Emri Hafızası</span>`;
+        return renderSelectableTextCard(mergedMs, { badgeHtml, placeholder: 'Açma zamanı (ms)...' });
     }
 
 
