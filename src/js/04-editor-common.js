@@ -203,37 +203,39 @@ function paintInspectionEditorUI() {
 
         <div class="max-w-2xl mx-auto space-y-3 pb-8">
 
-            <!-- MINIMAL EDITOR HEADER (EMIL KOWALSKI CRAFT) -->
+            <!-- SWISS PRECISION EDITOR HEADER (NO NESTED BOXES, 36-40PX TOUCH FLOOR) -->
 
-            <div class="card-craft-white p-3.5 space-y-2.5">
+            <div class="card-craft-white p-3 space-y-2.5">
 
                 <div class="flex items-center justify-between gap-2">
 
-                    <button onclick="if(typeof flushPendingAutoSave==='function') flushPendingAutoSave(); navigateTo('work-order-details', {id: '${insp.work_order_id || 43129}'})" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs rounded-xl shrink-0 transition border border-slate-200">
+                    <button onclick="if(typeof flushPendingAutoSave==='function') flushPendingAutoSave(); navigateTo('work-order-details', {id: '${insp.work_order_id || 43129}'})" class="h-9 px-3 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs rounded-xl shrink-0 transition border border-slate-200 flex items-center gap-1.5">
 
-                        <i class="fa-solid fa-arrow-left mr-1"></i>Geri
+                        <i class="fa-solid fa-arrow-left text-[11px]"></i>
+                        <span>Geri</span>
 
                     </button>
 
                     <div class="flex items-center gap-1.5 shrink-0">
 
-                        <button onclick="document.getElementById('editorNotebookDrawer')?.classList.toggle('hidden')" class="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-900 font-bold text-xs rounded-xl border border-amber-300 transition">
+                        <button onclick="document.getElementById('editorNotebookDrawer')?.classList.toggle('hidden')" class="h-9 px-2.5 bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-900 font-bold text-xs rounded-xl border border-amber-200 transition flex items-center gap-1" title="Saha Notları">
 
-                            <i class="fa-solid fa-note-sticky mr-1 text-amber-600"></i>Notlar
-
-                        </button>
-
-                        <button onclick="saveCurrentInspection(true)" class="px-3.5 py-1.5 btn-craft-primary active:scale-95 text-white font-bold text-xs rounded-xl transition">
-
-                            <i class="fa-solid fa-floppy-disk mr-1"></i>Kaydet
+                            <i class="fa-solid fa-note-sticky text-amber-600"></i>
+                            <span class="hidden sm:inline">Notlar</span>
 
                         </button>
 
-                        <button onclick="printOfficialReport()" class="px-3.5 py-1.5 btn-craft-dark active:scale-95 text-amber-400 font-black text-xs rounded-xl flex items-center gap-1.5 transition">
+                        <button onclick="saveCurrentInspection(true)" class="h-9 px-3.5 btn-craft-primary active:scale-95 text-white font-bold text-xs rounded-xl transition flex items-center gap-1.5">
+
+                            <i class="fa-solid fa-floppy-disk"></i>
+                            <span>Kaydet</span>
+
+                        </button>
+
+                        <button onclick="printOfficialReport()" class="h-9 px-3.5 btn-craft-dark active:scale-95 text-amber-400 font-bold text-xs rounded-xl flex items-center gap-1.5 transition">
 
                             <i class="fa-solid fa-file-pdf"></i>
-
-                            <span>PDF Çıktı</span>
+                            <span>PDF</span>
 
                         </button>
 
@@ -243,45 +245,46 @@ function paintInspectionEditorUI() {
 
 
 
-                <div class="flex items-center justify-between gap-2 pt-1.5 border-t border-slate-100">
+                <div class="pt-2 border-t border-slate-100 space-y-1.5">
 
-                    <div class="min-w-0 flex-1 flex items-center gap-1.5">
+                    <div class="flex items-center justify-between gap-2 text-xs">
 
-                        <i class="fa-solid fa-building text-slate-400 text-xs shrink-0"></i>
+                        <div class="min-w-0 flex-1 flex items-center gap-1.5">
 
-                        <span class="font-bold text-slate-900 text-xs sm:text-sm truncate">${escapeHtml(insp.customer_name || 'Firma')}</span>
+                            <i class="fa-solid fa-building text-slate-400 text-[11px] shrink-0"></i>
+
+                            <span class="font-bold text-slate-700 truncate">${escapeHtml(insp.customer_name || 'Firma')}</span>
+
+                        </div>
+
+                        <span class="px-2 py-0.5 bg-slate-100 border border-slate-200/80 text-slate-600 font-semibold text-[11px] rounded-md shrink-0">
+                            ${getCleanTemplateTypeLabel(insp.template_id, insp.template_code)}
+                        </span>
 
                     </div>
 
-                    <span class="px-2.5 py-1 bg-slate-100 border border-slate-200 text-slate-700 font-bold text-xs rounded-lg shrink-0">
-                        ${getCleanTemplateTypeLabel(insp.template_id, insp.template_code)}
-                    </span>
+                    <!-- TEMİZ EKİPMAN / PANO ADI GİRİŞİ -->
+                    <div class="flex items-center gap-2">
 
-                </div>
+                        <label class="text-xs font-bold text-slate-700 shrink-0 flex items-center gap-1.5">
 
+                            <i class="fa-solid fa-bolt text-amber-500 text-xs"></i>
 
+                            <span>Pano / Ekipman:</span>
 
-                <!-- RAPOR / EKİPMAN ADI DÜZENLEME -->
+                        </label>
 
-                <div class="flex items-center gap-2 p-1.5 bg-amber-50/70 border border-amber-200 rounded-lg">
+                        <input type="text"
 
-                    <label class="text-[11px] font-black text-amber-900 shrink-0 flex items-center gap-1">
+                            value="${escapeHtml(insp.equipment_name || '')}"
 
-                        <i class="fa-solid fa-file-pen text-amber-600"></i>
+                            placeholder="Örn: ADP, TDP-1..."
 
-                        <span>Ekipman Adı:</span>
+                            oninput="updateInspectionName(this.value)"
 
-                    </label>
+                            class="flex-1 min-w-0 h-9 bg-slate-50 border border-slate-300 rounded-xl px-3 text-xs font-bold text-slate-900 focus:bg-white focus:outline-none">
 
-                    <input type="text"
-
-                        value="${escapeHtml(insp.equipment_name || '')}"
-
-                        placeholder=""
-
-                        oninput="updateInspectionName(this.value)"
-
-                        class="flex-1 min-w-0 bg-white border border-amber-300 rounded-md px-2.5 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-sky-500">
+                    </div>
 
                 </div>
 

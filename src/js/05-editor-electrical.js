@@ -987,7 +987,7 @@ function renderElectrical2201Editor() {
 
 
     const tabsHtml = `
-        <div class="bg-white p-1.5 rounded-xl border border-slate-200 shadow-2xs space-y-1.5">
+        <div class="sticky top-0 z-20 bg-white/95 backdrop-blur-md p-2 rounded-2xl border border-slate-200 shadow-sm space-y-1.5">
             <div class="grid grid-cols-5 gap-1">
                 ${steps.map(s => {
                     const isActive = activeIdx === s.id;
@@ -995,24 +995,24 @@ function renderElectrical2201Editor() {
                     const badResultStyle = s.isBad && !isActive ? 'bg-rose-50 text-rose-800 border border-rose-200' : '';
                     return `
                         <button type="button" onclick="AppState.showAllAreas = false; AppState.activeAreaIndex = ${s.id}; paintInspectionEditorUI(); document.getElementById('pageContent')?.scrollTo({top: 0, behavior: 'smooth'});"
-                            class="py-2 px-1 rounded-lg text-[11px] font-bold text-center truncate transition flex flex-col items-center justify-center gap-0.5 ${
+                            class="min-h-[44px] py-1.5 px-1 rounded-xl text-[11px] font-bold text-center truncate transition flex flex-col items-center justify-center gap-1 ${
                                 isActive
                                     ? 'bg-slate-900 text-white shadow-xs'
                                     : (defectStyle || badResultStyle || 'bg-slate-100 text-slate-700 hover:bg-slate-200/80')
                             }">
-                            <i class="fa-solid ${s.icon} text-[11px] ${isActive ? 'text-amber-400' : (s.hasDefect || s.isBad ? 'text-rose-600' : 'text-slate-500')}"></i>
-                            <span class="truncate w-full">${s.short}</span>
+                            <i class="fa-solid ${s.icon} text-xs ${isActive ? 'text-amber-400' : (s.hasDefect || s.isBad ? 'text-rose-600' : 'text-slate-500')}"></i>
+                            <span class="truncate w-full leading-none">${s.short}</span>
                         </button>
                     `;
                 }).join('')}
             </div>
             <div class="flex items-center justify-between px-1 pt-0.5 text-[11px]">
-                <span class="font-bold text-slate-700 truncate">
-                    ${activeIdx === -1 ? '📋 Tüm Bölümler (1-11) Görünümü' : (steps.find(s => s.id === activeIdx)?.label || '')}
+                <span class="font-bold text-slate-700 truncate flex items-center gap-1.5">
+                    ${activeIdx === -1 ? '<i class="fa-solid fa-layer-group text-sky-600"></i><span>Tüm Bölümler (1-11)</span>' : escapeHtml(steps.find(s => s.id === activeIdx)?.label || '')}
                 </span>
                 <button type="button" onclick="AppState.showAllAreas = ${activeIdx === -1 ? 'false' : 'true'}; paintInspectionEditorUI();"
-                    class="px-2 py-0.5 rounded-md font-bold text-[10px] transition ${activeIdx === -1 ? 'bg-slate-900 text-amber-400' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}">
-                    ${activeIdx === -1 ? 'Adım Görünümüne Dön' : 'Tüm Bölümleri Aç (1-11)'}
+                    class="px-2.5 py-1 rounded-lg font-bold text-[10px] transition ${activeIdx === -1 ? 'bg-slate-900 text-amber-400' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}">
+                    ${activeIdx === -1 ? 'Adım Görünümü' : 'Tüm Bölümler (1-11)'}
                 </button>
             </div>
         </div>
@@ -1152,9 +1152,9 @@ function renderElectrical2201AreaBlock(area, secNum) {
 
                             oninput="AppState.visualSearchQuery=this.value; filterVisualCheckQuestionsLive(this.value);"
 
-                            placeholder="🔍 Maddelerde ara (Örn: kapak, kablo, etiket, yangın, zemin)..."
+                            placeholder="Maddelerde ara (Örn: kapak, kablo, etiket, yangın, zemin)..."
 
-                            class="w-full bg-white border border-slate-300 rounded-lg pl-8 pr-3 py-1.5 text-xs font-semibold focus:border-sky-500 focus:outline-none">
+                            class="w-full h-9 bg-white border border-slate-300 rounded-xl pl-8 pr-3 text-xs font-medium focus:border-sky-500 focus:outline-none">
 
                     </div>
 
@@ -1244,7 +1244,7 @@ function renderElectrical2201Topic(area, topic, secNum) {
                 return `
                     <button type="button" onclick="handleAnswerChange('${qKey}', '${b.v}', '${safeQTitle}')"
                         title="${b.title}"
-                        class="w-8 h-7 rounded-lg border text-xs font-black flex items-center justify-center transition active:scale-90 ${
+                        class="w-9 h-9 rounded-xl border text-xs font-black flex items-center justify-center transition active:scale-90 ${
                             isSel ? b.activeCls : 'bg-white hover:bg-slate-100 text-slate-600 border-slate-300'
                         }">
                         ${b.lbl}
@@ -1406,7 +1406,7 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
             { v: 'Görülemedi', lbl: 'G', activeCls: 'bg-amber-500 text-slate-950 border-amber-500 shadow-2xs' }
         ].map(b => `
             <button type="button" onclick="handleAnswerChange('${qKey}', '${b.v}', '${safeQTitle}')"
-                class="w-8 h-7 rounded-lg border text-xs font-black flex items-center justify-center transition active:scale-90 ${
+                class="w-9 h-9 rounded-xl border text-xs font-black flex items-center justify-center transition active:scale-90 ${
                     val === b.v ? b.activeCls : 'bg-white hover:bg-slate-100 text-slate-600 border-slate-300'
                 }">${b.lbl}</button>
         `).join('');
@@ -1724,7 +1724,7 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
 
             <div class="flex items-center justify-between gap-2 mb-1">
                 <label class="block text-[11px] font-bold text-slate-700 leading-snug">${cleanTitle}</label>
-                ${isVFF ? `<button type="button" onclick="randomizeElectrical61Voltage()" class="px-2 py-0.5 rounded-md bg-sky-100 hover:bg-sky-200 active:scale-95 text-sky-800 text-[10px] font-bold shrink-0 transition" title="393-397 V arası rastgele seç">🎲 393-397</button>` : ''}
+                ${isVFF ? `<button type="button" onclick="randomizeElectrical61Voltage()" class="px-2 py-0.5 rounded-md bg-sky-100 hover:bg-sky-200 active:scale-95 text-sky-800 text-[10px] font-bold shrink-0 transition" title="393-397 V arası rastgele seç"><i class="fa-solid fa-shuffle mr-1"></i>393-397</button>` : ''}
             </div>
 
             <input type="text" data-qkey="${qKey}" value="${String(val || '').replace(/"/g, '&quot;')}"
@@ -2170,12 +2170,12 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
     const isSec66NaActive = isSection66 && sec66FirstRes === 'Uygulaması Yok';
 
     const quickTableActionBtns = isSection65 ? `
-        <button type="button" onclick="applyQuickPotentialEquipotentialPreset('standard')" class="px-2.5 py-1 border font-bold rounded-lg text-[11px] shrink-0 shadow-2xs transition ${isSec65StandardActive ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-amber-400 hover:bg-amber-300 text-slate-950 border-amber-500'}">${isSec65StandardActive ? '✓ ' : '⚡ '}Standart Doldur</button>
-        <button type="button" onclick="applyQuickPotentialEquipotentialPreset('na')" class="px-2 py-1 border font-bold rounded-lg text-[11px] shrink-0 transition ${isSec65NaActive ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'}">${isSec65NaActive ? '✓ ' : 'N '}Uyg. Yok</button>
+        <button type="button" onclick="applyQuickPotentialEquipotentialPreset('standard')" class="h-8 px-2.5 border font-bold rounded-lg text-[11px] shrink-0 shadow-2xs transition flex items-center gap-1 ${isSec65StandardActive ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-amber-400 hover:bg-amber-300 text-slate-950 border-amber-500'}"><i class="fa-solid ${isSec65StandardActive ? 'fa-check' : 'fa-bolt'} text-[10px]"></i>Standart Doldur</button>
+        <button type="button" onclick="applyQuickPotentialEquipotentialPreset('na')" class="h-8 px-2.5 border font-bold rounded-lg text-[11px] shrink-0 transition ${isSec65NaActive ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'}">${isSec65NaActive ? '✓ ' : 'N '}Uyg. Yok</button>
     ` : isSection66 ? `
-        <button type="button" onclick="applyQuickFloorInsulationPreset('standard')" class="px-2.5 py-1 border font-bold rounded-lg text-[11px] shrink-0 shadow-2xs transition ${isSec66StandardActive ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-amber-400 hover:bg-amber-300 text-slate-950 border-amber-500'}">${isSec66StandardActive ? '✓ ' : '⚡ '}Standart Halı</button>
-        <button type="button" onclick="applyQuickFloorInsulationPreset('missing')" class="px-2 py-1 border font-bold rounded-lg text-[11px] shrink-0 transition ${isSec66MissingActive ? 'bg-rose-600 text-white border-rose-600 shadow-2xs' : 'bg-rose-100 hover:bg-rose-200 text-rose-800 border-rose-300'}">✕ Halı Yok</button>
-        <button type="button" onclick="applyQuickFloorInsulationPreset('na')" class="px-2 py-1 border font-bold rounded-lg text-[11px] shrink-0 transition ${isSec66NaActive ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'}">${isSec66NaActive ? '✓ ' : 'N '}Uyg. Yok</button>
+        <button type="button" onclick="applyQuickFloorInsulationPreset('standard')" class="h-8 px-2.5 border font-bold rounded-lg text-[11px] shrink-0 shadow-2xs transition flex items-center gap-1 ${isSec66StandardActive ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-amber-400 hover:bg-amber-300 text-slate-950 border-amber-500'}"><i class="fa-solid ${isSec66StandardActive ? 'fa-check' : 'fa-bolt'} text-[10px]"></i>Standart Halı</button>
+        <button type="button" onclick="applyQuickFloorInsulationPreset('missing')" class="h-8 px-2.5 border font-bold rounded-lg text-[11px] shrink-0 transition ${isSec66MissingActive ? 'bg-rose-600 text-white border-rose-600 shadow-2xs' : 'bg-rose-100 hover:bg-rose-200 text-rose-800 border-rose-300'}">✕ Halı Yok</button>
+        <button type="button" onclick="applyQuickFloorInsulationPreset('na')" class="h-8 px-2.5 border font-bold rounded-lg text-[11px] shrink-0 transition ${isSec66NaActive ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'}">${isSec66NaActive ? '✓ ' : 'N '}Uyg. Yok</button>
     ` : '';
 
     return `

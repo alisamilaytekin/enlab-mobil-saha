@@ -3565,21 +3565,27 @@ function renderGrayOfflineNotesFolderHtml() {
 
         <div onclick="navigateTo('field-notebook')"
 
-            class="p-2.5 rounded-xl bg-slate-200/95 hover:bg-slate-300/80 active:scale-[0.99] border border-slate-300 cursor-pointer flex items-center justify-between gap-2.5 transition shadow-2xs">
+            class="card-craft-interactive p-3 rounded-2xl bg-slate-200/80 hover:bg-slate-200 border border-slate-300/90 flex items-center justify-between gap-3 transition">
 
-            <div class="flex items-center gap-2.5 min-w-0 flex-1">
+            <div class="flex items-center gap-3 min-w-0 flex-1">
 
-                <div class="w-9 h-9 rounded-lg bg-slate-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                <div class="w-10 h-10 rounded-xl bg-slate-700 text-white flex items-center justify-center shrink-0 shadow-2xs">
 
-                    <i class="fa-solid fa-folder text-sm"></i>
+                    <i class="fa-solid fa-note-sticky text-sm"></i>
 
                 </div>
 
                 <div class="min-w-0 flex-1">
 
-                    <div class="font-bold text-slate-900 text-xs sm:text-sm truncate">
+                    <div class="font-bold text-slate-900 text-sm truncate leading-snug">
 
                         Offline Not Alma Klasörü
+
+                    </div>
+
+                    <div class="text-[11px] text-slate-600 truncate">
+
+                        Hızlı saha notları ve ölçümler
 
                     </div>
 
@@ -3587,15 +3593,15 @@ function renderGrayOfflineNotesFolderHtml() {
 
             </div>
 
-            <div class="shrink-0 flex items-center gap-1.5">
+            <div class="shrink-0 flex items-center gap-2">
 
-                <span class="px-2 py-0.5 rounded-md bg-slate-700 text-white font-bold text-[10px]">
+                <span class="px-2.5 py-1 rounded-lg bg-slate-800 text-white font-bold text-[11px] tabular-nums">
 
                     ${noteCount} Not
 
                 </span>
 
-                <i class="fa-solid fa-chevron-right text-slate-500 text-[11px]"></i>
+                <i class="fa-solid fa-chevron-right text-slate-500 text-xs"></i>
 
             </div>
 
@@ -3645,18 +3651,24 @@ async function renderHome(opts = {}) {
 
     container.innerHTML = `
 
-        <div class="max-w-2xl mx-auto space-y-2 pb-6">
+        <div class="max-w-2xl mx-auto space-y-3 pb-8">
 
-            <!-- 1. İŞYERİ ARAMA VE YENİLE / YENİ KLASÖR -->
+            <!-- 1. İŞYERİ ARAMA VE YENİLE / YENİ KLASÖR (44px DOKUNMA ERGONOMİSİ) -->
 
             <div class="flex items-center gap-2 pt-0.5">
 
-                <input type="text" id="homeSearchInput" oninput="filterHomeJobs(this.value)" placeholder="Firma adı, şube veya not ara..."
+                <div class="relative flex-1">
 
-                    class="flex-1 bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-sky-500 shadow-2xs">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+
+                    <input type="text" id="homeSearchInput" oninput="filterHomeJobs(this.value)" placeholder="Firma adı, şube veya not ara..."
+
+                        class="w-full h-11 bg-white border border-slate-300 rounded-xl pl-9 pr-3 text-xs font-medium text-slate-900 focus:outline-none focus:border-sky-500 shadow-2xs">
+
+                </div>
 
                 ${isManaged ? `
-                    <button onclick="window.CloudAppSync && window.CloudAppSync.syncNow()" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 active:scale-95 text-amber-300 font-bold text-xs rounded-lg shrink-0 flex items-center gap-1.5 shadow-sm transition" title="Yöneticinin açtığı işleri ve atadığı cihazları internetten çek">
+                    <button onclick="window.CloudAppSync && window.CloudAppSync.syncNow()" class="h-11 px-4 bg-slate-900 hover:bg-slate-800 active:scale-95 text-amber-300 font-bold text-xs rounded-xl shrink-0 flex items-center gap-1.5 shadow-xs transition" title="Yöneticinin açtığı işleri ve atadığı cihazları internetten çek">
 
                         <i class="fa-solid fa-arrows-rotate"></i>
 
@@ -3664,7 +3676,7 @@ async function renderHome(opts = {}) {
 
                     </button>
                 ` : `
-                    <button onclick="openQuickFieldJobModal()" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-bold text-xs rounded-lg shrink-0 flex items-center gap-1.5 shadow-sm transition">
+                    <button onclick="openQuickFieldJobModal()" class="h-11 px-4 bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-bold text-xs rounded-xl shrink-0 flex items-center gap-1.5 shadow-xs transition">
 
                         <i class="fa-solid fa-plus text-emerald-400"></i>
 
@@ -3677,9 +3689,9 @@ async function renderHome(opts = {}) {
 
 
 
-            <!-- 2. OFFLINE NOT KLASÖRÜ (GRİ) + İŞ KLASÖRLERİ LİSTESİ -->
+            <!-- 2. OFFLINE NOT KLASÖRÜ + İŞ KLASÖRLERİ LİSTESİ -->
 
-            <div id="homeJobsList" class="space-y-2 pt-0.5">
+            <div id="homeJobsList" class="space-y-2.5">
 
                 ${renderGrayOfflineNotesFolderHtml()}
 
@@ -3731,48 +3743,58 @@ function renderMinimalJobCards(jobs) {
 
             <div onclick="navigateTo('work-order-details', {id: '${wo.id}'})"
 
-                class="card-craft-white p-2.5 cursor-pointer flex items-center justify-between gap-2 transition hover:border-slate-300">
+                class="card-craft-white card-craft-interactive p-3.5 flex items-center justify-between gap-3 hover:border-slate-300">
 
-                <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-3 min-w-0 flex-1">
 
-                    <div class="flex items-center gap-1.5 min-w-0">
+                    <div class="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200/80 text-slate-700 flex items-center justify-center shrink-0">
 
-                        <span class="font-bold text-slate-900 text-xs sm:text-sm truncate">${wo.customer_name}</span>
-
-                        ${wo.assigned_by_manager ? `<span class="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold text-[9px] shrink-0">İş Emri</span>` : ''}
+                        <i class="fa-solid fa-building text-sm text-sky-700"></i>
 
                     </div>
 
-                    ${wo.customer_branch ? `<div class="text-[10px] text-slate-500 truncate mt-0.5">${wo.customer_branch}</div>` : ''}
+                    <div class="min-w-0 flex-1">
 
-                    ${notePreview ? `<div class="text-[11px] text-amber-800 bg-amber-50 border border-amber-200/80 rounded-md px-2 py-0.5 mt-1 truncate"><i class="fa-solid fa-note-sticky mr-1 text-amber-500"></i>${notePreview.replace(/\n/g, ' ')}</div>` : ''}
+                        <div class="flex items-center gap-1.5 min-w-0">
+
+                            <span class="font-bold text-slate-900 text-sm truncate leading-snug">${escapeHtml(wo.customer_name)}</span>
+
+                            ${wo.assigned_by_manager ? `<span class="px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold text-[10px] shrink-0">İş Emri</span>` : ''}
+
+                        </div>
+
+                        ${wo.customer_branch ? `<div class="text-xs text-slate-500 truncate mt-0.5">${escapeHtml(wo.customer_branch)}</div>` : ''}
+
+                        ${notePreview ? `<div class="text-[11px] text-amber-900 bg-amber-50 border border-amber-200/80 rounded-lg px-2 py-0.5 mt-1.5 truncate"><i class="fa-solid fa-note-sticky mr-1 text-amber-500"></i>${escapeHtml(notePreview.replace(/\n/g, ' '))}</div>` : ''}
+
+                    </div>
 
                 </div>
 
-                <div class="shrink-0 flex items-center gap-1">
+                <div class="shrink-0 flex items-center gap-1.5">
 
                     <button type="button" onclick="openWorkOrderPortalModal('${wo.id}', event)"
 
-                        class="px-2 py-0.5 rounded-md border ${wo.portal_folder_url ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200'} font-bold text-[10px] flex items-center gap-1 active:scale-95 transition"
+                        class="h-8 px-2.5 rounded-lg border ${wo.portal_folder_url ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200'} font-bold text-[11px] flex items-center gap-1 active:scale-95 transition"
 
                         title="Müşteri İnternet Klasörü">
 
-                        <i class="fa-solid fa-globe text-[9px]"></i>
+                        <i class="fa-solid fa-globe text-[10px]"></i>
 
                         <span>Portal</span>
 
                     </button>
 
-                    <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-bold text-[10px]">
+                    <span class="h-8 px-2.5 rounded-lg bg-slate-100 border border-slate-200/80 text-slate-800 font-bold text-[11px] inline-flex items-center tabular-nums">
 
                         ${count} Rapor
 
                     </span>
 
                     ${lockedFolder ? '' : `
-                        <button onclick="deleteWorkOrderHeading('${wo.id}', event, '${(wo.customer_name || 'İş Klasörü').replace(/'/g, "\\'")}')" class="p-1.5 text-slate-400 hover:text-rose-600 active:scale-90 rounded-md transition" title="Klasörü Sil">
+                        <button onclick="deleteWorkOrderHeading('${wo.id}', event, '${escapeForJs(wo.customer_name || 'İş Klasörü')}')" class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 active:scale-90 rounded-lg transition" title="Klasörü Sil">
 
-                            <i class="fa-solid fa-trash-can text-[11px]"></i>
+                            <i class="fa-solid fa-trash-can text-xs"></i>
 
                         </button>
                     `}
@@ -5290,27 +5312,31 @@ async function renderWorkOrderDetails(workOrderId) {
 
 
 
+    const suitableCount = inspections.filter(i => (i.result_status || 'UYGUN') === 'UYGUN').length;
+    const defectCountTotal = inspections.length - suitableCount;
+
     container.innerHTML = `
 
         <div class="max-w-2xl mx-auto space-y-3 pb-8">
 
-            <!-- HEADER (EMIL KOWALSKI CRAFT) -->
+            <!-- HEADER (SWISS PRECISION) -->
 
-            <div class="card-craft-white p-2.5 flex items-center justify-between gap-2">
+            <div class="card-craft-white p-3 flex items-center justify-between gap-2.5">
 
-                <div class="flex items-center gap-2.5 min-w-0">
+                <div class="flex items-center gap-2.5 min-w-0 flex-1">
 
-                    <button onclick="navigateTo('home')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 rounded-xl font-bold text-xs shrink-0 transition border border-slate-200">
+                    <button onclick="navigateTo('home')" class="h-9 px-3 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 rounded-xl font-bold text-xs shrink-0 transition border border-slate-200 flex items-center gap-1.5">
 
-                        <i class="fa-solid fa-arrow-left mr-1"></i>Geri
+                        <i class="fa-solid fa-arrow-left text-[11px]"></i>
+                        <span>Geri</span>
 
                     </button>
 
-                    <div class="min-w-0">
+                    <div class="min-w-0 flex-1">
 
-                        <h1 class="font-bold text-slate-900 text-sm sm:text-base truncate">${wo.customer_name}</h1>
+                        <h1 class="font-bold text-slate-900 text-sm sm:text-base truncate leading-tight">${escapeHtml(wo.customer_name)}</h1>
 
-                        ${wo.customer_branch ? `<div class="text-[11px] text-slate-500 truncate">${wo.customer_branch}</div>` : ''}
+                        ${wo.customer_branch ? `<div class="text-xs text-slate-500 truncate mt-0.5">${escapeHtml(wo.customer_branch)}</div>` : ''}
 
                     </div>
 
@@ -5324,7 +5350,7 @@ async function renderWorkOrderDetails(workOrderId) {
 
             <button type="button" onclick="openWorkOrderFieldNotesModal('${wo.id}')"
 
-                class="w-full card-craft-white px-3 py-2 flex items-center justify-between gap-2 hover:border-amber-300 active:scale-[0.99] transition text-left">
+                class="w-full card-craft-white card-craft-interactive px-3.5 py-2.5 flex items-center justify-between gap-2 hover:border-amber-300 text-left">
 
                 <div class="flex items-center gap-2 min-w-0 flex-1">
 
@@ -5332,33 +5358,41 @@ async function renderWorkOrderDetails(workOrderId) {
 
                     <span class="font-bold text-xs text-slate-800 shrink-0">Saha Notu</span>
 
-                    <span id="woFieldNotePreview_${wo.id}" class="text-[11px] ${wo.field_notes && wo.field_notes.trim() ? 'text-amber-800 font-medium' : 'text-slate-400'} truncate">${wo.field_notes && wo.field_notes.trim() ? escapeHtml(wo.field_notes.replace(/\n/g, ' ').trim()) : 'Not ekle...'}</span>
+                    <span id="woFieldNotePreview_${wo.id}" class="text-xs ${wo.field_notes && wo.field_notes.trim() ? 'text-amber-800 font-medium' : 'text-slate-400'} truncate">${wo.field_notes && wo.field_notes.trim() ? escapeHtml(wo.field_notes.replace(/\n/g, ' ').trim()) : 'Not ekle...'}</span>
 
                 </div>
 
-                <i class="fa-solid fa-pen text-[10px] text-slate-400 shrink-0"></i>
+                <i class="fa-solid fa-pen text-[11px] text-slate-400 shrink-0"></i>
 
             </button>
 
 
 
-            <!-- RAPORLAR (IMPECCABLE CRAFT) -->
+            <!-- RAPORLAR (FLAT SWISS LAYOUT - NO NESTED CARDS) -->
 
-            <div class="card-craft-white p-3.5 space-y-3">
+            <div class="space-y-2.5 pt-1">
 
-                <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="flex flex-wrap items-center justify-between gap-2 px-0.5">
 
-                    <div class="font-bold text-xs text-slate-800 flex items-center gap-1.5">
+                    <div class="flex items-center gap-2 flex-wrap">
 
-                        <i class="fa-solid fa-file-lines text-sky-600"></i>
+                        <span class="font-extrabold text-xs text-slate-800 flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-lines text-sky-600"></i>
+                            <span>Raporlar (${inspections.length})</span>
+                        </span>
 
-                        <span>Rapor Taslakları (${inspections.length})</span>
+                        ${inspections.length > 0 ? `
+                            <div class="flex items-center gap-1 text-[10px] font-bold tabular-nums">
+                                <span class="px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">${suitableCount} Uygun</span>
+                                ${defectCountTotal > 0 ? `<span class="px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200">${defectCountTotal} Kusurlu</span>` : ''}
+                            </div>
+                        ` : ''}
 
                     </div>
 
                     <div class="flex items-center gap-1.5 flex-wrap justify-end">
 
-                        <button onclick="openPortalUploadModal('${wo.id}')" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-2xs transition" title="Raporları İnternete Yükle ve Müşteri Linki Oluştur">
+                        <button onclick="openPortalUploadModal('${wo.id}')" class="h-9 px-3 bg-indigo-50 hover:bg-indigo-100 active:scale-95 text-indigo-700 border border-indigo-200 font-bold text-xs rounded-xl flex items-center gap-1.5 transition" title="Raporları İnternete Yükle ve Müşteri Linki Oluştur">
 
                             <i class="fa-solid fa-cloud-arrow-up"></i>
 
@@ -5366,7 +5400,7 @@ async function renderWorkOrderDetails(workOrderId) {
 
                         </button>
 
-                        <button onclick="openAddInspectionModal('${wo.id}')" class="px-3.5 py-1.5 btn-craft-emerald active:scale-95 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition">
+                        <button onclick="openAddInspectionModal('${wo.id}')" class="h-9 px-3.5 btn-craft-emerald active:scale-95 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition">
 
                             <i class="fa-solid fa-plus"></i>
 
@@ -5380,7 +5414,7 @@ async function renderWorkOrderDetails(workOrderId) {
 
 
 
-                <div id="woInspectionsTableBody" class="space-y-2">
+                <div id="woInspectionsTableBody" class="space-y-2.5">
 
                     ${renderWoInspectionRows(inspections, wo.id)}
 
@@ -5496,31 +5530,29 @@ function renderWoInspectionRows(list, workOrderId) {
 
         return `
 
-        <div class="card-craft-white p-2.5 transition space-y-1.5 hover:border-slate-300">
+        <div class="card-craft-white p-3.5 transition space-y-2.5 hover:border-slate-300">
 
-            <!-- TIER 1: REPORT TITLE & SUBTITLE -->
+            <!-- TIER 1: REPORT TITLE & STATUS (TAPPING OPENS EDITOR DIRECTLY) -->
 
-            <div>
+            <div onclick="navigateTo('inspection-complete', {id: '${item.id}', templateId: '${item.template_id}'})" class="cursor-pointer">
 
                 <div class="flex items-start justify-between gap-2">
 
-                    <!-- ANA YAZI: KULLANICININ GİRDİĞİ PANO / EKİPMAN ADI (ADP, TDP-1 vb.) -->
-
-                    <div class="font-black text-slate-900 text-sm tracking-tight leading-snug flex-1 truncate">
+                    <div class="font-bold text-slate-900 text-sm tracking-tight leading-snug flex-1 truncate">
 
                         ${escapeHtml(item.equipment_name || 'İsimsiz Pano / Ekipman')}
 
                     </div>
 
-                    <div class="flex items-center gap-1 shrink-0">
+                    <div class="flex items-center gap-1.5 shrink-0">
 
-                        ${isPublished ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold text-sky-700 bg-sky-50 px-1.5 py-0.5 rounded-md border border-sky-200" title="Doğrulama: ${escapeHtml(item.portal_verify_code || '')}"><i class="fa-solid fa-globe text-[9px]"></i>Yayında</span>` : ''}
+                        ${isPublished ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-md border border-sky-200" title="Doğrulama: ${escapeHtml(item.portal_verify_code || '')}"><i class="fa-solid fa-globe text-[9px]"></i>Yayında</span>` : ''}
 
-                        <span class="inline-flex items-center gap-1 text-[10px] font-semibold ${isSuitable ? 'text-emerald-700 bg-emerald-50/70 border-emerald-200' : 'text-rose-700 bg-rose-50/70 border-rose-200'} px-2 py-0.5 rounded-md border">
+                        <span class="inline-flex items-center gap-1 text-[11px] font-bold ${isSuitable ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-rose-700 bg-rose-50 border-rose-200'} px-2 py-0.5 rounded-md border tabular-nums">
 
                             <span class="w-1.5 h-1.5 rounded-full ${isSuitable ? 'bg-emerald-500' : 'bg-rose-500'}"></span>
 
-                            ${item.result_status || 'UYGUN'}${(!isSuitable && item.defect_count > 0) ? ` (${item.defect_count})` : ''}
+                            ${escapeHtml(item.result_status || 'UYGUN')}${(!isSuitable && item.defect_count > 0) ? ` (${item.defect_count})` : ''}
 
                         </span>
 
@@ -5528,15 +5560,13 @@ function renderWoInspectionRows(list, workOrderId) {
 
                 </div>
 
-                <!-- ALT YAZI: KÜÇÜK FONTLA KATEGORİ (TKM-FR YAZILARI KALDIRILDI) -->
-
-                <div class="flex items-center gap-1.5 text-[11px] text-slate-500 mt-0.5 flex-wrap font-medium">
+                <div class="flex items-center gap-1.5 text-xs text-slate-500 mt-1 flex-wrap font-medium">
 
                     <span class="text-sky-700 font-semibold">${typeLabel}</span>
 
                     ${item.location ? `<span class="text-slate-300">•</span><span class="text-slate-600">${escapeHtml(item.location)}</span>` : ''}
 
-                    ${item.serial_no ? `<span class="text-slate-300">•</span><span class="text-slate-400 font-mono text-[10px]">${escapeHtml(item.serial_no)}</span>` : ''}
+                    ${item.serial_no ? `<span class="text-slate-300">•</span><span class="text-slate-500 font-mono text-[11px]">${escapeHtml(item.serial_no)}</span>` : ''}
 
                 </div>
 
@@ -5544,17 +5574,17 @@ function renderWoInspectionRows(list, workOrderId) {
 
 
 
-            <!-- TIER 2: ACTION BUTTONS (KOMPAKT & RAFİNE) -->
+            <!-- TIER 2: UNIFORM TACTILE ACTION BAR -->
 
-            <div class="flex flex-wrap items-center justify-between gap-1.5 pt-1.5 border-t border-slate-100">
+            <div class="flex flex-wrap items-center justify-between gap-1.5 pt-2.5 border-t border-slate-100">
 
-                <div class="flex items-center gap-1 flex-wrap flex-1 min-w-0">
+                <div class="flex items-center gap-1.5 flex-wrap flex-1 min-w-0">
 
                     <button onclick="navigateTo('inspection-complete', {id: '${item.id}', templateId: '${item.template_id}'})"
 
-                        class="px-2 py-1 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white font-semibold rounded-lg text-xs flex items-center gap-1 transition shadow-2xs">
+                        class="h-9 px-3 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition shadow-2xs">
 
-                        <i class="fa-solid fa-pen-to-square text-[10px]"></i>
+                        <i class="fa-solid fa-pen-to-square text-[11px]"></i>
 
                         <span>Doldur</span>
 
@@ -5562,9 +5592,9 @@ function renderWoInspectionRows(list, workOrderId) {
 
                     <button onclick="quickPreviewReportFromList('${item.id}')"
 
-                        class="px-2 py-1 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-semibold rounded-lg text-xs flex items-center gap-1 transition border border-slate-200">
+                        class="h-9 px-3 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-800 font-bold rounded-xl text-xs flex items-center gap-1.5 transition border border-slate-200">
 
-                        <i class="fa-solid fa-file-pdf text-amber-600 text-[10px]"></i>
+                        <i class="fa-solid fa-file-pdf text-amber-600 text-[11px]"></i>
 
                         <span>PDF</span>
 
@@ -5572,9 +5602,9 @@ function renderWoInspectionRows(list, workOrderId) {
 
                     <button onclick="openPortalUploadModal('${workOrderId}', ['${item.id}'])"
 
-                        class="px-2 py-1 ${isPublished ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'} active:scale-95 font-semibold rounded-lg text-xs flex items-center gap-1 transition border" title="${isPublished ? 'Raporu İnternette Güncelle' : 'İnternete Yükle'}">
+                        class="h-9 px-2.5 ${isPublished ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'} active:scale-95 font-bold rounded-xl text-xs flex items-center gap-1.5 transition border" title="${isPublished ? 'Raporu İnternette Güncelle' : 'İnternete Yükle'}">
 
-                        <i class="fa-solid fa-cloud-arrow-up text-[10px] ${isPublished ? 'text-indigo-600' : 'text-sky-600'}"></i>
+                        <i class="fa-solid fa-cloud-arrow-up text-[11px] ${isPublished ? 'text-indigo-600' : 'text-sky-600'}"></i>
 
                         <span>${isPublished ? 'Güncelle' : 'Yükle'}</span>
 
@@ -5586,26 +5616,26 @@ function renderWoInspectionRows(list, workOrderId) {
 
                     <button onclick="cloneInspectionReport('${item.id}', '${workOrderId}')"
 
-                        class="px-2 py-1 text-[11px] font-bold text-slate-600 bg-slate-100 hover:bg-sky-50 hover:text-sky-700 active:scale-95 rounded-lg border border-slate-200 flex items-center gap-1 transition" title="Bu Panoyu / Raporu Çoğalt">
+                        class="h-9 px-2.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-sky-50 hover:text-sky-700 active:scale-95 rounded-xl border border-slate-200 flex items-center gap-1 transition" title="Bu Panoyu / Raporu Çoğalt">
 
-                        <i class="fa-solid fa-clone text-[10px]"></i>
+                        <i class="fa-solid fa-clone text-[11px]"></i>
                         <span>Çoğalt</span>
 
                     </button>
 
                     <button onclick="event.stopPropagation(); openRenameInspectionModal('${item.id}', '${escapeForJs(item.equipment_name || '')}', '${workOrderId}')"
 
-                        class="p-1.5 text-slate-400 hover:text-sky-600 active:scale-90 rounded-md transition" title="Pano İsmini Düzenle">
+                        class="w-9 h-9 flex items-center justify-center text-slate-500 hover:text-sky-600 hover:bg-slate-100 active:scale-90 rounded-xl transition" title="Pano İsmini Düzenle">
 
                         <i class="fa-solid fa-pen text-xs"></i>
 
                     </button>
 
-                    <button onclick="event.stopPropagation(); deleteInspectionItem('${item.id}', '${workOrderId}', '${(item.equipment_name || 'Muayene Raporu').replace(/'/g, "\'")}')"
+                    <button onclick="event.stopPropagation(); deleteInspectionItem('${item.id}', '${workOrderId}', '${escapeForJs(item.equipment_name || 'Muayene Raporu')}')"
 
-                        class="p-1.5 text-slate-400 hover:text-rose-600 active:scale-90 rounded-md transition" title="Raporu Sil">
+                        class="w-9 h-9 flex items-center justify-center text-rose-500 hover:text-rose-700 hover:bg-rose-50 active:scale-90 rounded-xl transition" title="Raporu Sil">
 
-                        <i class="fa-solid fa-trash-can text-xs text-rose-500"></i>
+                        <i class="fa-solid fa-trash-can text-xs"></i>
 
                     </button>
 
@@ -7991,37 +8021,39 @@ function paintInspectionEditorUI() {
 
         <div class="max-w-2xl mx-auto space-y-3 pb-8">
 
-            <!-- MINIMAL EDITOR HEADER (EMIL KOWALSKI CRAFT) -->
+            <!-- SWISS PRECISION EDITOR HEADER (NO NESTED BOXES, 36-40PX TOUCH FLOOR) -->
 
-            <div class="card-craft-white p-3.5 space-y-2.5">
+            <div class="card-craft-white p-3 space-y-2.5">
 
                 <div class="flex items-center justify-between gap-2">
 
-                    <button onclick="if(typeof flushPendingAutoSave==='function') flushPendingAutoSave(); navigateTo('work-order-details', {id: '${insp.work_order_id || 43129}'})" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs rounded-xl shrink-0 transition border border-slate-200">
+                    <button onclick="if(typeof flushPendingAutoSave==='function') flushPendingAutoSave(); navigateTo('work-order-details', {id: '${insp.work_order_id || 43129}'})" class="h-9 px-3 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs rounded-xl shrink-0 transition border border-slate-200 flex items-center gap-1.5">
 
-                        <i class="fa-solid fa-arrow-left mr-1"></i>Geri
+                        <i class="fa-solid fa-arrow-left text-[11px]"></i>
+                        <span>Geri</span>
 
                     </button>
 
                     <div class="flex items-center gap-1.5 shrink-0">
 
-                        <button onclick="document.getElementById('editorNotebookDrawer')?.classList.toggle('hidden')" class="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-900 font-bold text-xs rounded-xl border border-amber-300 transition">
+                        <button onclick="document.getElementById('editorNotebookDrawer')?.classList.toggle('hidden')" class="h-9 px-2.5 bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-900 font-bold text-xs rounded-xl border border-amber-200 transition flex items-center gap-1" title="Saha Notları">
 
-                            <i class="fa-solid fa-note-sticky mr-1 text-amber-600"></i>Notlar
-
-                        </button>
-
-                        <button onclick="saveCurrentInspection(true)" class="px-3.5 py-1.5 btn-craft-primary active:scale-95 text-white font-bold text-xs rounded-xl transition">
-
-                            <i class="fa-solid fa-floppy-disk mr-1"></i>Kaydet
+                            <i class="fa-solid fa-note-sticky text-amber-600"></i>
+                            <span class="hidden sm:inline">Notlar</span>
 
                         </button>
 
-                        <button onclick="printOfficialReport()" class="px-3.5 py-1.5 btn-craft-dark active:scale-95 text-amber-400 font-black text-xs rounded-xl flex items-center gap-1.5 transition">
+                        <button onclick="saveCurrentInspection(true)" class="h-9 px-3.5 btn-craft-primary active:scale-95 text-white font-bold text-xs rounded-xl transition flex items-center gap-1.5">
+
+                            <i class="fa-solid fa-floppy-disk"></i>
+                            <span>Kaydet</span>
+
+                        </button>
+
+                        <button onclick="printOfficialReport()" class="h-9 px-3.5 btn-craft-dark active:scale-95 text-amber-400 font-bold text-xs rounded-xl flex items-center gap-1.5 transition">
 
                             <i class="fa-solid fa-file-pdf"></i>
-
-                            <span>PDF Çıktı</span>
+                            <span>PDF</span>
 
                         </button>
 
@@ -8031,45 +8063,46 @@ function paintInspectionEditorUI() {
 
 
 
-                <div class="flex items-center justify-between gap-2 pt-1.5 border-t border-slate-100">
+                <div class="pt-2 border-t border-slate-100 space-y-1.5">
 
-                    <div class="min-w-0 flex-1 flex items-center gap-1.5">
+                    <div class="flex items-center justify-between gap-2 text-xs">
 
-                        <i class="fa-solid fa-building text-slate-400 text-xs shrink-0"></i>
+                        <div class="min-w-0 flex-1 flex items-center gap-1.5">
 
-                        <span class="font-bold text-slate-900 text-xs sm:text-sm truncate">${escapeHtml(insp.customer_name || 'Firma')}</span>
+                            <i class="fa-solid fa-building text-slate-400 text-[11px] shrink-0"></i>
+
+                            <span class="font-bold text-slate-700 truncate">${escapeHtml(insp.customer_name || 'Firma')}</span>
+
+                        </div>
+
+                        <span class="px-2 py-0.5 bg-slate-100 border border-slate-200/80 text-slate-600 font-semibold text-[11px] rounded-md shrink-0">
+                            ${getCleanTemplateTypeLabel(insp.template_id, insp.template_code)}
+                        </span>
 
                     </div>
 
-                    <span class="px-2.5 py-1 bg-slate-100 border border-slate-200 text-slate-700 font-bold text-xs rounded-lg shrink-0">
-                        ${getCleanTemplateTypeLabel(insp.template_id, insp.template_code)}
-                    </span>
+                    <!-- TEMİZ EKİPMAN / PANO ADI GİRİŞİ -->
+                    <div class="flex items-center gap-2">
 
-                </div>
+                        <label class="text-xs font-bold text-slate-700 shrink-0 flex items-center gap-1.5">
 
+                            <i class="fa-solid fa-bolt text-amber-500 text-xs"></i>
 
+                            <span>Pano / Ekipman:</span>
 
-                <!-- RAPOR / EKİPMAN ADI DÜZENLEME -->
+                        </label>
 
-                <div class="flex items-center gap-2 p-1.5 bg-amber-50/70 border border-amber-200 rounded-lg">
+                        <input type="text"
 
-                    <label class="text-[11px] font-black text-amber-900 shrink-0 flex items-center gap-1">
+                            value="${escapeHtml(insp.equipment_name || '')}"
 
-                        <i class="fa-solid fa-file-pen text-amber-600"></i>
+                            placeholder="Örn: ADP, TDP-1..."
 
-                        <span>Ekipman Adı:</span>
+                            oninput="updateInspectionName(this.value)"
 
-                    </label>
+                            class="flex-1 min-w-0 h-9 bg-slate-50 border border-slate-300 rounded-xl px-3 text-xs font-bold text-slate-900 focus:bg-white focus:outline-none">
 
-                    <input type="text"
-
-                        value="${escapeHtml(insp.equipment_name || '')}"
-
-                        placeholder=""
-
-                        oninput="updateInspectionName(this.value)"
-
-                        class="flex-1 min-w-0 bg-white border border-amber-300 rounded-md px-2.5 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-sky-500">
+                    </div>
 
                 </div>
 
@@ -9951,7 +9984,7 @@ function renderElectrical2201Editor() {
 
 
     const tabsHtml = `
-        <div class="bg-white p-1.5 rounded-xl border border-slate-200 shadow-2xs space-y-1.5">
+        <div class="sticky top-0 z-20 bg-white/95 backdrop-blur-md p-2 rounded-2xl border border-slate-200 shadow-sm space-y-1.5">
             <div class="grid grid-cols-5 gap-1">
                 ${steps.map(s => {
                     const isActive = activeIdx === s.id;
@@ -9959,24 +9992,24 @@ function renderElectrical2201Editor() {
                     const badResultStyle = s.isBad && !isActive ? 'bg-rose-50 text-rose-800 border border-rose-200' : '';
                     return `
                         <button type="button" onclick="AppState.showAllAreas = false; AppState.activeAreaIndex = ${s.id}; paintInspectionEditorUI(); document.getElementById('pageContent')?.scrollTo({top: 0, behavior: 'smooth'});"
-                            class="py-2 px-1 rounded-lg text-[11px] font-bold text-center truncate transition flex flex-col items-center justify-center gap-0.5 ${
+                            class="min-h-[44px] py-1.5 px-1 rounded-xl text-[11px] font-bold text-center truncate transition flex flex-col items-center justify-center gap-1 ${
                                 isActive
                                     ? 'bg-slate-900 text-white shadow-xs'
                                     : (defectStyle || badResultStyle || 'bg-slate-100 text-slate-700 hover:bg-slate-200/80')
                             }">
-                            <i class="fa-solid ${s.icon} text-[11px] ${isActive ? 'text-amber-400' : (s.hasDefect || s.isBad ? 'text-rose-600' : 'text-slate-500')}"></i>
-                            <span class="truncate w-full">${s.short}</span>
+                            <i class="fa-solid ${s.icon} text-xs ${isActive ? 'text-amber-400' : (s.hasDefect || s.isBad ? 'text-rose-600' : 'text-slate-500')}"></i>
+                            <span class="truncate w-full leading-none">${s.short}</span>
                         </button>
                     `;
                 }).join('')}
             </div>
             <div class="flex items-center justify-between px-1 pt-0.5 text-[11px]">
-                <span class="font-bold text-slate-700 truncate">
-                    ${activeIdx === -1 ? '📋 Tüm Bölümler (1-11) Görünümü' : (steps.find(s => s.id === activeIdx)?.label || '')}
+                <span class="font-bold text-slate-700 truncate flex items-center gap-1.5">
+                    ${activeIdx === -1 ? '<i class="fa-solid fa-layer-group text-sky-600"></i><span>Tüm Bölümler (1-11)</span>' : escapeHtml(steps.find(s => s.id === activeIdx)?.label || '')}
                 </span>
                 <button type="button" onclick="AppState.showAllAreas = ${activeIdx === -1 ? 'false' : 'true'}; paintInspectionEditorUI();"
-                    class="px-2 py-0.5 rounded-md font-bold text-[10px] transition ${activeIdx === -1 ? 'bg-slate-900 text-amber-400' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}">
-                    ${activeIdx === -1 ? 'Adım Görünümüne Dön' : 'Tüm Bölümleri Aç (1-11)'}
+                    class="px-2.5 py-1 rounded-lg font-bold text-[10px] transition ${activeIdx === -1 ? 'bg-slate-900 text-amber-400' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}">
+                    ${activeIdx === -1 ? 'Adım Görünümü' : 'Tüm Bölümler (1-11)'}
                 </button>
             </div>
         </div>
@@ -10116,9 +10149,9 @@ function renderElectrical2201AreaBlock(area, secNum) {
 
                             oninput="AppState.visualSearchQuery=this.value; filterVisualCheckQuestionsLive(this.value);"
 
-                            placeholder="🔍 Maddelerde ara (Örn: kapak, kablo, etiket, yangın, zemin)..."
+                            placeholder="Maddelerde ara (Örn: kapak, kablo, etiket, yangın, zemin)..."
 
-                            class="w-full bg-white border border-slate-300 rounded-lg pl-8 pr-3 py-1.5 text-xs font-semibold focus:border-sky-500 focus:outline-none">
+                            class="w-full h-9 bg-white border border-slate-300 rounded-xl pl-8 pr-3 text-xs font-medium focus:border-sky-500 focus:outline-none">
 
                     </div>
 
@@ -10208,7 +10241,7 @@ function renderElectrical2201Topic(area, topic, secNum) {
                 return `
                     <button type="button" onclick="handleAnswerChange('${qKey}', '${b.v}', '${safeQTitle}')"
                         title="${b.title}"
-                        class="w-8 h-7 rounded-lg border text-xs font-black flex items-center justify-center transition active:scale-90 ${
+                        class="w-9 h-9 rounded-xl border text-xs font-black flex items-center justify-center transition active:scale-90 ${
                             isSel ? b.activeCls : 'bg-white hover:bg-slate-100 text-slate-600 border-slate-300'
                         }">
                         ${b.lbl}
@@ -10370,7 +10403,7 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
             { v: 'Görülemedi', lbl: 'G', activeCls: 'bg-amber-500 text-slate-950 border-amber-500 shadow-2xs' }
         ].map(b => `
             <button type="button" onclick="handleAnswerChange('${qKey}', '${b.v}', '${safeQTitle}')"
-                class="w-8 h-7 rounded-lg border text-xs font-black flex items-center justify-center transition active:scale-90 ${
+                class="w-9 h-9 rounded-xl border text-xs font-black flex items-center justify-center transition active:scale-90 ${
                     val === b.v ? b.activeCls : 'bg-white hover:bg-slate-100 text-slate-600 border-slate-300'
                 }">${b.lbl}</button>
         `).join('');
@@ -10688,7 +10721,7 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
 
             <div class="flex items-center justify-between gap-2 mb-1">
                 <label class="block text-[11px] font-bold text-slate-700 leading-snug">${cleanTitle}</label>
-                ${isVFF ? `<button type="button" onclick="randomizeElectrical61Voltage()" class="px-2 py-0.5 rounded-md bg-sky-100 hover:bg-sky-200 active:scale-95 text-sky-800 text-[10px] font-bold shrink-0 transition" title="393-397 V arası rastgele seç">🎲 393-397</button>` : ''}
+                ${isVFF ? `<button type="button" onclick="randomizeElectrical61Voltage()" class="px-2 py-0.5 rounded-md bg-sky-100 hover:bg-sky-200 active:scale-95 text-sky-800 text-[10px] font-bold shrink-0 transition" title="393-397 V arası rastgele seç"><i class="fa-solid fa-shuffle mr-1"></i>393-397</button>` : ''}
             </div>
 
             <input type="text" data-qkey="${qKey}" value="${String(val || '').replace(/"/g, '&quot;')}"
@@ -11134,12 +11167,12 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
     const isSec66NaActive = isSection66 && sec66FirstRes === 'Uygulaması Yok';
 
     const quickTableActionBtns = isSection65 ? `
-        <button type="button" onclick="applyQuickPotentialEquipotentialPreset('standard')" class="px-2.5 py-1 border font-bold rounded-lg text-[11px] shrink-0 shadow-2xs transition ${isSec65StandardActive ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-amber-400 hover:bg-amber-300 text-slate-950 border-amber-500'}">${isSec65StandardActive ? '✓ ' : '⚡ '}Standart Doldur</button>
-        <button type="button" onclick="applyQuickPotentialEquipotentialPreset('na')" class="px-2 py-1 border font-bold rounded-lg text-[11px] shrink-0 transition ${isSec65NaActive ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'}">${isSec65NaActive ? '✓ ' : 'N '}Uyg. Yok</button>
+        <button type="button" onclick="applyQuickPotentialEquipotentialPreset('standard')" class="h-8 px-2.5 border font-bold rounded-lg text-[11px] shrink-0 shadow-2xs transition flex items-center gap-1 ${isSec65StandardActive ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-amber-400 hover:bg-amber-300 text-slate-950 border-amber-500'}"><i class="fa-solid ${isSec65StandardActive ? 'fa-check' : 'fa-bolt'} text-[10px]"></i>Standart Doldur</button>
+        <button type="button" onclick="applyQuickPotentialEquipotentialPreset('na')" class="h-8 px-2.5 border font-bold rounded-lg text-[11px] shrink-0 transition ${isSec65NaActive ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'}">${isSec65NaActive ? '✓ ' : 'N '}Uyg. Yok</button>
     ` : isSection66 ? `
-        <button type="button" onclick="applyQuickFloorInsulationPreset('standard')" class="px-2.5 py-1 border font-bold rounded-lg text-[11px] shrink-0 shadow-2xs transition ${isSec66StandardActive ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-amber-400 hover:bg-amber-300 text-slate-950 border-amber-500'}">${isSec66StandardActive ? '✓ ' : '⚡ '}Standart Halı</button>
-        <button type="button" onclick="applyQuickFloorInsulationPreset('missing')" class="px-2 py-1 border font-bold rounded-lg text-[11px] shrink-0 transition ${isSec66MissingActive ? 'bg-rose-600 text-white border-rose-600 shadow-2xs' : 'bg-rose-100 hover:bg-rose-200 text-rose-800 border-rose-300'}">✕ Halı Yok</button>
-        <button type="button" onclick="applyQuickFloorInsulationPreset('na')" class="px-2 py-1 border font-bold rounded-lg text-[11px] shrink-0 transition ${isSec66NaActive ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'}">${isSec66NaActive ? '✓ ' : 'N '}Uyg. Yok</button>
+        <button type="button" onclick="applyQuickFloorInsulationPreset('standard')" class="h-8 px-2.5 border font-bold rounded-lg text-[11px] shrink-0 shadow-2xs transition flex items-center gap-1 ${isSec66StandardActive ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-amber-400 hover:bg-amber-300 text-slate-950 border-amber-500'}"><i class="fa-solid ${isSec66StandardActive ? 'fa-check' : 'fa-bolt'} text-[10px]"></i>Standart Halı</button>
+        <button type="button" onclick="applyQuickFloorInsulationPreset('missing')" class="h-8 px-2.5 border font-bold rounded-lg text-[11px] shrink-0 transition ${isSec66MissingActive ? 'bg-rose-600 text-white border-rose-600 shadow-2xs' : 'bg-rose-100 hover:bg-rose-200 text-rose-800 border-rose-300'}">✕ Halı Yok</button>
+        <button type="button" onclick="applyQuickFloorInsulationPreset('na')" class="h-8 px-2.5 border font-bold rounded-lg text-[11px] shrink-0 transition ${isSec66NaActive ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'}">${isSec66NaActive ? '✓ ' : 'N '}Uyg. Yok</button>
     ` : '';
 
     return `

@@ -1142,27 +1142,31 @@ async function renderWorkOrderDetails(workOrderId) {
 
 
 
+    const suitableCount = inspections.filter(i => (i.result_status || 'UYGUN') === 'UYGUN').length;
+    const defectCountTotal = inspections.length - suitableCount;
+
     container.innerHTML = `
 
         <div class="max-w-2xl mx-auto space-y-3 pb-8">
 
-            <!-- HEADER (EMIL KOWALSKI CRAFT) -->
+            <!-- HEADER (SWISS PRECISION) -->
 
-            <div class="card-craft-white p-2.5 flex items-center justify-between gap-2">
+            <div class="card-craft-white p-3 flex items-center justify-between gap-2.5">
 
-                <div class="flex items-center gap-2.5 min-w-0">
+                <div class="flex items-center gap-2.5 min-w-0 flex-1">
 
-                    <button onclick="navigateTo('home')" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 rounded-xl font-bold text-xs shrink-0 transition border border-slate-200">
+                    <button onclick="navigateTo('home')" class="h-9 px-3 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 rounded-xl font-bold text-xs shrink-0 transition border border-slate-200 flex items-center gap-1.5">
 
-                        <i class="fa-solid fa-arrow-left mr-1"></i>Geri
+                        <i class="fa-solid fa-arrow-left text-[11px]"></i>
+                        <span>Geri</span>
 
                     </button>
 
-                    <div class="min-w-0">
+                    <div class="min-w-0 flex-1">
 
-                        <h1 class="font-bold text-slate-900 text-sm sm:text-base truncate">${wo.customer_name}</h1>
+                        <h1 class="font-bold text-slate-900 text-sm sm:text-base truncate leading-tight">${escapeHtml(wo.customer_name)}</h1>
 
-                        ${wo.customer_branch ? `<div class="text-[11px] text-slate-500 truncate">${wo.customer_branch}</div>` : ''}
+                        ${wo.customer_branch ? `<div class="text-xs text-slate-500 truncate mt-0.5">${escapeHtml(wo.customer_branch)}</div>` : ''}
 
                     </div>
 
@@ -1176,7 +1180,7 @@ async function renderWorkOrderDetails(workOrderId) {
 
             <button type="button" onclick="openWorkOrderFieldNotesModal('${wo.id}')"
 
-                class="w-full card-craft-white px-3 py-2 flex items-center justify-between gap-2 hover:border-amber-300 active:scale-[0.99] transition text-left">
+                class="w-full card-craft-white card-craft-interactive px-3.5 py-2.5 flex items-center justify-between gap-2 hover:border-amber-300 text-left">
 
                 <div class="flex items-center gap-2 min-w-0 flex-1">
 
@@ -1184,33 +1188,41 @@ async function renderWorkOrderDetails(workOrderId) {
 
                     <span class="font-bold text-xs text-slate-800 shrink-0">Saha Notu</span>
 
-                    <span id="woFieldNotePreview_${wo.id}" class="text-[11px] ${wo.field_notes && wo.field_notes.trim() ? 'text-amber-800 font-medium' : 'text-slate-400'} truncate">${wo.field_notes && wo.field_notes.trim() ? escapeHtml(wo.field_notes.replace(/\n/g, ' ').trim()) : 'Not ekle...'}</span>
+                    <span id="woFieldNotePreview_${wo.id}" class="text-xs ${wo.field_notes && wo.field_notes.trim() ? 'text-amber-800 font-medium' : 'text-slate-400'} truncate">${wo.field_notes && wo.field_notes.trim() ? escapeHtml(wo.field_notes.replace(/\n/g, ' ').trim()) : 'Not ekle...'}</span>
 
                 </div>
 
-                <i class="fa-solid fa-pen text-[10px] text-slate-400 shrink-0"></i>
+                <i class="fa-solid fa-pen text-[11px] text-slate-400 shrink-0"></i>
 
             </button>
 
 
 
-            <!-- RAPORLAR (IMPECCABLE CRAFT) -->
+            <!-- RAPORLAR (FLAT SWISS LAYOUT - NO NESTED CARDS) -->
 
-            <div class="card-craft-white p-3.5 space-y-3">
+            <div class="space-y-2.5 pt-1">
 
-                <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="flex flex-wrap items-center justify-between gap-2 px-0.5">
 
-                    <div class="font-bold text-xs text-slate-800 flex items-center gap-1.5">
+                    <div class="flex items-center gap-2 flex-wrap">
 
-                        <i class="fa-solid fa-file-lines text-sky-600"></i>
+                        <span class="font-extrabold text-xs text-slate-800 flex items-center gap-1.5">
+                            <i class="fa-solid fa-file-lines text-sky-600"></i>
+                            <span>Raporlar (${inspections.length})</span>
+                        </span>
 
-                        <span>Rapor Taslakları (${inspections.length})</span>
+                        ${inspections.length > 0 ? `
+                            <div class="flex items-center gap-1 text-[10px] font-bold tabular-nums">
+                                <span class="px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">${suitableCount} Uygun</span>
+                                ${defectCountTotal > 0 ? `<span class="px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200">${defectCountTotal} Kusurlu</span>` : ''}
+                            </div>
+                        ` : ''}
 
                     </div>
 
                     <div class="flex items-center gap-1.5 flex-wrap justify-end">
 
-                        <button onclick="openPortalUploadModal('${wo.id}')" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-2xs transition" title="Raporları İnternete Yükle ve Müşteri Linki Oluştur">
+                        <button onclick="openPortalUploadModal('${wo.id}')" class="h-9 px-3 bg-indigo-50 hover:bg-indigo-100 active:scale-95 text-indigo-700 border border-indigo-200 font-bold text-xs rounded-xl flex items-center gap-1.5 transition" title="Raporları İnternete Yükle ve Müşteri Linki Oluştur">
 
                             <i class="fa-solid fa-cloud-arrow-up"></i>
 
@@ -1218,7 +1230,7 @@ async function renderWorkOrderDetails(workOrderId) {
 
                         </button>
 
-                        <button onclick="openAddInspectionModal('${wo.id}')" class="px-3.5 py-1.5 btn-craft-emerald active:scale-95 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition">
+                        <button onclick="openAddInspectionModal('${wo.id}')" class="h-9 px-3.5 btn-craft-emerald active:scale-95 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 transition">
 
                             <i class="fa-solid fa-plus"></i>
 
@@ -1232,7 +1244,7 @@ async function renderWorkOrderDetails(workOrderId) {
 
 
 
-                <div id="woInspectionsTableBody" class="space-y-2">
+                <div id="woInspectionsTableBody" class="space-y-2.5">
 
                     ${renderWoInspectionRows(inspections, wo.id)}
 
@@ -1348,31 +1360,29 @@ function renderWoInspectionRows(list, workOrderId) {
 
         return `
 
-        <div class="card-craft-white p-2.5 transition space-y-1.5 hover:border-slate-300">
+        <div class="card-craft-white p-3.5 transition space-y-2.5 hover:border-slate-300">
 
-            <!-- TIER 1: REPORT TITLE & SUBTITLE -->
+            <!-- TIER 1: REPORT TITLE & STATUS (TAPPING OPENS EDITOR DIRECTLY) -->
 
-            <div>
+            <div onclick="navigateTo('inspection-complete', {id: '${item.id}', templateId: '${item.template_id}'})" class="cursor-pointer">
 
                 <div class="flex items-start justify-between gap-2">
 
-                    <!-- ANA YAZI: KULLANICININ GİRDİĞİ PANO / EKİPMAN ADI (ADP, TDP-1 vb.) -->
-
-                    <div class="font-black text-slate-900 text-sm tracking-tight leading-snug flex-1 truncate">
+                    <div class="font-bold text-slate-900 text-sm tracking-tight leading-snug flex-1 truncate">
 
                         ${escapeHtml(item.equipment_name || 'İsimsiz Pano / Ekipman')}
 
                     </div>
 
-                    <div class="flex items-center gap-1 shrink-0">
+                    <div class="flex items-center gap-1.5 shrink-0">
 
-                        ${isPublished ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold text-sky-700 bg-sky-50 px-1.5 py-0.5 rounded-md border border-sky-200" title="Doğrulama: ${escapeHtml(item.portal_verify_code || '')}"><i class="fa-solid fa-globe text-[9px]"></i>Yayında</span>` : ''}
+                        ${isPublished ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-md border border-sky-200" title="Doğrulama: ${escapeHtml(item.portal_verify_code || '')}"><i class="fa-solid fa-globe text-[9px]"></i>Yayında</span>` : ''}
 
-                        <span class="inline-flex items-center gap-1 text-[10px] font-semibold ${isSuitable ? 'text-emerald-700 bg-emerald-50/70 border-emerald-200' : 'text-rose-700 bg-rose-50/70 border-rose-200'} px-2 py-0.5 rounded-md border">
+                        <span class="inline-flex items-center gap-1 text-[11px] font-bold ${isSuitable ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-rose-700 bg-rose-50 border-rose-200'} px-2 py-0.5 rounded-md border tabular-nums">
 
                             <span class="w-1.5 h-1.5 rounded-full ${isSuitable ? 'bg-emerald-500' : 'bg-rose-500'}"></span>
 
-                            ${item.result_status || 'UYGUN'}${(!isSuitable && item.defect_count > 0) ? ` (${item.defect_count})` : ''}
+                            ${escapeHtml(item.result_status || 'UYGUN')}${(!isSuitable && item.defect_count > 0) ? ` (${item.defect_count})` : ''}
 
                         </span>
 
@@ -1380,15 +1390,13 @@ function renderWoInspectionRows(list, workOrderId) {
 
                 </div>
 
-                <!-- ALT YAZI: KÜÇÜK FONTLA KATEGORİ (TKM-FR YAZILARI KALDIRILDI) -->
-
-                <div class="flex items-center gap-1.5 text-[11px] text-slate-500 mt-0.5 flex-wrap font-medium">
+                <div class="flex items-center gap-1.5 text-xs text-slate-500 mt-1 flex-wrap font-medium">
 
                     <span class="text-sky-700 font-semibold">${typeLabel}</span>
 
                     ${item.location ? `<span class="text-slate-300">•</span><span class="text-slate-600">${escapeHtml(item.location)}</span>` : ''}
 
-                    ${item.serial_no ? `<span class="text-slate-300">•</span><span class="text-slate-400 font-mono text-[10px]">${escapeHtml(item.serial_no)}</span>` : ''}
+                    ${item.serial_no ? `<span class="text-slate-300">•</span><span class="text-slate-500 font-mono text-[11px]">${escapeHtml(item.serial_no)}</span>` : ''}
 
                 </div>
 
@@ -1396,17 +1404,17 @@ function renderWoInspectionRows(list, workOrderId) {
 
 
 
-            <!-- TIER 2: ACTION BUTTONS (KOMPAKT & RAFİNE) -->
+            <!-- TIER 2: UNIFORM TACTILE ACTION BAR -->
 
-            <div class="flex flex-wrap items-center justify-between gap-1.5 pt-1.5 border-t border-slate-100">
+            <div class="flex flex-wrap items-center justify-between gap-1.5 pt-2.5 border-t border-slate-100">
 
-                <div class="flex items-center gap-1 flex-wrap flex-1 min-w-0">
+                <div class="flex items-center gap-1.5 flex-wrap flex-1 min-w-0">
 
                     <button onclick="navigateTo('inspection-complete', {id: '${item.id}', templateId: '${item.template_id}'})"
 
-                        class="px-2 py-1 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white font-semibold rounded-lg text-xs flex items-center gap-1 transition shadow-2xs">
+                        class="h-9 px-3 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition shadow-2xs">
 
-                        <i class="fa-solid fa-pen-to-square text-[10px]"></i>
+                        <i class="fa-solid fa-pen-to-square text-[11px]"></i>
 
                         <span>Doldur</span>
 
@@ -1414,9 +1422,9 @@ function renderWoInspectionRows(list, workOrderId) {
 
                     <button onclick="quickPreviewReportFromList('${item.id}')"
 
-                        class="px-2 py-1 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-semibold rounded-lg text-xs flex items-center gap-1 transition border border-slate-200">
+                        class="h-9 px-3 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-800 font-bold rounded-xl text-xs flex items-center gap-1.5 transition border border-slate-200">
 
-                        <i class="fa-solid fa-file-pdf text-amber-600 text-[10px]"></i>
+                        <i class="fa-solid fa-file-pdf text-amber-600 text-[11px]"></i>
 
                         <span>PDF</span>
 
@@ -1424,9 +1432,9 @@ function renderWoInspectionRows(list, workOrderId) {
 
                     <button onclick="openPortalUploadModal('${workOrderId}', ['${item.id}'])"
 
-                        class="px-2 py-1 ${isPublished ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'} active:scale-95 font-semibold rounded-lg text-xs flex items-center gap-1 transition border" title="${isPublished ? 'Raporu İnternette Güncelle' : 'İnternete Yükle'}">
+                        class="h-9 px-2.5 ${isPublished ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'} active:scale-95 font-bold rounded-xl text-xs flex items-center gap-1.5 transition border" title="${isPublished ? 'Raporu İnternette Güncelle' : 'İnternete Yükle'}">
 
-                        <i class="fa-solid fa-cloud-arrow-up text-[10px] ${isPublished ? 'text-indigo-600' : 'text-sky-600'}"></i>
+                        <i class="fa-solid fa-cloud-arrow-up text-[11px] ${isPublished ? 'text-indigo-600' : 'text-sky-600'}"></i>
 
                         <span>${isPublished ? 'Güncelle' : 'Yükle'}</span>
 
@@ -1438,26 +1446,26 @@ function renderWoInspectionRows(list, workOrderId) {
 
                     <button onclick="cloneInspectionReport('${item.id}', '${workOrderId}')"
 
-                        class="px-2 py-1 text-[11px] font-bold text-slate-600 bg-slate-100 hover:bg-sky-50 hover:text-sky-700 active:scale-95 rounded-lg border border-slate-200 flex items-center gap-1 transition" title="Bu Panoyu / Raporu Çoğalt">
+                        class="h-9 px-2.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-sky-50 hover:text-sky-700 active:scale-95 rounded-xl border border-slate-200 flex items-center gap-1 transition" title="Bu Panoyu / Raporu Çoğalt">
 
-                        <i class="fa-solid fa-clone text-[10px]"></i>
+                        <i class="fa-solid fa-clone text-[11px]"></i>
                         <span>Çoğalt</span>
 
                     </button>
 
                     <button onclick="event.stopPropagation(); openRenameInspectionModal('${item.id}', '${escapeForJs(item.equipment_name || '')}', '${workOrderId}')"
 
-                        class="p-1.5 text-slate-400 hover:text-sky-600 active:scale-90 rounded-md transition" title="Pano İsmini Düzenle">
+                        class="w-9 h-9 flex items-center justify-center text-slate-500 hover:text-sky-600 hover:bg-slate-100 active:scale-90 rounded-xl transition" title="Pano İsmini Düzenle">
 
                         <i class="fa-solid fa-pen text-xs"></i>
 
                     </button>
 
-                    <button onclick="event.stopPropagation(); deleteInspectionItem('${item.id}', '${workOrderId}', '${(item.equipment_name || 'Muayene Raporu').replace(/'/g, "\'")}')"
+                    <button onclick="event.stopPropagation(); deleteInspectionItem('${item.id}', '${workOrderId}', '${escapeForJs(item.equipment_name || 'Muayene Raporu')}')"
 
-                        class="p-1.5 text-slate-400 hover:text-rose-600 active:scale-90 rounded-md transition" title="Raporu Sil">
+                        class="w-9 h-9 flex items-center justify-center text-rose-500 hover:text-rose-700 hover:bg-rose-50 active:scale-90 rounded-xl transition" title="Raporu Sil">
 
-                        <i class="fa-solid fa-trash-can text-xs text-rose-500"></i>
+                        <i class="fa-solid fa-trash-can text-xs"></i>
 
                     </button>
 

@@ -1592,21 +1592,27 @@ function renderGrayOfflineNotesFolderHtml() {
 
         <div onclick="navigateTo('field-notebook')"
 
-            class="p-2.5 rounded-xl bg-slate-200/95 hover:bg-slate-300/80 active:scale-[0.99] border border-slate-300 cursor-pointer flex items-center justify-between gap-2.5 transition shadow-2xs">
+            class="card-craft-interactive p-3 rounded-2xl bg-slate-200/80 hover:bg-slate-200 border border-slate-300/90 flex items-center justify-between gap-3 transition">
 
-            <div class="flex items-center gap-2.5 min-w-0 flex-1">
+            <div class="flex items-center gap-3 min-w-0 flex-1">
 
-                <div class="w-9 h-9 rounded-lg bg-slate-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                <div class="w-10 h-10 rounded-xl bg-slate-700 text-white flex items-center justify-center shrink-0 shadow-2xs">
 
-                    <i class="fa-solid fa-folder text-sm"></i>
+                    <i class="fa-solid fa-note-sticky text-sm"></i>
 
                 </div>
 
                 <div class="min-w-0 flex-1">
 
-                    <div class="font-bold text-slate-900 text-xs sm:text-sm truncate">
+                    <div class="font-bold text-slate-900 text-sm truncate leading-snug">
 
                         Offline Not Alma Klasörü
+
+                    </div>
+
+                    <div class="text-[11px] text-slate-600 truncate">
+
+                        Hızlı saha notları ve ölçümler
 
                     </div>
 
@@ -1614,15 +1620,15 @@ function renderGrayOfflineNotesFolderHtml() {
 
             </div>
 
-            <div class="shrink-0 flex items-center gap-1.5">
+            <div class="shrink-0 flex items-center gap-2">
 
-                <span class="px-2 py-0.5 rounded-md bg-slate-700 text-white font-bold text-[10px]">
+                <span class="px-2.5 py-1 rounded-lg bg-slate-800 text-white font-bold text-[11px] tabular-nums">
 
                     ${noteCount} Not
 
                 </span>
 
-                <i class="fa-solid fa-chevron-right text-slate-500 text-[11px]"></i>
+                <i class="fa-solid fa-chevron-right text-slate-500 text-xs"></i>
 
             </div>
 
@@ -1672,18 +1678,24 @@ async function renderHome(opts = {}) {
 
     container.innerHTML = `
 
-        <div class="max-w-2xl mx-auto space-y-2 pb-6">
+        <div class="max-w-2xl mx-auto space-y-3 pb-8">
 
-            <!-- 1. İŞYERİ ARAMA VE YENİLE / YENİ KLASÖR -->
+            <!-- 1. İŞYERİ ARAMA VE YENİLE / YENİ KLASÖR (44px DOKUNMA ERGONOMİSİ) -->
 
             <div class="flex items-center gap-2 pt-0.5">
 
-                <input type="text" id="homeSearchInput" oninput="filterHomeJobs(this.value)" placeholder="Firma adı, şube veya not ara..."
+                <div class="relative flex-1">
 
-                    class="flex-1 bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-sky-500 shadow-2xs">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+
+                    <input type="text" id="homeSearchInput" oninput="filterHomeJobs(this.value)" placeholder="Firma adı, şube veya not ara..."
+
+                        class="w-full h-11 bg-white border border-slate-300 rounded-xl pl-9 pr-3 text-xs font-medium text-slate-900 focus:outline-none focus:border-sky-500 shadow-2xs">
+
+                </div>
 
                 ${isManaged ? `
-                    <button onclick="window.CloudAppSync && window.CloudAppSync.syncNow()" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 active:scale-95 text-amber-300 font-bold text-xs rounded-lg shrink-0 flex items-center gap-1.5 shadow-sm transition" title="Yöneticinin açtığı işleri ve atadığı cihazları internetten çek">
+                    <button onclick="window.CloudAppSync && window.CloudAppSync.syncNow()" class="h-11 px-4 bg-slate-900 hover:bg-slate-800 active:scale-95 text-amber-300 font-bold text-xs rounded-xl shrink-0 flex items-center gap-1.5 shadow-xs transition" title="Yöneticinin açtığı işleri ve atadığı cihazları internetten çek">
 
                         <i class="fa-solid fa-arrows-rotate"></i>
 
@@ -1691,7 +1703,7 @@ async function renderHome(opts = {}) {
 
                     </button>
                 ` : `
-                    <button onclick="openQuickFieldJobModal()" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-bold text-xs rounded-lg shrink-0 flex items-center gap-1.5 shadow-sm transition">
+                    <button onclick="openQuickFieldJobModal()" class="h-11 px-4 bg-slate-900 hover:bg-slate-800 active:scale-95 text-white font-bold text-xs rounded-xl shrink-0 flex items-center gap-1.5 shadow-xs transition">
 
                         <i class="fa-solid fa-plus text-emerald-400"></i>
 
@@ -1704,9 +1716,9 @@ async function renderHome(opts = {}) {
 
 
 
-            <!-- 2. OFFLINE NOT KLASÖRÜ (GRİ) + İŞ KLASÖRLERİ LİSTESİ -->
+            <!-- 2. OFFLINE NOT KLASÖRÜ + İŞ KLASÖRLERİ LİSTESİ -->
 
-            <div id="homeJobsList" class="space-y-2 pt-0.5">
+            <div id="homeJobsList" class="space-y-2.5">
 
                 ${renderGrayOfflineNotesFolderHtml()}
 
@@ -1758,48 +1770,58 @@ function renderMinimalJobCards(jobs) {
 
             <div onclick="navigateTo('work-order-details', {id: '${wo.id}'})"
 
-                class="card-craft-white p-2.5 cursor-pointer flex items-center justify-between gap-2 transition hover:border-slate-300">
+                class="card-craft-white card-craft-interactive p-3.5 flex items-center justify-between gap-3 hover:border-slate-300">
 
-                <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-3 min-w-0 flex-1">
 
-                    <div class="flex items-center gap-1.5 min-w-0">
+                    <div class="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200/80 text-slate-700 flex items-center justify-center shrink-0">
 
-                        <span class="font-bold text-slate-900 text-xs sm:text-sm truncate">${wo.customer_name}</span>
-
-                        ${wo.assigned_by_manager ? `<span class="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold text-[9px] shrink-0">İş Emri</span>` : ''}
+                        <i class="fa-solid fa-building text-sm text-sky-700"></i>
 
                     </div>
 
-                    ${wo.customer_branch ? `<div class="text-[10px] text-slate-500 truncate mt-0.5">${wo.customer_branch}</div>` : ''}
+                    <div class="min-w-0 flex-1">
 
-                    ${notePreview ? `<div class="text-[11px] text-amber-800 bg-amber-50 border border-amber-200/80 rounded-md px-2 py-0.5 mt-1 truncate"><i class="fa-solid fa-note-sticky mr-1 text-amber-500"></i>${notePreview.replace(/\n/g, ' ')}</div>` : ''}
+                        <div class="flex items-center gap-1.5 min-w-0">
+
+                            <span class="font-bold text-slate-900 text-sm truncate leading-snug">${escapeHtml(wo.customer_name)}</span>
+
+                            ${wo.assigned_by_manager ? `<span class="px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold text-[10px] shrink-0">İş Emri</span>` : ''}
+
+                        </div>
+
+                        ${wo.customer_branch ? `<div class="text-xs text-slate-500 truncate mt-0.5">${escapeHtml(wo.customer_branch)}</div>` : ''}
+
+                        ${notePreview ? `<div class="text-[11px] text-amber-900 bg-amber-50 border border-amber-200/80 rounded-lg px-2 py-0.5 mt-1.5 truncate"><i class="fa-solid fa-note-sticky mr-1 text-amber-500"></i>${escapeHtml(notePreview.replace(/\n/g, ' '))}</div>` : ''}
+
+                    </div>
 
                 </div>
 
-                <div class="shrink-0 flex items-center gap-1">
+                <div class="shrink-0 flex items-center gap-1.5">
 
                     <button type="button" onclick="openWorkOrderPortalModal('${wo.id}', event)"
 
-                        class="px-2 py-0.5 rounded-md border ${wo.portal_folder_url ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200'} font-bold text-[10px] flex items-center gap-1 active:scale-95 transition"
+                        class="h-8 px-2.5 rounded-lg border ${wo.portal_folder_url ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200'} font-bold text-[11px] flex items-center gap-1 active:scale-95 transition"
 
                         title="Müşteri İnternet Klasörü">
 
-                        <i class="fa-solid fa-globe text-[9px]"></i>
+                        <i class="fa-solid fa-globe text-[10px]"></i>
 
                         <span>Portal</span>
 
                     </button>
 
-                    <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-bold text-[10px]">
+                    <span class="h-8 px-2.5 rounded-lg bg-slate-100 border border-slate-200/80 text-slate-800 font-bold text-[11px] inline-flex items-center tabular-nums">
 
                         ${count} Rapor
 
                     </span>
 
                     ${lockedFolder ? '' : `
-                        <button onclick="deleteWorkOrderHeading('${wo.id}', event, '${(wo.customer_name || 'İş Klasörü').replace(/'/g, "\\'")}')" class="p-1.5 text-slate-400 hover:text-rose-600 active:scale-90 rounded-md transition" title="Klasörü Sil">
+                        <button onclick="deleteWorkOrderHeading('${wo.id}', event, '${escapeForJs(wo.customer_name || 'İş Klasörü')}')" class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 active:scale-90 rounded-lg transition" title="Klasörü Sil">
 
-                            <i class="fa-solid fa-trash-can text-[11px]"></i>
+                            <i class="fa-solid fa-trash-can text-xs"></i>
 
                         </button>
                     `}
