@@ -58,7 +58,7 @@ def verify_universal_engine():
         assert feat in app_src, f"Elektriksel evrensel motor özelliği eksik: {feat}"
     print(f"[OK] Tum {len(electrical_features)} gelismis elektriksel otomasyon ve coklu tablo yetenegi aktif.")
 
-    # 4. PDF Engine temel yeteneklerinin kontrolü
+    # 5. PDF Engine temel yeteneklerinin kontrolü
     required_symbols = [
         'UniversalSchemaRegistry',
         'UniversalTenantOverlay',
@@ -75,8 +75,28 @@ def verify_universal_engine():
         assert sym in app_src, f"src/app.js içinde '{sym}' bulunamadı!"
     print(f"[OK] Tum {len(required_symbols)} temel Evrensel Motor API'si src/app.js icinde aktif.")
 
+    # 6. v2.0 Özgür Composable Block & Özel Rapor Şablonu Oluşturucu kontrolleri
+    v2_symbols = [
+        'UniversalCustomTemplates',
+        'openCreateCustomTemplateModal',
+        'openAddCustomBlockModal',
+        'renderCustomBlocksForPosition',
+        'appendCustomBlocksToAST',
+        'getEffectiveCustomBlocks',
+        'evaluateColumnLimitRules',
+        'sectionConfig'
+    ]
+    for sym in v2_symbols:
+        assert sym in app_src, f"src/app.js içinde v2.0 özelliği '{sym}' bulunamadı!"
+
+    v2_block_types = ["'table'", "'field_grid'", "'matrix_row'", "'checklist'", "'info_box'"]
+    for btype in v2_block_types:
+        assert btype in reg_src and btype in pdf_src, f"Blok tipi {btype} kayıt defteri veya PDF motorunda eksik!"
+
+    print(f"[OK] Tum {len(v2_symbols)} adet v2.0 Ozel Rapor & Blok Olusturucu API'si ve 5 blok tipi aktif.")
+
     print("=" * 65)
-    print("TUM EVRENSEL FORM & PDF MOTORU TESTLERI BASARIYLA GECTI!")
+    print("TUM EVRENSEL FORM & PDF MOTORU v2.0 TESTLERI BASARIYLA GECTI!")
     print("=" * 65)
 
 if __name__ == '__main__':

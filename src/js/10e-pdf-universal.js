@@ -324,6 +324,234 @@
     // ========================================================================
     // 2. DOKÜMAN BLOK AĞACI (AST) OLUŞTURUCU
     // ========================================================================
+    function buildCustomBlockHeadingHtml(blk, nextSecNo) {
+        const titleUpper = escapeHtml((blk.title || 'ÖZEL BÖLÜM').toUpperCase());
+        const subHtml = blk.subTitle ? `<div class="tkm-sub-bar">${escapeHtml(blk.subTitle.toUpperCase())}</div>` : '';
+        if (blk.headingMode === 'inline') {
+            return '';
+        }
+        if (blk.headingMode === 'sub_section') {
+            return `<div class="tkm-sub-bar">${titleUpper}</div>${subHtml}`;
+        }
+        const sNo = typeof nextSecNo === 'function' ? nextSecNo() : '';
+        const prefix = sNo !== '' ? `${sNo}. ` : '';
+        return `<div class="tkm-sec-title">${prefix}${titleUpper}</div>${subHtml}`;
+    }
+
+    function appendCustomBlocksToAST(position, blocks, ctx, nextSecNo) {
+        if (!window.UniversalSchemaRegistry || typeof window.UniversalSchemaRegistry.getEffectiveCustomBlocks !== 'function') return;
+        const { fd, schema, activePdfTheme, isRams } = ctx;
+        const allCustom = window.UniversalSchemaRegistry.getEffectiveCustomBlocks(schema, fd);
+        const posBlocks = allCustom.filter(b => b.position === position);
+        if (!posBlocks.length) return;
+
+        const renderCustomSym = (rawVal) => {
+            const sym = formatSymbolForPrint(rawVal || '');
+            if ((isRams || activePdfTheme === 'modern') && typeof formatSymbolBadge === 'function' && sym) {
+                return formatSymbolBadge(sym);
+            }
+            return escapeHtml(sym);
+        };
+
+        posBlocks.forEach(blk => {
+            const store = window.UniversalSchemaRegistry.ensureCustomBlockData(fd, blk) || { fields: {}, rows: [], checks: {}, text: '' };
+            const headingMode = blk.headingMode || 'main_section';
+
+            // 1. ÖZEL BİLGİ KARTI (field_grid - 2 veya 3 sütunlu)
+            if (blk.blockType === 'field_grid') {
+                const fields = blk.fields || [];
+                if (!fields.length) return;
+                const gridCols = Number(blk.gridColumns) === 3 ? 3 : 2;
+                const colgroupHtml = gridCols === 3
+                    ? '<colgroup><col style="width:19%;"><col style="width:14.3%;"><col style="width:19%;"><col style="width:14.3%;"><col style="width:19%;"><col style="width:14.4%;"></colgroup>'
+                    : '<colgroup><col style="width:24%;"><col style="width:26%;"><col style="width:24%;"><col style="width:26%;"></colgroup>';
+
+                let rowsHtml = '';
+                for (let i = 0; i < fields.length; i += gridCols) {
+                    rowsHtml += '<tr>';
+                    for (let c = 0; c < gridCols; c++) {
+                        const f = fields[i + c];
+                        if (f) {
+                            let val = String(store.fields?.[f.key] ?? '').trim();
+                            if (val && f.unit && !val.toLowerCase().includes(f.unit.toLowerCase())) {
+                                val = `${val} ${f.unit}`;
+                            }
+                            rowsHtml += `
+                                <td class="tkm-label-cell" style="font-weight:700;">${escapeHtml(f.label)}</td>
+                                <td class="tkm-val-cell" style="text-align:left;padding-left:6px;">${escapeHtml(val || '-')}</td>
+                            `;
+                        } else {
+                            rowsHtml += '<td class="tkm-label-cell"></td><td class="tkm-val-cell"></td>';
+                        }
+                    }
+                    rowsHtml += '</tr>';
+                }
+
+                const headHtml = buildCustomBlockHeadingHtml(blk, nextSecNo);
+                blocks.push({
+                    type: 'custom_field_grid',
+                    splittable: false,
+                    html: `${headHtml}<table class="tkm-table">${colgroupHtml}<tbody>${rowsHtml}</tbody></table>`
+                });
+                return;
+            }
+
+            // 2. ÖZEL ÇOK SÜTUNLU TABLO VEYA YATAY ÖZET MATRİS TABLO (table / matrix_row)
+            if (blk.blockType === 'table' || blk.blockType === 'matrix_row') {
+                const cols = blk.columns || [];
+                if (!cols.length) return;
+                const rowsData = (Array.isArray(store.rows) && store.rows.length) ? store.rows : [{}];
+                const colgroupHtml = cols.some(c => c.width)
+                    ? `<colgroup>${cols.map(c => `<col style="${c.width ? `width:${c.width};` : ''}">`).join('')}</colgroup>`
+                    : '';
+                const thsHtml = cols.map(c => `<th style="text-align:center;font-weight:700;">${escapeHtml(c.label)}</th>`).join('');
+                const trRows = rowsData.map((rObj, rIdx) => {
+                    const tds = cols.map((c, cIdx) => {
+                        let v = (rObj && rObj[c.key] !== undefined && rObj[c.key] !== '') ? String(rObj[c.key]) : '';
+                        if (blk.blockType === 'matrix_row' && cIdx === 0 && !v) {
+                            v = String(rIdx + 1);
+                        }
+                        const isBad = v === 'Uygun Değil' || v.includes('Uygun Değil') || v.includes('Kırmızı');
+                        const align = (cIdx === 0 && blk.blockType === 'table') ? 'left;padding-left:5px' : 'center';
+                        const style = isBad ? `text-align:${align};color:#b91c1c;font-weight:700;background:#fef2f2;` : `text-align:${align};`;
+                        return `<td style="${style}">${escapeHtml(v)}</td>`;
+                    }).join('');
+                    return `<tr>${tds}</tr>`;
+                });
+
+                const fixedSecNo = (headingMode === 'main_section' && typeof nextSecNo === 'function') ? nextSecNo() : '';
+                const titleUpper = escapeHtml((blk.title || 'ÖZEL TABLO').toUpperCase());
+                const subHtml = blk.subTitle ? `<div class="tkm-sub-bar">${escapeHtml(blk.subTitle.toUpperCase())}</div>` : '';
+
+                const buildCustomTableSlice = (rowsSlice, isCont = false) => {
+                    let headPart = '';
+                    if (headingMode === 'main_section') {
+                        const prefix = fixedSecNo !== '' ? `${fixedSecNo}. ` : '';
+                        headPart = `<div class="tkm-sec-title">${prefix}${titleUpper}${isCont ? ' (TABLO DEVAMI)' : ''}</div>${isCont ? '' : subHtml}`;
+                    } else if (headingMode === 'sub_section') {
+                        headPart = `<div class="tkm-sub-bar">${titleUpper}${isCont ? ' (DEVAMI)' : ''}</div>${isCont ? '' : subHtml}`;
+                    } else if (isCont) {
+                        headPart = `<div class="tkm-sub-bar">${titleUpper} (DEVAMI)</div>`;
+                    }
+                    return `${headPart}<table class="tkm-table">${colgroupHtml}<thead><tr>${thsHtml}</tr></thead><tbody>${rowsSlice.join('')}</tbody></table>`;
+                };
+
+                blocks.push({
+                    type: blk.blockType === 'matrix_row' ? 'custom_matrix_row' : 'custom_table',
+                    splittable: true,
+                    rows: trRows,
+                    buildSliceHtml: buildCustomTableSlice,
+                    html: buildCustomTableSlice(trRows, false)
+                });
+                return;
+            }
+
+            // 3. ÖZEL KONTROL / KRİTER LİSTESİ (checklist)
+            if (blk.blockType === 'checklist') {
+                const items = blk.items || [];
+                if (!items.length) return;
+                const chkCols = Number(blk.pdfColumns) === 2 && items.length >= 2 ? 2 : 1;
+                let colgroup = '';
+                let thead = '';
+                let trList = [];
+
+                if (chkCols === 2) {
+                    colgroup = '<colgroup><col style="width:26px;"><col style="width:42.5%;"><col style="width:30px;"><col style="width:26px;"><col style="width:42.5%;"><col style="width:30px;"></colgroup>';
+                    thead = '<thead><tr><th>No</th><th style="text-align:left;padding-left:5px;font-weight:700;">Kriter</th><th>Sonuç</th><th>No</th><th style="text-align:left;padding-left:5px;font-weight:700;">Kriter</th><th>Sonuç</th></tr></thead>';
+                    const half = Math.ceil(items.length / 2);
+                    for (let i = 0; i < half; i++) {
+                        const left = items[i];
+                        const right = items[i + half];
+                        const rightCells = right
+                            ? `<td style="text-align:center;font-weight:700;">${escapeHtml(right.code || String(i + half + 1))}</td>
+                               <td style="text-align:left;padding-left:5px;">${escapeHtml(right.text)}</td>
+                               <td style="text-align:center;">${renderCustomSym(store.checks?.[right.id] || '')}</td>`
+                            : '<td></td><td></td><td></td>';
+                        trList.push(`
+                            <tr>
+                                <td style="text-align:center;font-weight:700;">${escapeHtml(left.code || String(i + 1))}</td>
+                                <td style="text-align:left;padding-left:5px;">${escapeHtml(left.text)}</td>
+                                <td style="text-align:center;">${renderCustomSym(store.checks?.[left.id] || '')}</td>
+                                ${rightCells}
+                            </tr>
+                        `);
+                    }
+                } else {
+                    colgroup = '<colgroup><col style="width:28px;"><col><col style="width:44px;"></colgroup>';
+                    thead = '<thead><tr><th>No</th><th style="text-align:left;padding-left:6px;font-weight:700;">Kontrol Kriteri</th><th style="text-align:center;font-weight:700;">Sonuç</th></tr></thead>';
+                    trList = items.map((it, idx) => `
+                        <tr>
+                            <td style="text-align:center;font-weight:700;">${escapeHtml(it.code || String(idx + 1))}</td>
+                            <td style="text-align:left;padding-left:6px;">${escapeHtml(it.text)}</td>
+                            <td style="text-align:center;">${renderCustomSym(store.checks?.[it.id] || '')}</td>
+                        </tr>
+                    `);
+                }
+
+                const fixedSecNo = (headingMode === 'main_section' && typeof nextSecNo === 'function') ? nextSecNo() : '';
+                const titleUpper = escapeHtml((blk.title || 'KONTROL KRİTERLERİ').toUpperCase());
+                const subHtml = blk.subTitle ? `<div class="tkm-sub-bar">${escapeHtml(blk.subTitle.toUpperCase())}</div>` : '';
+
+                const buildCustomChkSlice = (rowsSlice, isCont = false) => {
+                    let headPart = '';
+                    if (headingMode === 'main_section') {
+                        const prefix = fixedSecNo !== '' ? `${fixedSecNo}. ` : '';
+                        headPart = `<div class="tkm-sec-title">${prefix}${titleUpper}${isCont ? ' (DEVAMI)' : ''}</div>${isCont ? '' : subHtml}`;
+                    } else if (headingMode === 'sub_section') {
+                        headPart = `<div class="tkm-sub-bar">${titleUpper}${isCont ? ' (DEVAMI)' : ''}</div>${isCont ? '' : subHtml}`;
+                    } else if (isCont) {
+                        headPart = `<div class="tkm-sub-bar">${titleUpper} (DEVAMI)</div>`;
+                    }
+                    return `${headPart}<table class="tkm-table">${colgroup}${thead}<tbody>${rowsSlice.join('')}</tbody></table><div class="tkm-legend">✓: Uygun &nbsp;|&nbsp; X: Uygun Değil &nbsp;|&nbsp; N: Uygulaması Yok &nbsp;|&nbsp; G: Görülemedi</div>`;
+                };
+
+                blocks.push({
+                    type: 'custom_checklist',
+                    splittable: true,
+                    rows: trList,
+                    buildSliceHtml: buildCustomChkSlice,
+                    html: buildCustomChkSlice(trList, false)
+                });
+                return;
+            }
+
+            // 4. BİLGİ / FORMÜL / REFERANS KUTUSU (info_box)
+            if (blk.blockType === 'info_box') {
+                const rawText = String(store.text !== undefined ? store.text : (blk.content || '')).trim();
+                if (!rawText && headingMode === 'inline') return;
+                const headHtml = buildCustomBlockHeadingHtml(blk, nextSecNo);
+
+                let innerHtml = '';
+                if (blk.boxStyle === 'two_col_terms') {
+                    const lines = rawText.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+                    const termRows = [];
+                    lines.forEach(line => {
+                        const sepIdx = line.indexOf(':');
+                        if (sepIdx > 0) {
+                            const keyPart = line.slice(0, sepIdx).trim();
+                            const valPart = line.slice(sepIdx + 1).trim();
+                            termRows.push(`<tr><td class="tkm-label-cell" style="width:28%;font-weight:700;">${escapeHtml(keyPart)}</td><td class="tkm-val-cell" style="text-align:left;padding-left:6px;">${escapeHtml(valPart)}</td></tr>`);
+                        } else {
+                            termRows.push(`<tr><td class="tkm-val-cell" colspan="2" style="text-align:left;padding:3.5px 6px;">${escapeHtml(line)}</td></tr>`);
+                        }
+                    });
+                    innerHtml = termRows.length
+                        ? `<table class="tkm-table"><tbody>${termRows.join('')}</tbody></table>`
+                        : `<table class="tkm-table"><tbody><tr><td style="padding:3.5px 6px;">-</td></tr></tbody></table>`;
+                } else {
+                    const formatted = escapeHtml(rawText || '-').replace(/\n/g, '<br>');
+                    innerHtml = `<table class="tkm-table"><tbody><tr><td style="padding:4px 6px;text-align:left;line-height:1.25;">${formatted}</td></tr></tbody></table>`;
+                }
+
+                blocks.push({
+                    type: 'custom_info_box',
+                    splittable: false,
+                    html: `${headHtml}${innerHtml}`
+                });
+            }
+        });
+    }
+
     function buildDocumentAST(insp, fd, ci, reportNo, formCode, activePdfTheme) {
         const schema = window.UniversalSchemaRegistry
             ? window.UniversalSchemaRegistry.ensureUniversalFormData(fd, insp.template_id, insp.equipment_name)
@@ -355,6 +583,8 @@
 
         const blocks = [];
         let secNo = 1;
+        const secCfg = schema.sectionConfig || {};
+        const nextSecNo = () => secNo++;
 
         // BLOK 1: FİRMA VE KONTROL BİLGİLERİ (meta_info)
         const methodsHtml = (schema.methods && schema.methods.length)
@@ -381,9 +611,12 @@
             `
         });
 
+        // BLOK 1 sonrasında özel bloklar
+        appendCustomBlocksToAST('after_company', blocks, ctx, nextSecNo);
+
         // BLOK 2: EKİPMAN TEKNİK BİLGİLERİ (field_grid - 2 veya 3 sütunlu esnek yapı)
         const fields = schema.generalFields || [];
-        if (fields.length > 0) {
+        if (fields.length > 0 && secCfg.showTechFields !== false) {
             const gridCols = (designTokens.fieldGridColumns && designTokens.fieldGridColumns !== 'auto')
                 ? Number(designTokens.fieldGridColumns)
                 : (Number(schema.layoutHints?.fieldGridColumns) || 2);
@@ -426,9 +659,14 @@
             });
         }
 
+        // BLOK 2 sonrasında özel bloklar
+        appendCustomBlocksToAST('after_tech', blocks, ctx, nextSecNo);
+
         // BLOK 3: ÖLÇÜM ALETLERİ BİLGİLERİ (device_list)
         const hasMeasuringDevices = Array.isArray(fd.measuringDevices) && fd.measuringDevices.some(d => d && (d.name || d.serial));
-        const showDevices = schema.layoutHints?.showDevices !== false || hasMeasuringDevices;
+        const showDevices = secCfg.showDevices !== undefined
+            ? Boolean(secCfg.showDevices)
+            : (schema.layoutHints?.showDevices !== false || hasMeasuringDevices);
         if (showDevices) {
             const devList = (Array.isArray(fd.measuringDevices) && fd.measuringDevices.length)
                 ? fd.measuringDevices
@@ -482,9 +720,12 @@
             });
         }
 
+        // BLOK 3 / 3B sonrasında özel bloklar
+        appendCustomBlocksToAST('after_devices', blocks, ctx, nextSecNo);
+
         // BLOK 4: GÖZLE KONTROL KRİTERLERİ (checklist - Alt Gruplu 5.2..5.8 / A..D, 1 veya 2 Sütun + Satır Bölünebilir!)
         const checks = schema.visualChecks || [];
-        if (checks.length > 0) {
+        if (checks.length > 0 && secCfg.showChecklist !== false) {
             const chkSecNo = secNo++;
             const chkCols = (designTokens.checklistColumns && designTokens.checklistColumns !== 'auto')
                 ? Number(designTokens.checklistColumns)
@@ -630,7 +871,11 @@
             }
         }
 
-        // BLOK 5: ÖLÇÜM VE TEST SONUÇLARI TABLOSU (measurement_table - 2 Katlı Bakanlık Başlığı + Satır Bazlı Otomatik Bölünebilir!)
+        // BLOK 4 sonrasında özel bloklar
+        appendCustomBlocksToAST('after_checks', blocks, ctx, nextSecNo);
+
+        // BLOK 5 & 5B: ÖLÇÜM VE TEST SONUÇLARI TABLOSU + ÇOKLU EK TABLOLAR
+        if (secCfg.showMainTable !== false) {
         const tableCols = schema.tableColumns || [];
         if (tableCols.length > 0) {
             const tblSecNo = secNo++;
@@ -743,6 +988,10 @@
                 html: buildSubTableHtml(subTrs, false)
             });
         });
+        } // end secCfg.showMainTable !== false
+
+        // BLOK 5 / 5B sonrasında özel bloklar
+        appendCustomBlocksToAST('after_table', blocks, ctx, nextSecNo);
 
         // BLOK 6: KUSUR AÇIKLAMALARI & NOTLAR
         const defSecNo = secNo++;
@@ -779,6 +1028,9 @@
                 });
             });
         }
+
+        // BLOK 7 sonrasında (Sonuç ve İmza öncesinde) özel bloklar
+        appendCustomBlocksToAST('before_conclusion', blocks, ctx, nextSecNo);
 
         // BLOK 8: SONUÇ VE KANAAT + İMZA / ONAY (conclusion_sign - birlikte tutulur veya akıllı bölünür)
         const resSecNo = secNo++;
@@ -980,7 +1232,7 @@
     }
 
     const UniversalPdfEngine = {
-        version: '1.0.0',
+        version: '2.0.0',
         buildDocumentAST,
         paginateASTToA4Pages,
         buildPdfPages(insp, fd, ci, reportNo, formCode, activePdfTheme) {
