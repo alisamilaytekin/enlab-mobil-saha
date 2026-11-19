@@ -1634,13 +1634,11 @@ function handleAnswerChange(qKey, value, questionTitle = '', isDirectInput = fal
         return;
     }
 
-    // Direct text entry guard: if not standard choice, only save (except 2.2 edits which need styling/defect UI sync)
+    // Direct text entry guard: if not standard choice, save AND repaint UI so pill buttons turn green immediately!
     const standardStatuses = ['Uygun', 'Uygun Değil', 'Kısmen Uygun', 'Uygulaması Yok', 'Görülemedi', 'Muaf', 'Kapsam Dışı', ''];
     if (!standardStatuses.includes(value)) {
         triggerAutoSave();
-        if (is2201 && (value === 'Uygunsuz' || String(questionTitle).includes('Tespit edilen bilgiler'))) {
-            paintInspectionEditorUI();
-        }
+        paintInspectionEditorUI();
         return;
     }
 

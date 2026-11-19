@@ -760,9 +760,9 @@ function renderGrounding2202Editor() {
 
                                             <button type="button" onclick="setGroundingPointBreakerPreset(${pIdx}, '${item.c}', '${item.a}')"
 
-                                                class="py-1 px-2.5 text-xs px-3 py-1.5 rounded-xl font-mono font-bold text-xs shrink-0 border transition active:scale-95 ${isSel ? 'bg-sky-600 text-white border-sky-700 shadow-xs' : 'bg-white hover:bg-slate-100 text-slate-800 border-slate-300'}">
+                                                class="py-1 px-2.5 text-xs px-3 py-1.5 rounded-xl font-mono font-bold text-xs shrink-0 border transition active:scale-95 ${isSel ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' : 'bg-white hover:bg-slate-100 text-slate-800 border-slate-300'}">
 
-                                                ${item.c}${item.a}
+                                                ${isSel ? '✓ ' : ''}${item.c}${item.a}
 
                                             </button>
 

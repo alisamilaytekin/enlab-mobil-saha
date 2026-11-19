@@ -542,11 +542,13 @@ function setReportEndTimeNow() {
     const todayIso = getLocalTodayIso();
     ci.controlEndTime = nowTime;
     ci.controlEndDate = todayIso;
+    ci.selectedEndOffset = 'now';
     const endTimeEl = document.getElementById('editorEndTimeInput');
     if (endTimeEl) endTimeEl.value = nowTime;
     const endDateEl = document.getElementById('editorEndDateInput');
     if (endDateEl) endDateEl.value = todayIso;
     updateReportDateTimeField('endTime', nowTime);
+    paintInspectionEditorUI();
 }
 
 function setReportEndTimeOffset(offsetMinutes = 30) {
@@ -566,11 +568,13 @@ function setReportEndTimeOffset(offsetMinutes = 30) {
     const newEndIso = dayShift > 0 ? addDaysIso(startIso, dayShift) : startIso;
     ci.controlEndDate = newEndIso;
     ci.controlEndTime = newEndTime;
+    ci.selectedEndOffset = Number(offsetMinutes);
     const endTimeEl = document.getElementById('editorEndTimeInput');
     if (endTimeEl) endTimeEl.value = newEndTime;
     const endDateEl = document.getElementById('editorEndDateInput');
     if (endDateEl) endDateEl.value = newEndIso;
     updateReportDateTimeField('endTime', newEndTime);
+    paintInspectionEditorUI();
 }
 
 function toggleCompanyDetailsEdit() {
@@ -796,10 +800,10 @@ function renderSharedCompanyInfoSection() {
                     <div class="flex items-center justify-between gap-2 pt-1 border-t border-slate-200/70 flex-wrap">
                         <div class="flex items-center gap-1 flex-wrap">
                             <span class="text-[10px] font-bold text-slate-500 mr-0.5">Hızlı Bitiş:</span>
-                            <button type="button" onclick="setReportEndTimeOffset(20)" class="px-2 py-1 bg-white hover:bg-sky-50 text-slate-700 rounded-md text-[10px] font-bold border border-slate-300 transition">+20 dk</button>
-                            <button type="button" onclick="setReportEndTimeOffset(30)" class="px-2 py-1 bg-white hover:bg-sky-50 text-slate-700 rounded-md text-[10px] font-bold border border-slate-300 transition">+30 dk</button>
-                            <button type="button" onclick="setReportEndTimeOffset(60)" class="px-2 py-1 bg-white hover:bg-sky-50 text-slate-700 rounded-md text-[10px] font-bold border border-slate-300 transition">+1 Saat</button>
-                            <button type="button" onclick="setReportEndTimeNow()" class="px-2 py-1 bg-sky-100 hover:bg-sky-200 text-sky-800 rounded-md text-[10px] font-bold border border-sky-200 transition">Şimdi</button>
+                            <button type="button" onclick="setReportEndTimeOffset(20)" class="px-2 py-1 rounded-md text-[10px] font-bold border transition ${ci.selectedEndOffset === 20 ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' : 'bg-white hover:bg-emerald-50 text-slate-700 border-slate-300'}">${ci.selectedEndOffset === 20 ? '✓ ' : ''}+20 dk</button>
+                            <button type="button" onclick="setReportEndTimeOffset(30)" class="px-2 py-1 rounded-md text-[10px] font-bold border transition ${ci.selectedEndOffset === 30 ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' : 'bg-white hover:bg-emerald-50 text-slate-700 border-slate-300'}">${ci.selectedEndOffset === 30 ? '✓ ' : ''}+30 dk</button>
+                            <button type="button" onclick="setReportEndTimeOffset(60)" class="px-2 py-1 rounded-md text-[10px] font-bold border transition ${ci.selectedEndOffset === 60 ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' : 'bg-white hover:bg-emerald-50 text-slate-700 border-slate-300'}">${ci.selectedEndOffset === 60 ? '✓ ' : ''}+1 Saat</button>
+                            <button type="button" onclick="setReportEndTimeNow()" class="px-2 py-1 rounded-md text-[10px] font-bold border transition ${ci.selectedEndOffset === 'now' ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' : 'bg-sky-100 hover:bg-sky-200 text-sky-800 border-sky-200'}">${ci.selectedEndOffset === 'now' ? '✓ ' : ''}Şimdi</button>
                         </div>
 
                         <div class="flex items-center gap-1.5">

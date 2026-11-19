@@ -753,6 +753,7 @@ function applyElectrical2201StandardFieldDefaults() {
     });
     fd._details21Initialized = true;
     fd._smartRadiosInitialized = true;
+    fd._standard21Applied = true;
     syncElectrical2201Section22FromTriggers(null, false);
     triggerAutoSave();
     paintInspectionEditorUI();
@@ -970,10 +971,14 @@ function renderElectrical2201AreaBlock(area, secNum) {
 
                 ${area.index === 0 ? `
                     <button type="button" onclick="applyElectrical2201StandardFieldDefaults()"
-                        class="px-2.5 py-1 bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 font-bold rounded-lg text-[11px] shrink-0 flex items-center gap-1 shadow-2xs transition"
+                        class="px-2.5 py-1 active:scale-95 font-bold rounded-lg text-[11px] shrink-0 flex items-center gap-1 shadow-2xs transition ${
+                            AppState.currentFormData?._standard21Applied
+                                ? 'bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400'
+                                : 'bg-amber-400 hover:bg-amber-300 text-slate-950'
+                        }"
                         title="Boş kalan standart şebeke, frekans, proje ve kontrol nedeni alanlarını tek tıkla doldur">
-                        <i class="fa-solid fa-bolt"></i>
-                        <span>Standart Değerleri Doldur</span>
+                        <i class="fa-solid ${AppState.currentFormData?._standard21Applied ? 'fa-check' : 'fa-bolt'}"></i>
+                        <span>${AppState.currentFormData?._standard21Applied ? 'Standart Değerler Dolu' : 'Standart Değerleri Doldur'}</span>
                     </button>
                 ` : ''}
 
@@ -1068,16 +1073,17 @@ function renderElectrical2201Topic(area, topic, secNum) {
             const val = AppState.currentFormData.answers[qKey];
 
             const isDefect = (val === 'Uygun Değil' || val === 'Kısmen Uygun');
+            const isOk = (val === 'Uygun');
 
             const selectedDefect = AppState.currentFormData.itemDefectSelections && AppState.currentFormData.itemDefectSelections[qKey]?.sentence;
 
-            const safeQTitle = q.question.replace(/'/g, "\\'");
+            const safeQTitle = escapeForJs(q.question);
 
-            // Tek dokunuşlu 4'lü buton grubu (Açılır menü yerine anında seçim!)
+            // Tek dokunuşlu 4'lü buton grubu (Açılır menü yerine anında yeşil seçim!)
             const quickBtns = [
                 { v: 'Uygun', lbl: '✓', title: 'Uygun', activeCls: 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' },
                 { v: 'Uygun Değil', lbl: '✕', title: 'Uygun Değil (Kusur Seç)', activeCls: 'bg-rose-600 text-white border-rose-600 shadow-2xs' },
-                { v: 'Uygulaması Yok', lbl: 'N', title: 'Uygulaması Yok', activeCls: 'bg-slate-700 text-white border-slate-700 shadow-2xs' },
+                { v: 'Uygulaması Yok', lbl: 'N', title: 'Uygulaması Yok', activeCls: 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' },
                 { v: 'Görülemedi', lbl: 'G', title: 'Görülemedi', activeCls: 'bg-amber-500 text-slate-950 border-amber-500 shadow-2xs' }
             ].map(b => {
                 const isSel = val === b.v;
@@ -1096,7 +1102,7 @@ function renderElectrical2201Topic(area, topic, secNum) {
 
             return `
 
-                <div class="border-b border-slate-100 last:border-b-0 ${isDefect ? 'bg-rose-50/40' : ''}">
+                <div class="border-b border-slate-100 last:border-b-0 ${isDefect ? 'bg-rose-50/40' : isOk ? 'bg-emerald-50/25' : ''}">
 
                     <div class="p-2.5 flex items-center justify-between gap-2 text-xs">
 
@@ -1255,7 +1261,7 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
 
     const qTitle = q.question || '';
     const cleanTitle = qTitle.replace(/^Tespit edilen bilgiler\s*\([^)]*\)\s*-\s*/i, '').trim();
-    const safeQTitle = qTitle.replace(/'/g, "\\'");
+    const safeQTitle = escapeForJs(qTitle);
 
     let val = fd.answers[qKey];
 
@@ -1274,14 +1280,15 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
     if (q.type === 'YesNo') {
 
         const isDefect = (val === 'Uygun Değil' || val === 'Kısmen Uygun');
+        const isOk = (val === 'Uygun');
 
         const selectedDefect = fd.itemDefectSelections && fd.itemDefectSelections[qKey]?.sentence;
 
         const quickBtns = [
-            { v: 'Uygun', lbl: '✓', activeCls: 'bg-emerald-600 text-white border-emerald-600' },
-            { v: 'Uygun Değil', lbl: '✕', activeCls: 'bg-rose-600 text-white border-rose-600' },
-            { v: 'Uygulaması Yok', lbl: 'N', activeCls: 'bg-slate-700 text-white border-slate-700' },
-            { v: 'Görülemedi', lbl: 'G', activeCls: 'bg-amber-500 text-slate-950 border-amber-500' }
+            { v: 'Uygun', lbl: '✓', activeCls: 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' },
+            { v: 'Uygun Değil', lbl: '✕', activeCls: 'bg-rose-600 text-white border-rose-600 shadow-2xs' },
+            { v: 'Uygulaması Yok', lbl: 'N', activeCls: 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' },
+            { v: 'Görülemedi', lbl: 'G', activeCls: 'bg-amber-500 text-slate-950 border-amber-500 shadow-2xs' }
         ].map(b => `
             <button type="button" onclick="handleAnswerChange('${qKey}', '${b.v}', '${safeQTitle}')"
                 class="w-8 h-7 rounded-lg border text-xs font-black flex items-center justify-center transition active:scale-90 ${
@@ -1293,7 +1300,7 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
 
         return `
 
-            <div class="p-2.5 rounded-xl border ${isDefect ? 'border-rose-300 bg-rose-50/40' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between gap-2 transition-all">
+            <div class="p-2.5 rounded-xl border ${isDefect ? 'border-rose-300 bg-rose-50/40' : isOk ? 'border-emerald-300 bg-emerald-50/30' : 'border-slate-200 bg-slate-50/50'} flex flex-col justify-between gap-2 transition-all">
 
                 <div class="flex items-center justify-between gap-2">
 
@@ -1345,24 +1352,24 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
 
         const is22ProtectionItem = (areaIdx === 0 && topicIdx === 1 && q.options.includes('Uygunsuz'));
         const is22Defect = (areaIdx === 0 && topicIdx === 1 && val === 'Uygunsuz');
+        const hasValidSelection = Boolean(val && val !== 'Uygunsuz');
         const cardCls = is22Defect
             ? 'border-rose-400 bg-rose-50/70'
-            : (areaIdx === 0 && topicIdx === 1 && (val === 'Var' || val === 'Uygun' || val === 'Evet'))
+            : hasValidSelection
                 ? 'border-emerald-300 bg-emerald-50/30'
                 : 'border-slate-200 bg-slate-50/40';
 
         // 2.2 Doğrudan dokunmaya karşı koruma önlemleri için sade 3'lü buton: [Var] [Yok] [Uygunsuz]
         const pillOptions = is22ProtectionItem ? ['Var', 'Yok', 'Uygunsuz'] : q.options;
 
-        // 6 veya daha az seçeneği olan tüm çoktan seçmeli soruları TEK DOKUNUŞLU PILL BUTON yap!
-        if (pillOptions.length <= 6) {
+        // Tüm çoktan seçmeli soruları TEK DOKUNUŞLU YEŞİL PILL BUTON yap!
+        if (pillOptions.length <= 8) {
             const pillsHtml = pillOptions.map(opt => {
-                const isSel = (val === opt) || (is22ProtectionItem && opt === 'Var' && val === 'Uygun');
-                let activeCls = 'bg-slate-900 text-white border-slate-900 shadow-2xs';
-                if (isSel) {
-                    if (opt === 'Uygunsuz') activeCls = 'bg-rose-600 text-white border-rose-600 shadow-2xs';
-                    else if (opt === 'Var' || opt === 'Evet' || opt === 'Periyodik Kontrol') activeCls = 'bg-emerald-600 text-white border-emerald-600 shadow-2xs';
-                }
+                const isSel = (String(val || '').toLowerCase() === String(opt || '').toLowerCase())
+                    || (is22ProtectionItem && opt === 'Var' && val === 'Uygun');
+                const activeCls = (opt === 'Uygunsuz' || opt === 'Uygun Değil')
+                    ? 'bg-rose-600 text-white border-rose-600 shadow-2xs'
+                    : 'bg-emerald-600 text-white border-emerald-600 shadow-2xs';
                 return `
                     <button type="button" onclick="handleAnswerChange('${qKey}', '${escapeForJs(opt)}', '${safeQTitle}')"
                         class="flex-1 min-w-[54px] py-1.5 px-2 rounded-lg border text-[11px] font-bold text-center transition active:scale-95 ${
@@ -1670,12 +1677,24 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
                     <span class="text-slate-400 font-normal">Seçip değiştirebilirsiniz</span>
                 </div>
                 <div class="flex items-center gap-1 overflow-x-auto py-0.5 no-scrollbar">
-                    ${QUICK_LINYE_PRESETS.map((pr, pIdx) => `
-                        <button type="button" onclick="applyQuickLinyePreset(${rIdx}, ${pIdx})"
-                            class="px-2 py-1 rounded-md bg-slate-100 hover:bg-sky-100 hover:text-sky-800 active:scale-95 text-slate-800 font-mono font-bold text-[10px] border border-slate-200 shrink-0 transition">
-                            ${pr.label}
-                        </button>
-                    `).join('')}
+                    ${QUICK_LINYE_PRESETS.map((pr, pIdx) => {
+                        const isPresetActive = (
+                            String(rowObj['7f4bdff7-97bd-47dd-8151-7eacc32f5d8e'] || '').trim() === pr.curve &&
+                            String(rowObj['8c397b2d-a229-4bc9-b4ff-5fc78dd5a102'] || '').trim() === pr.poles &&
+                            String(rowObj['bd17d9ca-3087-4406-9f16-867d10642df6'] || '').trim() === pr.inAmp &&
+                            String(rowObj['8e43f81a-34b3-4c8e-9baf-e4161f5ba11e'] || '').trim() === pr.phase
+                        );
+                        return `
+                            <button type="button" onclick="applyQuickLinyePreset(${rIdx}, ${pIdx})"
+                                class="px-2 py-1 rounded-md active:scale-95 font-mono font-bold text-[10px] border shrink-0 transition ${
+                                    isPresetActive
+                                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                                        : 'bg-slate-100 hover:bg-emerald-50 hover:text-emerald-800 text-slate-800 border-slate-200'
+                                }">
+                                ${isPresetActive ? '✓ ' : ''}${pr.label}
+                            </button>
+                        `;
+                    }).join('')}
                 </div>
             </div>
         ` : '';
@@ -1688,29 +1707,32 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
 
             if (q.type === 'YesNo') {
 
-                const isNoGood = cellVal === 'Uygun Değil' || cellVal === 'X';
+                const rowStatusBtns = [
+                    { v: 'Uygun', match: ['Uygun', '✓'], lbl: '✓ Uygun', activeCls: 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' },
+                    { v: 'Uygun Değil', match: ['Uygun Değil', 'X'], lbl: '✕ Uygun Değil', activeCls: 'bg-rose-600 text-white border-rose-600 shadow-2xs' },
+                    { v: 'Uygulaması Yok', match: ['Uygulaması Yok', 'N'], lbl: 'N Uyg. Yok', activeCls: 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' }
+                ].map(b => {
+                    const isSel = b.match.includes(cellVal);
+                    return `
+                        <button type="button"
+                            onclick="handleTopicTableCell('${tKey}', ${rIdx}, '${q.guid}', '${b.v}'); paintInspectionEditorUI();"
+                            class="flex-1 py-1.5 px-2 rounded-lg border text-[11px] font-bold text-center transition active:scale-95 ${
+                                isSel ? b.activeCls : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
+                            }">
+                            ${b.lbl}
+                        </button>
+                    `;
+                }).join('');
 
                 return `
 
-                    <div class="${isSection65 ? 'col-span-full sm:col-span-1' : ''}">
+                    <div class="col-span-full">
 
                         <label class="block text-[11px] font-bold text-slate-700 mb-1 leading-snug break-words">${labelText}</label>
 
-                        <select data-table-cell="${tKey}_${rIdx}_${q.guid}" onchange="handleTopicTableCell('${tKey}', ${rIdx}, '${q.guid}', this.value)"
-
-                            class="w-full border rounded-lg px-2.5 py-1.5 text-xs font-bold shadow-2xs ${isNoGood ? 'border-rose-400 bg-rose-50 text-rose-700' : 'border-slate-300 bg-white text-slate-900'}">
-
-                            <option value="" ${cellVal === '' ? 'selected' : ''}>Seçiniz...</option>
-
-                            <option value="Uygun" ${cellVal === 'Uygun' || cellVal === '✓' ? 'selected' : ''}>✓ Uygun</option>
-
-                            <option value="Uygun Değil" ${cellVal === 'Uygun Değil' || cellVal === 'X' ? 'selected' : ''}>X Uygun Değil</option>
-
-                            <option value="Uygulaması Yok" ${cellVal === 'Uygulaması Yok' || cellVal === 'N' ? 'selected' : ''}>N Uyg. Yok</option>
-
-                            <option value="Görülemedi" ${cellVal === 'Görülemedi' || cellVal === 'G' ? 'selected' : ''}>G Görülemedi</option>
-
-                        </select>
+                        <div class="flex items-center gap-1.5">
+                            ${rowStatusBtns}
+                        </div>
 
                     </div>
 
@@ -1827,8 +1849,12 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
                         </button>
                     ` : ''}
                     <button type="button" onclick="setThermalCameraNotApplicable('${tKey}')"
-                        class="px-2 py-1 bg-white hover:bg-slate-100 active:scale-95 text-slate-700 border border-slate-300 font-bold rounded-lg text-[10px] flex items-center gap-1 transition">
-                        <i class="fa-solid fa-ban text-slate-500"></i>
+                        class="px-2 py-1 active:scale-95 border font-bold rounded-lg text-[10px] flex items-center gap-1 transition ${
+                            isNotApp
+                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                                : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
+                        }">
+                        <i class="fa-solid ${isNotApp ? 'fa-check' : 'fa-ban text-slate-500'}"></i>
                         <span>Uyg. Yok</span>
                     </button>
                 </div>
@@ -1840,13 +1866,24 @@ function renderDynamicTableTopic(area, topic, subNum, tKey) {
         ? '6.1. Linye Ölçüm ve Test Tablosu'
         : `${subNum}. ${topic.name}`;
 
+    const sec65FirstRes = isSection65 && rows[0] ? (rows[0]['b21fd22e-6cd7-431c-8949-b67fdc46613c'] || '') : '';
+    const sec65FirstName = isSection65 && rows[0] ? (rows[0]['2f743a60-497c-41bc-84aa-a499220310a3'] || '') : '';
+    const isSec65StandardActive = isSection65 && sec65FirstRes === 'Uygun' && Boolean(sec65FirstName.trim());
+    const isSec65NaActive = isSection65 && sec65FirstRes === 'Uygulaması Yok';
+
+    const sec66FirstRes = isSection66 && rows[0] ? (rows[0]['1114914a-a154-4859-93f9-19b22fddc098'] || '') : '';
+    const sec66FirstName = isSection66 && rows[0] ? (rows[0]['d0096971-113c-4f4c-ac4e-31ba59227c0b'] || '') : '';
+    const isSec66StandardActive = isSection66 && sec66FirstRes === 'Uygun' && Boolean(sec66FirstName.trim());
+    const isSec66MissingActive = isSection66 && sec66FirstRes === 'Uygun Değil';
+    const isSec66NaActive = isSection66 && sec66FirstRes === 'Uygulaması Yok';
+
     const quickTableActionBtns = isSection65 ? `
-        <button type="button" onclick="applyQuickPotentialEquipotentialPreset('standard')" class="px-2.5 py-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold rounded-lg text-[11px] shrink-0 shadow-2xs">⚡ Standart Doldur</button>
-        <button type="button" onclick="applyQuickPotentialEquipotentialPreset('na')" class="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold rounded-lg text-[11px] shrink-0">N Uyg. Yok</button>
+        <button type="button" onclick="applyQuickPotentialEquipotentialPreset('standard')" class="px-2.5 py-1 border font-bold rounded-lg text-[11px] shrink-0 shadow-2xs transition ${isSec65StandardActive ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-amber-400 hover:bg-amber-300 text-slate-950 border-amber-500'}">${isSec65StandardActive ? '✓ ' : '⚡ '}Standart Doldur</button>
+        <button type="button" onclick="applyQuickPotentialEquipotentialPreset('na')" class="px-2 py-1 border font-bold rounded-lg text-[11px] shrink-0 transition ${isSec65NaActive ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'}">${isSec65NaActive ? '✓ ' : 'N '}Uyg. Yok</button>
     ` : isSection66 ? `
-        <button type="button" onclick="applyQuickFloorInsulationPreset('standard')" class="px-2.5 py-1 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold rounded-lg text-[11px] shrink-0 shadow-2xs">⚡ Standart Halı</button>
-        <button type="button" onclick="applyQuickFloorInsulationPreset('missing')" class="px-2 py-1 bg-rose-100 hover:bg-rose-200 text-rose-800 border border-rose-300 font-bold rounded-lg text-[11px] shrink-0">✕ Halı Yok</button>
-        <button type="button" onclick="applyQuickFloorInsulationPreset('na')" class="px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold rounded-lg text-[11px] shrink-0">N Uyg. Yok</button>
+        <button type="button" onclick="applyQuickFloorInsulationPreset('standard')" class="px-2.5 py-1 border font-bold rounded-lg text-[11px] shrink-0 shadow-2xs transition ${isSec66StandardActive ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-amber-400 hover:bg-amber-300 text-slate-950 border-amber-500'}">${isSec66StandardActive ? '✓ ' : '⚡ '}Standart Halı</button>
+        <button type="button" onclick="applyQuickFloorInsulationPreset('missing')" class="px-2 py-1 border font-bold rounded-lg text-[11px] shrink-0 transition ${isSec66MissingActive ? 'bg-rose-600 text-white border-rose-600 shadow-2xs' : 'bg-rose-100 hover:bg-rose-200 text-rose-800 border-rose-300'}">✕ Halı Yok</button>
+        <button type="button" onclick="applyQuickFloorInsulationPreset('na')" class="px-2 py-1 border font-bold rounded-lg text-[11px] shrink-0 transition ${isSec66NaActive ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs' : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'}">${isSec66NaActive ? '✓ ' : 'N '}Uyg. Yok</button>
     ` : '';
 
     return `
