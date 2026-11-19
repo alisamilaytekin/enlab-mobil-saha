@@ -1350,7 +1350,7 @@ function renderWoInspectionRows(list, workOrderId) {
 
     }
 
-    return list.map(item => {
+    return list.map((item, idx) => {
 
         const isSuitable = (item.result_status || 'UYGUN') === 'UYGUN';
 
@@ -1358,9 +1358,30 @@ function renderWoInspectionRows(list, workOrderId) {
 
         const typeLabel = getCleanTemplateTypeLabel(item.template_id, item.template_code);
 
+        const seqTag = `R-${String(idx + 1).padStart(2, '0')}`;
+
+        // Kusurlu raporlar için ilk kusur özetini yerel kayıttan çek (Stitch tasarım standardı)
+        let firstDefectPreview = '';
+        if (!isSuitable) {
+            try {
+                const rawFd = localStorage.getItem(`enlab_insp_${item.id}`);
+                if (rawFd) {
+                    const parsedFd = JSON.parse(rawFd);
+                    const defText = String(parsedFd.defects || '').trim();
+                    if (defText) {
+                        const firstLine = defText.split('\n').map(l => l.replace(/^[•\-*\s]+/, '').trim()).find(Boolean);
+                        if (firstLine) firstDefectPreview = firstLine;
+                    } else if (parsedFd.itemDefectSelections) {
+                        const firstSel = Object.values(parsedFd.itemDefectSelections).find(s => s && s.sentence);
+                        if (firstSel) firstDefectPreview = firstSel.sentence;
+                    }
+                }
+            } catch (e) {}
+        }
+
         return `
 
-        <div class="card-craft-white p-3.5 transition space-y-2.5 hover:border-slate-300">
+        <div class="card-craft-white p-3.5 transition space-y-2.5 hover:border-slate-300 ${!isSuitable ? 'border-l-4 border-l-rose-600' : ''}">
 
             <!-- TIER 1: REPORT TITLE & STATUS (TAPPING OPENS EDITOR DIRECTLY) -->
 
@@ -1368,9 +1389,15 @@ function renderWoInspectionRows(list, workOrderId) {
 
                 <div class="flex items-start justify-between gap-2">
 
-                    <div class="font-bold text-slate-900 text-sm tracking-tight leading-snug flex-1 truncate">
+                    <div class="flex items-center gap-2 min-w-0 flex-1">
 
-                        ${escapeHtml(item.equipment_name || 'İsimsiz Pano / Ekipman')}
+                        <span class="px-1.5 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-slate-600 font-mono text-[10px] font-bold shrink-0 tabular-nums">${seqTag}</span>
+
+                        <div class="font-bold text-slate-900 text-sm tracking-tight leading-snug truncate">
+
+                            ${escapeHtml(item.equipment_name || 'İsimsiz Pano / Ekipman')}
+
+                        </div>
 
                     </div>
 
@@ -1378,9 +1405,9 @@ function renderWoInspectionRows(list, workOrderId) {
 
                         ${isPublished ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-md border border-sky-200" title="Doğrulama: ${escapeHtml(item.portal_verify_code || '')}"><i class="fa-solid fa-globe text-[9px]"></i>Yayında</span>` : ''}
 
-                        <span class="inline-flex items-center gap-1 text-[11px] font-bold ${isSuitable ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-rose-700 bg-rose-50 border-rose-200'} px-2 py-0.5 rounded-md border tabular-nums">
+                        <span class="inline-flex items-center gap-1 text-[11px] font-bold ${isSuitable ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-white bg-rose-600 border-rose-600'} px-2 py-0.5 rounded-md border tabular-nums">
 
-                            <span class="w-1.5 h-1.5 rounded-full ${isSuitable ? 'bg-emerald-500' : 'bg-rose-500'}"></span>
+                            <span class="w-1.5 h-1.5 rounded-full ${isSuitable ? 'bg-emerald-500' : 'bg-white'}"></span>
 
                             ${escapeHtml(item.result_status || 'UYGUN')}${(!isSuitable && item.defect_count > 0) ? ` (${item.defect_count})` : ''}
 
@@ -1390,15 +1417,22 @@ function renderWoInspectionRows(list, workOrderId) {
 
                 </div>
 
-                <div class="flex items-center gap-1.5 text-xs text-slate-500 mt-1 flex-wrap font-medium">
+                <div class="flex items-center gap-1.5 text-xs text-slate-500 mt-1.5 flex-wrap font-medium">
 
-                    <span class="text-sky-700 font-semibold">${typeLabel}</span>
+                    <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold text-[11px]">${typeLabel}</span>
 
                     ${item.location ? `<span class="text-slate-300">•</span><span class="text-slate-600">${escapeHtml(item.location)}</span>` : ''}
 
                     ${item.serial_no ? `<span class="text-slate-300">•</span><span class="text-slate-500 font-mono text-[11px]">${escapeHtml(item.serial_no)}</span>` : ''}
 
                 </div>
+
+                ${firstDefectPreview ? `
+                    <div class="mt-2 px-2.5 py-1.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-[11px] font-semibold flex items-center gap-1.5">
+                        <i class="fa-solid fa-triangle-exclamation text-rose-600 text-[10px] shrink-0"></i>
+                        <span class="truncate">${escapeHtml(firstDefectPreview)}</span>
+                    </div>
+                ` : ''}
 
             </div>
 

@@ -975,13 +975,13 @@ function renderElectrical2201Editor() {
     const linyeCount = (fd.tableRows?.topic_3_3 || []).filter(r => r && Object.values(r).some(v => String(v || '').trim())).length;
     const photoCount = (fd.photos || []).length;
 
-    // 5 Net, Mantıksal Sıralı Adım + Tümü
+    // 5 Net, Mantıksal Sıralı Adım + Tümü (Stitch 2-satır numaralı stepper)
     const steps = [
-        { label: '1. Genel & Cihaz', short: '1. Genel', id: 0, icon: 'fa-building-circle-check' },
-        { label: `2. Gözle Kontrol${visualDefectCount > 0 ? ` (${visualDefectCount}✕)` : ''}`, short: '2. Gözle', id: 2, icon: 'fa-eye', hasDefect: visualDefectCount > 0 },
-        { label: `3. Ölçüm & Test${linyeCount > 0 ? ` (${linyeCount})` : ''}`, short: '3. Ölçüm', id: 3, icon: 'fa-bolt-lightning' },
-        { label: `4. Fotoğraf (${photoCount})`, short: `4. Foto (${photoCount})`, id: 4, icon: 'fa-camera' },
-        { label: '5. Kusur & Sonuç', short: '5. Sonuç', id: 5, icon: 'fa-file-signature', isBad: fd.overallResult === 'UYGUN DEĞİL' }
+        { num: '01', label: '1. Genel & Cihaz', short: 'Genel', id: 0, icon: 'fa-building-circle-check' },
+        { num: '02', label: `2. Gözle Kontrol${visualDefectCount > 0 ? ` (${visualDefectCount}✕)` : ''}`, short: visualDefectCount > 0 ? `Gözle (${visualDefectCount})` : 'Gözle', id: 2, icon: 'fa-eye', hasDefect: visualDefectCount > 0 },
+        { num: '03', label: `3. Ölçüm & Test${linyeCount > 0 ? ` (${linyeCount})` : ''}`, short: linyeCount > 0 ? `Ölçüm (${linyeCount})` : 'Ölçüm', id: 3, icon: 'fa-bolt-lightning' },
+        { num: '04', label: `4. Fotoğraf (${photoCount})`, short: `Foto (${photoCount})`, id: 4, icon: 'fa-camera' },
+        { num: '05', label: '5. Kusur & Sonuç', short: 'Sonuç', id: 5, icon: 'fa-file-signature', isBad: fd.overallResult === 'UYGUN DEĞİL' }
     ];
 
 
@@ -995,13 +995,13 @@ function renderElectrical2201Editor() {
                     const badResultStyle = s.isBad && !isActive ? 'bg-rose-50 text-rose-800 border border-rose-200' : '';
                     return `
                         <button type="button" onclick="AppState.showAllAreas = false; AppState.activeAreaIndex = ${s.id}; paintInspectionEditorUI(); document.getElementById('pageContent')?.scrollTo({top: 0, behavior: 'smooth'});"
-                            class="min-h-[44px] py-1.5 px-1 rounded-xl text-[11px] font-bold text-center truncate transition flex flex-col items-center justify-center gap-1 ${
+                            class="min-h-[44px] py-1.5 px-1 rounded-xl text-center truncate transition flex flex-col items-center justify-center gap-0.5 ${
                                 isActive
                                     ? 'bg-slate-900 text-white shadow-xs'
-                                    : (defectStyle || badResultStyle || 'bg-slate-100 text-slate-700 hover:bg-slate-200/80')
+                                    : (defectStyle || badResultStyle || 'bg-slate-100/90 text-slate-700 hover:bg-slate-200/80 border border-slate-200/60')
                             }">
-                            <i class="fa-solid ${s.icon} text-xs ${isActive ? 'text-amber-400' : (s.hasDefect || s.isBad ? 'text-rose-600' : 'text-slate-500')}"></i>
-                            <span class="truncate w-full leading-none">${s.short}</span>
+                            <span class="font-mono text-[10px] font-bold leading-none tabular-nums ${isActive ? 'text-amber-400' : (s.hasDefect || s.isBad ? 'text-rose-600' : 'text-slate-400')}">${s.num}</span>
+                            <span class="text-[11px] font-bold truncate w-full leading-tight">${s.short}</span>
                         </button>
                     `;
                 }).join('')}
@@ -1048,30 +1048,30 @@ function renderElectrical2201Editor() {
 
     const evaluationHtml = showTab5 ? renderEvaluationAndFooterSection() : '';
 
-    // Alt Adım Geçiş Çubuğu (Kullanıcının tekrar en üste kaydırmasına gerek kalmaz)
+    // Sabit (Sticky) Alt Adım Geçiş Çubuğu (Stitch başparmak ergonomisi)
     let stepNavFooterHtml = '';
     if (activeIdx !== -1) {
         const curStepPos = steps.findIndex(s => s.id === activeIdx);
         const prevStep = curStepPos > 0 ? steps[curStepPos - 1] : null;
         const nextStep = (curStepPos >= 0 && curStepPos < steps.length - 1) ? steps[curStepPos + 1] : null;
         stepNavFooterHtml = `
-            <div class="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between gap-2">
+            <div class="sticky bottom-0 z-20 p-2 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200 shadow-md flex items-center justify-between gap-2">
                 ${prevStep ? `
                     <button type="button" onclick="AppState.showAllAreas = false; AppState.activeAreaIndex = ${prevStep.id}; paintInspectionEditorUI(); document.getElementById('pageContent')?.scrollTo({top: 0, behavior: 'smooth'});"
-                        class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition">
-                        <i class="fa-solid fa-arrow-left text-[10px]"></i>
-                        <span>${prevStep.short}</span>
+                        class="h-11 px-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition shrink-0">
+                        <i class="fa-solid fa-chevron-left text-[10px]"></i>
+                        <span>Önceki</span>
                     </button>
                 ` : `<div></div>`}
                 ${nextStep ? `
                     <button type="button" onclick="AppState.showAllAreas = false; AppState.activeAreaIndex = ${nextStep.id}; paintInspectionEditorUI(); document.getElementById('pageContent')?.scrollTo({top: 0, behavior: 'smooth'});"
-                        class="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 active:scale-95 text-amber-400 font-black text-xs flex items-center gap-1.5 shadow-2xs transition">
-                        <span>Sonraki: ${nextStep.short}</span>
-                        <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                        class="h-11 flex-1 px-4 rounded-xl bg-sky-600 hover:bg-sky-500 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition">
+                        <span>${nextStep.num}. ${nextStep.short}</span>
+                        <i class="fa-solid fa-chevron-right text-[10px]"></i>
                     </button>
                 ` : `
                     <button type="button" onclick="printOfficialReport()"
-                        class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black text-xs flex items-center gap-1.5 shadow-2xs transition">
+                        class="h-11 flex-1 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition">
                         <i class="fa-solid fa-file-pdf"></i>
                         <span>PDF Önizle &amp; İndir</span>
                     </button>
@@ -1332,7 +1332,33 @@ function renderElectrical2201Topic(area, topic, secNum) {
 
     const gridCls = colCount === 1 ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2';
 
-    const questionsHtml = topic.questions.map(q => renderElectrical2201QuestionInput(q, area.index, topic.index)).join('');
+    // 2.1 Ekipman Bilgileri'nde Proje & Tek Hat Şeması kısa Var/Yok kartlarını mobilde yan yana göster (Stitch Screen 2)
+    let questionsHtml = '';
+    if (area.index === 0 && topic.index === 0) {
+        const rendered = [];
+        for (let i = 0; i < topic.questions.length; i++) {
+            const curQ = topic.questions[i];
+            const nextQ = topic.questions[i + 1];
+            const isProjPair =
+                curQ && nextQ &&
+                ((curQ.guid === ELEC_21_GUIDS.PROJECT_EXISTS && nextQ.guid === ELEC_21_GUIDS.SINGLE_LINE_EXISTS) ||
+                 (curQ.guid === ELEC_21_GUIDS.SINGLE_LINE_EXISTS && nextQ.guid === ELEC_21_GUIDS.PROJECT_EXISTS));
+            if (isProjPair) {
+                rendered.push(`
+                    <div class="sm:col-span-2 grid grid-cols-2 gap-2">
+                        ${renderElectrical2201QuestionInput(curQ, area.index, topic.index)}
+                        ${renderElectrical2201QuestionInput(nextQ, area.index, topic.index)}
+                    </div>
+                `);
+                i++;
+            } else {
+                rendered.push(renderElectrical2201QuestionInput(curQ, area.index, topic.index));
+            }
+        }
+        questionsHtml = rendered.join('');
+    } else {
+        questionsHtml = topic.questions.map(q => renderElectrical2201QuestionInput(q, area.index, topic.index)).join('');
+    }
 
     const topicHeaderTitle = (area.index === 3 && topic.index === 3)
         ? '6.1. Linye Ölçüm ve Test Tablosu'
@@ -1655,27 +1681,34 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
             `;
         }
 
+        const unitTagHtml = opts.unit
+            ? `<span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-mono font-semibold text-slate-400 pointer-events-none select-none">${escapeHtml(opts.unit)}</span>`
+            : '';
+
         return `
-            <div class="p-2.5 rounded-lg border ${cardBorder} flex flex-col justify-between gap-1.5 transition-colors">
+            <div class="p-2.5 rounded-xl border ${cardBorder} flex flex-col justify-between gap-1.5 transition-colors">
                 <div class="flex items-center justify-between gap-1.5">
                     <label class="block text-[11px] font-bold text-slate-700 leading-snug">${cleanTitle}</label>
                     ${opts.badgeHtml || ''}
                 </div>
                 ${chipsBlockHtml}
-                <input type="text" data-qkey="${qKey}" value="${String(val || '').replace(/"/g, '&quot;')}"
-                    oninput="handleAnswerInput('${qKey}', this.value)"
-                    placeholder="${escapeHtml(opts.placeholder || 'Seçin veya yazın...')}"
-                    class="w-full border border-slate-300 bg-white rounded-lg px-2.5 py-1.5 text-xs font-medium focus:border-sky-500 focus:outline-none">
+                <div class="relative">
+                    <input type="text" data-qkey="${qKey}" value="${String(val || '').replace(/"/g, '&quot;')}"
+                        oninput="handleAnswerInput('${qKey}', this.value)"
+                        placeholder="${escapeHtml(opts.placeholder || 'Seçin veya yazın...')}"
+                        class="w-full h-9 border border-slate-300 bg-white rounded-lg px-2.5 ${opts.unit ? 'pr-16 font-mono tabular-nums' : ''} text-xs font-semibold text-slate-900 focus:border-sky-500 focus:outline-none">
+                    ${unitTagHtml}
+                </div>
             </div>
         `;
     };
 
     if (q.guid === ELEC_21_GUIDS.GRID_VOLTAGE) {
-        return renderSelectableTextCard(['230/400', '400', '230', '400/690'], { placeholder: 'Örn: 230/400' });
+        return renderSelectableTextCard(['230/400', '400', '230', '400/690'], { placeholder: 'Örn: 230/400', unit: 'V' });
     }
 
     if (q.guid === ELEC_21_GUIDS.SUPPLY_VOLTAGE_KV) {
-        return renderSelectableTextCard(['0,4/0,23', '0,4', '0,23', '15,8', '31,5', '34,5'], { placeholder: 'Örn: 0,4/0,23' });
+        return renderSelectableTextCard(['0,4/0,23', '0,4', '0,23', '15,8', '31,5', '34,5'], { placeholder: 'Örn: 0,4/0,23', unit: 'kV' });
     }
 
     if (q.guid === ELEC_21_GUIDS.MAIN_BREAKER_TYPE) {
@@ -1688,11 +1721,11 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
     }
 
     if (q.guid === ELEC_21_GUIDS.MAIN_BREAKER_IN) {
-        return renderSelectableTextCard(['32', '40', '63', '80', '100', '125', '160', '250', '400', '630'], { placeholder: 'Nominal akım (A)...' });
+        return renderSelectableTextCard(['32', '40', '63', '80', '100', '125', '160', '250', '400', '630'], { placeholder: 'Nominal akım...', unit: 'A' });
     }
 
     if (q.guid === ELEC_21_GUIDS.MAIN_RCD_IN) {
-        return renderSelectableTextCard(['Toroid', '40', '63', '100', '125', '-'], { placeholder: 'Örn: Toroid veya 63' });
+        return renderSelectableTextCard(['Toroid', '40', '63', '100', '125', '-'], { placeholder: 'Örn: Toroid veya 63', unit: 'A' });
     }
 
     if (q.guid === ELEC_21_GUIDS.MAIN_RCD_TRIP_MA) {
@@ -1700,7 +1733,7 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
         const woMem = WorkOrderRcdMemoryManager.get(woId);
         const mergedMa = [...new Set([...(woMem.historyCurrentMa || []), '30', '300', '500', '1000'])];
         const badgeHtml = `<span class="px-1.5 py-0.5 rounded bg-sky-50 border border-sky-200 text-sky-700 text-[9px] font-bold shrink-0" title="Bu iş emri için hafızada saklanır"><i class="fa-solid fa-bookmark mr-0.5"></i>İş Emri Hafızası</span>`;
-        return renderSelectableTextCard(mergedMa, { badgeHtml, placeholder: 'Açma akımı (mA)...' });
+        return renderSelectableTextCard(mergedMa, { badgeHtml, placeholder: 'Açma akımı...', unit: 'mA (Δn)' });
     }
 
     if (q.guid === ELEC_21_GUIDS.MAIN_RCD_TRIP_MS) {
@@ -1708,7 +1741,7 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
         const woMem = WorkOrderRcdMemoryManager.get(woId);
         const mergedMs = [...new Set([...(woMem.historyTimeMs || []), '25', '40', '150', '300'])];
         const badgeHtml = `<span class="px-1.5 py-0.5 rounded bg-sky-50 border border-sky-200 text-sky-700 text-[9px] font-bold shrink-0" title="Bu iş emri için hafızada saklanır"><i class="fa-solid fa-bookmark mr-0.5"></i>İş Emri Hafızası</span>`;
-        return renderSelectableTextCard(mergedMs, { badgeHtml, placeholder: 'Açma zamanı (ms)...' });
+        return renderSelectableTextCard(mergedMs, { badgeHtml, placeholder: 'Açma zamanı...', unit: 'ms' });
     }
 
 

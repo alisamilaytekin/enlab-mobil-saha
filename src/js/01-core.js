@@ -1974,10 +1974,10 @@ window.openWorkOrderPortalModal = openWorkOrderPortalModal;
 
 function promptSecurityPasswordConfirmation({ title, entityName, message, onConfirmed }) {
 
-    const curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || { fullName: 'Yetkili Personel', password: '123' };
+    const curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || null;
+    const hasAccountPass = Boolean(curUser && (curUser.passwordHash || curUser.password));
 
-
-    const modalTitle = `<i class="fa-solid fa-triangle-exclamation text-rose-500 mr-2"></i>${title || 'Silme Onayı'}`;
+    const modalTitle = `<i class="fa-solid fa-triangle-exclamation text-rose-500 mr-2"></i>${escapeHtml(title || 'Silme Onayı')}`;
 
     const modalBody = `
 
@@ -1985,7 +1985,7 @@ function promptSecurityPasswordConfirmation({ title, entityName, message, onConf
 
             <div class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-900 leading-relaxed">
 
-                <strong>"${entityName || 'Kayıt'}"</strong> kalıcı olarak silinecektir.
+                <strong>"${escapeHtml(entityName || 'Kayıt')}"</strong> kalıcı olarak silinecektir.
 
             </div>
 
@@ -1993,18 +1993,21 @@ function promptSecurityPasswordConfirmation({ title, entityName, message, onConf
 
                 <label class="block font-bold text-slate-700">
 
-                    <strong>${curUser.fullName}</strong> şifresi:
+                    ${hasAccountPass
+                        ? `<strong>${escapeHtml(curUser.fullName || curUser.username || 'Kullanıcı')}</strong> şifresi:`
+                        : `Onaylamak için büyük harfle <strong>SİL</strong> yazın:`}
 
                 </label>
 
                 <div class="relative">
 
-                    <input type="password" id="secConfirmPasswordInput" placeholder="Kullanıcı şifreniz"
+                    <input type="${hasAccountPass ? 'password' : 'text'}" id="secConfirmPasswordInput" placeholder="${hasAccountPass ? 'Kullanıcı şifreniz' : 'SİL'}"
 
                         class="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-mono pr-10 focus:outline-none focus:border-rose-500 bg-white"
 
                         onkeydown="if(event.key==='Enter') executeSecurityPasswordCheck()">
 
+                    ${hasAccountPass ? `
                     <button type="button" onclick="togglePasswordVisibility('secConfirmPasswordInput')"
 
                         class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 p-1">
@@ -2012,6 +2015,7 @@ function promptSecurityPasswordConfirmation({ title, entityName, message, onConf
                         <i class="fa-solid fa-eye text-xs"></i>
 
                     </button>
+                    ` : ''}
 
                 </div>
 
@@ -2034,8 +2038,7 @@ function promptSecurityPasswordConfirmation({ title, entityName, message, onConf
     `;
 
     window._pendingSecurityCallback = onConfirmed;
-
-    window._pendingSecurityExpectedPass = String(curUser.password || '123').trim();
+    window._pendingSecurityUseAccountPass = hasAccountPass;
 
     openModal(modalTitle, modalBody, modalFooter);
 
@@ -2059,13 +2062,12 @@ function executeSecurityPasswordCheck() {
 
     const entered = inp ? inp.value.trim() : '';
 
-    const expected = window._pendingSecurityExpectedPass || '123';
-
-
+    const useAccountPass = Boolean(window._pendingSecurityUseAccountPass);
+    const curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || null;
 
     if (!entered) {
 
-        showToast('Lütfen silme onay şifrenizi girin!', 'error');
+        showToast(useAccountPass ? 'Lütfen silme onay şifrenizi girin!' : 'Onaylamak için SİL yazın!', 'error');
 
         if (inp) inp.focus();
 
@@ -2073,11 +2075,16 @@ function executeSecurityPasswordCheck() {
 
     }
 
+    let isValid = false;
+    if (useAccountPass && curUser && typeof AuthManager !== 'undefined' && typeof AuthManager.verifyPassword === 'function') {
+        isValid = AuthManager.verifyPassword(curUser, entered);
+    } else if (!useAccountPass) {
+        isValid = entered.toLocaleUpperCase('tr-TR') === 'SİL' || entered.toUpperCase() === 'SIL';
+    }
 
+    if (!isValid) {
 
-    if (entered !== expected) {
-
-        showToast('Hatalı şifre! Silme işlemi iptal edildi.', 'error');
+        showToast(useAccountPass ? 'Hatalı şifre! Silme işlemi iptal edildi.' : 'Onay metni hatalı! SİL yazmalısınız.', 'error');
 
         if (inp) {
 
@@ -2093,13 +2100,10 @@ function executeSecurityPasswordCheck() {
 
     }
 
-
-
     const callback = window._pendingSecurityCallback;
 
     window._pendingSecurityCallback = null;
-
-    window._pendingSecurityExpectedPass = null;
+    window._pendingSecurityUseAccountPass = false;
 
     closeModal();
 

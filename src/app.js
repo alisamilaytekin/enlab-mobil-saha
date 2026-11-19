@@ -3947,10 +3947,10 @@ window.openWorkOrderPortalModal = openWorkOrderPortalModal;
 
 function promptSecurityPasswordConfirmation({ title, entityName, message, onConfirmed }) {
 
-    const curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || { fullName: 'Yetkili Personel', password: '123' };
+    const curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || null;
+    const hasAccountPass = Boolean(curUser && (curUser.passwordHash || curUser.password));
 
-
-    const modalTitle = `<i class="fa-solid fa-triangle-exclamation text-rose-500 mr-2"></i>${title || 'Silme Onayı'}`;
+    const modalTitle = `<i class="fa-solid fa-triangle-exclamation text-rose-500 mr-2"></i>${escapeHtml(title || 'Silme Onayı')}`;
 
     const modalBody = `
 
@@ -3958,7 +3958,7 @@ function promptSecurityPasswordConfirmation({ title, entityName, message, onConf
 
             <div class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-900 leading-relaxed">
 
-                <strong>"${entityName || 'Kayıt'}"</strong> kalıcı olarak silinecektir.
+                <strong>"${escapeHtml(entityName || 'Kayıt')}"</strong> kalıcı olarak silinecektir.
 
             </div>
 
@@ -3966,18 +3966,21 @@ function promptSecurityPasswordConfirmation({ title, entityName, message, onConf
 
                 <label class="block font-bold text-slate-700">
 
-                    <strong>${curUser.fullName}</strong> şifresi:
+                    ${hasAccountPass
+                        ? `<strong>${escapeHtml(curUser.fullName || curUser.username || 'Kullanıcı')}</strong> şifresi:`
+                        : `Onaylamak için büyük harfle <strong>SİL</strong> yazın:`}
 
                 </label>
 
                 <div class="relative">
 
-                    <input type="password" id="secConfirmPasswordInput" placeholder="Kullanıcı şifreniz"
+                    <input type="${hasAccountPass ? 'password' : 'text'}" id="secConfirmPasswordInput" placeholder="${hasAccountPass ? 'Kullanıcı şifreniz' : 'SİL'}"
 
                         class="w-full border border-slate-300 rounded-xl px-3 py-2.5 text-sm font-mono pr-10 focus:outline-none focus:border-rose-500 bg-white"
 
                         onkeydown="if(event.key==='Enter') executeSecurityPasswordCheck()">
 
+                    ${hasAccountPass ? `
                     <button type="button" onclick="togglePasswordVisibility('secConfirmPasswordInput')"
 
                         class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 p-1">
@@ -3985,6 +3988,7 @@ function promptSecurityPasswordConfirmation({ title, entityName, message, onConf
                         <i class="fa-solid fa-eye text-xs"></i>
 
                     </button>
+                    ` : ''}
 
                 </div>
 
@@ -4007,8 +4011,7 @@ function promptSecurityPasswordConfirmation({ title, entityName, message, onConf
     `;
 
     window._pendingSecurityCallback = onConfirmed;
-
-    window._pendingSecurityExpectedPass = String(curUser.password || '123').trim();
+    window._pendingSecurityUseAccountPass = hasAccountPass;
 
     openModal(modalTitle, modalBody, modalFooter);
 
@@ -4032,13 +4035,12 @@ function executeSecurityPasswordCheck() {
 
     const entered = inp ? inp.value.trim() : '';
 
-    const expected = window._pendingSecurityExpectedPass || '123';
-
-
+    const useAccountPass = Boolean(window._pendingSecurityUseAccountPass);
+    const curUser = (typeof AuthManager !== 'undefined' && AuthManager.getCurrentUser()) || null;
 
     if (!entered) {
 
-        showToast('Lütfen silme onay şifrenizi girin!', 'error');
+        showToast(useAccountPass ? 'Lütfen silme onay şifrenizi girin!' : 'Onaylamak için SİL yazın!', 'error');
 
         if (inp) inp.focus();
 
@@ -4046,11 +4048,16 @@ function executeSecurityPasswordCheck() {
 
     }
 
+    let isValid = false;
+    if (useAccountPass && curUser && typeof AuthManager !== 'undefined' && typeof AuthManager.verifyPassword === 'function') {
+        isValid = AuthManager.verifyPassword(curUser, entered);
+    } else if (!useAccountPass) {
+        isValid = entered.toLocaleUpperCase('tr-TR') === 'SİL' || entered.toUpperCase() === 'SIL';
+    }
 
+    if (!isValid) {
 
-    if (entered !== expected) {
-
-        showToast('Hatalı şifre! Silme işlemi iptal edildi.', 'error');
+        showToast(useAccountPass ? 'Hatalı şifre! Silme işlemi iptal edildi.' : 'Onay metni hatalı! SİL yazmalısınız.', 'error');
 
         if (inp) {
 
@@ -4066,13 +4073,10 @@ function executeSecurityPasswordCheck() {
 
     }
 
-
-
     const callback = window._pendingSecurityCallback;
 
     window._pendingSecurityCallback = null;
-
-    window._pendingSecurityExpectedPass = null;
+    window._pendingSecurityUseAccountPass = false;
 
     closeModal();
 
@@ -5520,7 +5524,7 @@ function renderWoInspectionRows(list, workOrderId) {
 
     }
 
-    return list.map(item => {
+    return list.map((item, idx) => {
 
         const isSuitable = (item.result_status || 'UYGUN') === 'UYGUN';
 
@@ -5528,9 +5532,30 @@ function renderWoInspectionRows(list, workOrderId) {
 
         const typeLabel = getCleanTemplateTypeLabel(item.template_id, item.template_code);
 
+        const seqTag = `R-${String(idx + 1).padStart(2, '0')}`;
+
+        // Kusurlu raporlar için ilk kusur özetini yerel kayıttan çek (Stitch tasarım standardı)
+        let firstDefectPreview = '';
+        if (!isSuitable) {
+            try {
+                const rawFd = localStorage.getItem(`enlab_insp_${item.id}`);
+                if (rawFd) {
+                    const parsedFd = JSON.parse(rawFd);
+                    const defText = String(parsedFd.defects || '').trim();
+                    if (defText) {
+                        const firstLine = defText.split('\n').map(l => l.replace(/^[•\-*\s]+/, '').trim()).find(Boolean);
+                        if (firstLine) firstDefectPreview = firstLine;
+                    } else if (parsedFd.itemDefectSelections) {
+                        const firstSel = Object.values(parsedFd.itemDefectSelections).find(s => s && s.sentence);
+                        if (firstSel) firstDefectPreview = firstSel.sentence;
+                    }
+                }
+            } catch (e) {}
+        }
+
         return `
 
-        <div class="card-craft-white p-3.5 transition space-y-2.5 hover:border-slate-300">
+        <div class="card-craft-white p-3.5 transition space-y-2.5 hover:border-slate-300 ${!isSuitable ? 'border-l-4 border-l-rose-600' : ''}">
 
             <!-- TIER 1: REPORT TITLE & STATUS (TAPPING OPENS EDITOR DIRECTLY) -->
 
@@ -5538,9 +5563,15 @@ function renderWoInspectionRows(list, workOrderId) {
 
                 <div class="flex items-start justify-between gap-2">
 
-                    <div class="font-bold text-slate-900 text-sm tracking-tight leading-snug flex-1 truncate">
+                    <div class="flex items-center gap-2 min-w-0 flex-1">
 
-                        ${escapeHtml(item.equipment_name || 'İsimsiz Pano / Ekipman')}
+                        <span class="px-1.5 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-slate-600 font-mono text-[10px] font-bold shrink-0 tabular-nums">${seqTag}</span>
+
+                        <div class="font-bold text-slate-900 text-sm tracking-tight leading-snug truncate">
+
+                            ${escapeHtml(item.equipment_name || 'İsimsiz Pano / Ekipman')}
+
+                        </div>
 
                     </div>
 
@@ -5548,9 +5579,9 @@ function renderWoInspectionRows(list, workOrderId) {
 
                         ${isPublished ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-md border border-sky-200" title="Doğrulama: ${escapeHtml(item.portal_verify_code || '')}"><i class="fa-solid fa-globe text-[9px]"></i>Yayında</span>` : ''}
 
-                        <span class="inline-flex items-center gap-1 text-[11px] font-bold ${isSuitable ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-rose-700 bg-rose-50 border-rose-200'} px-2 py-0.5 rounded-md border tabular-nums">
+                        <span class="inline-flex items-center gap-1 text-[11px] font-bold ${isSuitable ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-white bg-rose-600 border-rose-600'} px-2 py-0.5 rounded-md border tabular-nums">
 
-                            <span class="w-1.5 h-1.5 rounded-full ${isSuitable ? 'bg-emerald-500' : 'bg-rose-500'}"></span>
+                            <span class="w-1.5 h-1.5 rounded-full ${isSuitable ? 'bg-emerald-500' : 'bg-white'}"></span>
 
                             ${escapeHtml(item.result_status || 'UYGUN')}${(!isSuitable && item.defect_count > 0) ? ` (${item.defect_count})` : ''}
 
@@ -5560,15 +5591,22 @@ function renderWoInspectionRows(list, workOrderId) {
 
                 </div>
 
-                <div class="flex items-center gap-1.5 text-xs text-slate-500 mt-1 flex-wrap font-medium">
+                <div class="flex items-center gap-1.5 text-xs text-slate-500 mt-1.5 flex-wrap font-medium">
 
-                    <span class="text-sky-700 font-semibold">${typeLabel}</span>
+                    <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold text-[11px]">${typeLabel}</span>
 
                     ${item.location ? `<span class="text-slate-300">•</span><span class="text-slate-600">${escapeHtml(item.location)}</span>` : ''}
 
                     ${item.serial_no ? `<span class="text-slate-300">•</span><span class="text-slate-500 font-mono text-[11px]">${escapeHtml(item.serial_no)}</span>` : ''}
 
                 </div>
+
+                ${firstDefectPreview ? `
+                    <div class="mt-2 px-2.5 py-1.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-[11px] font-semibold flex items-center gap-1.5">
+                        <i class="fa-solid fa-triangle-exclamation text-rose-600 text-[10px] shrink-0"></i>
+                        <span class="truncate">${escapeHtml(firstDefectPreview)}</span>
+                    </div>
+                ` : ''}
 
             </div>
 
@@ -9972,13 +10010,13 @@ function renderElectrical2201Editor() {
     const linyeCount = (fd.tableRows?.topic_3_3 || []).filter(r => r && Object.values(r).some(v => String(v || '').trim())).length;
     const photoCount = (fd.photos || []).length;
 
-    // 5 Net, Mantıksal Sıralı Adım + Tümü
+    // 5 Net, Mantıksal Sıralı Adım + Tümü (Stitch 2-satır numaralı stepper)
     const steps = [
-        { label: '1. Genel & Cihaz', short: '1. Genel', id: 0, icon: 'fa-building-circle-check' },
-        { label: `2. Gözle Kontrol${visualDefectCount > 0 ? ` (${visualDefectCount}✕)` : ''}`, short: '2. Gözle', id: 2, icon: 'fa-eye', hasDefect: visualDefectCount > 0 },
-        { label: `3. Ölçüm & Test${linyeCount > 0 ? ` (${linyeCount})` : ''}`, short: '3. Ölçüm', id: 3, icon: 'fa-bolt-lightning' },
-        { label: `4. Fotoğraf (${photoCount})`, short: `4. Foto (${photoCount})`, id: 4, icon: 'fa-camera' },
-        { label: '5. Kusur & Sonuç', short: '5. Sonuç', id: 5, icon: 'fa-file-signature', isBad: fd.overallResult === 'UYGUN DEĞİL' }
+        { num: '01', label: '1. Genel & Cihaz', short: 'Genel', id: 0, icon: 'fa-building-circle-check' },
+        { num: '02', label: `2. Gözle Kontrol${visualDefectCount > 0 ? ` (${visualDefectCount}✕)` : ''}`, short: visualDefectCount > 0 ? `Gözle (${visualDefectCount})` : 'Gözle', id: 2, icon: 'fa-eye', hasDefect: visualDefectCount > 0 },
+        { num: '03', label: `3. Ölçüm & Test${linyeCount > 0 ? ` (${linyeCount})` : ''}`, short: linyeCount > 0 ? `Ölçüm (${linyeCount})` : 'Ölçüm', id: 3, icon: 'fa-bolt-lightning' },
+        { num: '04', label: `4. Fotoğraf (${photoCount})`, short: `Foto (${photoCount})`, id: 4, icon: 'fa-camera' },
+        { num: '05', label: '5. Kusur & Sonuç', short: 'Sonuç', id: 5, icon: 'fa-file-signature', isBad: fd.overallResult === 'UYGUN DEĞİL' }
     ];
 
 
@@ -9992,13 +10030,13 @@ function renderElectrical2201Editor() {
                     const badResultStyle = s.isBad && !isActive ? 'bg-rose-50 text-rose-800 border border-rose-200' : '';
                     return `
                         <button type="button" onclick="AppState.showAllAreas = false; AppState.activeAreaIndex = ${s.id}; paintInspectionEditorUI(); document.getElementById('pageContent')?.scrollTo({top: 0, behavior: 'smooth'});"
-                            class="min-h-[44px] py-1.5 px-1 rounded-xl text-[11px] font-bold text-center truncate transition flex flex-col items-center justify-center gap-1 ${
+                            class="min-h-[44px] py-1.5 px-1 rounded-xl text-center truncate transition flex flex-col items-center justify-center gap-0.5 ${
                                 isActive
                                     ? 'bg-slate-900 text-white shadow-xs'
-                                    : (defectStyle || badResultStyle || 'bg-slate-100 text-slate-700 hover:bg-slate-200/80')
+                                    : (defectStyle || badResultStyle || 'bg-slate-100/90 text-slate-700 hover:bg-slate-200/80 border border-slate-200/60')
                             }">
-                            <i class="fa-solid ${s.icon} text-xs ${isActive ? 'text-amber-400' : (s.hasDefect || s.isBad ? 'text-rose-600' : 'text-slate-500')}"></i>
-                            <span class="truncate w-full leading-none">${s.short}</span>
+                            <span class="font-mono text-[10px] font-bold leading-none tabular-nums ${isActive ? 'text-amber-400' : (s.hasDefect || s.isBad ? 'text-rose-600' : 'text-slate-400')}">${s.num}</span>
+                            <span class="text-[11px] font-bold truncate w-full leading-tight">${s.short}</span>
                         </button>
                     `;
                 }).join('')}
@@ -10045,30 +10083,30 @@ function renderElectrical2201Editor() {
 
     const evaluationHtml = showTab5 ? renderEvaluationAndFooterSection() : '';
 
-    // Alt Adım Geçiş Çubuğu (Kullanıcının tekrar en üste kaydırmasına gerek kalmaz)
+    // Sabit (Sticky) Alt Adım Geçiş Çubuğu (Stitch başparmak ergonomisi)
     let stepNavFooterHtml = '';
     if (activeIdx !== -1) {
         const curStepPos = steps.findIndex(s => s.id === activeIdx);
         const prevStep = curStepPos > 0 ? steps[curStepPos - 1] : null;
         const nextStep = (curStepPos >= 0 && curStepPos < steps.length - 1) ? steps[curStepPos + 1] : null;
         stepNavFooterHtml = `
-            <div class="p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs flex items-center justify-between gap-2">
+            <div class="sticky bottom-0 z-20 p-2 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200 shadow-md flex items-center justify-between gap-2">
                 ${prevStep ? `
                     <button type="button" onclick="AppState.showAllAreas = false; AppState.activeAreaIndex = ${prevStep.id}; paintInspectionEditorUI(); document.getElementById('pageContent')?.scrollTo({top: 0, behavior: 'smooth'});"
-                        class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition">
-                        <i class="fa-solid fa-arrow-left text-[10px]"></i>
-                        <span>${prevStep.short}</span>
+                        class="h-11 px-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition shrink-0">
+                        <i class="fa-solid fa-chevron-left text-[10px]"></i>
+                        <span>Önceki</span>
                     </button>
                 ` : `<div></div>`}
                 ${nextStep ? `
                     <button type="button" onclick="AppState.showAllAreas = false; AppState.activeAreaIndex = ${nextStep.id}; paintInspectionEditorUI(); document.getElementById('pageContent')?.scrollTo({top: 0, behavior: 'smooth'});"
-                        class="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 active:scale-95 text-amber-400 font-black text-xs flex items-center gap-1.5 shadow-2xs transition">
-                        <span>Sonraki: ${nextStep.short}</span>
-                        <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                        class="h-11 flex-1 px-4 rounded-xl bg-sky-600 hover:bg-sky-500 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition">
+                        <span>${nextStep.num}. ${nextStep.short}</span>
+                        <i class="fa-solid fa-chevron-right text-[10px]"></i>
                     </button>
                 ` : `
                     <button type="button" onclick="printOfficialReport()"
-                        class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black text-xs flex items-center gap-1.5 shadow-2xs transition">
+                        class="h-11 flex-1 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition">
                         <i class="fa-solid fa-file-pdf"></i>
                         <span>PDF Önizle &amp; İndir</span>
                     </button>
@@ -10329,7 +10367,33 @@ function renderElectrical2201Topic(area, topic, secNum) {
 
     const gridCls = colCount === 1 ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2';
 
-    const questionsHtml = topic.questions.map(q => renderElectrical2201QuestionInput(q, area.index, topic.index)).join('');
+    // 2.1 Ekipman Bilgileri'nde Proje & Tek Hat Şeması kısa Var/Yok kartlarını mobilde yan yana göster (Stitch Screen 2)
+    let questionsHtml = '';
+    if (area.index === 0 && topic.index === 0) {
+        const rendered = [];
+        for (let i = 0; i < topic.questions.length; i++) {
+            const curQ = topic.questions[i];
+            const nextQ = topic.questions[i + 1];
+            const isProjPair =
+                curQ && nextQ &&
+                ((curQ.guid === ELEC_21_GUIDS.PROJECT_EXISTS && nextQ.guid === ELEC_21_GUIDS.SINGLE_LINE_EXISTS) ||
+                 (curQ.guid === ELEC_21_GUIDS.SINGLE_LINE_EXISTS && nextQ.guid === ELEC_21_GUIDS.PROJECT_EXISTS));
+            if (isProjPair) {
+                rendered.push(`
+                    <div class="sm:col-span-2 grid grid-cols-2 gap-2">
+                        ${renderElectrical2201QuestionInput(curQ, area.index, topic.index)}
+                        ${renderElectrical2201QuestionInput(nextQ, area.index, topic.index)}
+                    </div>
+                `);
+                i++;
+            } else {
+                rendered.push(renderElectrical2201QuestionInput(curQ, area.index, topic.index));
+            }
+        }
+        questionsHtml = rendered.join('');
+    } else {
+        questionsHtml = topic.questions.map(q => renderElectrical2201QuestionInput(q, area.index, topic.index)).join('');
+    }
 
     const topicHeaderTitle = (area.index === 3 && topic.index === 3)
         ? '6.1. Linye Ölçüm ve Test Tablosu'
@@ -10652,27 +10716,34 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
             `;
         }
 
+        const unitTagHtml = opts.unit
+            ? `<span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-mono font-semibold text-slate-400 pointer-events-none select-none">${escapeHtml(opts.unit)}</span>`
+            : '';
+
         return `
-            <div class="p-2.5 rounded-lg border ${cardBorder} flex flex-col justify-between gap-1.5 transition-colors">
+            <div class="p-2.5 rounded-xl border ${cardBorder} flex flex-col justify-between gap-1.5 transition-colors">
                 <div class="flex items-center justify-between gap-1.5">
                     <label class="block text-[11px] font-bold text-slate-700 leading-snug">${cleanTitle}</label>
                     ${opts.badgeHtml || ''}
                 </div>
                 ${chipsBlockHtml}
-                <input type="text" data-qkey="${qKey}" value="${String(val || '').replace(/"/g, '&quot;')}"
-                    oninput="handleAnswerInput('${qKey}', this.value)"
-                    placeholder="${escapeHtml(opts.placeholder || 'Seçin veya yazın...')}"
-                    class="w-full border border-slate-300 bg-white rounded-lg px-2.5 py-1.5 text-xs font-medium focus:border-sky-500 focus:outline-none">
+                <div class="relative">
+                    <input type="text" data-qkey="${qKey}" value="${String(val || '').replace(/"/g, '&quot;')}"
+                        oninput="handleAnswerInput('${qKey}', this.value)"
+                        placeholder="${escapeHtml(opts.placeholder || 'Seçin veya yazın...')}"
+                        class="w-full h-9 border border-slate-300 bg-white rounded-lg px-2.5 ${opts.unit ? 'pr-16 font-mono tabular-nums' : ''} text-xs font-semibold text-slate-900 focus:border-sky-500 focus:outline-none">
+                    ${unitTagHtml}
+                </div>
             </div>
         `;
     };
 
     if (q.guid === ELEC_21_GUIDS.GRID_VOLTAGE) {
-        return renderSelectableTextCard(['230/400', '400', '230', '400/690'], { placeholder: 'Örn: 230/400' });
+        return renderSelectableTextCard(['230/400', '400', '230', '400/690'], { placeholder: 'Örn: 230/400', unit: 'V' });
     }
 
     if (q.guid === ELEC_21_GUIDS.SUPPLY_VOLTAGE_KV) {
-        return renderSelectableTextCard(['0,4/0,23', '0,4', '0,23', '15,8', '31,5', '34,5'], { placeholder: 'Örn: 0,4/0,23' });
+        return renderSelectableTextCard(['0,4/0,23', '0,4', '0,23', '15,8', '31,5', '34,5'], { placeholder: 'Örn: 0,4/0,23', unit: 'kV' });
     }
 
     if (q.guid === ELEC_21_GUIDS.MAIN_BREAKER_TYPE) {
@@ -10685,11 +10756,11 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
     }
 
     if (q.guid === ELEC_21_GUIDS.MAIN_BREAKER_IN) {
-        return renderSelectableTextCard(['32', '40', '63', '80', '100', '125', '160', '250', '400', '630'], { placeholder: 'Nominal akım (A)...' });
+        return renderSelectableTextCard(['32', '40', '63', '80', '100', '125', '160', '250', '400', '630'], { placeholder: 'Nominal akım...', unit: 'A' });
     }
 
     if (q.guid === ELEC_21_GUIDS.MAIN_RCD_IN) {
-        return renderSelectableTextCard(['Toroid', '40', '63', '100', '125', '-'], { placeholder: 'Örn: Toroid veya 63' });
+        return renderSelectableTextCard(['Toroid', '40', '63', '100', '125', '-'], { placeholder: 'Örn: Toroid veya 63', unit: 'A' });
     }
 
     if (q.guid === ELEC_21_GUIDS.MAIN_RCD_TRIP_MA) {
@@ -10697,7 +10768,7 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
         const woMem = WorkOrderRcdMemoryManager.get(woId);
         const mergedMa = [...new Set([...(woMem.historyCurrentMa || []), '30', '300', '500', '1000'])];
         const badgeHtml = `<span class="px-1.5 py-0.5 rounded bg-sky-50 border border-sky-200 text-sky-700 text-[9px] font-bold shrink-0" title="Bu iş emri için hafızada saklanır"><i class="fa-solid fa-bookmark mr-0.5"></i>İş Emri Hafızası</span>`;
-        return renderSelectableTextCard(mergedMa, { badgeHtml, placeholder: 'Açma akımı (mA)...' });
+        return renderSelectableTextCard(mergedMa, { badgeHtml, placeholder: 'Açma akımı...', unit: 'mA (Δn)' });
     }
 
     if (q.guid === ELEC_21_GUIDS.MAIN_RCD_TRIP_MS) {
@@ -10705,7 +10776,7 @@ function renderElectrical2201QuestionInput(q, areaIdx, topicIdx) {
         const woMem = WorkOrderRcdMemoryManager.get(woId);
         const mergedMs = [...new Set([...(woMem.historyTimeMs || []), '25', '40', '150', '300'])];
         const badgeHtml = `<span class="px-1.5 py-0.5 rounded bg-sky-50 border border-sky-200 text-sky-700 text-[9px] font-bold shrink-0" title="Bu iş emri için hafızada saklanır"><i class="fa-solid fa-bookmark mr-0.5"></i>İş Emri Hafızası</span>`;
-        return renderSelectableTextCard(mergedMs, { badgeHtml, placeholder: 'Açma zamanı (ms)...' });
+        return renderSelectableTextCard(mergedMs, { badgeHtml, placeholder: 'Açma zamanı...', unit: 'ms' });
     }
 
 
@@ -23968,6 +24039,90 @@ const AuthManager = {
 
     STORAGE_SESSION_KEY: 'enlab_current_user_id',
 
+    // Offline-uyumlu senkron SHA-256 (WebView file:// ortamında WebCrypto kısıtına takılmaz)
+    _sha256Hex(str) {
+        const bytes = typeof TextEncoder !== 'undefined'
+            ? Array.from(new TextEncoder().encode(String(str || '')))
+            : Array.from(unescape(encodeURIComponent(String(str || ''))), c => c.charCodeAt(0));
+        const K = [
+            0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+            0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+            0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+            0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+            0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+            0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+            0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+            0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
+        ];
+        let H = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+        const bitLen = bytes.length * 8;
+        bytes.push(0x80);
+        while ((bytes.length % 64) !== 56) bytes.push(0);
+        for (let i = 7; i >= 0; i--) bytes.push(Math.floor(bitLen / Math.pow(2, i * 8)) & 0xff);
+        const rotr = (n, x) => (x >>> n) | (x << (32 - n));
+        const W = new Uint32Array(64);
+        for (let off = 0; off < bytes.length; off += 64) {
+            for (let i = 0; i < 16; i++) {
+                W[i] = ((bytes[off + i*4] << 24) | (bytes[off + i*4 + 1] << 16) | (bytes[off + i*4 + 2] << 8) | bytes[off + i*4 + 3]) >>> 0;
+            }
+            for (let i = 16; i < 64; i++) {
+                const s0 = rotr(7, W[i-15]) ^ rotr(18, W[i-15]) ^ (W[i-15] >>> 3);
+                const s1 = rotr(17, W[i-2]) ^ rotr(19, W[i-2]) ^ (W[i-2] >>> 10);
+                W[i] = (W[i-16] + s0 + W[i-7] + s1) >>> 0;
+            }
+            let [a, b, c, d, e, f, g, h] = H;
+            for (let i = 0; i < 64; i++) {
+                const S1 = rotr(6, e) ^ rotr(11, e) ^ rotr(25, e);
+                const ch = (e & f) ^ ((~e) & g);
+                const t1 = (h + S1 + ch + K[i] + W[i]) >>> 0;
+                const S0 = rotr(2, a) ^ rotr(13, a) ^ rotr(22, a);
+                const maj = (a & b) ^ (a & c) ^ (b & c);
+                const t2 = (S0 + maj) >>> 0;
+                h = g; g = f; f = e; e = (d + t1) >>> 0;
+                d = c; c = b; b = a; a = (t1 + t2) >>> 0;
+            }
+            H = [
+                (H[0] + a) >>> 0, (H[1] + b) >>> 0, (H[2] + c) >>> 0, (H[3] + d) >>> 0,
+                (H[4] + e) >>> 0, (H[5] + f) >>> 0, (H[6] + g) >>> 0, (H[7] + h) >>> 0
+            ];
+        }
+        return H.map(x => x.toString(16).padStart(8, '0')).join('');
+    },
+
+    hashPassword(plain) {
+        const clean = String(plain || '').trim();
+        if (!clean) return '';
+        let salt = '';
+        if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+            const buf = new Uint8Array(8);
+            crypto.getRandomValues(buf);
+            salt = Array.from(buf, b => b.toString(16).padStart(2, '0')).join('');
+        } else {
+            salt = (Date.now().toString(16) + Math.random().toString(16).slice(2)).slice(0, 16);
+        }
+        return `sha256$${salt}$${this._sha256Hex(`${salt}:${clean}`)}`;
+    },
+
+    verifyPassword(user, enteredPlain) {
+        if (!user) return false;
+        const entered = String(enteredPlain || '').trim();
+        if (!entered) return false;
+        const storedHash = String(user.passwordHash || '').trim();
+        if (storedHash.startsWith('sha256$')) {
+            const parts = storedHash.split('$');
+            if (parts.length === 3) {
+                const expected = this._sha256Hex(`${parts[1]}:${entered}`);
+                if (expected.length !== parts[2].length) return false;
+                let diff = 0;
+                for (let i = 0; i < expected.length; i++) diff |= expected.charCodeAt(i) ^ parts[2].charCodeAt(i);
+                return diff === 0;
+            }
+        }
+        // Eski düz-metin hesaplar için geriye dönük uyumluluk
+        const legacyPlain = String(user.password || '').trim();
+        return Boolean(legacyPlain) && legacyPlain === entered;
+    },
+
 
 
     getUsers() {
@@ -24054,9 +24209,9 @@ const AuthManager = {
 
             username: uname || existing.username || '',
 
-            password: (data.password !== null && data.password !== undefined && data.password !== '')
-                ? String(data.password).trim()
-                : (existing.password || ''),
+            passwordHash: (data.password !== null && data.password !== undefined && String(data.password).trim() !== '')
+                ? this.hashPassword(String(data.password).trim())
+                : (existing.passwordHash || (existing.password ? this.hashPassword(existing.password) : '')),
 
             role: String(data.role || existing.role || 'inspector'),
 
@@ -24116,13 +24271,20 @@ const AuthManager = {
 
             u.username.trim().toLowerCase() === uTrim && 
 
-            String(u.password).trim() === pTrim
+            this.verifyPassword(u, pTrim)
 
         );
 
 
 
         if (user) {
+
+            // Eski düz-metin parolayı otomatik olarak tuzlu SHA-256 özetine yükselt
+            if (user.password && !user.passwordHash) {
+                user.passwordHash = this.hashPassword(pTrim);
+                delete user.password;
+                this.saveUsers(users);
+            }
 
             localStorage.setItem(this.STORAGE_SESSION_KEY, user.id);
 
@@ -24170,7 +24332,7 @@ const AuthManager = {
 
             username: String(data.username).trim(),
 
-            password: String(data.password).trim(),
+            passwordHash: this.hashPassword(String(data.password).trim()),
 
             fullName: String(data.fullName).trim(),
 
@@ -24210,7 +24372,16 @@ const AuthManager = {
 
         if (idx >= 0) {
 
-            Object.assign(users[idx], fields);
+            const safeFields = Object.assign({}, fields);
+            if (safeFields.password !== undefined) {
+                const newPass = String(safeFields.password || '').trim();
+                if (newPass) {
+                    safeFields.passwordHash = this.hashPassword(newPass);
+                }
+                delete safeFields.password;
+                delete users[idx].password;
+            }
+            Object.assign(users[idx], safeFields);
 
             this.saveUsers(users);
 
@@ -24887,7 +25058,7 @@ function openUserProfileModal() {
 
                 <label class="block font-bold text-slate-700 mb-0.5">Şifre Değiştir (İsteğe Bağlı)</label>
 
-                <input type="password" id="profPassword" value="${escapeHtml(user.password || '')}"
+                <input type="password" id="profPassword" value="" placeholder="Değiştirmek için yeni şifre girin (boş bırakılabilir)"
 
                     class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono bg-white">
 

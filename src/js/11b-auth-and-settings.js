@@ -17,6 +17,90 @@ const AuthManager = {
 
     STORAGE_SESSION_KEY: 'enlab_current_user_id',
 
+    // Offline-uyumlu senkron SHA-256 (WebView file:// ortamında WebCrypto kısıtına takılmaz)
+    _sha256Hex(str) {
+        const bytes = typeof TextEncoder !== 'undefined'
+            ? Array.from(new TextEncoder().encode(String(str || '')))
+            : Array.from(unescape(encodeURIComponent(String(str || ''))), c => c.charCodeAt(0));
+        const K = [
+            0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+            0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+            0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+            0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+            0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+            0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+            0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+            0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
+        ];
+        let H = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+        const bitLen = bytes.length * 8;
+        bytes.push(0x80);
+        while ((bytes.length % 64) !== 56) bytes.push(0);
+        for (let i = 7; i >= 0; i--) bytes.push(Math.floor(bitLen / Math.pow(2, i * 8)) & 0xff);
+        const rotr = (n, x) => (x >>> n) | (x << (32 - n));
+        const W = new Uint32Array(64);
+        for (let off = 0; off < bytes.length; off += 64) {
+            for (let i = 0; i < 16; i++) {
+                W[i] = ((bytes[off + i*4] << 24) | (bytes[off + i*4 + 1] << 16) | (bytes[off + i*4 + 2] << 8) | bytes[off + i*4 + 3]) >>> 0;
+            }
+            for (let i = 16; i < 64; i++) {
+                const s0 = rotr(7, W[i-15]) ^ rotr(18, W[i-15]) ^ (W[i-15] >>> 3);
+                const s1 = rotr(17, W[i-2]) ^ rotr(19, W[i-2]) ^ (W[i-2] >>> 10);
+                W[i] = (W[i-16] + s0 + W[i-7] + s1) >>> 0;
+            }
+            let [a, b, c, d, e, f, g, h] = H;
+            for (let i = 0; i < 64; i++) {
+                const S1 = rotr(6, e) ^ rotr(11, e) ^ rotr(25, e);
+                const ch = (e & f) ^ ((~e) & g);
+                const t1 = (h + S1 + ch + K[i] + W[i]) >>> 0;
+                const S0 = rotr(2, a) ^ rotr(13, a) ^ rotr(22, a);
+                const maj = (a & b) ^ (a & c) ^ (b & c);
+                const t2 = (S0 + maj) >>> 0;
+                h = g; g = f; f = e; e = (d + t1) >>> 0;
+                d = c; c = b; b = a; a = (t1 + t2) >>> 0;
+            }
+            H = [
+                (H[0] + a) >>> 0, (H[1] + b) >>> 0, (H[2] + c) >>> 0, (H[3] + d) >>> 0,
+                (H[4] + e) >>> 0, (H[5] + f) >>> 0, (H[6] + g) >>> 0, (H[7] + h) >>> 0
+            ];
+        }
+        return H.map(x => x.toString(16).padStart(8, '0')).join('');
+    },
+
+    hashPassword(plain) {
+        const clean = String(plain || '').trim();
+        if (!clean) return '';
+        let salt = '';
+        if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+            const buf = new Uint8Array(8);
+            crypto.getRandomValues(buf);
+            salt = Array.from(buf, b => b.toString(16).padStart(2, '0')).join('');
+        } else {
+            salt = (Date.now().toString(16) + Math.random().toString(16).slice(2)).slice(0, 16);
+        }
+        return `sha256$${salt}$${this._sha256Hex(`${salt}:${clean}`)}`;
+    },
+
+    verifyPassword(user, enteredPlain) {
+        if (!user) return false;
+        const entered = String(enteredPlain || '').trim();
+        if (!entered) return false;
+        const storedHash = String(user.passwordHash || '').trim();
+        if (storedHash.startsWith('sha256$')) {
+            const parts = storedHash.split('$');
+            if (parts.length === 3) {
+                const expected = this._sha256Hex(`${parts[1]}:${entered}`);
+                if (expected.length !== parts[2].length) return false;
+                let diff = 0;
+                for (let i = 0; i < expected.length; i++) diff |= expected.charCodeAt(i) ^ parts[2].charCodeAt(i);
+                return diff === 0;
+            }
+        }
+        // Eski düz-metin hesaplar için geriye dönük uyumluluk
+        const legacyPlain = String(user.password || '').trim();
+        return Boolean(legacyPlain) && legacyPlain === entered;
+    },
+
 
 
     getUsers() {
@@ -103,9 +187,9 @@ const AuthManager = {
 
             username: uname || existing.username || '',
 
-            password: (data.password !== null && data.password !== undefined && data.password !== '')
-                ? String(data.password).trim()
-                : (existing.password || ''),
+            passwordHash: (data.password !== null && data.password !== undefined && String(data.password).trim() !== '')
+                ? this.hashPassword(String(data.password).trim())
+                : (existing.passwordHash || (existing.password ? this.hashPassword(existing.password) : '')),
 
             role: String(data.role || existing.role || 'inspector'),
 
@@ -165,13 +249,20 @@ const AuthManager = {
 
             u.username.trim().toLowerCase() === uTrim && 
 
-            String(u.password).trim() === pTrim
+            this.verifyPassword(u, pTrim)
 
         );
 
 
 
         if (user) {
+
+            // Eski düz-metin parolayı otomatik olarak tuzlu SHA-256 özetine yükselt
+            if (user.password && !user.passwordHash) {
+                user.passwordHash = this.hashPassword(pTrim);
+                delete user.password;
+                this.saveUsers(users);
+            }
 
             localStorage.setItem(this.STORAGE_SESSION_KEY, user.id);
 
@@ -219,7 +310,7 @@ const AuthManager = {
 
             username: String(data.username).trim(),
 
-            password: String(data.password).trim(),
+            passwordHash: this.hashPassword(String(data.password).trim()),
 
             fullName: String(data.fullName).trim(),
 
@@ -259,7 +350,16 @@ const AuthManager = {
 
         if (idx >= 0) {
 
-            Object.assign(users[idx], fields);
+            const safeFields = Object.assign({}, fields);
+            if (safeFields.password !== undefined) {
+                const newPass = String(safeFields.password || '').trim();
+                if (newPass) {
+                    safeFields.passwordHash = this.hashPassword(newPass);
+                }
+                delete safeFields.password;
+                delete users[idx].password;
+            }
+            Object.assign(users[idx], safeFields);
 
             this.saveUsers(users);
 
@@ -936,7 +1036,7 @@ function openUserProfileModal() {
 
                 <label class="block font-bold text-slate-700 mb-0.5">Şifre Değiştir (İsteğe Bağlı)</label>
 
-                <input type="password" id="profPassword" value="${escapeHtml(user.password || '')}"
+                <input type="password" id="profPassword" value="" placeholder="Değiştirmek için yeni şifre girin (boş bırakılabilir)"
 
                     class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono bg-white">
 
