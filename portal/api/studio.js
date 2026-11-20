@@ -49,7 +49,8 @@ export default async function handler(req, res) {
   if (handlePreflight(req, res)) return;
 
   try {
-    const auth = await resolveAuthenticatedSaasUser(req, { requiredRole: 'manager' });
+    const urlObj = new URL(req.url, 'http://localhost');
+    const auth = await resolveAuthenticatedSaasUser(req, urlObj, 'manager');
     if (!auth) {
       return sendJson(res, 401, {
         ok: false,
@@ -60,7 +61,6 @@ export default async function handler(req, res) {
     const { user, tenant } = auth;
 
     if (req.method === 'GET') {
-      const urlObj = new URL(req.url, 'http://localhost');
       const includeArchived = urlObj.searchParams.get('archived') === '1';
       const filter = includeArchived
         ? `tenant_id=eq.${encodeURIComponent(tenant.id)}&order=template_key.asc,version_number.desc`
