@@ -67,7 +67,6 @@ def verify_universal_engine():
         'paginateASTToA4Pages',
         'sealReportSnapshot',
         'unsealReportSnapshot',
-        'openUniversalTemplateStudioModal',
         'evaluateRowLimitRules',
         'buildUniversalSignatureBlock'
     ]
@@ -75,25 +74,35 @@ def verify_universal_engine():
         assert sym in app_src, f"src/app.js içinde '{sym}' bulunamadı!"
     print(f"[OK] Tum {len(required_symbols)} temel Evrensel Motor API'si src/app.js icinde aktif.")
 
-    # 6. v2.0 Özgür Composable Block & Özel Rapor Şablonu Oluşturucu kontrolleri
-    v2_symbols = [
+    # 6. Mobil uygulamada yalnizca veri girisi ve PDF uretimi aktif, tasarim/baslik ekleme UI'si kaldirilmis olmali
+    v2_runtime_symbols = [
         'UniversalCustomTemplates',
-        'openCreateCustomTemplateModal',
-        'openAddCustomBlockModal',
         'renderCustomBlocksForPosition',
         'appendCustomBlocksToAST',
         'getEffectiveCustomBlocks',
         'evaluateColumnLimitRules',
         'sectionConfig'
     ]
-    for sym in v2_symbols:
-        assert sym in app_src, f"src/app.js içinde v2.0 özelliği '{sym}' bulunamadı!"
+    for sym in v2_runtime_symbols:
+        assert sym in app_src, f"src/app.js içinde runtime özelliği '{sym}' bulunamadı!"
+
+    removed_mobile_studio_symbols = [
+        'openUniversalTemplateStudioModal',
+        'openCreateCustomTemplateModal',
+        'openImportExportSchemaModal',
+        'openAddCustomBlockModal',
+        'studioManageCustomBlock',
+        'moveCustomBlockInEditor',
+        'deleteCustomBlockInEditor'
+    ]
+    for sym in removed_mobile_studio_symbols:
+        assert sym not in app_src, f"Mobil uygulamadan kaldırılması gereken stüdyo arayüzü '{sym}' hâlâ src/app.js içinde!"
 
     v2_block_types = ["'table'", "'field_grid'", "'matrix_row'", "'checklist'", "'info_box'"]
     for btype in v2_block_types:
         assert btype in reg_src and btype in pdf_src, f"Blok tipi {btype} kayıt defteri veya PDF motorunda eksik!"
 
-    print(f"[OK] Tum {len(v2_symbols)} adet v2.0 Ozel Rapor & Blok Olusturucu API'si ve 5 blok tipi aktif.")
+    print(f"[OK] Mobil uygulama yalnizca veri girisi/PDF uretimi yapiyor; {len(removed_mobile_studio_symbols)} tasarim/baslik duzenleme UI araci yalnizca Web'e birakildi.")
 
     print("=" * 65)
     print("TUM EVRENSEL FORM & PDF MOTORU v2.0 TESTLERI BASARIYLA GECTI!")

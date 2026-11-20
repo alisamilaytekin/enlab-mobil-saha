@@ -1297,11 +1297,11 @@ function getCleanTemplateTypeLabel(templateId, templateCode) {
     const code = String(templateCode || '');
 
     if (tid === 'U2201') {
-        return 'Elektrik İç Tesisatı (Evrensel Motor)';
+        return 'Elektrik İç Tesisatı';
     } else if (tid === 'U2202') {
-        return 'Alçak Gerilim Topraklama (Evrensel Motor)';
+        return 'Alçak Gerilim Topraklama';
     } else if (tid === 'U2205') {
-        return 'Jeneratör (Evrensel Motor)';
+        return 'Jeneratör';
     } else if (tid === '2202' || code.includes('317')) {
 
         return 'Alçak Gerilim Topraklama';

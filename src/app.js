@@ -5471,11 +5471,11 @@ function getCleanTemplateTypeLabel(templateId, templateCode) {
     const code = String(templateCode || '');
 
     if (tid === 'U2201') {
-        return 'Elektrik İç Tesisatı (Evrensel Motor)';
+        return 'Elektrik İç Tesisatı';
     } else if (tid === 'U2202') {
-        return 'Alçak Gerilim Topraklama (Evrensel Motor)';
+        return 'Alçak Gerilim Topraklama';
     } else if (tid === 'U2205') {
-        return 'Jeneratör (Evrensel Motor)';
+        return 'Jeneratör';
     } else if (tid === '2202' || code.includes('317')) {
 
         return 'Alçak Gerilim Topraklama';
@@ -6094,7 +6094,7 @@ function openAddInspectionModal(workOrderId) {
                 ${cleanName} (${t.code})
             </option>`;
         }).join('');
-        return `<optgroup label="Evrensel Motor · ${cat}">${itemsHtml}</optgroup>`;
+        return `<optgroup label="${cat}">${itemsHtml}</optgroup>`;
     }).join('');
 
     const optionsHtml = `
@@ -11655,9 +11655,6 @@ function renderSpecializedTemplateEditor() {
         return acc + ((val === 'Uygun Değil' || val === 'Kısmen Uygun') ? 1 : 0);
     }, 0);
 
-    const isSealed = Boolean(fd.universalSnapshot && fd.universalSnapshot.isSealed);
-    const hasOverlay = Boolean(schema.hasTenantOverlay);
-
     // 5 Adımlı Saha Sihirbazı (DESIGN.md 01-05 Stepper + Tümü)
     const steps = [
         { num: '01', label: 'Genel', id: 0 },
@@ -11669,51 +11666,7 @@ function renderSpecializedTemplateEditor() {
     ];
 
     const stepperHtml = `
-        <div class="card-craft-white p-2 space-y-2">
-            <!-- EVRENSEL MOTOR DURUM & ŞABLON STÜDYOSU ŞERİDİ -->
-            <div class="flex flex-wrap items-center justify-between gap-1.5 px-1 pb-1.5 border-b border-slate-100">
-                <div class="flex items-center gap-1.5 flex-wrap">
-                    <span class="px-2 py-0.5 rounded-md bg-slate-900 text-amber-400 font-mono font-bold text-[10px] tracking-tight">
-                        ${escapeHtml(schema.code || 'FR.100')} &middot; Şema v${schema.schemaVersion || 1}
-                    </span>
-                    ${hasOverlay ? `
-                        <span class="px-1.5 py-0.5 rounded-md bg-sky-50 text-sky-700 border border-sky-200 font-bold text-[10px]">
-                            Firma Yamalı
-                        </span>
-                    ` : ''}
-                    ${isSealed ? `
-                        <span class="px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-300 font-bold text-[10px] flex items-center gap-1" title="Bu raporun şablon ve antet sürümü mühürlenmiştir; gelecekteki değişikliklerden etkilenmez.">
-                            <i class="fa-solid fa-lock text-[9px]"></i>
-                            <span>Sürüm Mühürlü</span>
-                        </span>
-                    ` : ''}
-                </div>
-                <div class="flex items-center gap-1 flex-wrap justify-end">
-                    <button type="button" onclick="openAddCustomBlockModal('${activeTab === 1 ? 'after_checks' : (activeTab === 2 ? 'after_table' : (activeTab === 4 ? 'before_conclusion' : 'after_tech'))}')"
-                        class="h-7 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold flex items-center gap-1 transition active:scale-95 shadow-2xs"
-                        title="İstediğiniz alana, istediğiniz başlık altına özel tablo, bilgi kartı, soru listesi veya not kutusu ekleyin">
-                        <i class="fa-solid fa-plus-circle"></i>
-                        <span>Özel Başlık / Tablo Ekle</span>
-                    </button>
-                    <button type="button" onclick="toggleUniversalReportSnapshotSeal()"
-                        class="h-7 px-2 rounded-lg border text-[10px] font-bold flex items-center gap-1 transition active:scale-95 ${
-                            isSealed
-                                ? 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100'
-                                : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
-                        }"
-                        title="${isSealed ? 'Sürüm kilidini aç ve güncel şablona bağla' : 'Bu raporun şemasını ve antetini şu anki haliyle dondur/mühürle'}">
-                        <i class="fa-solid ${isSealed ? 'fa-lock-open' : 'fa-shield-halved'}"></i>
-                        <span>${isSealed ? 'Kilidi Aç' : 'Sürümü Mühürle'}</span>
-                    </button>
-                    <button type="button" onclick="openUniversalTemplateStudioModal('${escapeForJs(insp.template_id)}', '${escapeForJs(insp.equipment_name)}')"
-                        class="h-7 px-2.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-[10px] font-bold flex items-center gap-1 transition active:scale-95 shadow-2xs"
-                        title="Bu formu veya PDF tasarımını firmanıza özel özelleştirin">
-                        <i class="fa-solid fa-sliders"></i>
-                        <span>Stüdyo</span>
-                    </button>
-                </div>
-            </div>
-
+        <div class="card-craft-white p-2">
             <!-- 01-05 STEPPER TABS -->
             <div class="grid grid-cols-6 gap-1">
                 ${steps.map(s => {
@@ -11824,14 +11777,6 @@ function renderSpecializedTemplateEditor() {
     const showStdChecks = secCfg.showChecklist !== false && checksList.length > 0;
     const showStdTable = secCfg.showMainTable !== false && (cols.length > 0 || (schema.additionalTables || []).length > 0);
 
-    const renderSectionAddPromptBtn = (pos, label) => `
-        <button type="button" onclick="openAddCustomBlockModal('${pos}')"
-            class="w-full py-2 px-3 rounded-xl border border-dashed border-sky-300 bg-sky-50/60 hover:bg-sky-100/70 text-sky-800 font-bold text-[11px] flex items-center justify-center gap-1.5 transition active:scale-98">
-            <i class="fa-solid fa-plus-circle text-sky-600"></i>
-            <span>${label}</span>
-        </button>
-    `;
-
     const showStep1 = (activeTab === 0 || activeTab === -1);
     const step1Html = !showStep1 ? '' : `
         ${renderSharedCompanyInfoSection()}
@@ -11850,7 +11795,6 @@ function renderSpecializedTemplateEditor() {
             </div>
         ` : ''}
         ${renderCustomBlocksForPosition('after_tech', schema, fd)}
-        ${renderSectionAddPromptBtn('after_tech', 'Bu Alana Özel Başlık / Bilgi Kartı / Tablo Ekle')}
     `;
 
     // ------------------------------------------------------------------------
@@ -11946,7 +11890,6 @@ function renderSpecializedTemplateEditor() {
             </div>
         ` : ''}
         ${renderCustomBlocksForPosition('after_checks', schema, fd)}
-        ${renderSectionAddPromptBtn('after_checks', 'Kontrol Kriterleri Altına Özel Kontrol Listesi / Tablo / Bilgi Ekle')}
     `;
 
     // ------------------------------------------------------------------------
@@ -12119,7 +12062,6 @@ function renderSpecializedTemplateEditor() {
             ` : ''}
             ${showStdTable ? additionalTablesHtml : ''}
             ${renderCustomBlocksForPosition('after_table', schema, fd)}
-            ${renderSectionAddPromptBtn('after_table', 'Ölçüm Bölümüne Özel Tablo / Bilgi Kartı / Kutu Ekle')}
         </div>
     `;
 
@@ -12132,7 +12074,6 @@ function renderSpecializedTemplateEditor() {
     const showStep5 = (activeTab === 4 || activeTab === -1);
     const step5Html = !showStep5 ? '' : `
         ${renderCustomBlocksForPosition('before_conclusion', schema, fd)}
-        ${renderSectionAddPromptBtn('before_conclusion', 'Sonuç & İmza Öncesine Özel Başlık / Tablo / Not Kutusu Ekle')}
         ${renderEvaluationAndFooterSection()}
     `;
 
@@ -12436,20 +12377,8 @@ function cloneSpecializedRow() {
     duplicateSpecificSpecializedRow(fd.universalTableRows.length - 1);
 }
 
-function toggleUniversalReportSnapshotSeal() {
-    const insp = AppState.currentInspection;
-    const fd = AppState.currentFormData;
-    if (!fd || !window.UniversalSchemaRegistry) return;
-    if (fd.universalSnapshot && fd.universalSnapshot.isSealed) {
-        window.UniversalSchemaRegistry.unsealReportSnapshot(fd, false);
-    } else {
-        window.UniversalSchemaRegistry.sealReportSnapshot(fd, insp, false);
-    }
-    paintInspectionEditorUI();
-}
-
 // ============================================================================
-// BİRLEŞTİRİLEBİLİR ÖZEL BLOKLAR (COMPOSABLE BLOCKS) EDİTÖR & MODAL MOTORU
+// ŞABLON EK BLOKLARI (SADECE VERİ GİRİŞİ — ŞABLON TASARIMI WEB STÜDYOSUNA ÖZELDİR)
 // ============================================================================
 function renderCustomBlocksForPosition(position, schema, fd) {
     if (!window.UniversalSchemaRegistry || typeof window.UniversalSchemaRegistry.getEffectiveCustomBlocks !== 'function') return '';
@@ -12459,24 +12388,6 @@ function renderCustomBlocksForPosition(position, schema, fd) {
 
     return blocks.map(blk => {
         const store = window.UniversalSchemaRegistry.ensureCustomBlockData(fd, blk) || { fields: {}, rows: [], checks: {}, text: '' };
-        const scopeBadge = blk.scope === 'report'
-            ? `<span class="px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-200 border border-amber-400/40 text-[9px] font-bold">Bu Rapora Özel</span>`
-            : `<span class="px-1.5 py-0.5 rounded bg-sky-400/20 text-sky-200 border border-sky-400/40 text-[9px] font-bold">Şablon Geneli</span>`;
-
-        const headControls = `
-            <div class="flex items-center gap-1 shrink-0">
-                <button type="button" onclick="moveCustomBlockInEditor('move_up', '${escapeForJs(blk.id)}', '${escapeForJs(blk.scope)}')" class="w-7 h-7 rounded-lg bg-slate-700 hover:bg-slate-600 text-white flex items-center justify-center" title="Yukarı Taşı">
-                    <i class="fa-solid fa-arrow-up text-[10px]"></i>
-                </button>
-                <button type="button" onclick="moveCustomBlockInEditor('move_down', '${escapeForJs(blk.id)}', '${escapeForJs(blk.scope)}')" class="w-7 h-7 rounded-lg bg-slate-700 hover:bg-slate-600 text-white flex items-center justify-center" title="Aşağı Taşı">
-                    <i class="fa-solid fa-arrow-down text-[10px]"></i>
-                </button>
-                <button type="button" onclick="openAddCustomBlockModal('${escapeForJs(blk.position)}', '${escapeForJs(blk.id)}')" class="px-2 h-7 rounded-lg bg-sky-500 hover:bg-sky-400 text-white font-bold text-[10px]" title="Bloku Düzenle">Düzenle</button>
-                <button type="button" onclick="deleteCustomBlockInEditor('${escapeForJs(blk.id)}', '${escapeForJs(blk.scope)}')" class="w-7 h-7 rounded-lg bg-rose-600/80 hover:bg-rose-600 text-white flex items-center justify-center" title="Sil">
-                    <i class="fa-solid fa-trash-can text-[10px]"></i>
-                </button>
-            </div>
-        `;
 
         let bodyHtml = '';
 
@@ -12635,257 +12546,15 @@ function renderCustomBlocksForPosition(position, schema, fd) {
         }
 
         return `
-            <div class="bg-white rounded-xl border-2 border-sky-200 overflow-hidden shadow-2xs">
-                <div class="px-3.5 py-2 bg-slate-900 text-white flex flex-wrap items-center justify-between gap-2">
-                    <div class="min-w-0 flex items-center gap-2 flex-wrap">
-                        <span class="font-bold text-xs text-amber-300 truncate">${escapeHtml(blk.title || 'Özel Bölüm')}</span>
-                        ${scopeBadge}
-                    </div>
-                    ${headControls}
+            <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xs">
+                <div class="px-3.5 py-2.5 bg-slate-800 text-white flex items-center justify-between gap-2">
+                    <span class="font-bold text-xs truncate">${escapeHtml(blk.title || 'Ek Bölüm')}</span>
                 </div>
                 ${bodyHtml}
             </div>
         `;
     }).join('');
 }
-
-window.openAddCustomBlockModal = function (defaultPosition = 'after_table', editBlockId = '', overrideTemplateId = '') {
-    const insp = (typeof AppState !== 'undefined' && AppState.currentInspection) || {};
-    const fd = (typeof AppState !== 'undefined' && AppState.currentFormData) || null;
-    const tid = String(overrideTemplateId || insp.template_id || '2074');
-    const schema = window.UniversalSchemaRegistry
-        ? window.UniversalSchemaRegistry.resolveSchema(tid, insp.equipment_name || '', fd)
-        : null;
-
-    let editBlk = null;
-    if (editBlockId && schema && window.UniversalSchemaRegistry) {
-        const all = window.UniversalSchemaRegistry.getEffectiveCustomBlocks(schema, fd);
-        editBlk = all.find(b => b.id === editBlockId) || null;
-    }
-
-    const helpers = window.UniversalBlockComposerHelpers || {};
-    const positions = helpers.BLOCK_POSITIONS || [
-        { id: 'after_company', label: '1. Firma Bilgileri Altına' },
-        { id: 'after_tech', label: '2. Teknik Bilgiler Altına' },
-        { id: 'after_devices', label: '3. Ölçüm Aletleri Altına' },
-        { id: 'after_checks', label: '4. Gözle Kontrol Altına' },
-        { id: 'after_table', label: '5. Ölçüm Tabloları Altına' },
-        { id: 'before_conclusion', label: '6. Sonuç ve İmza Öncesine' }
-    ];
-    const types = helpers.BLOCK_TYPES || [
-        { id: 'table', label: 'Çok Sütunlu Tablo' },
-        { id: 'field_grid', label: 'Bilgi Kartı (2-3 Sütunlu)' },
-        { id: 'matrix_row', label: 'Yatay Özet / Matris Tablo' },
-        { id: 'checklist', label: 'Özel Kontrol / Kriter Listesi' },
-        { id: 'info_box', label: 'Bilgi / Formül / Referans Kutusu' }
-    ];
-
-    const curPos = editBlk ? editBlk.position : (defaultPosition || 'after_table');
-    const curScope = editBlk ? editBlk.scope : (fd ? 'template' : 'template');
-    const curHeadingMode = editBlk ? editBlk.headingMode : 'main_section';
-    const curType = editBlk ? editBlk.blockType : 'table';
-    const curTitle = editBlk ? editBlk.title : '';
-    const curSubTitle = editBlk ? editBlk.subTitle : '';
-    const curSpec = editBlk
-        ? (editBlk.rawSpecText || (
-            editBlk.blockType === 'field_grid'
-                ? (editBlk.fields || []).map(f => f.options ? `${f.label} [${f.options.join('|')}]` : (f.unit ? `${f.label} [${f.unit}]` : f.label)).join(', ')
-                : (editBlk.blockType === 'checklist'
-                    ? (editBlk.items || []).map(i => i.text).join('\n')
-                    : (editBlk.blockType === 'info_box'
-                        ? editBlk.content
-                        : (editBlk.columns || []).map(c => c.options ? `${c.label} [${c.options.join('|')}]` : c.label).join(', ')))
-        ))
-        : '';
-
-    openModal(
-        `<i class="fa-solid fa-cubes mr-2 text-emerald-400"></i>${editBlk ? 'Özel Bloku Düzenle' : 'İstediğin Alana Özel Başlık / Tablo / Bilgi Ekle'}`,
-        `<div class="space-y-3 text-xs">
-            <input type="hidden" id="cbEditId" value="${escapeHtml(editBlk ? editBlk.id : '')}">
-            <input type="hidden" id="cbTemplateId" value="${escapeHtml(tid)}">
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <div>
-                    <label class="block font-bold text-slate-800 mb-0.5">Kapsam (Nerede Geçerli Olsun?)</label>
-                    <select id="cbScope" class="w-full border border-slate-300 rounded-lg px-2 py-1.5 bg-white font-semibold">
-                        <option value="template" ${curScope === 'template' ? 'selected' : ''}>Bu Şablonun Tüm Raporlarında</option>
-                        ${fd ? `<option value="report" ${curScope === 'report' ? 'selected' : ''}>Sadece Bu Rapora Özel</option>` : ''}
-                    </select>
-                </div>
-                <div>
-                    <label class="block font-bold text-slate-800 mb-0.5">Konum (Hangi Alanın Altına?)</label>
-                    <select id="cbPosition" class="w-full border border-slate-300 rounded-lg px-2 py-1.5 bg-white font-semibold">
-                        ${positions.map(p => `<option value="${p.id}" ${curPos === p.id ? 'selected' : ''}>${escapeHtml(p.label)}</option>`).join('')}
-                    </select>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <div>
-                    <label class="block font-bold text-slate-800 mb-0.5">Başlık Görünümü</label>
-                    <select id="cbHeadingMode" class="w-full border border-slate-300 rounded-lg px-2 py-1.5 bg-white font-semibold">
-                        <option value="main_section" ${curHeadingMode === 'main_section' ? 'selected' : ''}>Yeni Numaralı Ana Başlık (Örn: 6. ÖZEL TESTLER)</option>
-                        <option value="sub_section" ${curHeadingMode === 'sub_section' ? 'selected' : ''}>Alt Başlık Şeridi (Örn: 2.2. EK BİLGİLER)</option>
-                        <option value="inline" ${curHeadingMode === 'inline' ? 'selected' : ''}>Başlıksız Doğrudan Tablo / Kutu</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block font-bold text-slate-800 mb-0.5">Başlık Adı *</label>
-                    <input type="text" id="cbTitle" value="${escapeHtml(curTitle)}" placeholder="Örn: İLAVE ÖLÇÜM VE GÜVENLİK TESTLERİ"
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white font-bold">
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <div>
-                    <label class="block font-bold text-slate-800 mb-0.5">Blok Tarzı (Ne Tür Bilgi?)</label>
-                    <select id="cbBlockType" onchange="updateCustomBlockComposerHints()" class="w-full border border-slate-300 rounded-lg px-2 py-1.5 bg-white font-bold text-sky-900">
-                        ${types.map(t => `<option value="${t.id}" ${curType === t.id ? 'selected' : ''}>${escapeHtml(t.label)}</option>`).join('')}
-                    </select>
-                </div>
-                <div>
-                    <label class="block font-bold text-slate-700 mb-0.5">Alt Başlık / Açıklama (İsteğe Bağlı)</label>
-                    <input type="text" id="cbSubTitle" value="${escapeHtml(curSubTitle)}" placeholder="Örn: 6.1. DETAY TEST VERİLERİ"
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
-                </div>
-            </div>
-
-            <!-- Dinamik Tarz Seçenekleri -->
-            <div class="grid grid-cols-3 gap-2 p-2 rounded-lg bg-slate-50 border border-slate-200">
-                <div>
-                    <label class="block font-semibold text-slate-700 mb-0.5">Kart Sütun Sayısı</label>
-                    <select id="cbGridCols" class="w-full border border-slate-300 rounded px-1.5 py-1 bg-white">
-                        <option value="2" ${(!editBlk || editBlk.gridColumns === 2) ? 'selected' : ''}>2 Sütun</option>
-                        <option value="3" ${(editBlk && editBlk.gridColumns === 3) ? 'selected' : ''}>3 Sütun</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block font-semibold text-slate-700 mb-0.5">Kontrol PDF Düzeni</label>
-                    <select id="cbPdfCols" class="w-full border border-slate-300 rounded px-1.5 py-1 bg-white">
-                        <option value="1" ${(!editBlk || editBlk.pdfColumns === 1) ? 'selected' : ''}>1 Sütun</option>
-                        <option value="2" ${(editBlk && editBlk.pdfColumns === 2) ? 'selected' : ''}>2 Sütun Yan Yana</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block font-semibold text-slate-700 mb-0.5">Bilgi Kutusu Tarzı</label>
-                    <select id="cbBoxStyle" class="w-full border border-slate-300 rounded px-1.5 py-1 bg-white">
-                        <option value="rich_text" ${(!editBlk || editBlk.boxStyle === 'rich_text') ? 'selected' : ''}>Düz Metin / Not</option>
-                        <option value="two_col_terms" ${(editBlk && editBlk.boxStyle === 'two_col_terms') ? 'selected' : ''}>2 Sütun Terim:Açıklama</option>
-                    </select>
-                </div>
-            </div>
-
-            <div>
-                <label id="cbSpecLabel" class="block font-bold text-slate-800 mb-0.5">İçerik / Sütun / Alan Tarifi *</label>
-                <div id="cbSpecHint" class="text-[10px] text-slate-600 mb-1 leading-snug bg-sky-50 border border-sky-200 rounded-lg p-2"></div>
-                <textarea id="cbSpecText" rows="5" class="w-full border border-slate-300 rounded-xl p-2.5 bg-white font-mono text-xs">${escapeHtml(curSpec)}</textarea>
-            </div>
-        </div>`,
-        `<button type="button" onclick="closeModal()" class="px-3 py-2 rounded-lg bg-slate-200 text-slate-800 font-bold text-xs">İptal</button>
-         <button type="button" onclick="saveCustomBlockModalSubmit()" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs active:scale-95">
-            <i class="fa-solid fa-check mr-1"></i>${editBlk ? 'Bloku Güncelle' : 'Bloku Ekle'}
-         </button>`
-    );
-
-    setTimeout(() => updateCustomBlockComposerHints(), 30);
-};
-
-window.updateCustomBlockComposerHints = function () {
-    const type = document.getElementById('cbBlockType')?.value || 'table';
-    const hintEl = document.getElementById('cbSpecHint');
-    const ta = document.getElementById('cbSpecText');
-    if (!hintEl) return;
-
-    const hints = {
-        table: '<strong>Sütunları virgülle veya alt alta yazın:</strong> Sınır kontrolü için <code>[&lt;=10]</code> veya <code>[&gt;=1]</code>, seçim kutusu için <code>[Uygun|Uygun Değil]</code> yazabilirsiniz.<br><em>Örnek:</em> <code>No, Ölçüm Noktası, Direnç (Ω) [&lt;=10], Sınır, Sonuç [Uygun|Uygun Değil]</code>',
-        field_grid: '<strong>Alanları virgülle veya alt alta yazın:</strong> Birim için <code>[mm]</code>, tek dokunuşlu butonlar için <code>[Var|Yok]</code> yazabilirsiniz.<br><em>Örnek:</em> <code>Kablo Kesiti [mm²], Koruma Tipi [IP54|IP65|IP67], Topraklama Bağlantısı [Var|Yok]</code>',
-        matrix_row: '<strong>Yatay şerit tablo sütunlarını yazın:</strong> Üst satırda başlıklar, alt satırda ölçümler yan yana görünür.<br><em>Örnek:</em> <code>L1-N (V), L2-N (V), L3-N (V), Frekans (Hz), Ortam (°C)</code>',
-        checklist: '<strong>Her satıra 1 kontrol sorusu yazın:</strong> İsterseniz <code>::</code> koyarak özel kusur cümlesi ekleyebilirsiniz.<br><em>Örnek:</em> <code>Acil durdurma butonu çalışıyor mu? :: Acil durdurma butonu işlevsizdir.</code>',
-        info_box: '<strong>Metni yazın:</strong> Eğer <em>2 Sütun Terim:Açıklama</em> seçerseniz <code>Zx: Ölçülen çevrim empedansı</code> şeklinde her satıra 1 terim yazın.'
-    };
-    hintEl.innerHTML = hints[type] || '';
-    if (ta && !ta.value.trim()) {
-        if (type === 'table') ta.placeholder = 'No, Ölçüm Noktası, Ölçülen Değer [<=10], Sınır Değer, Sonuç [Uygun|Uygun Değil]';
-        else if (type === 'field_grid') ta.placeholder = 'Cihaz Tipi, Anma Akımı [A], Koruma Durumu [Uygun|Uygunsuz]';
-        else if (type === 'matrix_row') ta.placeholder = 'Parametre 1, Parametre 2, Parametre 3, Sonuç [Uygun|Uygun Değil]';
-        else if (type === 'checklist') ta.placeholder = 'Kontrol kriteri 1?\nKontrol kriteri 2? :: Özel uygunsuzluk açıklaması.';
-        else ta.placeholder = 'Zx: Ölçülen çevrim empedansı\nRA: Sınır topraklama direnci';
-    }
-};
-
-window.saveCustomBlockModalSubmit = function () {
-    const editId = (document.getElementById('cbEditId')?.value || '').trim();
-    const tid = (document.getElementById('cbTemplateId')?.value || '').trim();
-    const scope = document.getElementById('cbScope')?.value || 'template';
-    const position = document.getElementById('cbPosition')?.value || 'after_table';
-    const headingMode = document.getElementById('cbHeadingMode')?.value || 'main_section';
-    const title = (document.getElementById('cbTitle')?.value || '').trim();
-    const subTitle = (document.getElementById('cbSubTitle')?.value || '').trim();
-    const blockType = document.getElementById('cbBlockType')?.value || 'table';
-    const gridColumns = parseInt(document.getElementById('cbGridCols')?.value || '2', 10) || 2;
-    const pdfColumns = parseInt(document.getElementById('cbPdfCols')?.value || '1', 10) || 1;
-    const boxStyle = document.getElementById('cbBoxStyle')?.value || 'rich_text';
-    const rawSpecText = (document.getElementById('cbSpecText')?.value || '').trim();
-
-    if (!title && headingMode !== 'inline') {
-        showToast('Lütfen başlık adını giriniz!', 'warning');
-        return;
-    }
-    if (!rawSpecText) {
-        showToast('Lütfen sütun, alan veya metin içeriğini giriniz!', 'warning');
-        return;
-    }
-
-    const blockId = editId || `cblk_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`;
-    const helpers = window.UniversalBlockComposerHelpers || {};
-    const blkObj = {
-        id: blockId,
-        scope,
-        position,
-        headingMode,
-        title,
-        subTitle,
-        blockType,
-        gridColumns,
-        pdfColumns,
-        boxStyle,
-        rawSpecText,
-        fields: [],
-        columns: [],
-        items: [],
-        content: ''
-    };
-
-    if (blockType === 'field_grid' && helpers.parseFieldSpecLines) {
-        blkObj.fields = helpers.parseFieldSpecLines(rawSpecText, `${blockId}_f`);
-    } else if ((blockType === 'table' || blockType === 'matrix_row') && helpers.parseColumnSpecLines) {
-        blkObj.columns = helpers.parseColumnSpecLines(rawSpecText, `${blockId}_c`);
-    } else if (blockType === 'checklist' && helpers.parseChecklistSpecLines) {
-        blkObj.items = helpers.parseChecklistSpecLines(rawSpecText, blockId);
-    } else if (blockType === 'info_box') {
-        blkObj.content = rawSpecText;
-    }
-
-    const fd = (typeof AppState !== 'undefined' && AppState.currentFormData) || null;
-    if (window.UniversalSchemaRegistry) {
-        window.UniversalSchemaRegistry.manageCustomBlock(editId ? 'update' : 'add', {
-            templateId: tid,
-            formData: fd,
-            scope,
-            block: blkObj
-        });
-        if (fd && blockType === 'info_box' && fd.universalCustomBlocksData?.[blockId]) {
-            fd.universalCustomBlocksData[blockId].text = rawSpecText;
-        }
-    }
-
-    triggerAutoSave();
-    closeModal();
-    if (typeof paintInspectionEditorUI === 'function' && AppState?.currentInspection) {
-        paintInspectionEditorUI();
-    }
-    showToast(editId ? 'Özel blok güncellendi!' : `"${title || 'Özel Blok'}" rapora eklendi!`);
-};
 
 function setCustomBlockField(blockId, fieldKey, value, shouldRepaint = false) {
     const fd = AppState.currentFormData;
@@ -13000,35 +12669,6 @@ function setCustomBlockInfoText(blockId, text) {
     triggerAutoSave();
 }
 
-function moveCustomBlockInEditor(direction, blockId, scope) {
-    const insp = AppState.currentInspection;
-    const fd = AppState.currentFormData;
-    if (!insp || !window.UniversalSchemaRegistry) return;
-    window.UniversalSchemaRegistry.manageCustomBlock(direction, {
-        templateId: insp.template_id,
-        formData: fd,
-        scope,
-        blockId
-    });
-    if (scope === 'report') triggerAutoSave();
-    paintInspectionEditorUI();
-}
-
-function deleteCustomBlockInEditor(blockId, scope) {
-    const insp = AppState.currentInspection;
-    const fd = AppState.currentFormData;
-    if (!insp || !window.UniversalSchemaRegistry) return;
-    window.UniversalSchemaRegistry.manageCustomBlock('delete', {
-        templateId: insp.template_id,
-        formData: fd,
-        scope,
-        blockId
-    });
-    if (scope === 'report') triggerAutoSave();
-    paintInspectionEditorUI();
-    showToast('Özel blok kaldırıldı.');
-}
-
 window.setUniversalFieldValue = setUniversalFieldValue;
 window.handleUniversalCheckChange = handleUniversalCheckChange;
 window.markAllUniversalChecksSuitable = markAllUniversalChecksSuitable;
@@ -13038,7 +12678,6 @@ window.addUniversalPresetRow = addUniversalPresetRow;
 window.setUniversalSubTableCell = setUniversalSubTableCell;
 window.addUniversalSubTableRow = addUniversalSubTableRow;
 window.removeUniversalSubTableRow = removeUniversalSubTableRow;
-window.toggleUniversalReportSnapshotSeal = toggleUniversalReportSnapshotSeal;
 window.setCustomBlockField = setCustomBlockField;
 window.setCustomBlockTableCell = setCustomBlockTableCell;
 window.addCustomBlockTableRow = addCustomBlockTableRow;
@@ -13047,8 +12686,6 @@ window.removeCustomBlockTableRow = removeCustomBlockTableRow;
 window.setCustomBlockCheck = setCustomBlockCheck;
 window.markAllCustomBlockChecksSuitable = markAllCustomBlockChecksSuitable;
 window.setCustomBlockInfoText = setCustomBlockInfoText;
-window.moveCustomBlockInEditor = moveCustomBlockInEditor;
-window.deleteCustomBlockInEditor = deleteCustomBlockInEditor;
 
 
 
@@ -16335,503 +15972,7 @@ let currentPickerSelectedIds = new Set();
         return UniversalSchemaRegistry.resolveSchema(templateId, equipmentName, fd);
     };
 
-    // ========================================================================
-    // 4. EVRENSEL ŞABLON & BLOK BESTECİSİ STÜDYOSU (UI MODALLARI)
-    // ========================================================================
-    window.openUniversalTemplateStudioModal = function (templateId, equipmentName = '') {
-        const insp = (typeof AppState !== 'undefined' && AppState.currentInspection) || {};
-        const fd = (typeof AppState !== 'undefined' && AppState.currentFormData) || null;
-        const tid = String(templateId || insp.template_id || '2074');
-        const eqName = equipmentName || insp.equipment_name || '';
-        const schema = UniversalSchemaRegistry.resolveSchema(tid, eqName, fd);
-        const ov = UniversalTenantOverlay.getTemplateOverlay(tid) || {
-            customTitle: '',
-            customDocNo: '',
-            addedFields: [],
-            addedChecks: [],
-            sectionConfig: {},
-            customBlocks: []
-        };
-        const tokens = UniversalTenantOverlay.getDesignTokens(fd);
-        const secCfg = Object.assign({
-            showTechFields: true,
-            showDevices: schema.layoutHints?.showDevices !== false,
-            showChecklist: true,
-            showMainTable: true
-        }, schema.sectionConfig || {});
-
-        const customFieldsText = (ov.addedFields || []).map(f => f.unit ? `${f.label} [${f.unit}]` : f.label).join('\n');
-        const customChecksText = (ov.addedChecks || []).map(c => c.text).join('\n');
-        const allBlocks = UniversalSchemaRegistry.getEffectiveCustomBlocks(schema, fd);
-        const posLabelMap = {};
-        BLOCK_POSITIONS.forEach(p => { posLabelMap[p.id] = p.label; });
-        const typeLabelMap = {
-            table: 'Çok Sütunlu Tablo',
-            field_grid: 'Bilgi Kartı',
-            matrix_row: 'Yatay Matris',
-            checklist: 'Kontrol Listesi',
-            info_box: 'Bilgi / Terim Kutusu'
-        };
-
-        const blocksListHtml = allBlocks.length === 0
-            ? `<div class="p-3 text-center text-[11px] text-slate-500 border border-dashed border-slate-300 rounded-xl bg-slate-50">Henüz özel blok eklenmedi. İstediğiniz başlık altına özel tablo, bilgi kartı veya kontrol listesi ekleyebilirsiniz.</div>`
-            : allBlocks.map(b => `
-                <div class="p-2.5 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-2">
-                    <div class="min-w-0 flex-1">
-                        <div class="flex items-center gap-1.5 flex-wrap">
-                            <span class="px-1.5 py-0.5 rounded bg-slate-900 text-amber-300 text-[9px] font-bold">${escapeHtml(typeLabelMap[b.blockType] || b.blockType)}</span>
-                            <span class="px-1.5 py-0.5 rounded ${b.scope === 'report' ? 'bg-amber-100 text-amber-900' : 'bg-sky-100 text-sky-900'} text-[9px] font-bold">
-                                ${b.scope === 'report' ? 'Bu Rapora Özel' : 'Şablon Geneli'}
-                            </span>
-                            <span class="text-[10px] font-semibold text-slate-500">${escapeHtml(posLabelMap[b.position] || b.position)}</span>
-                        </div>
-                        <div class="font-bold text-slate-900 text-xs truncate mt-0.5">${escapeHtml(b.title || '(Başlıksız Blok)')}</div>
-                    </div>
-                    <div class="flex items-center gap-1 shrink-0">
-                        <button type="button" onclick="studioManageCustomBlock('move_up', '${escapeForJs(b.id)}', '${escapeForJs(b.scope)}', '${escapeForJs(tid)}')" class="w-7 h-7 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center justify-center" title="Yukarı Taşı">
-                            <i class="fa-solid fa-arrow-up text-[10px]"></i>
-                        </button>
-                        <button type="button" onclick="studioManageCustomBlock('move_down', '${escapeForJs(b.id)}', '${escapeForJs(b.scope)}', '${escapeForJs(tid)}')" class="w-7 h-7 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center justify-center" title="Aşağı Taşı">
-                            <i class="fa-solid fa-arrow-down text-[10px]"></i>
-                        </button>
-                        <button type="button" onclick="if(typeof openAddCustomBlockModal==='function') openAddCustomBlockModal('${escapeForJs(b.position)}', '${escapeForJs(b.id)}', '${escapeForJs(tid)}')" class="px-2 h-7 rounded-lg bg-sky-100 text-sky-800 font-bold text-[10px]">Düzenle</button>
-                        <button type="button" onclick="studioManageCustomBlock('delete', '${escapeForJs(b.id)}', '${escapeForJs(b.scope)}', '${escapeForJs(tid)}')" class="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 border border-rose-200 flex items-center justify-center" title="Sil">
-                            <i class="fa-solid fa-trash-can text-[10px]"></i>
-                        </button>
-                    </div>
-                </div>
-            `).join('');
-
-        openModal(
-            `<i class="fa-solid fa-sliders mr-2 text-sky-400"></i>Evrensel Form, Blok Bestecisi &amp; PDF Stüdyosu`,
-            `<div class="space-y-3.5 text-xs">
-                <!-- HIZLI ŞABLON OLUŞTURMA & AKTARIM ŞERİDİ -->
-                <div class="p-2.5 rounded-xl bg-slate-900 text-white flex flex-wrap items-center justify-between gap-2">
-                    <div class="min-w-0">
-                        <div class="font-bold text-xs text-amber-300">${escapeHtml(schema.code)} &middot; ${escapeHtml(schema.title)}</div>
-                        <div class="text-[10px] text-slate-300">${schema.isCustom ? 'Özel Kullanıcı Şablonu' : 'Standart Şablon'} &middot; v${schema.schemaVersion}</div>
-                    </div>
-                    <div class="flex flex-wrap items-center gap-1.5">
-                        <button type="button" onclick="openCreateCustomTemplateModal('')" class="px-2.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-[10px] flex items-center gap-1 active:scale-95">
-                            <i class="fa-solid fa-file-circle-plus"></i>
-                            <span>Sıfırdan Şablon Oluştur</span>
-                        </button>
-                        <button type="button" onclick="openCreateCustomTemplateModal('${escapeForJs(tid)}')" class="px-2.5 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-white font-bold text-[10px] flex items-center gap-1 active:scale-95">
-                            <i class="fa-solid fa-clone"></i>
-                            <span>Klonla</span>
-                        </button>
-                        <button type="button" onclick="openImportExportSchemaModal('${escapeForJs(tid)}')" class="px-2.5 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-bold text-[10px] flex items-center gap-1 active:scale-95">
-                            <i class="fa-solid fa-code"></i>
-                            <span>JSON Aktar</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- 1. ÖZEL BLOK BESTECİSİ (İSTEDİĞİN ALANA İSTEDİĞİN TABLO/BİLGİ) -->
-                <div class="p-3 rounded-xl bg-white border border-sky-200 space-y-2.5">
-                    <div class="flex items-center justify-between gap-2">
-                        <div class="font-extrabold text-slate-900 flex items-center gap-1.5">
-                            <i class="fa-solid fa-cubes text-sky-600"></i>
-                            <span>1. Özel Başlık, Tablo &amp; Bilgi Blokları (${allBlocks.length})</span>
-                        </div>
-                        <button type="button" onclick="if(typeof openAddCustomBlockModal==='function') openAddCustomBlockModal('after_table', '', '${escapeForJs(tid)}')"
-                            class="px-2.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-bold text-[11px] flex items-center gap-1 shadow-2xs active:scale-95">
-                            <i class="fa-solid fa-plus"></i>
-                            <span>Özel Blok Ekle</span>
-                        </button>
-                    </div>
-                    <div class="space-y-1.5">${blocksListHtml}</div>
-                </div>
-
-                <!-- 2. GENEL FİRMA PDF TASARIM TOKENLARI -->
-                <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
-                    <div class="font-extrabold text-slate-800 flex items-center gap-1.5">
-                        <i class="fa-solid fa-file-pdf text-amber-500"></i>
-                        <span>2. Firma Genel A4 PDF Görünüm &amp; Düzen Ayarları</span>
-                    </div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <label class="block font-bold text-slate-700 mb-0.5">Antet (Üst Başlık) Düzeni</label>
-                            <select id="ustHeaderVariant" class="w-full border border-slate-300 rounded-lg px-2 py-1.5 bg-white font-semibold">
-                                <option value="auto" ${tokens.headerVariant === 'auto' ? 'selected' : ''}>Temaya Göre Otomatik</option>
-                                <option value="three_col_logos" ${tokens.headerVariant === 'three_col_logos' ? 'selected' : ''}>Klasik 3 Sütun (Logo - Unvan - TÜRKAK)</option>
-                                <option value="rams_banner" ${tokens.headerVariant === 'rams_banner' ? 'selected' : ''}>Modern Şerit / Bakanlık Düzeni</option>
-                                <option value="corporate_compact" ${tokens.headerVariant === 'corporate_compact' ? 'selected' : ''}>Kompakt Kurumsal Antet</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block font-bold text-slate-700 mb-0.5">Altbilgi (Footer) Düzeni</label>
-                            <select id="ustFooterVariant" class="w-full border border-slate-300 rounded-lg px-2 py-1.5 bg-white font-semibold">
-                                <option value="auto" ${tokens.footerVariant === 'auto' ? 'selected' : ''}>Temaya Göre Otomatik</option>
-                                <option value="rams_strip" ${tokens.footerVariant === 'rams_strip' ? 'selected' : ''}>Hücresiz Doküman Şeridi (RAMS)</option>
-                                <option value="boxed_table" ${tokens.footerVariant === 'boxed_table' ? 'selected' : ''}>Klasik Kutulu ISO Tablo</option>
-                                <option value="minimal_line" ${tokens.footerVariant === 'minimal_line' ? 'selected' : ''}>Minimal Tek Satır</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block font-bold text-slate-700 mb-0.5">Teknik Özellikler Tablosu</label>
-                            <select id="ustFieldCols" class="w-full border border-slate-300 rounded-lg px-2 py-1.5 bg-white font-semibold">
-                                <option value="auto" ${String(tokens.fieldGridColumns) === 'auto' ? 'selected' : ''}>Şablona Göre Otomatik</option>
-                                <option value="2" ${Number(tokens.fieldGridColumns) === 2 ? 'selected' : ''}>2 Sütunlu (Geniş Okunaklı)</option>
-                                <option value="3" ${Number(tokens.fieldGridColumns) === 3 ? 'selected' : ''}>3 Sütunlu (Kompakt)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block font-bold text-slate-700 mb-0.5">Gözle Kontrol PDF Düzeni</label>
-                            <select id="ustCheckCols" class="w-full border border-slate-300 rounded-lg px-2 py-1.5 bg-white font-semibold">
-                                <option value="auto" ${String(tokens.checklistColumns) === 'auto' ? 'selected' : ''}>Şablona Göre Otomatik</option>
-                                <option value="1" ${Number(tokens.checklistColumns) === 1 ? 'selected' : ''}>1 Sütun (Detaylı Tam Satır)</option>
-                                <option value="2" ${Number(tokens.checklistColumns) === 2 ? 'selected' : ''}>2 Sütun (Yan Yana Kompakt)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block font-bold text-slate-700 mb-0.5">Onay &amp; İmza Kutusu Düzeni</label>
-                            <select id="ustSignCols" class="w-full border border-slate-300 rounded-lg px-2 py-1.5 bg-white font-semibold">
-                                <option value="1" ${Number(tokens.signatureColumns) === 1 ? 'selected' : ''}>1 İmzalı (Muayene Personeli + QR)</option>
-                                <option value="2" ${Number(tokens.signatureColumns) === 2 ? 'selected' : ''}>2 İmzalı (+ Teknik Yönetici Onayı)</option>
-                                <option value="3" ${Number(tokens.signatureColumns) === 3 ? 'selected' : ''}>3 İmzalı (+ Müşteri / İşletme Yetkilisi)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block font-bold text-slate-700 mb-0.5">Sayfa Yoğunluğu &amp; Sığdırma</label>
-                            <select id="ustPageDensity" class="w-full border border-slate-300 rounded-lg px-2 py-1.5 bg-white font-semibold">
-                                <option value="auto" ${tokens.pageDensity === 'auto' ? 'selected' : ''}>Akıllı Sığdır (Az Taşarsa 1 Sayfaya Sığdır)</option>
-                                <option value="normal" ${tokens.pageDensity === 'normal' ? 'selected' : ''}>Standart Ferah Boşluk</option>
-                                <option value="compact" ${tokens.pageDensity === 'compact' ? 'selected' : ''}>Her Zaman Kompakt</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-2 pt-1">
-                        <div>
-                            <label class="block font-bold text-slate-700 mb-0.5">Teknik Yönetici Adı Soyadı (2/3 İmza İçin)</label>
-                            <input type="text" id="ustTechManagerName" value="${escapeHtml(tokens.techManagerName || '')}"
-                                placeholder="Örn: Mehmet Yılmaz"
-                                class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
-                        </div>
-                        <div>
-                            <label class="block font-bold text-slate-700 mb-0.5">Genel Doküman Kodu Ön Eki</label>
-                            <input type="text" id="ustDocPrefix" value="${escapeHtml(tokens.docCodePrefixOverride || '')}"
-                                placeholder="Örn: ABC-FR. (Boşsa varsayılan)"
-                                class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white font-mono">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 3. SEÇİLİ ŞABLONA ÖZEL FİRMA YAMASI & STANDART BÖLÜM KONTROLÜ -->
-                <div class="p-3 rounded-xl bg-white border border-slate-200 space-y-2.5">
-                    <div class="flex items-center justify-between">
-                        <div class="font-extrabold text-slate-800 flex items-center gap-1.5">
-                            <i class="fa-solid fa-layer-group text-emerald-600"></i>
-                            <span>3. Bu Şablona Özel Yama (${escapeHtml(schema.code)} · v${schema.schemaVersion})</span>
-                        </div>
-                        <button type="button" onclick="resetCurrentTemplateOverlay('${escapeForJs(tid)}')" class="text-[11px] font-bold text-rose-600 hover:underline">
-                            Şablon Yamasını Sıfırla
-                        </button>
-                    </div>
-
-                    <!-- Standart Bölümleri Aç/Kapat -->
-                    <div class="p-2 rounded-lg bg-slate-50 border border-slate-200">
-                        <div class="text-[10px] font-bold text-slate-600 mb-1.5">Standart Bölümleri Göster / Gizle (Tamamen özel şablon için kapatabilirsiniz):</div>
-                        <div class="grid grid-cols-2 gap-1.5 text-[11px] font-semibold text-slate-800">
-                            <label class="flex items-center gap-1.5 cursor-pointer">
-                                <input type="checkbox" id="ustShowTech" ${secCfg.showTechFields !== false ? 'checked' : ''} class="w-3.5 h-3.5 accent-sky-600">
-                                <span>Ekipman Teknik Bilgileri</span>
-                            </label>
-                            <label class="flex items-center gap-1.5 cursor-pointer">
-                                <input type="checkbox" id="ustShowDevices" ${secCfg.showDevices !== false ? 'checked' : ''} class="w-3.5 h-3.5 accent-sky-600">
-                                <span>Ölçüm Aletleri Tablosu</span>
-                            </label>
-                            <label class="flex items-center gap-1.5 cursor-pointer">
-                                <input type="checkbox" id="ustShowChecks" ${secCfg.showChecklist !== false ? 'checked' : ''} class="w-3.5 h-3.5 accent-sky-600">
-                                <span>Gözle Kontrol Kriterleri</span>
-                            </label>
-                            <label class="flex items-center gap-1.5 cursor-pointer">
-                                <input type="checkbox" id="ustShowTable" ${secCfg.showMainTable !== false ? 'checked' : ''} class="w-3.5 h-3.5 accent-sky-600">
-                                <span>Ana Ölçüm Tablosu</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <div>
-                            <label class="block font-bold text-slate-700 mb-0.5">Özel Rapor Başlığı (Boşsa Standart)</label>
-                            <input type="text" id="ustCustomTitle" value="${escapeHtml(ov.customTitle || '')}"
-                                placeholder="${escapeHtml(schema.title)}"
-                                class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
-                        </div>
-                        <div>
-                            <label class="block font-bold text-slate-700 mb-0.5">Özel Form / Doküman Kodu</label>
-                            <input type="text" id="ustCustomDocNo" value="${escapeHtml(ov.customDocNo || '')}"
-                                placeholder="${escapeHtml(schema.docNo)}"
-                                class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white font-mono">
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block font-bold text-slate-700 mb-0.5">Ekstra Teknik Bilgi Alanları Ekle (Örn: Hat Adı veya Basınç [Bar] veya Tip [A|B])</label>
-                        <textarea id="ustAddedFields" rows="2" placeholder="Örn:&#10;Üretim Hattı Kodu&#10;Test Basıncı [Bar]&#10;Koruma Sınıfı [IP54|IP65]"
-                            class="w-full border border-slate-300 rounded-lg p-2 bg-white text-xs">${escapeHtml(customFieldsText)}</textarea>
-                    </div>
-                    <div>
-                        <label class="block font-bold text-slate-700 mb-0.5">Ekstra Gözle Kontrol Sorusu Ekle (Her satıra 1 soru; :: ile özel kusur cümlesi)</label>
-                        <textarea id="ustAddedChecks" rows="2" placeholder="Örn:&#10;Ekipman üzerinde QR barkod etiketi mevcut mu? :: Ekipmanda QR barkod etiketi eksiktir."
-                            class="w-full border border-slate-300 rounded-lg p-2 bg-white text-xs">${escapeHtml(customChecksText)}</textarea>
-                    </div>
-                </div>
-            </div>`,
-            `<button type="button" onclick="closeModal()" class="px-3 py-2 rounded-lg bg-slate-200 text-slate-800 font-bold text-xs">İptal</button>
-             <button type="button" onclick="saveUniversalTemplateStudioSubmit('${escapeForJs(tid)}')" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs active:scale-95">
-                <i class="fa-solid fa-floppy-disk mr-1"></i>Özelleştirmeyi Kaydet
-             </button>`
-        );
-    };
-
-    window.studioManageCustomBlock = function (action, blockId, scope, templateId) {
-        const fd = (typeof AppState !== 'undefined' && AppState.currentFormData) || null;
-        UniversalSchemaRegistry.manageCustomBlock(action, { templateId, formData: fd, scope, blockId });
-        if (typeof triggerAutoSave === 'function' && scope === 'report') triggerAutoSave();
-        if (typeof paintInspectionEditorUI === 'function' && typeof AppState !== 'undefined' && AppState.currentInspection) {
-            paintInspectionEditorUI();
-        }
-        window.openUniversalTemplateStudioModal(templateId);
-    };
-
-    window.saveUniversalTemplateStudioSubmit = function (templateId) {
-        const headerVariant = document.getElementById('ustHeaderVariant')?.value || 'auto';
-        const footerVariant = document.getElementById('ustFooterVariant')?.value || 'auto';
-        const fieldColsRaw = document.getElementById('ustFieldCols')?.value || 'auto';
-        const checkColsRaw = document.getElementById('ustCheckCols')?.value || 'auto';
-        const signColsRaw = parseInt(document.getElementById('ustSignCols')?.value || '1', 10) || 1;
-        const pageDensity = document.getElementById('ustPageDensity')?.value || 'auto';
-        const techManagerName = (document.getElementById('ustTechManagerName')?.value || '').trim();
-        const docCodePrefixOverride = (document.getElementById('ustDocPrefix')?.value || '').trim();
-
-        UniversalTenantOverlay.saveDesignTokens({
-            headerVariant,
-            footerVariant,
-            fieldGridColumns: fieldColsRaw === 'auto' ? 'auto' : Number(fieldColsRaw),
-            checklistColumns: checkColsRaw === 'auto' ? 'auto' : Number(checkColsRaw),
-            signatureColumns: signColsRaw,
-            pageDensity,
-            techManagerName,
-            docCodePrefixOverride
-        });
-
-        const customTitle = (document.getElementById('ustCustomTitle')?.value || '').trim();
-        const customDocNo = (document.getElementById('ustCustomDocNo')?.value || '').trim();
-        const addedFields = parseFieldSpecLines(document.getElementById('ustAddedFields')?.value || '', `tenant_fld_${templateId}`);
-        const addedChecks = parseChecklistSpecLines(document.getElementById('ustAddedChecks')?.value || '', `tenant_chk_${templateId}`).map((c, i) => ({
-            id: `tenant_chk_${templateId}_${i}`,
-            text: c.text,
-            isCritical: true,
-            defect: c.defect
-        }));
-
-        const sectionConfig = {
-            showTechFields: document.getElementById('ustShowTech')?.checked !== false,
-            showDevices: document.getElementById('ustShowDevices')?.checked !== false,
-            showChecklist: document.getElementById('ustShowChecks')?.checked !== false,
-            showMainTable: document.getElementById('ustShowTable')?.checked !== false
-        };
-
-        UniversalTenantOverlay.patchTemplateOverlay(templateId, {
-            customTitle,
-            customDocNo,
-            addedFields,
-            addedChecks,
-            sectionConfig
-        });
-
-        closeModal();
-        if (typeof showToast === 'function') {
-            showToast('Evrensel PDF tasarım ve şablon özelleştirmeleri kaydedildi!');
-        }
-        if (typeof paintInspectionEditorUI === 'function' && typeof AppState !== 'undefined' && AppState.currentInspection) {
-            paintInspectionEditorUI();
-        }
-    };
-
-    window.resetCurrentTemplateOverlay = function (templateId) {
-        UniversalTenantOverlay.resetTemplateOverlay(templateId);
-        closeModal();
-        if (typeof showToast === 'function') {
-            showToast('Şablon yaması varsayılan standart şemaya sıfırlandı.');
-        }
-        if (typeof paintInspectionEditorUI === 'function' && typeof AppState !== 'undefined' && AppState.currentInspection) {
-            paintInspectionEditorUI();
-        }
-    };
-
-    // ========================================================================
-    // 5. SIFIRDAN ÖZEL RAPOR ŞABLONU OLUŞTURMA & JSON AKTARIM MODALLARI
-    // ========================================================================
-    window.openCreateCustomTemplateModal = function (baseTemplateId = '') {
-        const baseSchema = baseTemplateId ? UniversalSchemaRegistry.resolveSchema(baseTemplateId, '', null) : null;
-        const defaultTitle = baseSchema ? `${baseSchema.title} (ÖZEL)` : '';
-        const defaultCode = baseSchema ? `${baseSchema.code}-OZL` : `OZL-FR.${Math.floor(100 + Math.random() * 899)}`;
-        const defaultMethods = baseSchema && Array.isArray(baseSchema.methods) ? baseSchema.methods.join('\n') : 'RG, 25.04.2013 - 28628 İş Ekipmanlarının Kullanımında Sağlık ve Güvenlik Şartları Yönetmeliği';
-
-        openModal(
-            `<i class="fa-solid fa-file-circle-plus mr-2 text-emerald-400"></i>${baseSchema ? 'Mevcut Şablonu Klonla &amp; Özelleştir' : 'Sıfırdan Özel Rapor Şablonu Oluştur'}`,
-            `<div class="space-y-3 text-xs">
-                <div class="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-950 leading-snug">
-                    Oluşturduğunuz özel şablon <strong>"+ Rapor Ekle"</strong> menüsünde <em>Özel Rapor Şablonlarım</em> altında anında görünür. İçine istediğiniz kadar özel tablo, bilgi kartı ve kontrol listesi ekleyebilirsiniz.
-                </div>
-                <input type="hidden" id="cctBaseTemplateId" value="${escapeHtml(baseTemplateId || '')}">
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <div>
-                        <label class="block font-bold text-slate-800 mb-0.5">Rapor Şablon Adı / Başlığı *</label>
-                        <input type="text" id="cctTitle" value="${escapeHtml(defaultTitle)}" placeholder="Örn: BASINÇLI BOYA KAZANI KONTROL RAPORU"
-                            class="w-full border border-slate-300 rounded-lg px-2.5 py-2 font-bold bg-white">
-                    </div>
-                    <div>
-                        <label class="block font-bold text-slate-800 mb-0.5">Doküman / Form Kodu *</label>
-                        <input type="text" id="cctCode" value="${escapeHtml(defaultCode)}" placeholder="Örn: ABC-FR.401"
-                            class="w-full border border-slate-300 rounded-lg px-2.5 py-2 font-mono font-bold bg-white">
-                    </div>
-                </div>
-                <div>
-                    <label class="block font-bold text-slate-700 mb-0.5">Kategori</label>
-                    <input type="text" id="cctCategory" value="${escapeHtml(baseSchema ? baseSchema.category : 'Özel Rapor Şablonlarım')}"
-                        class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
-                </div>
-                <div>
-                    <label class="block font-bold text-slate-700 mb-0.5">Yönetmelik ve Standartlar (Her satıra 1 madde)</label>
-                    <textarea id="cctMethods" rows="2" class="w-full border border-slate-300 rounded-lg p-2 bg-white text-xs">${escapeHtml(defaultMethods)}</textarea>
-                </div>
-
-                ${baseSchema ? '' : `
-                    <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-                        <div class="font-bold text-slate-800">İlk Başlangıç Bölümleri (İsteğe Bağlı — Sonradan Sınırsız Eklenebilir)</div>
-                        <div>
-                            <label class="block font-semibold text-slate-700 mb-0.5">İlk Teknik Alanlar (Virgülle ayırın, [birim] veya [A|B] destekli)</label>
-                            <input type="text" id="cctInitFields" placeholder="Örn: Marka / Model, Kapasite [kg], Seri No, İmal Yılı"
-                                class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
-                        </div>
-                        <div>
-                            <label class="block font-semibold text-slate-700 mb-0.5">İlk Ölçüm Tablosu Sütunları (Virgülle ayırın, sınır için [<=10])</label>
-                            <input type="text" id="cctInitTableCols" placeholder="Örn: No, Kontrol Noktası, Ölçülen Değer [<=10], Sınır Değer, Sonuç [Uygun|Uygun Değil]"
-                                class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white">
-                        </div>
-                    </div>
-                `}
-            </div>`,
-            `<button type="button" onclick="closeModal()" class="px-3 py-2 rounded-lg bg-slate-200 text-slate-800 font-bold text-xs">İptal</button>
-             <button type="button" onclick="saveNewCustomTemplateSubmit()" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs active:scale-95">
-                <i class="fa-solid fa-check mr-1"></i>Özel Şablonu Oluştur
-             </button>`
-        );
-    };
-
-    window.saveNewCustomTemplateSubmit = function () {
-        const baseTemplateId = (document.getElementById('cctBaseTemplateId')?.value || '').trim();
-        const title = (document.getElementById('cctTitle')?.value || '').trim();
-        const code = (document.getElementById('cctCode')?.value || '').trim() || 'OZL-FR.01';
-        const category = (document.getElementById('cctCategory')?.value || '').trim() || 'Özel Rapor Şablonlarım';
-        const methods = (document.getElementById('cctMethods')?.value || '').split('\n').map(s => s.trim()).filter(Boolean);
-
-        if (!title) {
-            if (typeof showToast === 'function') showToast('Lütfen şablon başlığını giriniz!', 'warning');
-            return;
-        }
-
-        const customBlocks = [];
-        const initFieldsRaw = (document.getElementById('cctInitFields')?.value || '').trim();
-        const initColsRaw = (document.getElementById('cctInitTableCols')?.value || '').trim();
-
-        if (initFieldsRaw) {
-            customBlocks.push(normalizeCustomBlockObject({
-                id: `cblk_init_fld_${Date.now()}`,
-                scope: 'template',
-                position: 'after_company',
-                headingMode: 'main_section',
-                title: 'EKİPMAN TEKNİK BİLGİLERİ',
-                blockType: 'field_grid',
-                gridColumns: 2,
-                fields: parseFieldSpecLines(initFieldsRaw, 'cfld'),
-                rawSpecText: initFieldsRaw
-            }, 'template'));
-        }
-        if (initColsRaw) {
-            customBlocks.push(normalizeCustomBlockObject({
-                id: `cblk_init_tbl_${Date.now() + 1}`,
-                scope: 'template',
-                position: 'after_table',
-                headingMode: 'main_section',
-                title: 'ÖLÇÜM VE TEST SONUÇLARI TABLOSU',
-                blockType: 'table',
-                columns: parseColumnSpecLines(initColsRaw, 'ccol'),
-                rawSpecText: initColsRaw
-            }, 'template'));
-        }
-
-        const created = UniversalCustomTemplates.buildFromDefinition({
-            title,
-            code,
-            category,
-            methods,
-            baseTemplateId,
-            customBlocks
-        });
-
-        closeModal();
-        if (typeof showToast === 'function') {
-            showToast(`"${created.title}" şablonu oluşturuldu! Rapor Ekle menüsünden seçebilirsiniz.`);
-        }
-    };
-
-    window.openImportExportSchemaModal = function (templateId) {
-        const schema = UniversalSchemaRegistry.resolveSchema(templateId, '', null);
-        const exportPayload = JSON.stringify(schema, null, 2);
-
-        openModal(
-            `<i class="fa-solid fa-code mr-2 text-sky-400"></i>Şablon JSON Dışa / İçe Aktar`,
-            `<div class="space-y-3 text-xs">
-                <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 leading-snug">
-                    Mevcut şablonu (tüm özel bloklarıyla birlikte) kopyalayıp başka bir cihaza veya firmaya aktarabilir ya da aşağıya şablon JSON yapıştırarak yeni şablon ekleyebilirsiniz.
-                </div>
-                <div>
-                    <label class="block font-bold text-slate-800 mb-1">Şablon JSON Kodu:</label>
-                    <textarea id="schemaJsonTextarea" rows="10" class="w-full border border-slate-300 rounded-xl p-2 font-mono text-[10px] bg-slate-950 text-emerald-300">${escapeHtml(exportPayload)}</textarea>
-                </div>
-            </div>`,
-            `<button type="button" onclick="copySchemaJsonToClipboard()" class="px-3 py-2 rounded-lg bg-sky-600 text-white font-bold text-xs">JSON Kopyala</button>
-             <button type="button" onclick="importSchemaJsonSubmit()" class="px-4 py-2 rounded-lg bg-emerald-600 text-white font-bold text-xs">Yapıştırılanı Yeni Şablon Yap</button>`
-        );
-    };
-
-    window.copySchemaJsonToClipboard = function () {
-        const ta = document.getElementById('schemaJsonTextarea');
-        if (!ta) return;
-        ta.select();
-        try {
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(ta.value);
-            } else {
-                document.execCommand('copy');
-            }
-            if (typeof showToast === 'function') showToast('Şablon JSON panoya kopyalandı!');
-        } catch (e) {}
-    };
-
-    window.importSchemaJsonSubmit = function () {
-        const raw = document.getElementById('schemaJsonTextarea')?.value || '';
-        try {
-            const parsed = JSON.parse(raw);
-            if (!parsed || typeof parsed !== 'object' || !parsed.title) {
-                if (typeof showToast === 'function') showToast('Geçersiz şablon JSON formatı!', 'error');
-                return;
-            }
-            parsed.templateId = `CSTM_${Date.now()}`;
-            parsed.isCustom = true;
-            parsed.category = parsed.category || 'Özel Rapor Şablonlarım';
-            UniversalCustomTemplates.save(parsed);
-            closeModal();
-            if (typeof showToast === 'function') showToast(`"${parsed.title}" başarıyla içe aktarıldı!`);
-        } catch (e) {
-            if (typeof showToast === 'function') showToast('JSON okuma hatası: ' + e.message, 'error');
-        }
-    };
+    // Not: Rapor şablonu, başlık, tablo ve hücre tasarım/düzenleme stüdyosu yalnızca Web Yönetim Paneli (/studio) üzerinden yapılır.
 
     window.UniversalCustomTemplates = UniversalCustomTemplates;
     window.UniversalSchemaRegistry = UniversalSchemaRegistry;
@@ -30791,23 +29932,6 @@ function openCompanySettingsModal() {
 
                     <div class="text-[10px] text-slate-400 mt-0.5"><code>{COMPANY_NAME}</code> = Şirket adı</div>
 
-                </div>
-
-                <!-- EVRENSEL FORM & PDF MOTORU STÜDYOSU KISAYOLU -->
-                <div class="p-3 bg-sky-50 border border-sky-200 rounded-xl flex items-center justify-between gap-3">
-                    <div class="min-w-0">
-                        <div class="font-extrabold text-sky-950 text-xs flex items-center gap-1.5">
-                            <i class="fa-solid fa-sliders text-sky-600"></i>
-                            <span>Evrensel Form &amp; A4 PDF Tasarım Motoru</span>
-                        </div>
-                        <div class="text-[11px] text-sky-800 leading-snug mt-0.5">
-                            Antet/altbilgi varyantı, 1-2-3'lü imza düzeni, tablo sütun sayısı ve şablon bazlı özel soru/alan yamaları.
-                        </div>
-                    </div>
-                    <button type="button" onclick="if(typeof openUniversalTemplateStudioModal==='function') openUniversalTemplateStudioModal('2074')"
-                        class="px-3 py-2 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white font-bold text-xs rounded-xl shrink-0 shadow-2xs transition">
-                        Stüdyoyu Aç
-                    </button>
                 </div>
 
             </div>

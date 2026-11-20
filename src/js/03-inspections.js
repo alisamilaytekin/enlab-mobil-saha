@@ -144,7 +144,7 @@ function openAddInspectionModal(workOrderId) {
                 ${cleanName} (${t.code})
             </option>`;
         }).join('');
-        return `<optgroup label="Evrensel Motor · ${cat}">${itemsHtml}</optgroup>`;
+        return `<optgroup label="${cat}">${itemsHtml}</optgroup>`;
     }).join('');
 
     const optionsHtml = `
