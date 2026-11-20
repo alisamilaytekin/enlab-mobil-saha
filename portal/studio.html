@@ -1,0 +1,1588 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rapor Şablon Stüdyosu — Office Word &amp; Excel Editör</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/studio.css">
+</head>
+<body>
+  <!-- ======================================================================
+       1. OFFICE FLUENT ÜST BAŞLIK & HIZLI ERİŞİM ÇUBUĞU (38PX · GRIDCRAFT & WORDCRAFT)
+       ====================================================================== -->
+  <header class="office-titlebar">
+    <div class="otb-left">
+      <a href="/yonetim" class="otb-icon-btn" title="Firma Yönetim Paneline Dön" aria-label="Yönetim">
+        <svg class="ico" viewBox="0 0 24 24"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5"/></svg>
+      </a>
+      <label class="otb-autosave" title="Değişiklikleri tarayıcıya otomatik yedekle">
+        <span class="otb-autosave-lbl">Otomatik Kaydet</span>
+        <input id="chkAutoSave" type="checkbox" checked onchange="officeToggleAutoSave(this.checked)">
+        <span class="otb-switch"></span>
+      </label>
+      <span class="otb-sep"></span>
+      <button type="button" class="otb-icon-btn" onclick="openSaveVersionModal()" title="Yeni Versiyon Kaydet (Ctrl+S)">
+        <svg class="ico" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+      </button>
+      <button id="btnUndo" type="button" class="otb-icon-btn" onclick="studioUndo()" title="Geri Al (Ctrl+Z)" disabled>
+        <svg class="ico" viewBox="0 0 24 24"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+      </button>
+      <button id="btnRedo" type="button" class="otb-icon-btn" onclick="studioRedo()" title="Yinele (Ctrl+Y)" disabled>
+        <svg class="ico" viewBox="0 0 24 24"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/></svg>
+      </button>
+      <button type="button" class="otb-icon-btn" onclick="window.print()" title="Yazdır / PDF (Ctrl+P)">
+        <svg class="ico" viewBox="0 0 24 24"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      </button>
+      <button id="btnCollapseRibbon" type="button" class="otb-icon-btn" onclick="officeToggleRibbonCollapse()" title="Şeridi Daralt / Genişlet (Ctrl+F1)">
+        <svg class="ico ico-sm" viewBox="0 0 24 24"><path d="M18 15l-6-6-6 6"/></svg>
+      </button>
+    </div>
+
+    <div class="otb-center">
+      <div class="otb-doc-cluster">
+        <select id="familySelect" class="otb-doc-select" title="Şablon Seç" onchange="onSelectTemplateFamily(this.value)">
+          <option value="__new__">Elektrik İç Tesisatı (Taslak)</option>
+        </select>
+        <button id="currentVersionPill" type="button" class="otb-version-pill draft" onclick="openVersionHistoryModal()" title="Versiyon Geçmişini Aç (v1, v2, v3...)">
+          <span id="currentVersionText">Taslak · v1</span>
+          <svg class="ico ico-xs" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+      </div>
+      <!-- WORDCRAFT / EXCEL KOMUT ARAMA ÇUBUĞU (Alt+Q / Ctrl+K) -->
+      <div class="otb-search-wrap">
+        <svg class="ico ico-sm otb-search-ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input id="commandSearchInput" type="text" class="otb-search-input" placeholder="Komut veya araç ara... (Ctrl+K)" autocomplete="off" onfocus="officeOpenCommandSearch()" oninput="officeFilterCommands(this.value)" onkeydown="officeCommandSearchKeydown(event)">
+        <div id="commandPaletteDropdown" class="cmd-palette hidden"></div>
+      </div>
+    </div>
+
+    <div class="otb-right">
+      <button id="otbCommentsBtn" type="button" class="otb-pill-btn" onclick="officeOpenSideTab('comments')" title="Yorumları Göster / Ekle">
+        <svg class="ico ico-sm" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span>Yorumlar</span>
+        <span id="otbCommentsCount" class="otb-badge hidden">0</span>
+      </button>
+      <button id="otbDarkBtn" type="button" class="otb-icon-btn" onclick="officeToggleDarkMode()" title="Koyu / Açık Arayüz Teması">
+        <svg class="ico" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+      <button type="button" class="otb-cta-btn" onclick="window.print()" title="PDF Olarak İndir veya Yazdır">
+        <svg class="ico ico-sm" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        <span>PDF</span>
+      </button>
+      <button type="button" class="otb-cta-btn primary" onclick="openSaveVersionModal()">
+        <svg class="ico ico-sm" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+        <span id="savePrimaryBtnLabel">Kaydet (v1)</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ======================================================================
+       2. OFFICE RIBBON SEKME ŞERİDİ (EXCEL + WORD TAM ŞERİT)
+       ====================================================================== -->
+  <nav class="ribbon-tabs-bar" aria-label="Şerit Sekmeleri">
+    <div class="ribbon-tabs-list">
+      <button id="fileTabBtn" type="button" class="ribbon-tab file-tab" onclick="officeOpenBackstage('home')">Dosya</button>
+      <button type="button" class="ribbon-tab active" data-ribbon="home" onclick="switchRibbonTab('home')">Giriş</button>
+      <button type="button" class="ribbon-tab" data-ribbon="insert" onclick="switchRibbonTab('insert')">Ekle</button>
+      <button type="button" class="ribbon-tab" data-ribbon="design" onclick="switchRibbonTab('design')">Tasarım</button>
+      <button type="button" class="ribbon-tab" data-ribbon="layout" onclick="switchRibbonTab('layout')">Sayfa Düzeni</button>
+      <button type="button" class="ribbon-tab" data-ribbon="formulas" onclick="switchRibbonTab('formulas')">Formüller</button>
+      <button type="button" class="ribbon-tab" data-ribbon="data" onclick="switchRibbonTab('data')">Veri</button>
+      <button type="button" class="ribbon-tab" data-ribbon="review" onclick="switchRibbonTab('review')">Gözden Geçir</button>
+      <button type="button" class="ribbon-tab" data-ribbon="view" onclick="switchRibbonTab('view')">Görünüm</button>
+      <button id="tabTableDesign" type="button" class="ribbon-tab contextual" data-ribbon="table" onclick="switchRibbonTab('table')">Tablo Tasarımı</button>
+    </div>
+    <div class="ribbon-right-actions">
+      <button type="button" class="rb-tab-chip" onclick="officeOpenFindReplace(false)" title="Bul ve Değiştir (Ctrl+F / Ctrl+H)">
+        <svg class="ico ico-xs" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+        <span>Bul</span>
+      </button>
+      <button id="btnAuditBadge" type="button" class="rb-tab-chip" onclick="officeOpenSideTab('audit')" title="Rapor Denetçisi (Kusur & Eksik Alan Kontrolü)">
+        <svg class="ico ico-xs" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        <span>Denetle</span>
+      </button>
+      <span id="storageMenuBadge" class="fm-badge" onclick="openCloudLoginModal()" title="Kayıt Modu" style="cursor:pointer;">Yerel</span>
+    </div>
+  </nav>
+
+  <!-- GİZLİ DOSYA GİRDİLERİ -->
+  <input id="importJsonInput" type="file" accept=".json,application/json" style="display:none;" onchange="importSchemaJsonFile(this)">
+  <input id="importCsvInput" type="file" accept=".csv,.tsv,.txt,text/csv" style="display:none;" onchange="officeImportCsvFile(this)">
+  <input id="insertImageInput" type="file" accept="image/*" multiple style="display:none;" onchange="officeHandleImageUpload(this)">
+
+  <!-- ======================================================================
+       3. OFFICE FLUENT YÜZEN KOMUT ŞERİDİ (GRIDCRAFT & WORDCRAFT KARTI)
+       ====================================================================== -->
+  <section id="ribbonShell" class="ribbon-shell" aria-label="Şerit Araçları">
+    <div class="ribbon-body">
+
+      <!-- ===================================================================
+           SEKME 1: GİRİŞ (EXCEL + WORD BİRLEŞİK ANA ŞERİT)
+           =================================================================== -->
+      <div id="ribbon_home" class="ribbon-pane active">
+        <!-- Pano -->
+        <div class="rb-group">
+          <div class="rb-group-content">
+            <div class="rb-split-big">
+              <button type="button" class="rb-big-btn" onclick="officeClipboardPaste('all')" title="Yapıştır (Ctrl+V)">
+                <svg class="ico ico-lg" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
+                <span>Yapıştır</span>
+              </button>
+              <button type="button" class="rb-split-caret" onclick="officeTogglePopover('popPasteSpecial', this, event)" title="Özel Yapıştır Seçenekleri">▾</button>
+            </div>
+            <div class="rb-col">
+              <button type="button" class="rb-btn icon-only" onclick="officeClipboardCut()" title="Kes (Ctrl+X)">
+                <svg class="ico ico-sm" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.12 15.88M14.47 14.48L20 20M8.12 8.12L12 12"/></svg>
+              </button>
+              <button type="button" class="rb-btn icon-only" onclick="officeClipboardCopy()" title="Kopyala (Ctrl+C)">
+                <svg class="ico ico-sm" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </button>
+              <button id="rbFormatPainterBtn" type="button" class="rb-btn icon-only" onclick="toggleFormatPainter()" title="Biçim Boyacısı (Stili başka hücreye kopyala)">
+                <svg class="ico ico-sm" viewBox="0 0 24 24"><path d="M18.37 2.63L14 7l-1.59-1.59a2 2 0 0 0-2.82 0L8 7l9 9 1.59-1.59a2 2 0 0 0 0-2.82L17 10l4.37-4.37a2.12 2.12 0 1 0-3-3z"/><path d="M9 8c-2 3-4 3.5-7 4l8 10c2-1 6-5 6-7"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="rb-group-label">Pano</div>
+        </div>
+
+        <!-- Yazı Tipi (Excel + Word) -->
+        <div class="rb-group">
+          <div class="rb-group-content">
+            <div class="rb-col">
+              <div class="rb-row">
+                <select id="csrFontFamily" class="rb-select rb-font-sel" title="Yazı Tipi" onchange="applyCellStyleProp('fontFamily', this.value)">
+                  <option value="">Varsayılan</option>
+                  <option value="'IBM Plex Sans', sans-serif">IBM Plex Sans</option>
+                  <option value="'Segoe UI', Arial, sans-serif">Segoe UI</option>
+                  <option value="Calibri, 'Segoe UI', sans-serif">Calibri</option>
+                  <option value="Arial, Helvetica, sans-serif">Arial</option>
+                  <option value="'Times New Roman', Georgia, serif">Times New Roman</option>
+                  <option value="Georgia, serif">Georgia</option>
+                  <option value="'Courier New', monospace">Courier New</option>
+                </select>
+                <input id="csrFontSize" type="text" inputmode="decimal" list="fontSizeList" class="rb-input rb-num" placeholder="7.2" title="Yazı Boyutu (pt — ondalıklı yazabilirsiniz: 7.5, 8,25)" oninput="applyCellStyleProp('fontSize', this.value)" onchange="applyCellStyleProp('fontSize', this.value, true)">
+                <datalist id="fontSizeList">
+                  <option value="5.5"></option><option value="6"></option><option value="6.5"></option><option value="7"></option>
+                  <option value="7.2"></option><option value="7.5"></option><option value="8"></option><option value="8.5"></option>
+                  <option value="9"></option><option value="10"></option><option value="11"></option><option value="12"></option>
+                  <option value="14"></option><option value="16"></option><option value="18"></option><option value="20"></option><option value="24"></option>
+                </datalist>
+                <button type="button" class="rb-btn icon-only" onclick="stepSelectedCellFontSize(0.5)" title="Yazı Boyutunu Büyüt">A<span class="rb-mini-sup">▲</span></button>
+                <button type="button" class="rb-btn icon-only" onclick="stepSelectedCellFontSize(-0.5)" title="Yazı Boyutunu Küçült">A<span class="rb-mini-sup">▼</span></button>
+                <button type="button" class="rb-btn icon-only" onclick="officeTogglePopover('popCase', this, event)" title="Büyük/Küçük Harf Değiştir (Word)">Aa▾</button>
+                <button type="button" class="rb-btn icon-only" onclick="clearSelectedCellStyle()" title="Tüm Biçimlendirmeyi Temizle">
+                  <svg class="ico ico-sm" viewBox="0 0 24 24"><path d="M20 20H7L3 16l9-9 8 8-4 5"/><path d="M10 9l5 5"/></svg>
+                </button>
+              </div>
+              <div class="rb-row">
+                <button id="csrBoldBtn" type="button" class="rb-btn icon-only" onclick="toggleCellStyleBool('bold')" title="Kalın (Ctrl+B)"><strong>K</strong></button>
+                <button id="csrItalicBtn" type="button" class="rb-btn icon-only" onclick="toggleCellStyleBool('italic')" title="İtalik (Ctrl+I)"><em>İ</em></button>
+                <button id="csrUnderlineBtn" type="button" class="rb-btn icon-only" onclick="toggleCellStyleBool('underline')" title="Altı Çizili (Ctrl+U)"><u>A</u></button>
+                <button id="csrStrikeBtn" type="button" class="rb-btn icon-only" onclick="toggleCellStyleBool('strike')" title="Üstü Çizili"><s>ab</s></button>
+                <button id="csrSubBtn" type="button" class="rb-btn icon-only" onclick="toggleCellStyleBool('subscript')" title="Alt Simge (H₂O)">x<sub>2</sub></button>
+                <button id="csrSupBtn" type="button" class="rb-btn icon-only" onclick="toggleCellStyleBool('superscript')" title="Üst Simge (mm²)">x<sup>2</sup></button>
+                <span class="rb-vsep"></span>
+                <!-- Kenarlıklar Açılır Menü -->
+                <button type="button" class="rb-btn has-caret" onclick="officeTogglePopover('popBorders', this, event)" title="Kenarlıklar (Alt, Üst, Tüm, Dış, Çift Alt...)">
+                  <svg class="ico ico-sm" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 12h18M12 3v18"/></svg>
+                  <span class="caret">▾</span>
+                </button>
+                <!-- Dolgu Rengi (Canlı Renk Çubuklu) -->
+                <div class="rb-color-split">
+                  <button type="button" class="rb-btn icon-only color-main" onclick="officeApplyLastColor('bg')" title="Dolgu Rengi Uygula">
+                    <svg class="ico ico-sm" viewBox="0 0 24 24"><path d="M19 11l-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2c.8.8 2 .8 2.8 0L19 11z"/><path d="M5 2l5 5"/><path d="M20 14c1 1.5 2 2.8 2 4a2 2 0 1 1-4 0c0-1.2 1-2.5 2-4z"/></svg>
+                    <span id="csrBgBar" class="color-bar" style="background:#fef3c7;"></span>
+                  </button>
+                  <button type="button" class="rb-btn caret-only" onclick="officeOpenColorPopover('bg', this, event)" title="Dolgu Renk Paleti">▾</button>
+                </div>
+                <!-- Yazı Rengi (Canlı Renk Çubuklu) -->
+                <div class="rb-color-split">
+                  <button type="button" class="rb-btn icon-only color-main" onclick="officeApplyLastColor('color')" title="Yazı Rengi Uygula">
+                    <span style="font-weight:800;font-size:12px;line-height:1;">A</span>
+                    <span id="csrColorBar" class="color-bar" style="background:#c00000;"></span>
+                  </button>
+                  <button type="button" class="rb-btn caret-only" onclick="officeOpenColorPopover('color', this, event)" title="Yazı Renk Paleti">▾</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="rb-group-label">Yazı Tipi</div>
+        </div>
+
+        <!-- Hizalama & Paragraf (Excel + Word) -->
+        <div class="rb-group">
+          <div class="rb-group-content">
+            <div class="rb-col">
+              <div class="rb-row">
+                <button id="csrValignTop" type="button" class="rb-btn icon-only" onclick="applyCellStyleProp('valign', 'top')" title="Üste Hizala">
+                  <svg class="ico ico-sm" viewBox="0 0 24 24"><path d="M4 5h16M7 9h10M4 13h12"/></svg>
+                </button>
+                <button id="csrValignMid" type="button" class="rb-btn icon-only" onclick="applyCellStyleProp('valign', 'middle')" title="Ortaya Hizala (Dikey)">
+                  <svg class="ico ico-sm" viewBox="0 0 24 24"><path d="M4 8h16M7 12h10M4 16h12"/></svg>
+                </button>
+                <button id="csrValignBot" type="button" class="rb-btn icon-only" onclick="applyCellStyleProp('valign', 'bottom')" title="Alta Hizala">
+                  <svg class="ico ico-sm" viewBox="0 0 24 24"><path d="M4 11h12M7 15h10M4 19h16"/></svg>
+                </button>
+                <span class="rb-vsep"></span>
+                <button id="csrBulletBtn" type="button" class="rb-btn icon-only" onclick="toggleCellListFormat('bullet')" title="Madde İşaretli Liste (•)">
+                  <svg class="ico ico-sm" viewBox="0 0 24 24"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="4" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="4" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="4" cy="18" r="1.4" fill="currentColor" stroke="none"/></svg>
+                </button>
+                <button id="csrNumberBtn" type="button" class="rb-btn icon-only" onclick="toggleCellListFormat('number')" title="Numaralı Liste (1. 2. 3.)">
+                  <svg class="ico ico-sm" viewBox="0 0 24 24"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><path d="M4 6h1v4M4 10h2M4 15h2l-2 3h2"/></svg>
+                </button>
+                <button type="button" class="rb-btn icon-only" onclick="adjustCellIndent(-8)" title="Girintiyi Azalt">
+                  <svg class="ico ico-sm" viewBox="0 0 24 24"><line x1="21" y1="6" x2="11" y2="6"/><line x1="21" y1="12" x2="11" y2="12"/><line x1="21" y1="18" x2="11" y2="18"/><polyline points="7 8 3 12 7 16"/></svg>
+                </button>
+                <button type="button" class="rb-btn icon-only" onclick="adjustCellIndent(8)" title="Girintiyi Artır">
+                  <svg class="ico ico-sm" viewBox="0 0 24 24"><line x1="21" y1="6" x2="11" y2="6"/><line x1="21" y1="12" x2="11" y2="12"/><line x1="21" y1="18" x2="11" y2="18"/><polyline points="3 8 7 12 3 16"/></svg>
+                </button>
+                <select id="csrLineHeight" class="rb-select" style="width:58px;" title="Satır Aralığı" onchange="applyCellStyleProp('lineHeight', this.value)">
+                  <option value="">↕ Oto</option>
+                  <option value="1.05">1.05</option>
+                  <option value="1.2">1.20</option>
+                  <option value="1.4">1.40</option>
+                  <option value="1.65">1.65</option>
+                </select>
+              </div>
+              <div class="rb-row">
+                <button id="csrAlignLeft" type="button" class="rb-btn icon-only" onclick="applyCellStyleProp('align', 'left')" title="Sola Hizala">
+                  <svg class="ico ico-sm" viewBox="0 0 24 24"><path d="M17 10H3M21 6H3M21 14H3M17 18H3"/></svg>
+                </button>
+                <button id="csrAlignCenter" type="button" class="rb-btn icon-only" onclick="applyCellStyleProp('align', 'center')" title="Ortala">
+                  <svg class="ico ico-sm" viewBox="0 0 24 24"><path d="M18 10H6M21 6H3M21 14H3M18 18H6"/></svg>
+                </button>
+                <button id="csrAlignRight" type="button" class="rb-btn icon-only" onclick="applyCellStyleProp('align', 'right')" title="Sağa Hizala">
+                  <svg class="ico ico-sm" viewBox="0 0 24 24"><path d="M21 10H7M21 6H3M21 14H3M21 18H7"/></svg>
+                </button>
+                <button id="csrAlignJustify" type="button" class="rb-btn icon-only" onclick="applyCellStyleProp('align', 'justify')" title="İki Yana Yasla (Word)">
+                  <svg class="ico ico-sm" viewBox="0 0 24 24"><path d="M21 6H3M21 10H3M21 14H3M21 18H3"/></svg>
+                </button>
+                <span class="rb-vsep"></span>
+                <button id="csrWrapBtn" type="button" class="rb-btn icon-only" onclick="officeToggleWrapText()" title="Metni Kaydır (Wrap Text)">
+                  <svg class="ico ico-sm" viewBox="0 0 24 24"><path d="M3 6h18M3 12h15a3 3 0 1 1 0 6h-4"/><path d="M16 16l-2 2 2 2M3 18h7"/></svg>
+                </button>
+                <button id="csrMergeBtn" type="button" class="rb-btn" onclick="officeMergeOrUnmergeCells()" title="Seçili Hücreleri Birleştir ve Ortala / Ayır (Shift+Tıkla aralık seçin)">
+                  <svg class="ico ico-sm" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M9 12h6M9 9l-3 3 3 3M15 9l3 3-3 3"/></svg>
+                  <span>Birleştir</span>
+                </button>
+                <button type="button" class="rb-btn icon-only" onclick="officeCycleTextOrientation()" title="Metin Yönü (Yatay / Dikey 90°)">ab↗</button>
+              </div>
+            </div>
+          </div>
+          <div class="rb-group-label">Hizalama &amp; Paragraf</div>
+        </div>
+
+        <!-- Sayı (Excel Number Format) -->
+        <div class="rb-group">
+          <div class="rb-group-content">
+            <div class="rb-col">
+              <div class="rb-row">
+                <select id="csrNumFmtSelect" class="rb-select" style="width:102px;" title="Sayı & Birim Biçimi" onchange="officeApplyNumberFormat(this.value)">
+                  <option value="">Genel</option>
+                  <option value="number">Sayı (1.234,56)</option>
+                  <option value="integer">Tam Sayı (1.235)</option>
+                  <option value="currency">Para Birimi (₺)</option>
+                  <option value="percent">Yüzde (%)</option>
+                  <option value="ohm">Direnç (Ω)</option>
+                  <option value="amp">Akım (A)</option>
+                  <option value="volt">Gerilim (V)</option>
+                  <option value="ma">Kaçak (mA)</option>
+                  <option value="ms">Süre (ms)</option>
+                  <option value="ka">Kısa Devre (kA)</option>
+                  <option value="mm2">Kesit (mm²)</option>
+                </select>
+              </div>
+              <div class="rb-row">
+                <button type="button" class="rb-btn icon-only" onclick="officeApplyNumberFormat('currency')" title="Para Birimi (₺)">₺</button>
+                <button type="button" class="rb-btn icon-only" onclick="officeApplyNumberFormat('percent')" title="Yüzde Stili (%)">%</button>
+                <button type="button" class="rb-btn icon-only" onclick="officeApplyNumberFormat('number')" title="Binlik Ayırıcı Stili">,</button>
+                <button type="button" class="rb-btn icon-only" onclick="officeStepDecimals(1)" title="Ondalık Artır (.0 → .00)">.00</button>
+                <button type="button" class="rb-btn icon-only" onclick="officeStepDecimals(-1)" title="Ondalık Azalt (.00 → .0)">.0</button>
+              </div>
+            </div>
+          </div>
+          <div class="rb-group-label">Sayı &amp; Birim</div>
+        </div>
+
+        <!-- Stiller (Word Canlı Stiller + Excel Koşullu Biçimlendirme & Tablo Stili) -->
+        <div class="rb-group">
+          <div class="rb-group-content">
+            <button type="button" class="rb-big-btn" onclick="officeTogglePopover('popCondFmt', this, event)" title="Koşullu Biçimlendirme (Veri Çubuğu, Renk Ölçeği, Kurallar)">
+              <svg class="ico ico-lg" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="4" rx="1" fill="#dbeafe" stroke="#2563eb"/><rect x="3" y="10" width="12" height="4" rx="1" fill="#dcfce7" stroke="#16a34a"/><rect x="3" y="16" width="15" height="4" rx="1" fill="#fee2e2" stroke="#dc2626"/></svg>
+              <span>Koşullu<br>Biçim ▾</span>
+            </button>
+            <button type="button" class="rb-big-btn" onclick="officeTogglePopover('popTableStyles', this, event)" title="Tablo Olarak Biçimlendir (Excel Tablo Stilleri)">
+              <svg class="ico ico-lg" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 9v12M15 9v12"/><rect x="3" y="3" width="18" height="6" fill="#185abd" opacity="0.22" stroke="none"/></svg>
+              <span>Tablo<br>Stili ▾</span>
+            </button>
+            <!-- WordCraft Tarzı Canlı Stil Galerisi (1440px Sıfır Taşma!) -->
+            <div class="rb-styles-gallery" aria-label="Hızlı Hücre ve Metin Stilleri">
+              <button type="button" class="rb-style-tile" onclick="officeApplyQuickCellStyle('heading1')" title="Başlık 1">
+                <span class="st-prev" style="font-weight:700;color:#1b365d;font-size:12px;">AaBb</span>
+                <span class="st-name">Başlık</span>
+              </button>
+              <button type="button" class="rb-style-tile" onclick="officeApplyQuickCellStyle('good')" title="Uygun (Yeşil Vurgu)">
+                <span class="st-prev" style="font-weight:700;color:#14573a;background:#dcfce7;padding:0 4px;border-radius:3px;">Uygun</span>
+                <span class="st-name">Uygun</span>
+              </button>
+              <button type="button" class="rb-style-tile" onclick="officeApplyQuickCellStyle('bad')" title="Hatalı / Ağır Kusur (Kırmızı)">
+                <span class="st-prev" style="font-weight:700;color:#991b1b;background:#fee2e2;padding:0 4px;border-radius:3px;">Hata</span>
+                <span class="st-name">Hatalı</span>
+              </button>
+              <button type="button" class="rb-style-more" onclick="officeTogglePopover('popMoreStyles', this, event)" title="Tüm Hücre Stilleri (Normal, Uyarı, Toplam)">▾</button>
+            </div>
+          </div>
+          <div class="rb-group-label">Stiller</div>
+        </div>
+
+        <!-- Hücreler (Excel Cells) -->
+        <div class="rb-group">
+          <div class="rb-group-content">
+            <div class="rb-col">
+              <button type="button" class="rb-btn" onclick="officeTogglePopover('popCellInsert', this, event)" title="Satır veya Sütun Ekle">
+                <svg class="ico ico-sm" style="color:#107c41;" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8M8 12h8"/></svg>
+                <span>Ekle ▾</span>
+              </button>
+              <button type="button" class="rb-btn" onclick="officeTogglePopover('popCellDelete', this, event)" title="Satır veya Sütun Sil">
+                <svg class="ico ico-sm" style="color:#dc2626;" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9l6 6M15 9l-6 6"/></svg>
+                <span>Sil ▾</span>
+              </button>
+              <button type="button" class="rb-btn" onclick="officeTogglePopover('popCellFormat', this, event)" title="Satır Yüksekliği, Sütun Genişliği, Kilitle">
+                <svg class="ico ico-sm" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>
+                <span>Biçim ▾</span>
+              </button>
+            </div>
+          </div>
+          <div class="rb-group-label">Hücreler</div>
+        </div>
+
+        <!-- Düzenleme (Excel AutoSum, Fill, Sort & Filter, Find & Replace) -->
+        <div class="rb-group">
+          <div class="rb-group-content">
+            <div class="rb-col">
+              <button type="button" class="rb-btn" onclick="officeTogglePopover('popAutoSum', this, event)" title="Otomatik Toplam & İşlevler">
+                <span style="font-weight:800;font-size:13px;color:var(--of-excel);line-height:1;">Σ</span>
+                <span>Toplam ▾</span>
+              </button>
+              <button type="button" class="rb-btn" onclick="officeTogglePopover('popFillSeries', this, event)" title="Aşağı / Sağa / Seri Doldur">
+                <svg class="ico ico-sm" style="color:var(--of-word);" viewBox="0 0 24 24"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+                <span>Doldur ▾</span>
+              </button>
+              <button type="button" class="rb-btn" onclick="officeTogglePopover('popClear', this, event)" title="İçerik veya Biçimi Temizle">
+                <svg class="ico ico-sm" style="color:var(--of-warn);" viewBox="0 0 24 24"><path d="M20 20H7L3 16l9-9 8 8-4 5"/></svg>
+                <span>Temizle ▾</span>
+              </button>
+            </div>
+            <div class="rb-col">
+              <button type="button" class="rb-btn" onclick="officeTogglePopover('popSortFilter', this, event)" title="Sırala ve Filtrele (A-Z, Z-A, Otomatik Filtre)">
+                <svg class="ico ico-sm" viewBox="0 0 24 24"><path d="M3 6h10M3 12h7M3 18h4M17 4v16M14 17l3 3 3-3"/></svg>
+                <span>Sırala &amp; Filtre ▾</span>
+              </button>
+              <button type="button" class="rb-btn" onclick="officeOpenFindReplace(true)" title="Bul ve Değiştir (Ctrl+F / Ctrl+H)">
+                <svg class="ico ico-sm" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+                <span>Bul &amp; Değiştir</span>
+              </button>
+              <button id="rbDetailDrawerBtn" type="button" class="rb-btn" onclick="toggleDetailPane()" title="Sağdaki Bölüm & Tablo Özellikleri Panelini Aç/Kapat">
+                <svg class="ico ico-sm" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v18"/></svg>
+                <span>Özellikler</span>
+              </button>
+            </div>
+          </div>
+          <div class="rb-group-label">Düzenleme</div>
+        </div>
+      </div>
+
+      <!-- ===================================================================
+           SEKME 2: EKLE (EXCEL + WORD TABLO, GRAFİK, GÖRSEL, ŞEKİL, SİMGE)
+           =================================================================== -->
+      <div id="ribbon_insert" class="ribbon-pane">
+        <div class="rb-group">
+          <div class="rb-group-content">
+            <button type="button" class="rb-big-btn" onclick="addNewSection('data_table')" title="Yeni Ölçüm / Veri Tablosu Bölümü Ekle">
+              <svg class="ico ico-lg" style="color:#107c41;" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
+              <span>Ölçüm<br>Tablosu</span>
+            </button>
+            <button type="button" class="rb-big-btn" onclick="addNewSection('visual_checklist_group')" title="Yeni Gözle Kontrol (✓/X/N/G) Bölümü Ekle">
+              <svg class="ico ico-lg" style="color:#185abd;" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              <span>Gözle<br>Kontrol</span>
+            </button>
+            <button type="button" class="rb-big-btn" onclick="addNewSection('notes_box')" title="Yeni Metin / Açıklama Kutusu Ekle">
+              <svg class="ico ico-lg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>
+              <span>Metin<br>Kutusu</span>
+            </button>
+          </div>
+          <div class="rb-group-label">Tablolar &amp; Bölümler</div>
+        </div>
+
+        <div class="rb-group">
+          <div class="rb-group-content">
+            <button type="button" class="rb-big-btn" onclick="document.getElementById('insertImageInput').click()" title="Rapor İçine Fotoğraf / Termal Görsel / Şema Ekle">
+              <svg class="ico ico-lg" style="color:#0284c7;" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+              <span>Resim /<br>Fotoğraf</span>
+            </button>
+            <button type="button" class="rb-big-btn" onclick="officeOpenInsertChartModal()" title="Veri Tablosundan veya Özel Veriden Canlı Grafik Ekle (GridCraft)">
+              <svg class="ico ico-lg" style="color:#107c41;" viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6M3 20h18"/></svg>
+              <span>Grafik<br>Ekle</span>
+            </button>
+            <button type="button" class="rb-big-btn" onclick="officeInsertCalloutBlock('info')" title="Uyarı / Bilgi / C1 Şekil Kutusu Ekle">
+              <svg class="ico ico-lg" style="color:#d97706;" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <span>Uyarı /<br>Şekil Kutusu</span>
+            </button>
+            <button type="button" class="rb-big-btn" onclick="officeInsertSignatureBlock()" title="İmza & Onay Satırı Ekle (Word)">
+              <svg class="ico ico-lg" viewBox="0 0 24 24"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/><path d="M3 22h18"/></svg>
+              <span>İmza<br>Satırı</span>
+            </button>
+          </div>
+          <div class="rb-group-label">Çizimler &amp; Grafikler</div>
+        </div>
+
+        <div class="rb-group">
+          <div class="rb-group-content">
+            <div class="rb-col">
+              <button type="button" class="rb-btn" onclick="quickInsertTableRow()">+ Satır Ekle</button>
+              <button type="button" class="rb-btn" onclick="quickInsertTableCol()">+ Sütun Ekle</button>
+              <button type="button" class="rb-btn" onclick="quickCloneLastRow()">Son Satırı Çoğalt</button>
+            </div>
+            <div class="rb-col">
+              <button type="button" class="rb-btn" onclick="toggleSelectedSectionPageBreak()">Sayfa Sonu Ekle</button>
+              <button type="button" class="rb-btn" onclick="officeAddCommentForSelection()">Yorum Ekle</button>
+              <button type="button" class="rb-btn" onclick="openBrandingModal()">Üstbilgi / Altbilgi</button>
+            </div>
+          </div>
+          <div class="rb-group-label">Sayfa &amp; Tablo</div>
+        </div>
+
+        <div class="rb-group">
+          <div class="rb-group-content">
+            <button type="button" class="rb-big-btn" onclick="officeTogglePopover('popSymbols', this, event)" title="Mühendislik ve Özel Simgeler (Ω, ±, °C, µ, Δ, ✓...)">
+              <span style="font-size:18px;font-weight:700;line-height:1;font-family:Georgia,serif;">Ω</span>
+              <span>Simge ▾</span>
+            </button>
+            <button type="button" class="rb-big-btn" onclick="officeInsertTimestamp()" title="Seçili Hücreye Bugünün Tarihini Ekle">
+              <svg class="ico ico-lg" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              <span>Tarih &amp;<br>Saat</span>
+            </button>
+            <button type="button" class="rb-big-btn" onclick="openBlueprintsModal()" title="Hazır Rapor Şablonları">
+              <svg class="ico ico-lg" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+              <span>Hazır<br>Şablon</span>
+            </button>
+          </div>
+          <div class="rb-group-label">Simgeler &amp; Şablonlar</div>
+        </div>
+      </div>
+
+      <!-- ===================================================================
+           SEKME 3: TASARIM (WORDCRAFT DESIGN: TEMA, STİL SETİ, FİLİGRAN, SAYFA KENARLIĞI)
+           =================================================================== -->
+      <div id="ribbon_design" class="ribbon-pane">
+        <div class="rb-group">
+          <div class="rb-group-content">
+            <div class="rb-theme-gallery">
+              <button type="button" class="rb-design-card" data-rb-theme="rams_navy" onclick="setQuickTheme('rams_navy')">
+                <span class="dc-bar" style="background:#1f3a5f;"></span>
+                <span class="dc-title" style="color:#1f3a5f;">RAMS</span>
+                <span class="dc-name">Lacivert</span>
+              </button>
+              <button type="button" class="rb-design-card" data-rb-theme="classic" onclick="setQuickTheme('classic')">
+                <span class="dc-bar" style="background:#c00000;"></span>
+                <span class="dc-title" style="color:#c00000;">TKM</span>
+                <span class="dc-name">Klasik</span>
+              </button>
+              <button type="button" class="rb-design-card" data-rb-theme="rams_emerald" onclick="setQuickTheme('rams_emerald')">
+                <span class="dc-bar" style="background:#047857;"></span>
+                <span class="dc-title" style="color:#047857;">RAMS</span>
+                <span class="dc-name">Zümrüt</span>
+              </button>
+              <button type="button" class="rb-design-card" data-rb-theme="rams_nordic" onclick="setQuickTheme('rams_nordic')">
+                <span class="dc-bar" style="background:#0f172a;"></span>
+                <span class="dc-title" style="color:#0f172a;">RAMS</span>
+                <span class="dc-name">Nordic</span>
+              </button>
+              <button type="button" class="rb-design-card" data-rb-theme="rams_tuv" onclick="setQuickTheme('rams_tuv')">
+                <span class="dc-bar" style="background:#1e3a8a;"></span>
+                <span class="dc-title" style="color:#1e3a8a;">RAMS</span>
+                <span class="dc-name">Kobalt</span>
+              </button>
+            </div>
+          </div>
+          <div class="rb-group-label">Belge Temaları &amp; Stil Kümeleri</div>
+        </div>
+
+        <div class="rb-group">
+          <div class="rb-group-content">
+            <div class="rb-col">
+              <div class="rb-row">
+                <span class="rb-mini-label">Belge Yazı Tipi:</span>
+                <select id="rbDocFont" class="rb-select" style="width:154px;" onchange="officeUpdateDesign('docFont', this.value)">
+                  <option value="">Standart (Segoe/Plex)</option>
+                  <option value="'IBM Plex Sans', sans-serif">Modern (IBM Plex)</option>
+                  <option value="Calibri, Arial, sans-serif">Office (Calibri)</option>
+                  <option value="'Times New Roman', Georgia, serif">Resmi (Times Serif)</option>
+                  <option value="Arial, Helvetica, sans-serif">Teknik (Arial)</option>
+                </select>
+              </div>
+              <div class="rb-row">
+                <span class="rb-mini-label">Yoğunluk:</span>
+                <button type="button" class="rb-btn bordered" onclick="officeApplyDensityPreset('compact')">Sıkı</button>
+                <button type="button" class="rb-btn bordered" onclick="officeApplyDensityPreset('normal')">Standart</button>
+                <button type="button" class="rb-btn bordered" onclick="officeApplyDensityPreset('relaxed')">Ferah</button>
+              </div>
+            </div>
+          </div>
+          <div class="rb-group-label">Belge Biçimlendirme</div>
+        </div>
+
+        <div class="rb-group">
+          <div class="rb-group-content">
+            <button type="button" class="rb-big-btn" onclick="officeTogglePopover('popWatermark', this, event)" title="Sayfa Arkasına Çapraz Filigran Ekle (TASLAK, GİZLİ, ÖRNEK...)">
+              <svg class="ico ico-lg" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 15l8-6" stroke-dasharray="2 2"/><text x="9" y="15" font-size="7" font-weight="700" fill="currentColor" stroke="none">W</text></svg>
+              <span>Filigran ▾</span>
+            </button>
+            <button type="button" class="rb-big-btn" onclick="officeOpenColorPopover('pageColor', this, event)" title="Sayfa Arka Plan Rengi">
+              <svg class="ico ico-lg" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M4 15h16" stroke="#185abd"/><rect x="5" y="16" width="14" height="5" fill="#dbeafe" stroke="none"/></svg>
+              <span>Sayfa<br>Rengi ▾</span>
+            </button>
+            <button type="button" class="rb-big-btn" onclick="officeTogglePopover('popPageBorder', this, event)" title="A4 Sayfa Çerçeve Kenarlığı">
+              <svg class="ico ico-lg" viewBox="0 0 24 24"><rect x="3" y="2" width="18" height="20" rx="1"/><rect x="6" y="5" width="12" height="14" stroke-dasharray="2 1.5"/></svg>
+              <span>Sayfa<br>Kenarlığı ▾</span>
+            </button>
+            <button type="button" class="rb-big-btn" onclick="openBrandingModal()" title="Kuruluş Antet, Logo ve Doküman Kodu">
+              <svg class="ico ico-lg" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg>
+              <span>Antet &amp;<br>Logolar</span>
+            </button>
+          </div>
+          <div class="rb-group-label">Sayfa Arka Planı</div>
+        </div>
+      </div>
+
+      <!-- ===================================================================
+           SEKME 4: SAYFA DÜZENİ (WORDCRAFT LAYOUT + GRIDCRAFT PAGE SETUP)
+           =================================================================== -->
+      <div id="ribbon_layout" class="ribbon-pane">
+        <div class="rb-group">
+          <div class="rb-group-content">
+            <div class="rb-col">
+              <div class="rb-row">
+                <button type="button" class="rb-btn bordered" onclick="applyMarginPreset('narrow')">Dar</button>
+                <button type="button" class="rb-btn bordered" onclick="applyMarginPreset('normal')">Normal</button>
+                <button type="button" class="rb-btn bordered" onclick="applyMarginPreset('wide')">Geniş</button>
+              </div>
+              <div class="rb-row">
+                <span class="rb-mini-label">Üst/Alt:</span>
+                <input id="rbPagePadY" type="text" inputmode="decimal" class="rb-input rb-num" value="6.5" oninput="updateLayoutStyle('pagePadY', this.value, true)">
+                <span class="rb-mini-label">Sağ/Sol:</span>
+                <input id="rbPagePadX" type="text" inputmode="decimal" class="rb-input rb-num" value="10.5" oninput="updateLayoutStyle('pagePadX', this.value, true)">
+                <span class="rb-mini-label">mm</span>
+              </div>
+            </div>
+            <button id="rbOrientBtn" type="button" class="rb-big-btn" onclick="officeToggleOrientation()" title="A4 Dikey / Yatay Sayfa Yönlendirme">
+              <svg class="ico ico-lg" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 12l3 3 3-3M12 7v8"/></svg>
+              <span id="rbOrientLabel">Dikey<br>A4</span>
+            </button>
+            <div class="rb-col">
+              <button type="button" class="rb-btn" onclick="toggleSelectedSectionPageBreak()" title="Seçili bölümü yeni sayfadan başlat">Sayfa Sonu</button>
+              <button id="rbLineNumBtn" type="button" class="rb-btn" onclick="officeToggleLineNumbers()" title="Sol Kenarda Satır Numaraları Göster (Word)">Satır No</button>
+            </div>
+          </div>
+          <div class="rb-group-label">Sayfa Yapısı</div>
+        </div>
+
+        <div class="rb-group">
+          <div class="rb-group-content">
+            <div class="rb-col">
+              <div class="rb-row">
+                <span class="rb-mini-label">Başlık Üst:</span>
+                <input id="rbSecMT" type="number" min="0" max="28" class="rb-input rb-num" value="4" oninput="updateLayoutStyle('secMarginTop', this.value, true)">
+                <span class="rb-mini-label">Başlık Alt:</span>
+                <input id="rbSecMB" type="number" min="0" max="20" class="rb-input rb-num" value="2" oninput="updateLayoutStyle('secMarginBottom', this.value, true)">
+                <span class="rb-mini-label">Alt Şerit:</span>
+                <input id="rbSubMT" type="number" min="0" max="20" class="rb-input rb-num" value="3" oninput="updateLayoutStyle('subMarginTop', this.value, true)">
+              </div>
+              <div class="rb-row">
+                <span class="rb-mini-label">Bölüm Ara:</span>
+                <input id="rbBlockGap" type="number" min="0" max="28" class="rb-input rb-num" value="2" oninput="updateLayoutStyle('blockGap', this.value, true)">
+                <span class="rb-mini-label">Antet Altı:</span>
+                <input id="rbHeaderMB" type="number" min="0" max="20" class="rb-input rb-num" value="3" oninput="updateLayoutStyle('headerMarginBottom', this.value, true)">
+                <span class="rb-mini-label">px</span>
+              </div>
+            </div>
+          </div>
+          <div class="rb-group-label">Paragraf &amp; Bölüm Boşlukları</div>
+        </div>
+
+        <div class="rb-group">
+          <div class="rb-group-content">
+            <div class="rb-col">
+              <div class="rb-row">
+                <span class="rb-mini-label">Hücre Dolgu:</span>
+                <input id="rbCellPY" type="text" inputmode="decimal" class="rb-input rb-num" value="2" oninput="updateLayoutStyle('cellPadY', this.value, true)">
+                <span class="rb-mini-label">Satır Min:</span>
+                <input id="rbRowMinH" type="text" inputmode="decimal" class="rb-input rb-num" value="0" oninput="updateLayoutStyle('rowMinHeight', this.value, true)">
+              </div>
+              <div class="rb-row">
+                <span class="rb-mini-label">Tablo Pt:</span>
+                <input id="rbTblFS" type="text" inputmode="decimal" class="rb-input rb-num" value="7.2" oninput="updateLayoutStyle('tableFontSize', this.value, true)">
+                <button type="button" class="rb-btn bordered" onclick="resetLayoutStyles()">Sıfırla</button>
+              </div>
+            </div>
+          </div>
+          <div class="rb-group-label">Sığdırmak İçin Ölçeklendir</div>
+        </div>
+
+        <div class="rb-group">
+          <div class="rb-group-content">
+            <div class="rb-col">
+              <label class="rb-check-row"><input id="chkShowHeader" type="checkbox" checked onchange="officeUpdateDesign('hideHeader', !this.checked)"><span>Anteti Göster</span></label>
+              <label class="rb-check-row"><input id="chkShowFooter" type="checkbox" checked onchange="officeUpdateDesign('hideFooter', !this.checked)"><span>Altbilgiyi Göster</span></label>
+            </div>
+          </div>
+          <div class="rb-group-label">Sayfa Seçenekleri</div>
+        </div>
+      </div>
+
+      <!-- ===================================================================
+           SEKME 5: FORMÜLLER (GRIDCRAFT FORMULAS ENGINE!)
+           =================================================================== -->
+      <div id="ribbon_formulas" class="ribbon-pane">
+        <div class="rb-group">
+          <div class="rb-group-content">
+            <button type="button" class="rb-big-btn" onclick="officeOpenInsertFunctionModal()" title="İşlev Sihirbazı Aç (Shift+F3)">
+              <span style="font-family:Georgia,serif;font-style:italic;font-weight:800;font-size:17px;color:#107c41;line-height:1;">fx</span>
+              <span>İşlev<br>Ekle</span>
+            </button>
+            <button type="button" class="rb-big-btn" onclick="officeInsertQuickFormula('TOPLA')" title="Seçili sütun için otomatik =TOPLA(...) ekle">
+              <span style="font-size:18px;font-weight:800;color:#107c41;line-height:1;">Σ</span>
+              <span>Otomatik<br>Toplam</span>
+            </button>
+            <div class="rb-col">
+              <div class="rb-row">
+                <button type="button" class="rb-btn bordered" onclick="officeInsertQuickFormula('ORTALAMA')" title="=ORTALAMA(...)">Ortalama</button>
+                <button type="button" class="rb-btn bordered" onclick="officeInsertQuickFormula('SAY')" title="=SAY(...)">Say</button>
+                <button type="button" class="rb-btn bordered" onclick="officeInsertQuickFormula('MAK')" title="=MAK(...)">Mak</button>
+                <button type="button" class="rb-btn bordered" onclick="officeInsertQuickFormula('MIN')" title="=MİN(...)">Min</button>
+              </div>
+              <div class="rb-row">
+                <button type="button" class="rb-btn bordered" onclick="officeInsertQuickFormula('EGER')" title="Koşullu =EĞER(koşul; doğru; yanlış)">EĞER (IF)</button>
+                <button type="button" class="rb-btn bordered" onclick="officeInsertQuickFormula('EGERSAY')" title="=EĞERSAY(aralık; &quot;✓&quot;)">EĞERSAY</button>
+                <button type="button" class="rb-btn bordered" onclick="officeInsertQuickFormula('YUVARLA')" title="=YUVARLA(değer; 2)">YUVARLA</button>
+                <button type="button" class="rb-btn bordered" onclick="officeInsertQuickFormula('BUGUN')" title="=BUGÜN()">BUGÜN</button>
+              </div>
+            </div>
+          </div>
+          <div class="rb-group-label">İşlev Kitaplığı</div>
+        </div>
+
+        <div class="rb-group">
+          <div class="rb-group-content">
+            <div class="rb-col">
+              <button type="button" class="rb-btn bordered" onclick="officeInsertEngineeringFormula('limit_check')" title="Ölçüm ≤ Sınır ise ✓, değilse X kontrol formülü">⚡ Sınır Kontrolü (≤ → ✓/X)</button>
+              <button type="button" class="rb-btn bordered" onclick="officeInsertEngineeringFormula('ok_rate')" title="Tablodaki ✓ Uygunluk yüzdesini hesapla">✓ Uygunluk Oranı (%)</button>
+            </div>
+          </div>
+          <div class="rb-group-label">Mühendislik Hazır Formülleri</div>
+        </div>
+
+        <div class="rb-group">
+          <div class="rb-group-content">
+            <button id="rbShowFormulasBtn" type="button" class="rb-big-btn" onclick="officeToggleShowFormulas()" title="Sonuç yerine ham formülleri göster (Ctrl+`)">
+              <svg class="ico ico-lg" viewBox="0 0 24 24"><path d="M4 7h16M4 12h10M4 17h13"/><text x="14" y="18" font-size="8" font-weight="800" fill="currentColor" stroke="none">fx</text></svg>
+              <span>Formülleri<br>Göster</span>
+            </button>
+            <div class="rb-col">
+              <button type="button" class="rb-btn" onclick="officeRecalculateAll()" title="Tüm tablo formüllerini yeniden hesapla (F9)">
+                <svg class="ico ico-sm" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                <span>Şimdi Hesapla (F9)</span>
+              </button>
+              <button type="button" class="rb-btn" onclick="officeOpenSideTab('audit')" title="Formül hatalarını (#HATA!) tara">
+                <svg class="ico ico-sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+                <span>Hata Denetimi</span>
+              </button>
+            </div>
+          </div>
+          <div class="rb-group-label">Formül Denetimi &amp; Hesaplama</div>
+        </div>
+      </div>
+
+      <!-- ===================================================================
+           SEKME 6: VERİ (GRIDCRAFT DATA: SIRALA, FİLTRE, CSV, YİNELENENLER)
+           =================================================================== -->
+      <div id="ribbon_data" class="ribbon-pane">
+        <div class="rb-group">
+          <div class="rb-group-content">
+            <button type="button" class="rb-big-btn" onclick="document.getElementById('importCsvInput').click()" title="CSV/Excel verisini seçili tabloya aktar">
+              <svg class="ico ico-lg" style="color:#107c41;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+              <span>CSV'den<br>Al</span>
+            </button>
+            <button type="button" class="rb-big-btn" onclick="officeExportTableCsv()" title="Seçili tabloyu Excel uyumlu CSV olarak indir">
+              <svg class="ico ico-lg" style="color:#185abd;" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+              <span>CSV<br>Dışa Aktar</span>
+            </button>
+          </div>
+          <div class="rb-group-label">Veri Al &amp; Aktar</div>
+        </div>
+
+        <div class="rb-group">
+          <div class="rb-group-content">
+            <button type="button" class="rb-big-btn" onclick="officeSortTableBySelectedCol('asc')" title="Seçili sütunu A'dan Z'ye (Küçükten Büyüğe) sırala">
+              <svg class="ico ico-lg" viewBox="0 0 24 24"><path d="M11 5h10M11 9h7M11 13h4M3 17l3 3 3-3M6 4v16"/></svg>
+              <span>A→Z<br>Sırala</span>
+            </button>
+            <button type="button" class="rb-big-btn" onclick="officeSortTableBySelectedCol('desc')" title="Seçili sütunu Z'den A'ya (Büyükten Küçüğe) sırala">
+              <svg class="ico ico-lg" viewBox="0 0 24 24"><path d="M11 5h4M11 9h7M11 13h10M3 7l3-3 3 3M6 4v16"/></svg>
+              <span>Z→A<br>Sırala</span>
+            </button>
+            <button id="rbAutoFilterBtn" type="button" class="rb-big-btn" onclick="officeToggleAutoFilter()" title="Seçili tabloda Excel Otomatik Filtre düğmelerini aç/kapat">
+              <svg class="ico ico-lg" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+              <span>Otomatik<br>Filtre</span>
+            </button>
+            <div class="rb-col">
+              <button type="button" class="rb-btn" onclick="officeClearTableFilters()">Filtreyi Temizle</button>
+              <button type="button" class="rb-btn" onclick="officeToggleTotalRow()">Toplam Satırı</button>
+            </div>
+          </div>
+          <div class="rb-group-label">Sırala ve Filtrele</div>
+        </div>
+
+        <div class="rb-group">
+          <div class="rb-group-content">
+            <button type="button" class="rb-big-btn" onclick="officeRemoveDuplicates()" title="Seçili tablodaki birebir yinelenen satırları temizle">
+              <svg class="ico ico-lg" viewBox="0 0 24 24"><rect x="3" y="4" width="14" height="5" rx="1"/><rect x="3" y="10" width="14" height="5" rx="1"/><path d="M19 13l3 3-3 3M15 16h7"/></svg>
+              <span>Yinelenenleri<br>Kaldır</span>
+            </button>
+            <button type="button" class="rb-big-btn" onclick="officeOpenTextToColsModal()" title="Seçili sütundaki metni ayırıcıya göre yan sütunlara böl">
+              <svg class="ico ico-lg" viewBox="0 0 24 24"><rect x="3" y="4" width="6" height="16" rx="1"/><rect x="15" y="4" width="6" height="16" rx="1"/><path d="M9 12h6M13 9l3 3-3 3"/></svg>
+              <span>Metni<br>Sütunlara</span>
+            </button>
+            <button type="button" class="rb-big-btn" onclick="officeAutoFillSeriesDown()" title="Seçili hücreden aşağıya otomatik seri (1, 2, 3...) doldur">
+              <svg class="ico ico-lg" style="color:#d97706;" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              <span>Hızlı Seri<br>Doldur</span>
+            </button>
+          </div>
+          <div class="rb-group-label">Veri Araçları</div>
+        </div>
+      </div>
+
+      <!-- ===================================================================
+           SEKME 7: GÖZDEN GEÇİR (WORDCRAFT REVIEW: İSTATİSTİK, YORUMLAR, KORUMA)
+           =================================================================== -->
+      <div id="ribbon_review" class="ribbon-pane">
+        <div class="rb-group">
+          <div class="rb-group-content">
+            <button type="button" class="rb-big-btn" onclick="officeOpenDocStatsModal()" title="Kelime, karakter, sayfa, hücre ve ✓/X/N/G istatistikleri">
+              <svg class="ico ico-lg" viewBox="0 0 24 24"><path d="M4 19h16M4 15h10M4 11h16M4 7h8"/></svg>
+              <span>Sözcük<br>Sayımı</span>
+            </button>
+            <button type="button" class="rb-big-btn" onclick="officeOpenSideTab('audit')" title="Boş zorunlu alanları, X kusurlarını ve sütun genişliklerini denetle">
+              <svg class="ico ico-lg" style="color:#107c41;" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+              <span>Rapor<br>Denetçisi</span>
+            </button>
+          </div>
+          <div class="rb-group-label">Yazım &amp; Denetim</div>
+        </div>
+
+        <div class="rb-group">
+          <div class="rb-group-content">
+            <button type="button" class="rb-big-btn" onclick="officeAddCommentForSelection()" title="Seçili hücreye veya bölüme inceleme yorumu ekle">
+              <svg class="ico ico-lg" style="color:#185abd;" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M12 8v6M9 11h6"/></svg>
+              <span>Yeni<br>Yorum</span>
+            </button>
+            <div class="rb-col">
+              <button type="button" class="rb-btn" onclick="officeOpenSideTab('comments')">Yorumları Göster</button>
+              <button type="button" class="rb-btn" onclick="officeToggleCommentMarkers()">Hücre İşaretçileri</button>
+            </div>
+          </div>
+          <div class="rb-group-label">Yorumlar</div>
+        </div>
+
+        <div class="rb-group">
+          <div class="rb-group-content">
+            <button id="rbProtectBtn" type="button" class="rb-big-btn" onclick="officeToggleSheetProtect()" title="Şablon yapısını koru — kilitli hücrelerin değişmesini engelle">
+              <svg class="ico ico-lg" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <span id="rbProtectLabel">Şablonu<br>Koru</span>
+            </button>
+            <div class="rb-col">
+              <button type="button" class="rb-btn" onclick="officeToggleLockSelectedCells()">Seçili Hücreyi Kilitle</button>
+              <button type="button" class="rb-btn" onclick="openVersionHistoryModal()">Versiyon Karşılaştır</button>
+            </div>
+          </div>
+          <div class="rb-group-label">Koruma &amp; Sürüm</div>
+        </div>
+      </div>
+
+      <!-- ===================================================================
+           SEKME 8: GÖRÜNÜM (WORDCRAFT + GRIDCRAFT VIEW MODES, PANES, DARK MODE)
+           =================================================================== -->
+      <div id="ribbon_view" class="ribbon-pane">
+        <div class="rb-group">
+          <div class="rb-group-content">
+            <button id="vmPrint" type="button" class="rb-big-btn active" onclick="officeSetViewMode('print')" title="Standart A4 Yazdırma Düzeni">
+              <svg class="ico ico-lg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+              <span>Yazdırma<br>Düzeni</span>
+            </button>
+            <button id="vmTwoUp" type="button" class="rb-big-btn" onclick="officeSetViewMode('twoup')" title="Birden Çok Sayfa (2 Sayfa Yan Yana — WordCraft)">
+              <svg class="ico ico-lg" viewBox="0 0 24 24"><rect x="2" y="3" width="9" height="18" rx="1"/><rect x="13" y="3" width="9" height="18" rx="1"/></svg>
+              <span>İki Sayfa<br>Yan Yana</span>
+            </button>
+            <button id="vmPageBreak" type="button" class="rb-big-btn" onclick="officeSetViewMode('pagebreak')" title="Sayfa Sonu Önizleme (GridCraft Page Break Preview)">
+              <svg class="ico ico-lg" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 12h18" stroke="#185abd" stroke-dasharray="3 2"/></svg>
+              <span>Sayfa Sonu<br>Önizleme</span>
+            </button>
+            <button id="vmFocus" type="button" class="rb-big-btn" onclick="officeToggleFocusMode()" title="Odak Modu (Yan panelleri gizle, belgeye odaklan)">
+              <svg class="ico ico-lg" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+              <span>Odak<br>Modu</span>
+            </button>
+          </div>
+          <div class="rb-group-label">Belge Görünümleri</div>
+        </div>
+
+        <div class="rb-group">
+          <div class="rb-group-content">
+            <div class="rb-col">
+              <label class="rb-check-row"><input id="chkNavPane" type="checkbox" checked onchange="toggleNavPane(this.checked)"><span>Gezinti Bölmesi</span></label>
+              <label class="rb-check-row"><input id="chkDetailPane" type="checkbox" onchange="toggleDetailPane(this.checked)"><span>Özellikler Paneli</span></label>
+              <label class="rb-check-row"><input id="chkFormulaBar" type="checkbox" checked onchange="toggleFormulaBar(this.checked)"><span>Formül Çubuğu (fx)</span></label>
+            </div>
+            <div class="rb-col" style="margin-left:8px;">
+              <label class="rb-check-row"><input id="chkRuler" type="checkbox" checked onchange="toggleWordRuler(this.checked)"><span>cm Cetvelleri</span></label>
+              <label class="rb-check-row"><input id="chkHeadings" type="checkbox" onchange="officeToggleExcelHeaders(this.checked)"><span>Sütun Harfleri (A-B-C)</span></label>
+              <label class="rb-check-row"><input id="chkFormattingMarks" type="checkbox" onchange="officeToggleFormattingMarks(this.checked)"><span>Biçim İşaretleri (¶)</span></label>
+            </div>
+          </div>
+          <div class="rb-group-label">Göster</div>
+        </div>
+
+        <div class="rb-group">
+          <div class="rb-group-content">
+            <div class="rb-col">
+              <div class="rb-row">
+                <button type="button" class="rb-btn bordered" onclick="setZoomAbsolute(0.75)">%75</button>
+                <button type="button" class="rb-btn bordered" onclick="setZoomAbsolute(1.0)">%100</button>
+                <button type="button" class="rb-btn bordered" onclick="setZoomAbsolute(1.25)">%125</button>
+              </div>
+              <div class="rb-row">
+                <button type="button" class="rb-btn bordered" onclick="fitPreviewZoom()">Sayfa Genişliği</button>
+                <button type="button" class="rb-btn bordered" onclick="officeToggleDarkMode()">Koyu / Açık Mod</button>
+              </div>
+            </div>
+          </div>
+          <div class="rb-group-label">Yakınlaştır &amp; Arayüz</div>
+        </div>
+      </div>
+
+      <!-- ===================================================================
+           SEKME 9: TABLO TASARIMI (BAĞLAMSAL EXCEL + WORD TABLO SEKMESİ)
+           =================================================================== -->
+      <div id="ribbon_table" class="ribbon-pane">
+        <div class="rb-group">
+          <div class="rb-group-content">
+            <div class="rb-col">
+              <label class="rb-check-row"><input id="chkTblBandedRows" type="checkbox" checked onchange="officeSetTableOption('bandedRows', this.checked)"><span>Şeritli Satırlar</span></label>
+              <label class="rb-check-row"><input id="chkTblTotalRow" type="checkbox" onchange="officeToggleTotalRow(this.checked)"><span>Toplam Satırı</span></label>
+              <label class="rb-check-row"><input id="chkTblFirstCol" type="checkbox" onchange="officeSetTableOption('firstColBold', this.checked)"><span>İlk Sütun Kalın</span></label>
+            </div>
+            <div class="rb-col" style="margin-left:6px;">
+              <label class="rb-check-row"><input id="chkTblBandedCols" type="checkbox" onchange="officeSetTableOption('bandedCols', this.checked)"><span>Şeritli Sütunlar</span></label>
+              <label class="rb-check-row"><input id="chkTblLastCol" type="checkbox" onchange="officeSetTableOption('lastColBold', this.checked)"><span>Son Sütun Kalın</span></label>
+              <label class="rb-check-row"><input id="chkTblFilterBtn" type="checkbox" onchange="officeToggleAutoFilter(this.checked)"><span>Filtre Düğmesi</span></label>
+            </div>
+          </div>
+          <div class="rb-group-label">Tablo Stili Seçenekleri</div>
+        </div>
+
+        <div class="rb-group">
+          <div class="rb-group-content">
+            <div class="rb-col">
+              <div class="rb-row">
+                <button type="button" class="rb-btn bordered" onclick="officeInsertRowRelative(-1)">↑ Üste Satır</button>
+                <button type="button" class="rb-btn bordered" onclick="officeInsertRowRelative(1)">↓ Alta Satır</button>
+                <button type="button" class="rb-btn bordered danger" onclick="officeDeleteSelectedRow()">Satırı Sil</button>
+              </div>
+              <div class="rb-row">
+                <button type="button" class="rb-btn bordered" onclick="officeInsertColRelative(-1)">← Sola Sütun</button>
+                <button type="button" class="rb-btn bordered" onclick="officeInsertColRelative(1)">→ Sağa Sütun</button>
+                <button type="button" class="rb-btn bordered danger" onclick="officeDeleteSelectedCol()">Sütunu Sil</button>
+              </div>
+            </div>
+          </div>
+          <div class="rb-group-label">Satırlar &amp; Sütunlar</div>
+        </div>
+
+        <div class="rb-group">
+          <div class="rb-group-content">
+            <div class="rb-col">
+              <div class="rb-row">
+                <button type="button" class="rb-btn bordered" onclick="officeMergeOrUnmergeCells()">Hücre Birleştir / Ayır</button>
+                <button type="button" class="rb-btn bordered" onclick="officeDistributeColsEvenly()">Sütunları Eşitle</button>
+              </div>
+              <div class="rb-row">
+                <button type="button" class="rb-btn bordered" onclick="copySelectedCellStyleToRow()">Stili Satıra Yay</button>
+                <button type="button" class="rb-btn bordered" onclick="copySelectedCellStyleToCol()">Stili Sütuna Yay</button>
+              </div>
+            </div>
+          </div>
+          <div class="rb-group-label">Birleştir &amp; Hücre Boyutu</div>
+        </div>
+
+        <div class="rb-group">
+          <div class="rb-group-content">
+            <div class="rb-col">
+              <div class="rb-row">
+                <span class="rb-mini-label">Global Çerçeve:</span>
+                <input id="rbGlobalBorderCheck" type="checkbox" onchange="updateLayoutStyle('customBorderEnabled', this.checked, false)">
+                <input id="rbGlobalBorderColor" type="color" class="rb-color-picker" value="#cbd5e1" oninput="updateLayoutStyle('customBorderEnabled', true, false); updateLayoutStyle('borderColor', this.value, false)">
+                <select id="rbGlobalBorderW" class="rb-select" onchange="updateLayoutStyle('customBorderEnabled', true, false); updateLayoutStyle('borderWidth', this.value, true)">
+                  <option value="0.5">0.5px</option>
+                  <option value="1" selected>1px</option>
+                  <option value="1.5">1.5px</option>
+                  <option value="2">2px</option>
+                </select>
+              </div>
+              <div class="rb-row">
+                <span class="rb-mini-label">Özel Başlık/TH:</span>
+                <input id="rbGlobalColorCheck" type="checkbox" onchange="updateLayoutStyle('customColorsEnabled', this.checked, false)">
+                <input id="rbSecColor" type="color" class="rb-color-picker" value="#1f3a5f" title="Ana Başlık Rengi" oninput="updateLayoutStyle('customColorsEnabled', true, false); updateLayoutStyle('secTitleColor', this.value, false)">
+                <input id="rbThBg" type="color" class="rb-color-picker" value="#f1f5f9" title="TH Zemin Rengi" oninput="updateLayoutStyle('customColorsEnabled', true, false); updateLayoutStyle('thBg', this.value, false)">
+                <input id="rbSubBg" type="color" class="rb-color-picker" value="#eaeff5" title="Alt Şerit Zemin" oninput="updateLayoutStyle('customColorsEnabled', true, false); updateLayoutStyle('subBg', this.value, false)">
+              </div>
+            </div>
+          </div>
+          <div class="rb-group-label">Tablo Kenarlık &amp; Gölgelendirme</div>
+        </div>
+
+        <div class="rb-group">
+          <div class="rb-group-content">
+            <div class="rb-col">
+              <div class="rb-row">
+                <button type="button" class="rb-btn bordered" onclick="moveSelectedSection(-1)">↑ Yukarı</button>
+                <button type="button" class="rb-btn bordered" onclick="moveSelectedSection(1)">↓ Aşağı</button>
+              </div>
+              <div class="rb-row">
+                <button type="button" class="rb-btn bordered" onclick="toggleSelectedSectionVisibility()">Gizle/Göster</button>
+                <button type="button" class="rb-btn bordered danger" onclick="deleteSelectedSection()">Bölümü Sil</button>
+              </div>
+            </div>
+          </div>
+          <div class="rb-group-label">Seçili Bölüm</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ======================================================================
+       4. EXCEL TARZI fx FORMÜL VE HÜCRE ÇUBUĞU (NAME BOX + ✕ / ✓ / fx + GİRDİ)
+       ====================================================================== -->
+  <div id="formulaBar" class="formula-bar">
+    <div id="fxNameBox" class="fx-name-box" title="Aktif Hücre veya Aralık Adresi">Hücre seçin...</div>
+    <div class="fx-action-cluster">
+      <button type="button" class="fx-act-btn cancel" onclick="officeCancelFormulaInput()" title="İptal Et (Esc)">✕</button>
+      <button type="button" class="fx-act-btn commit" onclick="officeCommitFormulaInput()" title="Onayla (Enter)">✓</button>
+      <button type="button" class="fx-act-btn fn" onclick="officeOpenInsertFunctionModal()" title="İşlev Ekle (fx)">fx</button>
+    </div>
+    <textarea id="fxCellInput" rows="1" class="fx-input" placeholder="A4 üzerinde hücreye tıklayın — metin veya =TOPLA(B1:B5) gibi Excel formülü yazabilirsiniz..." disabled></textarea>
+    <button id="fxExpandBtn" type="button" class="fx-expand-btn" onclick="toggleFormulaBarExpand()" title="Formül Çubuğunu Genişlet / Daralt">
+      <svg class="ico ico-sm" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+    </button>
+    <span id="fxPainterPill" class="fx-painter-pill hidden">Biçim Boyacısı Aktif — Hedef hücreye tıklayın</span>
+  </div>
+
+  <!-- ======================================================================
+       5. ANA ÇALIŞMA ALANI (SOL WORD GEZİNTİ | ORTA CETVEL + A4 | SAĞ PANEL)
+       ====================================================================== -->
+  <div class="office-workspace">
+    <!-- SOL: WORDCRAFT GEZİNTİ BÖLMESİ (BAŞLIKLAR / SAYFALAR / SONUÇLAR) -->
+    <aside id="navPane" class="nav-pane">
+      <div class="pane-header">
+        <span>GEZİNTİ</span>
+        <button type="button" class="st-mini-icon-btn" onclick="toggleNavPane(false)" title="Gezinti Bölmesini Gizle">
+          <svg class="ico ico-sm" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="nav-search-box">
+        <svg class="ico ico-xs" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input id="navSearchInput" type="text" placeholder="Belgede ara..." oninput="officeNavSearch(this.value)">
+        <button id="navSearchClear" type="button" class="st-mini-icon-btn hidden" onclick="officeClearNavSearch()" title="Aramayı Temizle">✕</button>
+      </div>
+      <div class="nav-tabs">
+        <button type="button" class="nav-tab active" data-navtab="headings" onclick="officeSwitchNavTab('headings')">Başlıklar</button>
+        <button type="button" class="nav-tab" data-navtab="pages" onclick="officeSwitchNavTab('pages')">Sayfalar</button>
+        <button type="button" class="nav-tab" data-navtab="results" onclick="officeSwitchNavTab('results')">Sonuçlar</button>
+      </div>
+      <div id="navOutlineBody" class="nav-pane-body"></div>
+      <div id="navPagesBody" class="nav-pane-body hidden"></div>
+      <div id="navResultsBody" class="nav-pane-body hidden"></div>
+      <div class="nav-pane-footer">
+        <button type="button" class="st-add-dashed-btn" onclick="toggleAddSectionPopover()">
+          <svg class="ico ico-sm" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+          <span>Yeni Bölüm / Nesne Ekle</span>
+        </button>
+        <div id="addSectionPopover" class="add-sec-popover hidden">
+          <button type="button" class="st-btn st-btn-outline st-btn-xs" onclick="addNewSection('data_table')">+ Ölçüm Tablosu</button>
+          <button type="button" class="st-btn st-btn-outline st-btn-xs" onclick="addNewSection('visual_checklist_group')">+ Gözle Kontrol (✓/X)</button>
+          <button type="button" class="st-btn st-btn-outline st-btn-xs" onclick="addNewSection('notes_box')">+ Not / Açıklama Kutusu</button>
+          <button type="button" class="st-btn st-btn-outline st-btn-xs" onclick="officeOpenInsertChartModal()">+ Grafik Bloğu (Sütun/Pasta)</button>
+          <button type="button" class="st-btn st-btn-outline st-btn-xs" onclick="document.getElementById('insertImageInput').click()">+ Fotoğraf / Görsel Bloğu</button>
+          <button type="button" class="st-btn st-btn-outline st-btn-xs" onclick="officeInsertCalloutBlock('info')">+ Uyarı / Bilgi Kutusu</button>
+          <button type="button" class="st-btn st-btn-outline st-btn-xs" onclick="officeInsertSignatureBlock()">+ İmza / Onay Satırı</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ORTA: CM CETVEL + YÜZEN BUL/DEĞİŞTİR + CANLI A4 SAYFALARI -->
+    <main class="canvas-stage">
+      <div id="wordRulerBar" class="word-ruler-bar" aria-hidden="true">
+        <div id="wordRulerTrack" class="word-ruler-track"></div>
+      </div>
+
+      <!-- YÜZEN BUL & DEĞİŞTİR ÇUBUĞU (Ctrl+F / Ctrl+H) -->
+      <div id="findReplaceBar" class="find-bar hidden" role="dialog" aria-label="Bul ve Değiştir">
+        <div class="find-row">
+          <input id="findInput" type="text" class="rb-input" style="flex:1;" placeholder="Belgede ara..." oninput="officeRunFind()" onkeydown="officeFindKeydown(event)">
+          <span id="findMatchCounter" class="find-counter">0 / 0</span>
+          <button type="button" class="rb-btn icon-only" onclick="officeFindStep(-1)" title="Önceki (Shift+Enter)">↑</button>
+          <button type="button" class="rb-btn icon-only" onclick="officeFindStep(1)" title="Sonraki (Enter)">↓</button>
+          <button type="button" class="rb-btn icon-only" onclick="officeCloseFindReplace()" title="Kapat (Esc)">✕</button>
+        </div>
+        <div id="replaceRow" class="find-row">
+          <input id="replaceInput" type="text" class="rb-input" style="flex:1;" placeholder="Bununla değiştir...">
+          <button type="button" class="rb-btn bordered" onclick="officeReplaceCurrent()">Değiştir</button>
+          <button type="button" class="rb-btn bordered" onclick="officeReplaceAll()">Tümünü</button>
+        </div>
+      </div>
+
+      <div id="previewScrollArea" class="studio-preview-scroll">
+        <div id="liveA4Scaler">
+          <div id="liveA4Canvas"></div>
+        </div>
+      </div>
+    </main>
+
+    <!-- SAĞ: SEKMELİ ÖZELLİKLER / YORUMLAR / DENETÇİ PANELİ -->
+    <aside id="detailPane" class="detail-pane hidden">
+      <div class="pane-header">
+        <div class="side-pane-tabs">
+          <button type="button" class="side-tab active" data-sidetab="props" onclick="officeSwitchSideTab('props')">Özellikler</button>
+          <button type="button" class="side-tab" data-sidetab="comments" onclick="officeSwitchSideTab('comments')">Yorumlar</button>
+          <button type="button" class="side-tab" data-sidetab="audit" onclick="officeSwitchSideTab('audit')">Denetçi</button>
+        </div>
+        <button type="button" class="st-mini-icon-btn" onclick="toggleDetailPane(false)" title="Paneli Kapat">
+          <svg class="ico ico-sm" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div id="studioEditorBody" class="detail-pane-body"></div>
+      <div id="studioCommentsBody" class="detail-pane-body hidden"></div>
+      <div id="studioAuditBody" class="detail-pane-body hidden"></div>
+    </aside>
+  </div>
+
+  <!-- ======================================================================
+       6. ALT WORD + EXCEL DURUM, SEÇİM İSTATİSTİĞİ VE ZOOM ÇUBUĞU (28PX)
+       ====================================================================== -->
+  <footer class="office-statusbar">
+    <div class="osb-left">
+      <strong id="pageCountPill">4 Sayfa A4</strong>
+      <span class="osb-sep"></span>
+      <button id="statusWordCount" type="button" class="osb-link-btn" onclick="officeOpenDocStatsModal()" title="Belge İstatistiklerini Aç">0 kelime · 0 hücre</button>
+      <span class="osb-sep"></span>
+      <span id="statusSecName">Seçili: 1. FİRMA BİLGİLERİ</span>
+      <span class="osb-sep"></span>
+      <span id="statusThemeLabel" class="osb-muted">Tema: Rams Lacivert</span>
+      <span class="osb-sep"></span>
+      <span id="statusAutoSave" class="osb-autosave-ind">Hazır</span>
+    </div>
+    <div class="osb-center">
+      <span id="statusSelectionStats" class="osb-sel-stats hidden"></span>
+    </div>
+    <div class="osb-right">
+      <div class="osb-view-modes">
+        <button id="osbVmPrint" type="button" class="osb-view-btn active" onclick="officeSetViewMode('print')" title="Yazdırma Düzeni">
+          <svg class="ico ico-xs" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+        </button>
+        <button id="osbVmTwoUp" type="button" class="osb-view-btn" onclick="officeSetViewMode('twoup')" title="İki Sayfa Yan Yana">
+          <svg class="ico ico-xs" viewBox="0 0 24 24"><rect x="2" y="3" width="9" height="18" rx="1"/><rect x="13" y="3" width="9" height="18" rx="1"/></svg>
+        </button>
+        <button id="osbVmBreak" type="button" class="osb-view-btn" onclick="officeSetViewMode('pagebreak')" title="Sayfa Sonu Önizleme">
+          <svg class="ico ico-xs" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 12h18" stroke-dasharray="3 2"/></svg>
+        </button>
+        <button id="osbVmFocus" type="button" class="osb-view-btn" onclick="officeToggleFocusMode()" title="Odak Modu">
+          <svg class="ico ico-xs" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+        </button>
+      </div>
+      <span class="osb-sep"></span>
+      <button type="button" class="osb-zoom-btn" onclick="fitPreviewZoom()" title="Ekrana Sığdır">Sığdır</button>
+      <button type="button" class="osb-zoom-btn" onclick="adjustPreviewZoom(-0.1)" aria-label="Uzaklaştır">−</button>
+      <input id="statusZoomSlider" type="range" class="osb-zoom-slider" min="45" max="140" step="1" value="95" oninput="setZoomAbsolute(Number(this.value)/100)">
+      <button type="button" class="osb-zoom-btn" onclick="adjustPreviewZoom(0.1)" aria-label="Yakınlaştır">+</button>
+      <span id="zoomLabelBtn" class="osb-zoom-pct">95%</span>
+    </div>
+  </footer>
+
+  <div id="colResizeTooltip" class="col-resize-tooltip hidden">22.0% ↔ 6.2%</div>
+
+  <!-- ======================================================================
+       7. OFFICE RIBBON POPOVER MENÜLERİ & SAĞ TIK BAĞLAM MENÜSÜ
+       ====================================================================== -->
+  <div id="popPasteSpecial" class="office-popover hidden" style="width:255px;">
+    <div class="pop-title">Yapıştırma Seçenekleri</div>
+    <button type="button" class="pop-item" onclick="officeClipboardPaste('all')"><span>Normal Yapıştır (Tümü)</span><kbd>Ctrl+V</kbd></button>
+    <button type="button" class="pop-item" onclick="officePasteFromSystemClipboard()"><span>Excel / Word'den Yapıştır (Tablo/Resim)</span></button>
+    <div class="pop-sep"></div>
+    <button type="button" class="pop-item" onclick="officeClipboardPaste('values')"><span>Yalnızca Değerleri Yapıştır (123)</span></button>
+    <button type="button" class="pop-item" onclick="officeClipboardPaste('formats')"><span>Yalnızca Biçimleri Yapıştır</span></button>
+    <button type="button" class="pop-item" onclick="officeClipboardPaste('formulas')"><span>Yalnızca Formülleri Yapıştır (fx)</span></button>
+    <div class="pop-sep"></div>
+    <button type="button" class="pop-item" onclick="officeClipboardPaste('transpose')"><span>Devrik Dönüştür (Satır ↔ Sütun)</span></button>
+  </div>
+
+  <div id="popColorPicker" class="office-popover color-popover hidden">
+    <div id="popColorTitle" class="pop-title">Tema Renkleri</div>
+    <div id="popColorGrid" class="color-palette-grid"></div>
+    <div class="pop-sub-title">Standart Renkler</div>
+    <div id="popStdColors" class="color-std-row"></div>
+    <div class="pop-sep"></div>
+    <div class="color-pop-footer">
+      <button type="button" class="rb-btn bordered" style="flex:1;" onclick="officeSelectPaletteColor('')">Dolgu Yok / Otomatik</button>
+      <label class="rb-btn bordered" style="cursor:pointer;">
+        <span>Özel...</span>
+        <input id="popCustomColorInput" type="color" style="width:18px;height:18px;border:none;padding:0;background:transparent;" oninput="officeSelectPaletteColor(this.value, true)">
+      </label>
+    </div>
+  </div>
+
+  <div id="popBorders" class="office-popover hidden" style="width:236px;">
+    <div class="pop-title">Hücre Kenarlıkları</div>
+    <div class="pop-grid-2">
+      <button type="button" class="pop-item" onclick="officeApplyCellBorder('bottom')">Alt Kenarlık</button>
+      <button type="button" class="pop-item" onclick="officeApplyCellBorder('top')">Üst Kenarlık</button>
+      <button type="button" class="pop-item" onclick="officeApplyCellBorder('left')">Sol Kenarlık</button>
+      <button type="button" class="pop-item" onclick="officeApplyCellBorder('right')">Sağ Kenarlık</button>
+      <button type="button" class="pop-item" onclick="officeApplyCellBorder('all')">Tüm Kenarlıklar</button>
+      <button type="button" class="pop-item" onclick="officeApplyCellBorder('outside')">Dış Kenarlık</button>
+      <button type="button" class="pop-item" onclick="officeApplyCellBorder('thick')">Kalın Kutu</button>
+      <button type="button" class="pop-item" onclick="officeApplyCellBorder('doubleBottom')">Çift Alt Çizgi</button>
+      <button type="button" class="pop-item" onclick="officeApplyCellBorder('dashed')">Kesikli Çizgi</button>
+      <button type="button" class="pop-item danger" onclick="officeApplyCellBorder('none')">Kenarlık Yok</button>
+    </div>
+    <div class="pop-sep"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 8px;gap:6px;">
+      <span class="rb-mini-label">Çizgi Rengi:</span>
+      <input id="popBorderColor" type="color" class="rb-color-picker" value="#0f172a">
+    </div>
+  </div>
+
+  <div id="popCase" class="office-popover hidden" style="width:210px;">
+    <div class="pop-title">Büyük/Küçük Harf</div>
+    <button type="button" class="pop-item" onclick="officeTransformTextCase('sentence')">Tümce düzeni.</button>
+    <button type="button" class="pop-item" onclick="officeTransformTextCase('lower')">küçük harf</button>
+    <button type="button" class="pop-item" onclick="officeTransformTextCase('upper')">BÜYÜK HARF</button>
+    <button type="button" class="pop-item" onclick="officeTransformTextCase('title')">Her Sözcüğü Büyük Başlat</button>
+  </div>
+
+  <div id="popCondFmt" class="office-popover hidden" style="width:250px;">
+    <div class="pop-title">Koşullu Biçimlendirme (Excel)</div>
+    <button type="button" class="pop-item" onclick="officeOpenCondRuleModal('gt')"><span>Büyüktür (&gt;) Vurgula...</span></button>
+    <button type="button" class="pop-item" onclick="officeOpenCondRuleModal('lt')"><span>Küçüktür (&lt;) Vurgula...</span></button>
+    <button type="button" class="pop-item" onclick="officeOpenCondRuleModal('contains')"><span>İçerdiği Metin (ör. X, Hata)...</span></button>
+    <div class="pop-sep"></div>
+    <div class="pop-sub-title">Veri Çubukları (Data Bars)</div>
+    <div style="display:flex;gap:5px;padding:4px 8px;">
+      <button type="button" class="rb-btn bordered" style="flex:1;color:#1d4ed8;" onclick="officeAddVisualCondRule('databar', '#3b82f6')">Mavi</button>
+      <button type="button" class="rb-btn bordered" style="flex:1;color:#0d6a36;" onclick="officeAddVisualCondRule('databar', '#22c55e')">Yeşil</button>
+      <button type="button" class="rb-btn bordered" style="flex:1;color:#9a3412;" onclick="officeAddVisualCondRule('databar', '#f59e0b')">Turuncu</button>
+      <button type="button" class="rb-btn bordered" style="flex:1;color:#b91c1c;" onclick="officeAddVisualCondRule('databar', '#ef4444')">Kırmızı</button>
+    </div>
+    <button type="button" class="pop-item" onclick="officeAddVisualCondRule('colorscale', 'gyr')"><span>Renk Ölçeği (Yeşil → Sarı → Kırmızı)</span></button>
+    <button type="button" class="pop-item" onclick="officeAddVisualCondRule('iconset', 'arrows')"><span>Simge Kümesi (▲ / ▶ / ▼)</span></button>
+    <div class="pop-sep"></div>
+    <button type="button" class="pop-item danger" onclick="officeClearCondRulesForTable()"><span>Seçili Tablonun Kurallarını Temizle</span></button>
+  </div>
+
+  <div id="popMoreStyles" class="office-popover hidden" style="width:210px;">
+    <div class="pop-title">Hücre &amp; Metin Stilleri</div>
+    <button type="button" class="pop-item" onclick="officeApplyQuickCellStyle('normal'); officeCloseAllPopovers();"><span>Normal (Varsayılan)</span></button>
+    <button type="button" class="pop-item" onclick="officeApplyQuickCellStyle('heading1'); officeCloseAllPopovers();"><strong style="color:#1b365d;">Başlık 1 (Lacivert)</strong></button>
+    <button type="button" class="pop-item" onclick="officeApplyQuickCellStyle('good'); officeCloseAllPopovers();"><span style="color:#14573a;font-weight:700;">Uygun (Yeşil Dolgu)</span></button>
+    <button type="button" class="pop-item" onclick="officeApplyQuickCellStyle('warn'); officeCloseAllPopovers();"><span style="color:#92400e;font-weight:700;">Uyarı / Dikkat (Sarı)</span></button>
+    <button type="button" class="pop-item" onclick="officeApplyQuickCellStyle('bad'); officeCloseAllPopovers();"><span style="color:#991b1b;font-weight:700;">Hatalı / C1 Kusur (Kırmızı)</span></button>
+    <button type="button" class="pop-item" onclick="officeApplyQuickCellStyle('total'); officeCloseAllPopovers();"><strong style="border-bottom:2px double currentColor;">Toplam Satırı (Çift Çizgi)</strong></button>
+  </div>
+
+  <div id="popTableStyles" class="office-popover hidden" style="width:260px;">
+    <div class="pop-title">Tablo Olarak Biçimlendir</div>
+    <div class="tbl-style-grid">
+      <button type="button" class="tbl-swatch" onclick="officeApplyTablePreset('default')">
+        <span class="ts-head" style="background:#f1f5f9;color:#1f3a5f;"></span><span class="ts-r1"></span><span class="ts-r2"></span><small>Varsayılan</small>
+      </button>
+      <button type="button" class="tbl-swatch" onclick="officeApplyTablePreset('excel_green')">
+        <span class="ts-head" style="background:#107c41;"></span><span class="ts-r1" style="background:#ecfdf5;"></span><span class="ts-r2"></span><small>Excel Yeşil</small>
+      </button>
+      <button type="button" class="tbl-swatch" onclick="officeApplyTablePreset('navy_corp')">
+        <span class="ts-head" style="background:#1b365d;"></span><span class="ts-r1" style="background:#eff6ff;"></span><span class="ts-r2"></span><small>Kurumsal</small>
+      </button>
+      <button type="button" class="tbl-swatch" onclick="officeApplyTablePreset('classic_black')">
+        <span class="ts-head" style="background:#111827;"></span><span class="ts-r1" style="background:#f3f4f6;"></span><span class="ts-r2"></span><small>Siyah Resmi</small>
+      </button>
+      <button type="button" class="tbl-swatch" onclick="officeApplyTablePreset('amber_eng')">
+        <span class="ts-head" style="background:#b45309;"></span><span class="ts-r1" style="background:#fffbeb;"></span><span class="ts-r2"></span><small>Kehribar</small>
+      </button>
+      <button type="button" class="tbl-swatch" onclick="officeApplyTablePreset('crimson_alert')">
+        <span class="ts-head" style="background:#991b1b;"></span><span class="ts-r1" style="background:#fef2f2;"></span><span class="ts-r2"></span><small>TEKKOMER</small>
+      </button>
+    </div>
+  </div>
+
+  <div id="popCellInsert" class="office-popover hidden" style="width:205px;">
+    <div class="pop-title">Satır / Sütun Ekle</div>
+    <button type="button" class="pop-item" onclick="officeInsertRowRelative(-1)">↑ Seçili Satırın Üstüne Ekle</button>
+    <button type="button" class="pop-item" onclick="officeInsertRowRelative(1)">↓ Seçili Satırın Altına Ekle</button>
+    <div class="pop-sep"></div>
+    <button type="button" class="pop-item" onclick="officeInsertColRelative(-1)">← Seçili Sütunun Soluna Ekle</button>
+    <button type="button" class="pop-item" onclick="officeInsertColRelative(1)">→ Seçili Sütunun Sağına Ekle</button>
+  </div>
+
+  <div id="popCellDelete" class="office-popover hidden" style="width:205px;">
+    <div class="pop-title">Sil</div>
+    <button type="button" class="pop-item danger" onclick="officeDeleteSelectedRow()">Seçili Satırı Sil</button>
+    <button type="button" class="pop-item danger" onclick="officeDeleteSelectedCol()">Seçili Sütunu Sil</button>
+    <div class="pop-sep"></div>
+    <button type="button" class="pop-item" onclick="officeClearSelection('contents')">Hücre İçeriğini Sil (Del)</button>
+  </div>
+
+  <div id="popCellFormat" class="office-popover hidden" style="width:242px;">
+    <div class="pop-title">Hücre Boyutu &amp; Koruma</div>
+    <div style="padding:5px 8px;display:flex;align-items:center;gap:5px;">
+      <span class="rb-mini-label" style="width:76px;">Satır Yüks.:</span>
+      <button type="button" class="rb-btn bordered icon-only" onclick="officeStepRowHeight(-6)" title="Satırı Küçült (−6px)">−</button>
+      <input id="csrHeight" type="text" inputmode="decimal" class="rb-input rb-num" style="flex:1;" placeholder="Oto" oninput="officeSetSelectedRowHeight(this.value)">
+      <button type="button" class="rb-btn bordered icon-only" onclick="officeStepRowHeight(6)" title="Satırı Büyüt (+6px)">+</button>
+    </div>
+    <div style="padding:5px 8px;display:flex;align-items:center;gap:6px;">
+      <span class="rb-mini-label" style="width:76px;">İç Dolgu (px):</span>
+      <input id="csrPadY" type="text" inputmode="decimal" class="rb-input rb-num" style="flex:1;" placeholder="Oto" oninput="applyCellStyleProp('padY', this.value)">
+    </div>
+    <div style="padding:4px 8px;font-size:11px;color:var(--of-muted);">İpucu: A4 tablosunda satır alt çizgisini veya sütun sağ çizgisini sürükleyerek de boyutlandırabilirsiniz.</div>
+    <div class="pop-sep"></div>
+    <button type="button" class="pop-item" onclick="officeDistributeColsEvenly()">Sütun Genişliklerini Eşitle</button>
+    <button type="button" class="pop-item" onclick="copySelectedCellStyleToRow()">Biçimi Tüm Satıra Uygula</button>
+    <button type="button" class="pop-item" onclick="copySelectedCellStyleToCol()">Biçimi Tüm Sütuna Uygula</button>
+    <div class="pop-sep"></div>
+    <button type="button" class="pop-item" onclick="officeToggleLockSelectedCells()">Seçili Hücreyi Kilitle / Aç</button>
+  </div>
+
+  <div id="popAutoSum" class="office-popover hidden" style="width:210px;">
+    <div class="pop-title">Otomatik İşlevler</div>
+    <button type="button" class="pop-item" onclick="officeInsertQuickFormula('TOPLA')"><span>Σ Toplam</span><kbd>=TOPLA</kbd></button>
+    <button type="button" class="pop-item" onclick="officeInsertQuickFormula('ORTALAMA')"><span>Ortalama</span><kbd>=ORTALAMA</kbd></button>
+    <button type="button" class="pop-item" onclick="officeInsertQuickFormula('SAY')"><span>Sayıları Say</span><kbd>=SAY</kbd></button>
+    <button type="button" class="pop-item" onclick="officeInsertQuickFormula('MAK')"><span>En Büyük</span><kbd>=MAK</kbd></button>
+    <button type="button" class="pop-item" onclick="officeInsertQuickFormula('MIN')"><span>En Küçük</span><kbd>=MİN</kbd></button>
+    <div class="pop-sep"></div>
+    <button type="button" class="pop-item" onclick="officeOpenInsertFunctionModal()"><span>Tüm İşlevler...</span><kbd>fx</kbd></button>
+  </div>
+
+  <div id="popFillSeries" class="office-popover hidden" style="width:210px;">
+    <div class="pop-title">Doldur (Excel Fill)</div>
+    <button type="button" class="pop-item" onclick="officeFillDirection('down')"><span>↓ Aşağı Doldur</span><kbd>Ctrl+D</kbd></button>
+    <button type="button" class="pop-item" onclick="officeFillDirection('right')"><span>→ Sağa Doldur</span><kbd>Ctrl+R</kbd></button>
+    <div class="pop-sep"></div>
+    <button type="button" class="pop-item" onclick="officeAutoFillSeriesDown()"><span>⚡ Otomatik Seri (1, 2, 3...)</span></button>
+  </div>
+
+  <div id="popClear" class="office-popover hidden" style="width:205px;">
+    <div class="pop-title">Temizle</div>
+    <button type="button" class="pop-item" onclick="officeClearSelection('all')">Tümünü Temizle (İçerik + Biçim)</button>
+    <button type="button" class="pop-item" onclick="officeClearSelection('formats')">Yalnızca Biçimleri Temizle</button>
+    <button type="button" class="pop-item" onclick="officeClearSelection('contents')">Yalnızca İçeriği Temizle</button>
+  </div>
+
+  <div id="popSortFilter" class="office-popover hidden" style="width:215px;">
+    <div class="pop-title">Sırala &amp; Filtrele</div>
+    <button type="button" class="pop-item" onclick="officeSortTableBySelectedCol('asc')">A'dan Z'ye Sırala (Artan)</button>
+    <button type="button" class="pop-item" onclick="officeSortTableBySelectedCol('desc')">Z'den A'ya Sırala (Azalan)</button>
+    <div class="pop-sep"></div>
+    <button type="button" class="pop-item" onclick="officeToggleAutoFilter()">Otomatik Filtreyi Aç / Kapat</button>
+    <button type="button" class="pop-item" onclick="officeClearTableFilters()">Tüm Filtreleri Temizle</button>
+  </div>
+
+  <div id="popSymbols" class="office-popover hidden" style="width:264px;">
+    <div class="pop-title">Mühendislik &amp; Belge Simgeleri</div>
+    <div id="popSymbolGrid" class="symbol-grid"></div>
+  </div>
+
+  <div id="popWatermark" class="office-popover hidden" style="width:225px;">
+    <div class="pop-title">Sayfa Filigranı (Word)</div>
+    <button type="button" class="pop-item" onclick="officeSetWatermark('')">Filigran Yok</button>
+    <button type="button" class="pop-item" onclick="officeSetWatermark('TASLAK')">TASLAK</button>
+    <button type="button" class="pop-item" onclick="officeSetWatermark('ÖRNEK RAPOR')">ÖRNEK RAPOR</button>
+    <button type="button" class="pop-item" onclick="officeSetWatermark('GİZLİDİR')">GİZLİDİR</button>
+    <button type="button" class="pop-item" onclick="officeSetWatermark('ONAYLIDIR')">ONAYLIDIR</button>
+    <button type="button" class="pop-item" onclick="officeSetWatermark('KOPYALANAMAZ')">KOPYALANAMAZ</button>
+    <div class="pop-sep"></div>
+    <button type="button" class="pop-item" onclick="officeOpenCustomWatermarkModal()">Özel Filigran Metni...</button>
+  </div>
+
+  <div id="popPageBorder" class="office-popover hidden" style="width:220px;">
+    <div class="pop-title">A4 Sayfa Kenarlığı (Word)</div>
+    <button type="button" class="pop-item" onclick="officeSetPageBorder('none')">Kenarlık Yok</button>
+    <button type="button" class="pop-item" onclick="officeSetPageBorder('thin')">İnce Çerçeve (1px)</button>
+    <button type="button" class="pop-item" onclick="officeSetPageBorder('corporate')">Kalın Kurumsal Çerçeve</button>
+    <button type="button" class="pop-item" onclick="officeSetPageBorder('double')">Resmi Çift Çerçeve</button>
+    <button type="button" class="pop-item" onclick="officeSetPageBorder('navy')">Lacivert Çerçeve</button>
+  </div>
+
+  <div id="popHeaderFilter" class="office-popover hidden" style="width:236px;"></div>
+
+  <!-- SAĞ TIK EXCEL/WORD BAĞLAM MENÜSÜ + MİNİ ARAÇ ÇUBUĞU -->
+  <div id="cellContextMenu" class="context-menu hidden">
+    <div class="ctx-mini-bar">
+      <button type="button" class="rb-btn icon-only" onclick="toggleCellStyleBool('bold'); officeCloseContextMenu();" title="Kalın"><strong>K</strong></button>
+      <button type="button" class="rb-btn icon-only" onclick="toggleCellStyleBool('italic'); officeCloseContextMenu();" title="İtalik"><em>İ</em></button>
+      <button type="button" class="rb-btn icon-only" onclick="toggleCellStyleBool('underline'); officeCloseContextMenu();" title="Altı Çizili"><u>A</u></button>
+      <span class="rb-vsep"></span>
+      <button type="button" class="rb-btn icon-only" onclick="applyCellStyleProp('align','left'); officeCloseContextMenu();" title="Sol">≡</button>
+      <button type="button" class="rb-btn icon-only" onclick="applyCellStyleProp('align','center'); officeCloseContextMenu();" title="Orta">≣</button>
+      <button type="button" class="rb-btn icon-only" onclick="applyCellStyleProp('align','right'); officeCloseContextMenu();" title="Sağ">≡</button>
+      <span class="rb-vsep"></span>
+      <button type="button" class="rb-swatch" style="background:#fef3c7;" onclick="applyCellStyleProp('bg','#fef3c7'); officeCloseContextMenu();" title="Sarı Dolgu"></button>
+      <button type="button" class="rb-swatch" style="background:#dcfce7;" onclick="applyCellStyleProp('bg','#dcfce7'); officeCloseContextMenu();" title="Yeşil Dolgu"></button>
+      <button type="button" class="rb-swatch" style="background:#fee2e2;" onclick="applyCellStyleProp('bg','#fee2e2'); officeCloseContextMenu();" title="Kırmızı Dolgu"></button>
+    </div>
+    <button type="button" class="pop-item" onclick="officeClipboardCut(); officeCloseContextMenu();"><span>Kes</span><kbd>Ctrl+X</kbd></button>
+    <button type="button" class="pop-item" onclick="officeClipboardCopy(); officeCloseContextMenu();"><span>Kopyala</span><kbd>Ctrl+C</kbd></button>
+    <button type="button" class="pop-item" onclick="officeClipboardPaste('all'); officeCloseContextMenu();"><span>Yapıştır</span><kbd>Ctrl+V</kbd></button>
+    <button type="button" class="pop-item" onclick="officeClipboardPaste('formats'); officeCloseContextMenu();"><span>Yalnızca Biçimi Yapıştır</span></button>
+    <div class="pop-sep"></div>
+    <button type="button" class="pop-item" onclick="officeInsertRowRelative(-1); officeCloseContextMenu();"><span>↑ Üste Satır Ekle</span></button>
+    <button type="button" class="pop-item" onclick="officeInsertRowRelative(1); officeCloseContextMenu();"><span>↓ Alta Satır Ekle</span></button>
+    <button type="button" class="pop-item" onclick="officeInsertColRelative(1); officeCloseContextMenu();"><span>→ Sağa Sütun Ekle</span></button>
+    <button type="button" class="pop-item danger" onclick="officeDeleteSelectedRow(); officeCloseContextMenu();"><span>Seçili Satırı Sil</span></button>
+    <div class="pop-sep"></div>
+    <button type="button" class="pop-item" onclick="officeMergeOrUnmergeCells(); officeCloseContextMenu();"><span>Hücreleri Birleştir / Ayır</span></button>
+    <button type="button" class="pop-item" onclick="officeAddCommentForSelection(); officeCloseContextMenu();"><span>Yorum Ekle</span></button>
+    <button type="button" class="pop-item" onclick="officeClearSelection('contents'); officeCloseContextMenu();"><span>İçeriği Temizle</span><kbd>Del</kbd></button>
+    <button type="button" class="pop-item" onclick="officeClearSelection('formats'); officeCloseContextMenu();"><span>Biçimi Temizle</span></button>
+  </div>
+
+  <!-- ======================================================================
+       8. WORDCRAFT TAM EKRAN DOSYA BACKSTAGE GÖRÜNÜMÜ
+       ====================================================================== -->
+  <div id="fileBackstage" class="backstage-overlay hidden" role="dialog" aria-label="Dosya Menüsü">
+    <nav class="bs-sidebar">
+      <button type="button" class="bs-back-btn" onclick="officeCloseBackstage()" title="Belgeye Dön (Esc)">
+        <svg class="ico" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        <span>Belgeye Dön</span>
+      </button>
+      <button type="button" class="bs-nav-item active" data-bstab="home" onclick="officeSwitchBackstageTab('home')">Giriş &amp; Şablonlar</button>
+      <button type="button" class="bs-nav-item" data-bstab="versions" onclick="officeSwitchBackstageTab('versions')">Versiyon Geçmişi</button>
+      <button type="button" class="bs-nav-item" data-bstab="info" onclick="officeSwitchBackstageTab('info')">Belge Bilgisi &amp; Antet</button>
+      <button type="button" class="bs-nav-item" data-bstab="export" onclick="officeSwitchBackstageTab('export')">Yazdır &amp; Dışa Aktar</button>
+      <div class="bs-spacer"></div>
+      <button type="button" class="bs-nav-item" onclick="officeCloseBackstage(); openSaveVersionModal();">Farklı Versiyon Kaydet</button>
+      <button type="button" class="bs-nav-item" onclick="officeCloseBackstage(); openCloudLoginModal();">Bulut Hesabı</button>
+      <a href="/yonetim" class="bs-nav-item" style="text-decoration:none;">← Yönetim Paneline Çık</a>
+    </nav>
+    <div id="bsMainContent" class="bs-content"></div>
+  </div>
+
+  <!-- ======================================================================
+       9. MODALLAR (MEVCUT + YENİ EXCEL/WORD SİHİRBAZLARI)
+       ====================================================================== -->
+  <div id="saveVersionModal" class="st-modal-backdrop hidden">
+    <div class="st-modal-card" style="max-width:460px;">
+      <div class="st-modal-head">
+        <span>Yeni Versiyon Olarak Kaydet</span>
+        <button type="button" class="st-mini-icon-btn" onclick="closeModal('saveVersionModal')"><svg class="ico" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+      </div>
+      <div class="st-modal-body">
+        <div style="background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; padding:10px 12px; border-radius:8px; font-size:12px; margin-bottom:12px;">
+          <strong>Güvenli Versiyonlama:</strong> Eski şablonların üstüne yazılmaz. Otomatik olarak <strong id="nextVersionPreviewLabel">v1</strong> şeklinde yeni sürüm oluşturulur.
+        </div>
+        <div class="st-field">
+          <label class="st-label">Şablon Ailesi Kodu</label>
+          <input id="saveTemplateKeyInput" type="text" class="st-input">
+        </div>
+        <div class="st-field">
+          <label class="st-label">Değişiklik Notu</label>
+          <textarea id="saveChangelogInput" class="st-textarea" placeholder="Yapılan düzenlemeleri kısaca yazın..."></textarea>
+        </div>
+        <label class="st-toggle-row"><span>Bu versiyonu hemen "Yayında" yap</span><input id="savePublishCheckbox" type="checkbox" checked></label>
+      </div>
+      <div class="st-modal-foot">
+        <button type="button" class="st-btn st-btn-outline" onclick="closeModal('saveVersionModal')">Vazgeç</button>
+        <button id="confirmSaveVersionBtn" type="button" class="st-btn st-btn-primary" onclick="confirmSaveNewVersion()">Kaydet (<span id="confirmSaveVerSpan">v1</span>)</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="versionHistoryModal" class="st-modal-backdrop hidden">
+    <div class="st-modal-card">
+      <div class="st-modal-head">
+        <span>Versiyon Geçmişi (v1, v2, v3...)</span>
+        <button type="button" class="st-mini-icon-btn" onclick="closeModal('versionHistoryModal')"><svg class="ico" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+      </div>
+      <div id="versionHistoryBody" class="st-modal-body"></div>
+      <div class="st-modal-foot"><button type="button" class="st-btn st-btn-outline" onclick="closeModal('versionHistoryModal')">Kapat</button></div>
+    </div>
+  </div>
+
+  <div id="blueprintsModal" class="st-modal-backdrop hidden">
+    <div class="st-modal-card" style="max-width:540px;">
+      <div class="st-modal-head">
+        <span>Hazır Rapor Şablonları</span>
+        <button type="button" class="st-mini-icon-btn" onclick="closeModal('blueprintsModal')"><svg class="ico" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+      </div>
+      <div id="blueprintsModalBody" class="st-modal-body"></div>
+      <div class="st-modal-foot"><button type="button" class="st-btn st-btn-outline" onclick="closeModal('blueprintsModal')">Kapat</button></div>
+    </div>
+  </div>
+
+  <div id="brandingModal" class="st-modal-backdrop hidden">
+    <div class="st-modal-card" style="max-width:540px;">
+      <div class="st-modal-head">
+        <span>Antet, Logolar &amp; Doküman Kodları</span>
+        <button type="button" class="st-mini-icon-btn" onclick="closeModal('brandingModal')"><svg class="ico" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+      </div>
+      <div id="brandingModalBody" class="st-modal-body"></div>
+      <div class="st-modal-foot"><button type="button" class="st-btn st-btn-primary" onclick="closeModal('brandingModal')">Tamam</button></div>
+    </div>
+  </div>
+
+  <div id="cloudLoginModal" class="st-modal-backdrop hidden">
+    <div class="st-modal-card" style="max-width:410px;">
+      <div class="st-modal-head">
+        <span>Bulut Senkronizasyonu</span>
+        <button type="button" class="st-mini-icon-btn" onclick="closeModal('cloudLoginModal')"><svg class="ico" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+      </div>
+      <div class="st-modal-body">
+        <p style="margin:0 0 12px 0; font-size:12px; color:#475569;">Firma yöneticisi hesabınızla giriş yaptığınızda versiyonlar veritabanına kaydedilir.</p>
+        <div id="cloudLoginStatusBox" style="margin-bottom:10px;"></div>
+        <form id="studioLoginForm" onsubmit="submitStudioCloudLogin(event)">
+          <div class="st-field"><label class="st-label">Kullanıcı Adı</label><input id="studioLoginUser" type="text" class="st-input" required></div>
+          <div class="st-field"><label class="st-label">Şifre</label><input id="studioLoginPass" type="password" class="st-input" required></div>
+          <button type="submit" class="st-btn st-btn-primary" style="width:100%;">Buluta Bağlan</button>
+        </form>
+      </div>
+      <div class="st-modal-foot"><button type="button" class="st-btn st-btn-outline" onclick="closeModal('cloudLoginModal')">Yerel Modda Devam Et</button></div>
+    </div>
+  </div>
+
+  <!-- İŞLEV EKLE (fx) SİHİRBAZI -->
+  <div id="insertFunctionModal" class="st-modal-backdrop hidden">
+    <div class="st-modal-card" style="max-width:540px;">
+      <div class="st-modal-head">
+        <span>İşlev Ekle (Excel Formül Kitaplığı)</span>
+        <button type="button" class="st-mini-icon-btn" onclick="closeModal('insertFunctionModal')"><svg class="ico" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+      </div>
+      <div id="insertFunctionBody" class="st-modal-body"></div>
+      <div class="st-modal-foot"><button type="button" class="st-btn st-btn-outline" onclick="closeModal('insertFunctionModal')">Kapat</button></div>
+    </div>
+  </div>
+
+  <!-- KOŞULLU BİÇİMLENDİRME KURALI MODALI -->
+  <div id="condRuleModal" class="st-modal-backdrop hidden">
+    <div class="st-modal-card" style="max-width:440px;">
+      <div class="st-modal-head">
+        <span>Koşullu Biçimlendirme Kuralı</span>
+        <button type="button" class="st-mini-icon-btn" onclick="closeModal('condRuleModal')"><svg class="ico" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+      </div>
+      <div id="condRuleModalBody" class="st-modal-body"></div>
+      <div class="st-modal-foot">
+        <button type="button" class="st-btn st-btn-outline" onclick="closeModal('condRuleModal')">İptal</button>
+        <button type="button" class="st-btn st-btn-primary" onclick="officeSaveCondRuleModal()">Kuralı Uygula</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GRAFİK EKLE MODALI -->
+  <div id="insertChartModal" class="st-modal-backdrop hidden">
+    <div class="st-modal-card" style="max-width:500px;">
+      <div class="st-modal-head">
+        <span>Grafik Bloğu Ekle (Excel / GridCraft)</span>
+        <button type="button" class="st-mini-icon-btn" onclick="closeModal('insertChartModal')"><svg class="ico" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+      </div>
+      <div id="insertChartBody" class="st-modal-body"></div>
+      <div class="st-modal-foot">
+        <button type="button" class="st-btn st-btn-outline" onclick="closeModal('insertChartModal')">Vazgeç</button>
+        <button type="button" class="st-btn st-btn-primary" onclick="officeConfirmInsertChart()">Grafiği Ekle</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BELGE İSTATİSTİKLERİ (WORD COUNT) MODALI -->
+  <div id="docStatsModal" class="st-modal-backdrop hidden">
+    <div class="st-modal-card" style="max-width:440px;">
+      <div class="st-modal-head">
+        <span>Belge ve Rapor İstatistikleri</span>
+        <button type="button" class="st-mini-icon-btn" onclick="closeModal('docStatsModal')"><svg class="ico" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+      </div>
+      <div id="docStatsBody" class="st-modal-body"></div>
+      <div class="st-modal-foot"><button type="button" class="st-btn st-btn-primary" onclick="closeModal('docStatsModal')">Tamam</button></div>
+    </div>
+  </div>
+
+  <!-- METNİ SÜTUNLARA DÖNÜŞTÜR MODALI -->
+  <div id="textToColsModal" class="st-modal-backdrop hidden">
+    <div class="st-modal-card" style="max-width:420px;">
+      <div class="st-modal-head">
+        <span>Metni Sütunlara Dönüştür (Excel)</span>
+        <button type="button" class="st-mini-icon-btn" onclick="closeModal('textToColsModal')"><svg class="ico" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+      </div>
+      <div class="st-modal-body">
+        <p style="margin:0 0 10px 0;font-size:12px;color:#475569;">Seçili sütundaki metinleri ayırıcı karaktere göre bölerek yanına yeni sütun açar.</p>
+        <div class="st-field">
+          <label class="st-label">Ayırıcı Karakter</label>
+          <select id="ttcDelimiter" class="st-select">
+            <option value="/">Eğik Çizgi ( / )</option>
+            <option value="-">Tire ( - )</option>
+            <option value=",">Virgül ( , )</option>
+            <option value=";">Noktalı Virgül ( ; )</option>
+            <option value=" ">Boşluk</option>
+          </select>
+        </div>
+      </div>
+      <div class="st-modal-foot">
+        <button type="button" class="st-btn st-btn-outline" onclick="closeModal('textToColsModal')">Vazgeç</button>
+        <button type="button" class="st-btn st-btn-primary" onclick="officeRunTextToCols()">Sütunlara Böl</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ÖZEL FİLİGRAN MODALI -->
+  <div id="customWatermarkModal" class="st-modal-backdrop hidden">
+    <div class="st-modal-card" style="max-width:400px;">
+      <div class="st-modal-head">
+        <span>Özel Filigran Ayarları</span>
+        <button type="button" class="st-mini-icon-btn" onclick="closeModal('customWatermarkModal')"><svg class="ico" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+      </div>
+      <div class="st-modal-body">
+        <div class="st-field">
+          <label class="st-label">Filigran Metni</label>
+          <input id="customWmText" type="text" class="st-input" placeholder="Örn: TASLAK / KOPYA / KURUM ADI">
+        </div>
+        <div class="st-grid-2">
+          <div class="st-field">
+            <label class="st-label">Renk</label>
+            <input id="customWmColor" type="color" class="st-input" style="height:34px;padding:2px;" value="#64748b">
+          </div>
+          <div class="st-field">
+            <label class="st-label">Opaklık (%)</label>
+            <input id="customWmOpacity" type="number" min="4" max="35" value="11" class="st-input">
+          </div>
+        </div>
+      </div>
+      <div class="st-modal-foot">
+        <button type="button" class="st-btn st-btn-outline" onclick="officeSetWatermark(''); closeModal('customWatermarkModal');">Kaldır</button>
+        <button type="button" class="st-btn st-btn-primary" onclick="officeSaveCustomWatermark()">Uygula</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="studioToast" class="st-toast">Kaydedildi</div>
+
+  <script src="/studio.js"></script>
+  <script src="/studio-office.js"></script>
+</body>
+</html>

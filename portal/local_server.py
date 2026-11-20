@@ -145,6 +145,26 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_reports_slug ON portal_reports (share_slug);
         CREATE INDEX IF NOT EXISTS idx_reports_folder ON portal_reports (folder_id);
         CREATE INDEX IF NOT EXISTS idx_reports_verify ON portal_reports (report_no, verify_code);
+
+        CREATE TABLE IF NOT EXISTS saas_template_versions (
+            id TEXT PRIMARY KEY,
+            tenant_id TEXT NOT NULL DEFAULT 'local',
+            template_key TEXT NOT NULL,
+            version_number INTEGER NOT NULL,
+            version_label TEXT NOT NULL DEFAULT 'v1',
+            title TEXT NOT NULL,
+            category TEXT NOT NULL DEFAULT 'Elektrik',
+            form_code TEXT NOT NULL DEFAULT 'FR.100',
+            changelog TEXT NOT NULL DEFAULT '',
+            is_published INTEGER NOT NULL DEFAULT 0,
+            is_archived INTEGER NOT NULL DEFAULT 0,
+            schema_json TEXT NOT NULL DEFAULT '{}',
+            created_by_name TEXT NOT NULL DEFAULT 'Yerel Yönetici',
+            created_at TEXT NOT NULL,
+            UNIQUE (tenant_id, template_key, version_number)
+        );
+        CREATE INDEX IF NOT EXISTS idx_studio_tpl_key
+            ON saas_template_versions (tenant_id, template_key, version_number DESC);
         """
     )
     existing_cols = {row[1] for row in conn.execute("PRAGMA table_info(portal_folders)").fetchall()}
@@ -615,20 +635,44 @@ class PortalHandler(BaseHTTPRequestHandler):
             return self.handle_get_report_file(qs)
         if path == "/api/admin":
             return self.handle_admin_get(qs)
+        if path == "/api/studio":
+            return self.handle_studio_get(qs)
 
-        # Static portal pages & rewrite paths (/p/:slug, /r/:slug, /admin)
+        # Static portal pages & rewrite paths (/p/:slug, /r/:slug, /admin, /studio)
         if path in ("/", "/index.html"):
             return self.send_file_response(os.path.join(PORTAL_DIR, "index.html"), "text/html; charset=utf-8")
         if path in ("/admin", "/admin.html"):
             return self.send_file_response(os.path.join(PORTAL_DIR, "admin.html"), "text/html; charset=utf-8")
+        if path in ("/yonetim", "/firma", "/manager.html"):
+            return self.send_file_response(os.path.join(PORTAL_DIR, "manager.html"), "text/html; charset=utf-8")
+        if path in ("/studio", "/sablon", "/studio.html"):
+            return self.send_file_response(os.path.join(PORTAL_DIR, "studio.html"), "text/html; charset=utf-8")
         if path == "/folder.html" or path.startswith("/p/"):
             return self.send_file_response(os.path.join(PORTAL_DIR, "folder.html"), "text/html; charset=utf-8")
         if path == "/report.html" or path.startswith("/r/"):
             return self.send_file_response(os.path.join(PORTAL_DIR, "report.html"), "text/html; charset=utf-8")
         if path == "/styles.css":
             return self.send_file_response(os.path.join(PORTAL_DIR, "styles.css"), "text/css; charset=utf-8")
+        if path == "/studio.css":
+            return self.send_file_response(os.path.join(PORTAL_DIR, "studio.css"), "text/css; charset=utf-8")
         if path == "/portal.js":
             return self.send_file_response(os.path.join(PORTAL_DIR, "portal.js"), "application/javascript; charset=utf-8")
+        if path == "/studio.js":
+            return self.send_file_response(os.path.join(PORTAL_DIR, "studio.js"), "application/javascript; charset=utf-8")
+        if path == "/studio-office.js":
+            return self.send_file_response(os.path.join(PORTAL_DIR, "studio-office.js"), "application/javascript; charset=utf-8")
+        if path.startswith("/assets/"):
+            fname = os.path.basename(path[len("/assets/"):])
+            if fname and not fname.startswith("."):
+                ext = os.path.splitext(fname)[1].lower()
+                mime = {
+                    ".png": "image/png",
+                    ".jpg": "image/jpeg",
+                    ".jpeg": "image/jpeg",
+                    ".svg": "image/svg+xml",
+                    ".webp": "image/webp",
+                }.get(ext, "application/octet-stream")
+                return self.send_file_response(os.path.join(PORTAL_DIR, "assets", fname), mime)
 
         return self.send_json(404, {"ok": False, "error": "Sayfa veya endpoint bulunamadi"})
 
@@ -646,6 +690,8 @@ class PortalHandler(BaseHTTPRequestHandler):
             return self.handle_folder_unlock()
         if path == "/api/admin":
             return self.handle_admin_post()
+        if path == "/api/studio":
+            return self.handle_studio_post()
 
         return self.send_json(404, {"ok": False, "error": "Bilinmeyen POST endpoint"})
 
@@ -654,6 +700,149 @@ class PortalHandler(BaseHTTPRequestHandler):
         if parsed.path == "/api/local-upload":
             return self.handle_local_upload(urllib.parse.parse_qs(parsed.query))
         return self.send_json(404, {"ok": False, "error": "Bilinmeyen PUT endpoint"})
+
+    def handle_studio_get(self, qs):
+        try:
+            conn = get_conn()
+            include_archived = (qs.get("archived", ["0"])[0] == "1")
+            if include_archived:
+                rows = conn.execute(
+                    "SELECT * FROM saas_template_versions ORDER BY template_key ASC, version_number DESC"
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT * FROM saas_template_versions WHERE is_archived = 0 ORDER BY template_key ASC, version_number DESC"
+                ).fetchall()
+            versions = []
+            for r in rows:
+                try:
+                    schema_obj = json.loads(r["schema_json"] or "{}")
+                except Exception:
+                    schema_obj = {}
+                versions.append({
+                    "id": r["id"],
+                    "tenant_id": r["tenant_id"],
+                    "template_key": r["template_key"],
+                    "version_number": int(r["version_number"] or 1),
+                    "version_label": r["version_label"] or f"v{r['version_number']}",
+                    "title": r["title"],
+                    "category": r["category"],
+                    "form_code": r["form_code"],
+                    "changelog": r["changelog"],
+                    "is_published": bool(r["is_published"]),
+                    "is_archived": bool(r["is_archived"]),
+                    "schema_json": schema_obj,
+                    "created_by_name": r["created_by_name"],
+                    "created_at": r["created_at"],
+                })
+            return self.send_json(200, {
+                "ok": True,
+                "manager": {"username": "yerel-yonetici", "full_name": "Yerel Yönetici"},
+                "tenant": {"id": "local", "name": "Yerel Sunucu (SQLite)", "slug": "local"},
+                "versions": versions,
+            })
+        except Exception as exc:
+            return self.send_json(500, {"ok": False, "error": str(exc)})
+
+    def handle_studio_post(self):
+        try:
+            length = int(self.headers.get("Content-Length", "0") or "0")
+            raw = self.rfile.read(min(length, 2 * 1024 * 1024)) if length > 0 else b"{}"
+            body = json.loads(raw.decode("utf-8") or "{}")
+            action = str(body.get("action") or "").strip()
+            conn = get_conn()
+
+            if action == "save_version":
+                schema = body.get("schema_json")
+                if not isinstance(schema, dict):
+                    return self.send_json(400, {"ok": False, "error": "Geçerli schema_json gereklidir."})
+                title = str(body.get("title") or schema.get("title") or "").strip()
+                if not title:
+                    return self.send_json(400, {"ok": False, "error": "Şablon başlığı boş olamaz."})
+                raw_key = str(body.get("template_key") or schema.get("template_key") or title)
+                tpl_key = sanitize_company_slug(raw_key) or f"sablon-{int(time.time())}"
+                category = str(body.get("category") or schema.get("category") or "Elektrik").strip()[:64]
+                form_code = str(body.get("form_code") or schema.get("form_code") or "FR.100").strip()[:48]
+                changelog = str(body.get("changelog") or "").strip()[:500]
+                publish = bool(body.get("publish"))
+
+                row_max = conn.execute(
+                    "SELECT COALESCE(MAX(version_number), 0) AS mx FROM saas_template_versions WHERE tenant_id = 'local' AND template_key = ?",
+                    (tpl_key,),
+                ).fetchone()
+                next_ver = int(row_max["mx"] or 0) + 1
+                ver_label = f"v{next_ver}"
+
+                if publish and next_ver > 1:
+                    conn.execute(
+                        "UPDATE saas_template_versions SET is_published = 0 WHERE tenant_id = 'local' AND template_key = ?",
+                        (tpl_key,),
+                    )
+
+                schema_copy = dict(schema)
+                schema_copy["template_key"] = tpl_key
+                schema_copy["version_number"] = next_ver
+                schema_copy["version_label"] = ver_label
+                schema_copy["title"] = title
+                schema_copy["category"] = category
+                schema_copy["form_code"] = form_code
+
+                new_id = str(uuid.uuid4())
+                now_iso = utc_now_iso()
+                is_pub = 1 if (publish or next_ver == 1) else 0
+                final_note = changelog or ("İlk sürüm oluşturuldu" if next_ver == 1 else f"{ver_label} güncellemesi")
+
+                conn.execute(
+                    """
+                    INSERT INTO saas_template_versions
+                    (id, tenant_id, template_key, version_number, version_label, title, category, form_code, changelog, is_published, is_archived, schema_json, created_by_name, created_at)
+                    VALUES (?, 'local', ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 'Yerel Yönetici', ?)
+                    """,
+                    (new_id, tpl_key, next_ver, ver_label, title, category, form_code, final_note, is_pub, json.dumps(schema_copy, ensure_ascii=False), now_iso),
+                )
+                conn.commit()
+                return self.send_json(200, {
+                    "ok": True,
+                    "version": {
+                        "id": new_id,
+                        "tenant_id": "local",
+                        "template_key": tpl_key,
+                        "version_number": next_ver,
+                        "version_label": ver_label,
+                        "title": title,
+                        "category": category,
+                        "form_code": form_code,
+                        "changelog": final_note,
+                        "is_published": bool(is_pub),
+                        "is_archived": False,
+                        "schema_json": schema_copy,
+                        "created_by_name": "Yerel Yönetici",
+                        "created_at": now_iso,
+                    },
+                })
+
+            if action == "publish_version":
+                vid = str(body.get("version_id") or "").strip()
+                row = conn.execute("SELECT * FROM saas_template_versions WHERE id = ?", (vid,)).fetchone()
+                if not row:
+                    return self.send_json(404, {"ok": False, "error": "Versiyon bulunamadı."})
+                conn.execute(
+                    "UPDATE saas_template_versions SET is_published = 0 WHERE tenant_id = 'local' AND template_key = ?",
+                    (row["template_key"],),
+                )
+                conn.execute("UPDATE saas_template_versions SET is_published = 1, is_archived = 0 WHERE id = ?", (vid,))
+                conn.commit()
+                return self.send_json(200, {"ok": True})
+
+            if action == "archive_version":
+                vid = str(body.get("version_id") or "").strip()
+                conn.execute("UPDATE saas_template_versions SET is_archived = 1, is_published = 0 WHERE id = ?", (vid,))
+                conn.commit()
+                return self.send_json(200, {"ok": True})
+
+            return self.send_json(400, {"ok": False, "error": "Bilinmeyen studio action."})
+        except Exception as exc:
+            return self.send_json(500, {"ok": False, "error": str(exc)})
 
     def handle_health(self):
         has_header = bool(self.extract_admin_key())

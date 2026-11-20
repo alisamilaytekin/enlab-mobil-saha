@@ -228,3 +228,34 @@ CREATE INDEX IF NOT EXISTS idx_saas_saved_reports_user_wo
     ON public.saas_saved_reports (user_id, work_order_id, updated_at DESC);
 
 ALTER TABLE public.saas_saved_reports ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================================
+-- 8. WEB ŞABLON STÜDYOSU — VERSİYONLU RAPOR ŞABLONLARI (v1, v2, v3... ÜSTÜNE YAZMAZ)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS public.saas_template_versions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES public.saas_tenants(id) ON DELETE CASCADE,
+    template_key TEXT NOT NULL,
+    version_number INTEGER NOT NULL CHECK (version_number >= 1),
+    version_label TEXT NOT NULL DEFAULT 'v1',
+    title TEXT NOT NULL,
+    category TEXT NOT NULL DEFAULT 'Elektrik',
+    form_code TEXT NOT NULL DEFAULT 'FR.100',
+    changelog TEXT NOT NULL DEFAULT '',
+    is_published BOOLEAN NOT NULL DEFAULT FALSE,
+    is_archived BOOLEAN NOT NULL DEFAULT FALSE,
+    schema_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_by UUID REFERENCES public.saas_users(id) ON DELETE SET NULL,
+    created_by_name TEXT NOT NULL DEFAULT '',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (tenant_id, template_key, version_number)
+);
+
+CREATE INDEX IF NOT EXISTS idx_saas_template_versions_tenant_key
+    ON public.saas_template_versions (tenant_id, template_key, version_number DESC);
+
+CREATE INDEX IF NOT EXISTS idx_saas_template_versions_published
+    ON public.saas_template_versions (tenant_id, is_published, created_at DESC);
+
+ALTER TABLE public.saas_template_versions ENABLE ROW LEVEL SECURITY;
