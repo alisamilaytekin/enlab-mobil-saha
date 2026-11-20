@@ -2612,7 +2612,7 @@ Görülemedi (G): 1</textarea>
       const greet = hour < 12 ? 'Günaydın' : (hour < 18 ? 'İyi Çalışmalar' : 'İyi Akşamlar');
       const recents = (S().state.allVersions || []).filter(v => !v.is_archived).slice(0, 8);
       box.innerHTML = `
-        <h1 class="bs-heading">${greet}</h1>
+        <h1 class="bs-heading">${greet} — Hızlı Rapor Studio</h1>
         <p class="bs-sub">Hazır bir resmi rapor şablonundan başlayın veya kayıtlı sürümlerinizden devam edin.</p>
         <div class="bs-tpl-grid">
           ${S().blueprints.map(bp => `

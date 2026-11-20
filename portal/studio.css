@@ -151,6 +151,29 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 
 .otb-sep { width: 1px; height: 16px; background: var(--of-border-strong); margin: 0 2px; }
 
+.otb-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--of-ink);
+  white-space: nowrap;
+  padding: 0 4px;
+  user-select: none;
+}
+.otb-brand-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--of-word);
+  flex-shrink: 0;
+}
+@media (max-width: 1120px) {
+  .otb-brand { display: none; }
+}
+
 /* GridCraft / WordCraft AutoSave Switch */
 .otb-autosave {
   display: inline-flex; align-items: center; gap: 6px;

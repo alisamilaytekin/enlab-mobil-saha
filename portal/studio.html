@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Rapor Şablon Stüdyosu — Office Word &amp; Excel Editör</title>
+  <title>Hızlı Rapor Studio — Rapor Tasarım &amp; Şablon Editörü</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -18,6 +18,11 @@
       <a href="/yonetim" class="otb-icon-btn" title="Firma Yönetim Paneline Dön" aria-label="Yönetim">
         <svg class="ico" viewBox="0 0 24 24"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5"/></svg>
       </a>
+      <span class="otb-brand" title="Hızlı Rapor Studio">
+        <span class="otb-brand-dot"></span>
+        <span>Hızlı Rapor Studio</span>
+      </span>
+      <span class="otb-sep"></span>
       <label class="otb-autosave" title="Değişiklikleri tarayıcıya otomatik yedekle">
         <span class="otb-autosave-lbl">Otomatik Kaydet</span>
         <input id="chkAutoSave" type="checkbox" checked onchange="officeToggleAutoSave(this.checked)">
@@ -1500,7 +1505,7 @@
   <div id="insertChartModal" class="st-modal-backdrop hidden">
     <div class="st-modal-card" style="max-width:500px;">
       <div class="st-modal-head">
-        <span>Grafik Bloğu Ekle (Excel / GridCraft)</span>
+        <span>Grafik Bloğu Ekle</span>
         <button type="button" class="st-mini-icon-btn" onclick="closeModal('insertChartModal')"><svg class="ico" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
       </div>
       <div id="insertChartBody" class="st-modal-body"></div>
