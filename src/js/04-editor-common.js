@@ -151,11 +151,13 @@ function paintInspectionEditorUI() {
 
     if (container) container.classList.add('pb-8');
 
-    const isElectrical2201 = String(insp.template_id) === '2201' && AppState.electricalTemplate && AppState.electricalTemplate.areas;
+    const isStudioTemplate = Boolean(window.StudioTemplateManager && window.StudioTemplateManager.isStudioTemplateId(insp.template_id));
 
-    const isGrounding2202 = String(insp.template_id) === '2202';
+    const isElectrical2201 = !isStudioTemplate && String(insp.template_id) === '2201' && AppState.electricalTemplate && AppState.electricalTemplate.areas;
 
-    const isGenerator2205 = String(insp.template_id) === '2205';
+    const isGrounding2202 = !isStudioTemplate && String(insp.template_id) === '2202';
+
+    const isGenerator2205 = !isStudioTemplate && String(insp.template_id) === '2205';
 
 
 
@@ -179,7 +181,11 @@ function paintInspectionEditorUI() {
 
     let editorBodyHtml = '';
 
-    if (isElectrical2201) {
+    if (isStudioTemplate && typeof window.renderStudioTemplateEditor === 'function') {
+
+        editorBodyHtml = window.renderStudioTemplateEditor(insp, AppState.currentFormData);
+
+    } else if (isElectrical2201) {
 
         editorBodyHtml = renderElectrical2201Editor();
 
@@ -381,6 +387,8 @@ function updateInspectionName(newName) {
             const fullPanelLabel = serial && newName ? `${newName} (${serial})` : (newName || '');
             AppState.currentFormData.answers['q_4806ef6b-a811-4c26-b76f-6467779e5499'] = newName || '';
             AppState.currentFormData.answers['q_3e5cfce4-bb64-4339-b086-f0947d8dbccb'] = fullPanelLabel;
+        } else if (window.StudioTemplateManager && window.StudioTemplateManager.isStudioTemplateId(AppState.currentInspection.template_id) && typeof window.syncEquipmentNameToStudioSchema === 'function') {
+            window.syncEquipmentNameToStudioSchema(AppState.currentInspection, AppState.currentFormData, newName);
         }
 
     }

@@ -137,6 +137,10 @@
                   <span>Jeneratör Kontrolü (TKM-FR.164)</span>
                 </label>
               </div>
+              <div id="woStudioTplSection" class="hidden" style="margin-top:8px;">
+                <label class="label" style="color:#0369a1;">Studio Şablonları (Yayınlanmış)</label>
+                <div id="woStudioTplGrid" class="grid-3"></div>
+              </div>
             </div>
 
             <div style="margin-top:10px;">
@@ -476,10 +480,30 @@
       }
 
       fillUserSelects();
+      renderStudioTemplateChecks();
       fillBrandingForm();
       renderUsersList();
       renderDevicesList();
       renderWorkOrdersList();
+    }
+
+    function renderStudioTemplateChecks() {
+      const sec = document.getElementById('woStudioTplSection');
+      const grid = document.getElementById('woStudioTplGrid');
+      if (!sec || !grid) return;
+      const list = Array.isArray(state.studio_templates) ? state.studio_templates : [];
+      if (!list.length) {
+        sec.classList.add('hidden');
+        grid.innerHTML = '';
+        return;
+      }
+      sec.classList.remove('hidden');
+      grid.innerHTML = list.map(t => `
+        <label class="tpl-check" style="border-color:#bae6fd; background:#f0f9ff;">
+          <input type="checkbox" name="woTpl" value="${PortalUI.escapeHtml(t.template_id)}">
+          <span>${PortalUI.escapeHtml(t.title)} (${PortalUI.escapeHtml(t.form_code || 'Studio')} · ${PortalUI.escapeHtml(t.version_label || 'v1')})</span>
+        </label>
+      `).join('');
     }
 
     function fillUserSelects() {
@@ -610,7 +634,12 @@
       box.innerHTML = list.map(w => {
         const u = userMap.get(String(w.assigned_user_id));
         const st = statusLabels[w.status] || statusLabels.open;
-        const tpls = Array.isArray(w.template_ids) ? w.template_ids.join(', ') : '';
+        const studioMap = new Map((state.studio_templates || []).map(t => [String(t.template_id), t]));
+        const tpls = Array.isArray(w.template_ids) ? w.template_ids.map(id => {
+          const stTpl = studioMap.get(String(id));
+          if (stTpl) return `${stTpl.title} (${stTpl.version_label || 'Studio'})`;
+          return String(id);
+        }).join(', ') : '';
         return `
           <div class="card-muted" style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px;">
             <div style="min-width:220px; flex:1;">

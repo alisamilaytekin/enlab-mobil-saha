@@ -1383,6 +1383,58 @@ function printOfficialReport(directPrint = false, customTarget = null, silentRen
 
 
 
+    const isStudioTemplate = Boolean(window.StudioTemplateManager && window.StudioTemplateManager.isStudioTemplateId(insp.template_id) && typeof window.buildStudioA4Render === 'function');
+
+    if (isStudioTemplate) {
+        const studioRender = window.buildStudioA4Render(insp, fd, ci, reportNo, { interactive: false, previewSheet: false });
+        const studioPreviewRender = window.buildStudioA4Render(insp, fd, ci, reportNo, { interactive: false, previewSheet: true });
+        const effTheme = studioRender.effectiveTheme || activePdfTheme;
+
+        let dynStudioPageStyle = document.getElementById('appDynamicStudioPageStyle');
+        if (!dynStudioPageStyle) {
+            dynStudioPageStyle = document.createElement('style');
+            dynStudioPageStyle.id = 'appDynamicStudioPageStyle';
+            document.head.appendChild(dynStudioPageStyle);
+        }
+        dynStudioPageStyle.textContent = `@page { size: A4 ${studioRender.isLandscape ? 'landscape' : 'portrait'}; margin: 0mm; }`;
+
+        printArea.setAttribute('data-pdf-theme', effTheme);
+        printArea.innerHTML = studioRender.pagesOuterHtml;
+
+        if (customTarget && typeof Element !== 'undefined' && customTarget instanceof Element) {
+            customTarget.setAttribute('data-pdf-theme', effTheme);
+            customTarget.innerHTML = printArea.innerHTML;
+        }
+
+        if (silentRender) return;
+
+        const previewContainer = document.getElementById('a4PreviewPagesContainer');
+        const previewModal = document.getElementById('a4PreviewModal');
+        const previewTitle = document.getElementById('a4PreviewTitle');
+        const previewSubtitle = document.getElementById('a4PreviewSubtitle');
+        if (previewTitle) {
+            previewTitle.textContent = `${reportNo || 'Rapor'} · ${insp.customer_name || 'Müşteri'}`;
+        }
+        if (previewSubtitle) {
+            previewSubtitle.textContent = `${insp.equipment_name || 'Studio Raporu'} (${studioRender.pageCount} Sayfa A4)`;
+        }
+        if (previewContainer) {
+            previewContainer.setAttribute('data-pdf-theme', effTheme);
+            previewContainer.innerHTML = studioPreviewRender.pagesOuterHtml;
+        }
+        if (previewModal && !directPrint) {
+            previewModal.classList.remove('hidden');
+            resetA4PreviewZoom();
+            initA4PinchZoom();
+        } else {
+            triggerBrowserPrint();
+        }
+        return;
+    }
+
+    const prevDynStudioStyle = document.getElementById('appDynamicStudioPageStyle');
+    if (prevDynStudioStyle) prevDynStudioStyle.remove();
+
     const isGrounding2202 = String(insp.template_id) === '2202';
 
     const isGenerator2205 = String(insp.template_id) === '2205';

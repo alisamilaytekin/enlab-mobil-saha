@@ -836,6 +836,7 @@
         const { a4Css, ramsCss } = extractMarkedCss();
         const safePages = embedRelativeAssetsInHtml(pagesHtml);
         const title = `${meta.reportNo || 'Rapor'} - ${meta.equipmentName || 'Periyodik Kontrol Raporu'}`;
+        const isLandscape = String(safePages || '').includes('tkm-a4-landscape');
 
         return `<!DOCTYPE html>
 <html lang="tr">
@@ -858,9 +859,9 @@ ${ramsCss}
   .tkm-portal-pages { padding: 14px 0; }
   .tkm-a4-page { margin: 0 auto 16px auto; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); border: 1px solid #0f172a; }
 }
-@page { size: A4 portrait; margin: 0mm; }
+@page { size: A4 ${isLandscape ? 'landscape' : 'portrait'}; margin: 0mm; }
 @media print {
-  html, body { background: #ffffff !important; width: 210mm !important; height: auto !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; }
+  html, body { background: #ffffff !important; width: ${isLandscape ? '297mm' : '210mm'} !important; height: auto !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; }
   .tkm-portal-pages { padding: 0 !important; margin: 0 !important; }
   .tkm-a4-page { margin: 0 !important; box-shadow: none !important; border: none !important; transform: none !important; zoom: 1 !important; page-break-after: always; break-after: page; }
   .tkm-a4-page:last-child { page-break-after: auto; break-after: auto; }
@@ -1202,7 +1203,7 @@ ${ramsCss}
         const savedFd = window.AppState ? window.AppState.currentFormData : null;
 
         let pagesHtml = '';
-        const activeTheme = (typeof getPdfTheme === 'function') ? getPdfTheme() : 'classic';
+        let activeTheme = (typeof getPdfTheme === 'function') ? getPdfTheme() : 'classic';
         try {
             if (window.AppState) {
                 window.AppState.currentInspection = normInsp;
@@ -1212,6 +1213,9 @@ ${ramsCss}
                 printOfficialReport(false, null, true);
             }
             pagesHtml = printArea ? printArea.innerHTML : '';
+            if (printArea && printArea.getAttribute('data-pdf-theme')) {
+                activeTheme = printArea.getAttribute('data-pdf-theme');
+            }
         } finally {
             if (window.AppState) {
                 window.AppState.currentInspection = savedInsp;
@@ -2014,6 +2018,17 @@ ${ramsCss}
     // ========================================================================
     function resolveTemplateMeta(tplId) {
         const idStr = String(tplId || '2201');
+        if (window.StudioTemplateManager && window.StudioTemplateManager.isStudioTemplateId(idStr)) {
+            const stTpl = window.StudioTemplateManager.getById(idStr);
+            if (stTpl) {
+                return {
+                    id: stTpl.template_id,
+                    code: stTpl.form_code || 'FR.100',
+                    name: stTpl.title || 'Studio Raporu'
+                };
+            }
+            return { id: idStr, code: 'STUDIO', name: 'Studio Şablon Raporu' };
+        }
         const list = (window.ENLAB_REPORT_TEMPLATES || []).concat(window.ENLAB_ALL_REPORT_TEMPLATES_BACKUP || []);
         const found = list.find(t => String(t.id) === idStr);
         if (found) return { id: found.id, code: found.code || 'TKM-FR.318', name: found.name || 'Elektrik Periyodik Kontrol' };
@@ -2501,6 +2516,9 @@ ${ramsCss}
         }
         if (data.tenant) {
             applyTenantBranding(data.tenant);
+        }
+        if (window.StudioTemplateManager && Array.isArray(data.studio_templates)) {
+            window.StudioTemplateManager.syncFromCloud(data.studio_templates);
         }
         if (window.MeasuringDevicesManager && typeof window.MeasuringDevicesManager.syncCloudDevices === 'function') {
             window.MeasuringDevicesManager.syncCloudDevices(

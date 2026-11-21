@@ -18,6 +18,33 @@ function openQuickFieldJobModal() {
 
     const templates = window.ENLAB_REPORT_TEMPLATES || [];
 
+    const renderStudioCheckboxesHtml = (list) => {
+        if (!Array.isArray(list) || !list.length) return '';
+        return `
+            <div data-studio-qj-group="1" class="pt-1.5 mt-1.5 border-t border-slate-200 space-y-1.5">
+                <div class="text-[10.5px] font-extrabold text-sky-700 px-1 flex items-center gap-1">
+                    <i class="fa-solid fa-layer-group"></i>
+                    <span>Studio Şablonları (${list.length})</span>
+                </div>
+                ${list.map(st => `
+                    <label class="quick-tpl-item flex items-center p-2.5 rounded-xl border border-sky-200 bg-sky-50/60 hover:border-sky-500 cursor-pointer transition-all shadow-2xs">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <input type="checkbox" name="quickJobTpl" value="${escapeHtml(st.template_id)}" class="w-4 h-4 accent-sky-600 rounded shrink-0">
+                            <div class="min-w-0">
+                                <div class="font-bold text-slate-900 text-xs truncate">${escapeHtml(st.title)}</div>
+                                <div class="text-[10px] text-sky-700 font-semibold">${escapeHtml(st.form_code || 'Studio')} · ${escapeHtml(st.version_label || 'v1')}</div>
+                            </div>
+                        </div>
+                    </label>
+                `).join('')}
+            </div>
+        `;
+    };
+
+    const studioListInitial = (window.StudioTemplateManager && typeof window.StudioTemplateManager.getAll === 'function')
+        ? window.StudioTemplateManager.getAll()
+        : [];
+
     const tplCheckboxes = templates.map((t) => {
 
         const cleanName = typeof getCleanTemplateTypeLabel === 'function' ? getCleanTemplateTypeLabel(t.id, t.code) : t.name;
@@ -40,7 +67,7 @@ function openQuickFieldJobModal() {
 
         </label>
 
-    `;}).join('');
+    `;}).join('') + renderStudioCheckboxesHtml(studioListInitial);
 
 
 
@@ -137,6 +164,24 @@ function openQuickFieldJobModal() {
     );
 
     setTimeout(() => document.getElementById('qjCompanyName')?.focus(), 100);
+
+    // Arka planda en güncel yayınlanmış Studio şablonlarını çek ve listeye ekle
+    if (window.StudioTemplateManager && typeof window.StudioTemplateManager.refreshFromPortal === 'function') {
+        window.StudioTemplateManager.refreshFromPortal(true).then(() => {
+            const grid = document.getElementById('qjTemplatesGrid');
+            if (!grid) return;
+            const checkedSet = new Set(Array.from(grid.querySelectorAll('input[name="quickJobTpl"]:checked')).map(c => c.value));
+            const oldGroup = grid.querySelector('[data-studio-qj-group="1"]');
+            if (oldGroup) oldGroup.remove();
+            const latest = window.StudioTemplateManager.getAll();
+            if (latest.length > 0) {
+                grid.insertAdjacentHTML('beforeend', renderStudioCheckboxesHtml(latest));
+                grid.querySelectorAll('input[name="quickJobTpl"]').forEach(cb => {
+                    if (checkedSet.has(cb.value)) cb.checked = true;
+                });
+            }
+        }).catch(() => {});
+    }
 
 }
 
@@ -1295,6 +1340,14 @@ function getCleanTemplateTypeLabel(templateId, templateCode) {
     const tid = String(templateId || '');
 
     const code = String(templateCode || '');
+
+    if (window.StudioTemplateManager && window.StudioTemplateManager.isStudioTemplateId(tid)) {
+        const stTpl = window.StudioTemplateManager.getById(tid);
+        if (stTpl && stTpl.title) {
+            return `${stTpl.title} (${stTpl.version_label || 'Studio'})`;
+        }
+        return code ? `Studio (${code})` : 'Studio Şablonu';
+    }
 
     if (tid === 'U2201') {
         return 'Elektrik İç Tesisatı';

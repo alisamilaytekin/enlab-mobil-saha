@@ -705,7 +705,12 @@ class PortalHandler(BaseHTTPRequestHandler):
         try:
             conn = get_conn()
             include_archived = (qs.get("archived", ["0"])[0] == "1")
-            if include_archived:
+            published_only = (qs.get("published", ["0"])[0] == "1")
+            if published_only:
+                rows = conn.execute(
+                    "SELECT * FROM saas_template_versions WHERE is_published = 1 AND is_archived = 0 ORDER BY template_key ASC, version_number DESC"
+                ).fetchall()
+            elif include_archived:
                 rows = conn.execute(
                     "SELECT * FROM saas_template_versions ORDER BY template_key ASC, version_number DESC"
                 ).fetchall()
@@ -714,7 +719,13 @@ class PortalHandler(BaseHTTPRequestHandler):
                     "SELECT * FROM saas_template_versions WHERE is_archived = 0 ORDER BY template_key ASC, version_number DESC"
                 ).fetchall()
             versions = []
+            seen_keys = set()
             for r in rows:
+                tkey = str(r["template_key"] or "").strip()
+                if published_only:
+                    if not tkey or tkey in seen_keys:
+                        continue
+                    seen_keys.add(tkey)
                 try:
                     schema_obj = json.loads(r["schema_json"] or "{}")
                 except Exception:
@@ -722,7 +733,8 @@ class PortalHandler(BaseHTTPRequestHandler):
                 versions.append({
                     "id": r["id"],
                     "tenant_id": r["tenant_id"],
-                    "template_key": r["template_key"],
+                    "template_key": tkey,
+                    "template_id": f"studio:{tkey}",
                     "version_number": int(r["version_number"] or 1),
                     "version_label": r["version_label"] or f"v{r['version_number']}",
                     "title": r["title"],
@@ -740,6 +752,7 @@ class PortalHandler(BaseHTTPRequestHandler):
                 "manager": {"username": "yerel-yonetici", "full_name": "Yerel Yönetici"},
                 "tenant": {"id": "local", "name": "Yerel Sunucu (SQLite)", "slug": "local"},
                 "versions": versions,
+                "studio_templates": versions if published_only else [v for v in versions if v["is_published"]],
             })
         except Exception as exc:
             return self.send_json(500, {"ok": False, "error": str(exc)})

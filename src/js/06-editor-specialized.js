@@ -448,36 +448,6 @@ function renderSpecializedTemplateEditor() {
         ${renderEvaluationAndFooterSection()}
     `;
 
-    // Alt Adım Gezinme Çubuğu (DESIGN.md Sticky/Clear Bottom Navigation)
-    const bottomNavHtml = activeTab === -1 ? '' : `
-        <div class="card-craft-white p-2.5 flex items-center justify-between gap-2">
-            <button type="button"
-                onclick="AppState.activeSpecTab=${Math.max(0, activeTab - 1)}; paintInspectionEditorUI(); window.scrollTo({top:0,behavior:'smooth'});"
-                ${activeTab <= 0 ? 'disabled' : ''}
-                class="h-10 px-3.5 rounded-xl font-bold text-xs flex items-center gap-1.5 border transition ${
-                    activeTab <= 0 ? 'bg-slate-50 text-slate-300 border-slate-200 cursor-not-allowed' : 'bg-slate-100 text-slate-800 border-slate-300 active:scale-95'
-                }">
-                <i class="fa-solid fa-arrow-left text-[11px]"></i>
-                <span>Önceki Adım</span>
-            </button>
-            <span class="text-[11px] font-bold text-slate-500 font-mono">Adım ${activeTab + 1} / 5</span>
-            ${activeTab < 4 ? `
-                <button type="button"
-                    onclick="AppState.activeSpecTab=${activeTab + 1}; paintInspectionEditorUI(); window.scrollTo({top:0,behavior:'smooth'});"
-                    class="h-10 px-4 rounded-xl bg-slate-900 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs active:scale-95 transition">
-                    <span>Sonraki Adım</span>
-                    <i class="fa-solid fa-arrow-right text-[11px] text-amber-400"></i>
-                </button>
-            ` : `
-                <button type="button" onclick="printOfficialReport()"
-                    class="h-10 px-4 rounded-xl bg-emerald-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs active:scale-95 transition">
-                    <i class="fa-solid fa-file-pdf"></i>
-                    <span>A4 PDF Önizle</span>
-                </button>
-            `}
-        </div>
-    `;
-
     return `
         <div class="space-y-3">
             ${stepperHtml}
@@ -486,7 +456,6 @@ function renderSpecializedTemplateEditor() {
             ${step3Html}
             ${step4Html}
             ${step5Html}
-            ${bottomNavHtml}
         </div>
     `;
 }

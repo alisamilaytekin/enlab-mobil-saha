@@ -1048,40 +1048,6 @@ function renderElectrical2201Editor() {
 
     const evaluationHtml = showTab5 ? renderEvaluationAndFooterSection() : '';
 
-    // Sabit (Sticky) Alt Adım Geçiş Çubuğu (Stitch başparmak ergonomisi)
-    let stepNavFooterHtml = '';
-    if (activeIdx !== -1) {
-        const curStepPos = steps.findIndex(s => s.id === activeIdx);
-        const prevStep = curStepPos > 0 ? steps[curStepPos - 1] : null;
-        const nextStep = (curStepPos >= 0 && curStepPos < steps.length - 1) ? steps[curStepPos + 1] : null;
-        stepNavFooterHtml = `
-            <div class="sticky bottom-0 z-20 p-2 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200 shadow-md flex items-center justify-between gap-2">
-                ${prevStep ? `
-                    <button type="button" onclick="AppState.showAllAreas = false; AppState.activeAreaIndex = ${prevStep.id}; paintInspectionEditorUI(); document.getElementById('pageContent')?.scrollTo({top: 0, behavior: 'smooth'});"
-                        class="h-11 px-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition shrink-0">
-                        <i class="fa-solid fa-chevron-left text-[10px]"></i>
-                        <span>Önceki</span>
-                    </button>
-                ` : `<div></div>`}
-                ${nextStep ? `
-                    <button type="button" onclick="AppState.showAllAreas = false; AppState.activeAreaIndex = ${nextStep.id}; paintInspectionEditorUI(); document.getElementById('pageContent')?.scrollTo({top: 0, behavior: 'smooth'});"
-                        class="h-11 flex-1 px-4 rounded-xl bg-sky-600 hover:bg-sky-500 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition">
-                        <span>${nextStep.num}. ${nextStep.short}</span>
-                        <i class="fa-solid fa-chevron-right text-[10px]"></i>
-                    </button>
-                ` : `
-                    <button type="button" onclick="printOfficialReport()"
-                        class="h-11 flex-1 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition">
-                        <i class="fa-solid fa-file-pdf"></i>
-                        <span>PDF Önizle &amp; İndir</span>
-                    </button>
-                `}
-            </div>
-        `;
-    }
-
-
-
     return `
 
         <div class="space-y-3">
@@ -1102,8 +1068,6 @@ function renderElectrical2201Editor() {
             ${photosHtml}
 
             ${evaluationHtml}
-
-            ${stepNavFooterHtml}
 
         </div>
 

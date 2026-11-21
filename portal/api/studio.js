@@ -50,6 +50,33 @@ export default async function handler(req, res) {
 
   try {
     const urlObj = new URL(req.url, 'http://localhost');
+    const publishedOnly = urlObj.searchParams.get('published') === '1';
+
+    // Yayınlanmış şablonlar uygulama tarafından oturumsuz salt-okunur okunabilir (?published=1)
+    if (req.method === 'GET' && publishedOnly) {
+      const authOpt = await resolveAuthenticatedSaasUser(req, urlObj, 'manager').catch(() => null);
+      const filter = authOpt && authOpt.tenant
+        ? `tenant_id=eq.${encodeURIComponent(authOpt.tenant.id)}&is_published=eq.true&is_archived=eq.false&order=template_key.asc,version_number.desc`
+        : `is_published=eq.true&is_archived=eq.false&order=template_key.asc,version_number.desc`;
+      const rows = await dbSelect('saas_template_versions', filter);
+      const seenKeys = new Set();
+      const templates = [];
+      for (const r of (Array.isArray(rows) ? rows : [])) {
+        const key = String(r.template_key || '').trim();
+        if (!key || seenKeys.has(key)) continue;
+        if (!r.schema_json || !Array.isArray(r.schema_json.sections)) continue;
+        seenKeys.add(key);
+        const pub = formatVersionPublic(r);
+        pub.template_id = `studio:${key}`;
+        templates.push(pub);
+      }
+      return sendJson(res, 200, {
+        ok: true,
+        versions: templates,
+        studio_templates: templates
+      });
+    }
+
     const auth = await resolveAuthenticatedSaasUser(req, urlObj, 'manager');
     if (!auth) {
       return sendJson(res, 401, {

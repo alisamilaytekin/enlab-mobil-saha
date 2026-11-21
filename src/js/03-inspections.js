@@ -147,7 +147,19 @@ function openAddInspectionModal(workOrderId) {
         return `<optgroup label="${cat}">${itemsHtml}</optgroup>`;
     }).join('');
 
+    const studioTemplates = (window.StudioTemplateManager && typeof window.StudioTemplateManager.getAll === 'function')
+        ? window.StudioTemplateManager.getAll()
+        : [];
+    const studioGroupHtml = studioTemplates.length > 0
+        ? `<optgroup data-studio-group="1" label="Studio Şablonları (${studioTemplates.length})">${studioTemplates.map(st => `
+            <option value="${escapeHtml(st.template_id)}" data-code="${escapeHtml(st.form_code || 'FR.100')}" data-name="${escapeHtml(st.title || 'Studio Şablonu')}">
+                ${escapeHtml(st.title)} (${escapeHtml(st.form_code || 'Studio')} · ${escapeHtml(st.version_label || 'v1')})
+            </option>
+        `).join('')}</optgroup>`
+        : '';
+
     const optionsHtml = `
+        ${studioGroupHtml}
         <optgroup label="Ana Elektriksel Şablonlar">${primaryOpts}</optgroup>
         ${extraGroupsHtml}
     `;
@@ -161,7 +173,13 @@ function openAddInspectionModal(workOrderId) {
 
             <div>
 
-                <label class="block font-bold text-slate-800 mb-1">Rapor Türü</label>
+                <div class="flex items-center justify-between gap-2 mb-1">
+                    <label class="block font-bold text-slate-800">Rapor Türü</label>
+                    <button type="button" onclick="refreshStudioTemplatesInAddModal('${workOrderId}')" class="px-2 py-0.5 rounded bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 font-bold text-[10px] flex items-center gap-1" title="Studio'da yayınlanan yeni şablonları indir">
+                        <i class="fa-solid fa-arrows-rotate"></i>
+                        <span>Studio Şablonlarını Yenile</span>
+                    </button>
+                </div>
 
                 <select id="newInspTemplate"
 
@@ -240,7 +258,57 @@ function openAddInspectionModal(workOrderId) {
 
     }, 120);
 
+    // Arka planda en güncel yayınlanmış Studio şablonlarını çek ve açılır listeyi canlı güncelle
+    if (window.StudioTemplateManager && typeof window.StudioTemplateManager.refreshFromPortal === 'function') {
+        window.StudioTemplateManager.refreshFromPortal(true).then(() => {
+            const sel = document.getElementById('newInspTemplate');
+            if (!sel) return;
+            const latestStudio = window.StudioTemplateManager.getAll();
+            const existingGroup = sel.querySelector('optgroup[data-studio-group="1"]');
+            if (latestStudio.length === 0) {
+                if (existingGroup) existingGroup.remove();
+                return;
+            }
+            const prevVal = sel.value;
+            const newGroupHtml = latestStudio.map(st => `
+                <option value="${escapeHtml(st.template_id)}" data-code="${escapeHtml(st.form_code || 'FR.100')}" data-name="${escapeHtml(st.title || 'Studio Şablonu')}">
+                    ${escapeHtml(st.title)} (${escapeHtml(st.form_code || 'Studio')} · ${escapeHtml(st.version_label || 'v1')})
+                </option>
+            `).join('');
+            if (existingGroup) {
+                existingGroup.label = `Studio Şablonları (${latestStudio.length})`;
+                existingGroup.innerHTML = newGroupHtml;
+            } else {
+                const grp = document.createElement('optgroup');
+                grp.setAttribute('data-studio-group', '1');
+                grp.label = `Studio Şablonları (${latestStudio.length})`;
+                grp.innerHTML = newGroupHtml;
+                sel.insertBefore(grp, sel.firstChild);
+            }
+            if (prevVal && Array.from(sel.options).some(o => o.value === prevVal)) {
+                sel.value = prevVal;
+            }
+        }).catch(() => {});
+    }
+
 }
+
+window.refreshStudioTemplatesInAddModal = async function (workOrderId) {
+    if (!window.StudioTemplateManager || typeof window.StudioTemplateManager.refreshFromPortal !== 'function') return;
+    const eqVal = document.getElementById('newInspEqName')?.value || '';
+    const locVal = document.getElementById('newInspLocation')?.value || '';
+    const serVal = document.getElementById('newInspSerial')?.value || '';
+    await window.StudioTemplateManager.refreshFromPortal(false);
+    openAddInspectionModal(workOrderId);
+    setTimeout(() => {
+        const eqEl = document.getElementById('newInspEqName');
+        const locEl = document.getElementById('newInspLocation');
+        const serEl = document.getElementById('newInspSerial');
+        if (eqEl && eqVal) eqEl.value = eqVal;
+        if (locEl && locVal) locEl.value = locVal;
+        if (serEl && serVal) serEl.value = serVal;
+    }, 30);
+};
 
 
 

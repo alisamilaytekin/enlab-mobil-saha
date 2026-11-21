@@ -65,8 +65,26 @@ function formatSavedReportForApp(row) {
   };
 }
 
+function formatStudioTemplateForApp(row) {
+  const key = String(row.template_key || '').trim();
+  return {
+    id: row.id,
+    template_key: key,
+    template_id: `studio:${key}`,
+    version_number: Number(row.version_number || 1),
+    version_label: row.version_label || `v${row.version_number || 1}`,
+    title: row.title || 'Studio Şablonu',
+    category: row.category || 'Elektrik',
+    form_code: row.form_code || 'FR.100',
+    changelog: row.changelog || '',
+    schema_json: row.schema_json && typeof row.schema_json === 'object' ? row.schema_json : {},
+    created_by_name: row.created_by_name || '',
+    created_at: row.created_at || null
+  };
+}
+
 async function buildSyncPayload(user, tenant, origin = '') {
-  const [userDevicesRows, workOrdersRows] = await Promise.all([
+  const [userDevicesRows, workOrdersRows, studioRows] = await Promise.all([
     dbSelect(
       'saas_user_devices',
       `user_id=eq.${encodeURIComponent(user.id)}&select=device_id,sort_order&order=sort_order.asc`
@@ -74,8 +92,25 @@ async function buildSyncPayload(user, tenant, origin = '') {
     dbSelect(
       'saas_work_orders',
       `tenant_id=eq.${encodeURIComponent(tenant.id)}&assigned_user_id=eq.${encodeURIComponent(user.id)}&status=neq.cancelled&order=updated_at.desc`
-    )
+    ),
+    dbSelect(
+      'saas_template_versions',
+      `tenant_id=eq.${encodeURIComponent(tenant.id)}&is_published=eq.true&is_archived=eq.false&order=template_key.asc,version_number.desc`
+    ).catch(e => {
+      console.warn('saas_template_versions select warning:', e?.message || e);
+      return [];
+    })
   ]);
+
+  const studioTemplates = [];
+  const seenStudioKeys = new Set();
+  for (const row of (Array.isArray(studioRows) ? studioRows : [])) {
+    const key = String(row.template_key || '').trim();
+    if (!key || seenStudioKeys.has(key)) continue;
+    if (!row.schema_json || !Array.isArray(row.schema_json.sections)) continue;
+    seenStudioKeys.add(key);
+    studioTemplates.push(formatStudioTemplateForApp(row));
+  }
 
   let assignedDevices = [];
   if (userDevicesRows.length > 0) {
@@ -188,6 +223,7 @@ async function buildSyncPayload(user, tenant, origin = '') {
       };
     }),
     saved_reports: savedReports,
+    studio_templates: studioTemplates,
     synced_at: new Date().toISOString()
   };
 }
@@ -288,7 +324,7 @@ export default async function handler(req, res) {
           work_order_id: wo.id,
           user_id: auth.user.id,
           client_report_key: clientReportKey,
-          template_id: String(body.template_id || '2201').slice(0, 40),
+          template_id: String(body.template_id || '2201').slice(0, 96),
           template_code: String(body.template_code || 'TKM-FR.318').slice(0, 80),
           report_no: String(body.report_no || '').slice(0, 120),
           equipment_name: String(body.equipment_name || '').slice(0, 240),

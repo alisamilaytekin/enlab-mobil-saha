@@ -405,7 +405,7 @@ export default async function handler(req, res) {
       const { user: manager, tenant } = auth;
       const tenantId = tenant.id;
 
-      const [users, devices, workOrders] = await Promise.all([
+      const [users, devices, workOrders, studioRows] = await Promise.all([
         dbSelect(
           'saas_users',
           `tenant_id=eq.${encodeURIComponent(tenantId)}&select=id,tenant_id,username,role,full_name,title,ministry_reg_no,diploma_no_date,emo_no,is_active,last_login_at,created_at,updated_at&order=created_at.asc`
@@ -417,8 +417,31 @@ export default async function handler(req, res) {
         dbSelect(
           'saas_work_orders',
           `tenant_id=eq.${encodeURIComponent(tenantId)}&order=updated_at.desc`
-        )
+        ),
+        dbSelect(
+          'saas_template_versions',
+          `tenant_id=eq.${encodeURIComponent(tenantId)}&is_published=eq.true&is_archived=eq.false&select=id,template_key,version_number,version_label,title,category,form_code,created_at&order=template_key.asc,version_number.desc`
+        ).catch(() => [])
       ]);
+
+      const studioTemplates = [];
+      const seenTplKeys = new Set();
+      for (const row of (Array.isArray(studioRows) ? studioRows : [])) {
+        const key = String(row.template_key || '').trim();
+        if (!key || seenTplKeys.has(key)) continue;
+        seenTplKeys.add(key);
+        studioTemplates.push({
+          id: row.id,
+          template_key: key,
+          template_id: `studio:${key}`,
+          version_number: Number(row.version_number || 1),
+          version_label: row.version_label || `v${row.version_number || 1}`,
+          title: row.title || 'Studio Şablonu',
+          category: row.category || 'Elektrik',
+          form_code: row.form_code || 'FR.100',
+          created_at: row.created_at || null
+        });
+      }
 
       const userIds = users.map(u => u.id);
       let assignments = [];
@@ -443,7 +466,8 @@ export default async function handler(req, res) {
         users: users.map(sanitizeSaasUserPublic),
         devices: devices.map(formatDevicePublic),
         assignments: assignedMap,
-        work_orders: workOrders
+        work_orders: workOrders,
+        studio_templates: studioTemplates
       });
     }
 

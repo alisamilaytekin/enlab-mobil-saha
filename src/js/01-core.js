@@ -735,9 +735,8 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     
 
-    // Auth Check
-
-    const curUser = AuthManager.getCurrentUser();
+    // Üyelik / giriş ekranına takılmadan doğrudan yerel oturumla aç
+    const curUser = AuthManager.getCurrentUser() || (typeof AuthManager.ensureDefaultLocalUser === 'function' ? AuthManager.ensureDefaultLocalUser() : null);
 
     updateHeaderUserWidget();
 
@@ -758,6 +757,10 @@ window.addEventListener('DOMContentLoaded', async () => {
         if (curUser.isCloudManaged && navigator.onLine !== false && window.CloudAppSync && typeof window.CloudAppSync.syncNow === 'function') {
 
             window.CloudAppSync.syncNow({ silent: true });
+
+        } else if (window.StudioTemplateManager && typeof window.StudioTemplateManager.refreshFromPortal === 'function') {
+
+            window.StudioTemplateManager.refreshFromPortal(true);
 
         }
 
@@ -1474,11 +1477,19 @@ function handleBackupFileImport(input) {
 
 async function navigateTo(route, params = {}) {
 
-    // If not logged in and not auth, redirect to auth
+    // Oturum yoksa üyelik istemeden varsayılan yerel profille devam et
 
     if (!AuthManager.getCurrentUser() && route !== 'auth') {
 
-        return renderAuthScreen();
+        if (typeof AuthManager.ensureDefaultLocalUser === 'function') {
+
+            AuthManager.ensureDefaultLocalUser();
+
+        } else {
+
+            return renderAuthScreen();
+
+        }
 
     }
 

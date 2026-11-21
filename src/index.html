@@ -270,6 +270,129 @@
             color: #111111;
             padding-top: 2px;
         }
+
+        /* STUDIO ŞABLON MOTORU — BİREBİR A4 STİLLERİ & CSS DEĞİŞKENLERİ */
+        .tkm-a4-page.tkm-a4-landscape {
+            width: 297mm !important;
+            min-height: 209.5mm !important;
+            height: 209.5mm !important;
+        }
+        .tkm-watermark {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            z-index: 20;
+            overflow: hidden;
+        }
+        .tkm-watermark span {
+            transform: rotate(-38deg);
+            font-size: 62pt;
+            font-weight: 900;
+            letter-spacing: 6px;
+            text-transform: uppercase;
+            user-select: none;
+            white-space: nowrap;
+        }
+        .tkm-a4-page.page-border-thin::after {
+            content: ""; position: absolute; inset: 4mm; border: 1px solid #334155; pointer-events: none; z-index: 18;
+        }
+        .tkm-a4-page.page-border-corporate::after {
+            content: ""; position: absolute; inset: 4mm; border: 2px solid #0f172a; pointer-events: none; z-index: 18;
+        }
+        .tkm-a4-page.page-border-double::after {
+            content: ""; position: absolute; inset: 4mm; border: 3.5px double #1f3a5f; pointer-events: none; z-index: 18;
+        }
+        .tkm-a4-page.page-border-navy::after {
+            content: ""; position: absolute; inset: 4mm; border: 2px solid #185abd; border-radius: 3px; pointer-events: none; z-index: 18;
+        }
+        .tkm-table.tkm-no-banded tbody tr:nth-child(even) td { background-color: #ffffff !important; }
+        .tkm-table.tkm-banded-cols tbody td:nth-child(even) { background-color: rgba(241, 245, 249, 0.72) !important; }
+        .tkm-table.tkm-first-col-bold tbody td:first-child { font-weight: 700 !important; }
+        .tkm-table.tkm-last-col-bold tbody td:last-child { font-weight: 700 !important; }
+        .tkm-table tr.tkm-total-row td {
+            font-weight: 800 !important;
+            border-top: 1.5px solid #0f172a !important;
+            border-bottom: 3px double #0f172a !important;
+            background-color: #f8fafc !important;
+        }
+        .tkm-table.tbl-preset-excel_green th { background-color: #107c41 !important; color: #ffffff !important; border-color: #0d6836 !important; }
+        .tkm-table.tbl-preset-excel_green tbody tr:nth-child(even) td { background-color: #ecfdf5 !important; }
+        .tkm-table.tbl-preset-navy_corp th { background-color: #1b365d !important; color: #ffffff !important; border-color: #102440 !important; }
+        .tkm-table.tbl-preset-navy_corp tbody tr:nth-child(even) td { background-color: #eff6ff !important; }
+        .tkm-table.tbl-preset-classic_black th { background-color: #111827 !important; color: #ffffff !important; border-color: #000000 !important; }
+        .tkm-table.tbl-preset-classic_black tbody tr:nth-child(even) td { background-color: #f3f4f6 !important; }
+        .tkm-table.tbl-preset-amber_eng th { background-color: #b45309 !important; color: #ffffff !important; border-color: #92400e !important; }
+        .tkm-table.tbl-preset-amber_eng tbody tr:nth-child(even) td { background-color: #fffbeb !important; }
+        .tkm-table.tbl-preset-crimson_alert th { background-color: #991b1b !important; color: #ffffff !important; border-color: #7f1d1d !important; }
+        .tkm-table.tbl-preset-crimson_alert tbody tr:nth-child(even) td { background-color: #fef2f2 !important; }
+        .tkm-chart-box { border: 1px solid #cbd5e1; border-radius: 3px; background: #ffffff; padding: 6px 8px; text-align: center; }
+        .tkm-chart-title { font-size: 7.8pt; font-weight: 700; color: #1f3a5f; margin-bottom: 4px; }
+        .tkm-img-grid { display: grid; gap: 6px; padding: 4px; border: 1px solid #cbd5e1; background: #ffffff; }
+        .tkm-img-item { text-align: center; }
+        .tkm-img-item img { max-width: 100%; max-height: 170px; object-fit: contain; border: 1px solid #e2e8f0; border-radius: 2px; display: block; margin: 0 auto; }
+        .tkm-img-cap { font-size: 6.7pt; color: #334155; margin-top: 2px; font-weight: 600; }
+        .tkm-callout { border: 1.5px solid #185abd; background: #eff6ff; color: #1e3a8a; border-radius: 3px; padding: 5px 8px; font-size: 7.3pt; line-height: 1.25; }
+        .tkm-callout.warn { border-color: #d97706; background: #fffbeb; color: #92400e; }
+        .tkm-callout.danger { border-color: #dc2626; background: #fef2f2; color: #991b1b; }
+        .tkm-callout.ok { border-color: #107c41; background: #ecfdf5; color: #065f46; }
+        .tkm-callout-title { font-weight: 800; margin-bottom: 2px; font-size: 7.6pt; }
+        .cf-databar-wrap { position: relative; z-index: 1; }
+        .cf-databar-fill { position: absolute; left: 1px; top: 1px; bottom: 1px; border-radius: 2px; opacity: 0.28; pointer-events: none; z-index: -1; }
+        .cf-icon-prefix { font-size: 6.5pt; margin-right: 3px; font-weight: 800; }
+
+        .studio-a4-page {
+            padding: var(--st-page-py, 6.5mm) var(--st-page-px, 10.5mm) var(--st-page-py, 6mm) var(--st-page-px, 10.5mm) !important;
+            font-family: var(--st-doc-font, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif) !important;
+            background-color: var(--st-page-bg, #ffffff) !important;
+        }
+        .studio-a4-page .tkm-header { margin-bottom: var(--st-header-mb, 3px) !important; }
+        .studio-a4-page .tkm-block { margin-bottom: var(--st-block-gap, 2px) !important; }
+        .studio-a4-page .tkm-sec-title {
+            margin-top: var(--st-sec-mt, 4px) !important;
+            margin-bottom: var(--st-sec-mb, 2px) !important;
+            font-size: var(--st-sec-fs, 8.5pt) !important;
+        }
+        .studio-a4-page .tkm-sub-bar {
+            margin-top: var(--st-sub-mt, 3px) !important;
+            margin-bottom: var(--st-sub-mb, 2px) !important;
+            font-size: var(--st-sub-fs, 7.6pt) !important;
+        }
+        .studio-a4-page .tkm-table {
+            font-size: var(--st-tbl-fs, 7.2pt) !important;
+            line-height: var(--st-tbl-lh, 1.16) !important;
+        }
+        .studio-a4-page .tkm-table th,
+        .studio-a4-page .tkm-table td {
+            padding: var(--st-cell-py, 2px) var(--st-cell-px, 3.5px) !important;
+            height: var(--st-row-min-h, auto);
+        }
+        .studio-a4-page.has-custom-border .tkm-table,
+        .studio-a4-page.has-custom-border .tkm-table th,
+        .studio-a4-page.has-custom-border .tkm-table td {
+            border-color: var(--st-border-color) !important;
+            border-width: var(--st-border-w, 1px) !important;
+        }
+        .studio-a4-page.has-custom-sec-color .tkm-sec-title {
+            color: var(--st-sec-title-color) !important;
+            border-left-color: var(--st-sec-title-color) !important;
+        }
+        .studio-a4-page.has-custom-sub-style .tkm-sub-bar {
+            background: var(--st-sub-bg) !important;
+            color: var(--st-sub-color) !important;
+        }
+        .studio-a4-page.has-custom-th-style .tkm-table th {
+            background-color: var(--st-th-bg) !important;
+            color: var(--st-th-color) !important;
+        }
+        .studio-inline-a4-wrap .studio-a4-page .tkm-table td[data-cell-key]:hover,
+        .studio-inline-a4-wrap .studio-a4-page .tkm-table th[data-cell-key]:hover {
+            outline: 1.5px solid #0284c7;
+            outline-offset: -1px;
+            cursor: pointer;
+        }
         /* TKM_A4_CSS_END */
 
         @page {

@@ -157,6 +157,60 @@ const AuthManager = {
 
 
 
+    ensureDefaultLocalUser() {
+
+        const existing = this.getCurrentUser();
+
+        if (existing) return existing;
+
+        const users = this.getUsers();
+
+        if (users.length > 0) {
+
+            localStorage.setItem(this.STORAGE_SESSION_KEY, users[0].id);
+
+            if (typeof updateHeaderUserWidget === 'function') updateHeaderUserWidget();
+
+            return users[0];
+
+        }
+
+        const defaultUser = {
+
+            id: 'usr_local_default',
+
+            username: 'saha',
+
+            fullName: 'Saha Mühendisi',
+
+            title: 'Elektrik Mühendisi',
+
+            ministryRegNo: '',
+
+            diplomaNoDate: '',
+
+            emoNo: '',
+
+            isAutoLocal: true,
+
+            createdAt: new Date().toISOString()
+
+        };
+
+        users.push(defaultUser);
+
+        this.saveUsers(users);
+
+        localStorage.setItem(this.STORAGE_SESSION_KEY, defaultUser.id);
+
+        if (typeof updateHeaderUserWidget === 'function') updateHeaderUserWidget();
+
+        return defaultUser;
+
+    },
+
+
+
     upsertCloudUser(data) {
 
         const users = this.getUsers();

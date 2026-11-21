@@ -302,7 +302,14 @@
                 if (Array.isArray(body.initial_templates) && body.initial_templates.length > 0) {
                     const allTpls = window.ENLAB_REPORT_TEMPLATES || [];
                     body.initial_templates.forEach((tplId, idx) => {
-                        const tplObj = allTpls.find(t => String(t.id) === String(tplId)) || { id: tplId, code: 'TKM-FR.318', name: 'Elektrik İç Tesisatı' };
+                        let tplObj = allTpls.find(t => String(t.id) === String(tplId));
+                        if (!tplObj && window.StudioTemplateManager && window.StudioTemplateManager.isStudioTemplateId(tplId)) {
+                            const stTpl = window.StudioTemplateManager.getById(tplId);
+                            tplObj = stTpl
+                                ? { id: stTpl.template_id, code: stTpl.form_code || 'FR.100', name: stTpl.title || 'Studio Raporu' }
+                                : { id: String(tplId), code: 'STUDIO', name: 'Studio Raporu' };
+                        }
+                        if (!tplObj) tplObj = { id: tplId, code: 'TKM-FR.318', name: 'Elektrik İç Tesisatı' };
                         const inspId = Date.now() + idx + 1;
                         const rNo = `TKM-26-02-${Math.floor(54300 + Math.random() * 5500)}`;
                         const inspFormData = {
